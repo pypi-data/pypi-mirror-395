@@ -1,0 +1,143 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xiaoshiai-hub"
+version = "1.1.2"
+description = "Python SDK for XiaoShi AI Hub - Upload, download, and manage AI models and datasets with xpai-enc encryption support"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
+keywords = [
+    "xiaoshi",
+    "ai-hub",
+    "machine-learning",
+    "deep-learning",
+    "model-hub",
+    "dataset",
+    "encryption",
+    "xpai-enc",
+    "sdk",
+    "api-client",
+    "model-encryption",
+]
+authors = [
+    {name = "XiaoShi AI", email = "support@xiaoshiai.cn"}
+]
+maintainers = [
+    {name = "XiaoShi AI Team", email = "support@xiaoshiai.cn"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "requests>=2.20.0",
+    "tqdm>=4.62.0",
+]
+
+[project.optional-dependencies]
+# Upload functionality requires GitPython
+upload = [
+    "gitpython>=3.1.0",
+]
+encryption = []
+
+# Development dependencies
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "pytest-mock>=3.6.0",
+    "black>=22.0",
+    "flake8>=4.0",
+    "mypy>=0.950",
+    "isort>=5.10.0",
+    "build>=0.8.0",
+    "twine>=4.0.0",
+    "gitpython>=3.1.0",
+]
+
+# All optional features (excluding encryption which must be installed manually)
+all = [
+    "gitpython>=3.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/poxiaoyun/moha-sdk"
+Repository = "https://github.com/poxiaoyun/moha-sdk"
+Issues = "https://github.com/poxiaoyun/moha-sdk/issues"
+
+[project.scripts]
+moha = "xiaoshiai_hub.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    ".venv",
+    "venv",
+]
+
+[tool.coverage.run]
+source = ["xiaoshiai_hub"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
