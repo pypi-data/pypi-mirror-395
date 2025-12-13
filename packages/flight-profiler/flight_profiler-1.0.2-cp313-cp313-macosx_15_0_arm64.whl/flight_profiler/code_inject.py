@@ -1,0 +1,51 @@
+import asyncio
+import ctypes
+import os
+import sys
+import threading
+
+from flight_profiler.common.system_logger import logger
+
+PYTHON_VERSION_314: bool = sys.version_info >= (3, 14)
+if PYTHON_VERSION_314:
+    listen_port = "${listen_port}"
+    current_file_abspath = "${current_file_abspath}"
+else:
+    global_vars_dict = globals()
+    listen_port = global_vars_dict["__profile_listen_port__"]
+    current_file_abspath = os.path.abspath(__file__)
+
+sys.path.append(os.path.dirname(current_file_abspath))
+from flight_profiler.server_flight_profiler import FlightProfilerServer
+
+
+def load_frida_gum():
+    try:
+        nm_symbol_offset = int("${nm_symbol_offset}")
+        flight_profiler_agent_so_path = "${flight_profiler_agent_so_path}"
+        lib = ctypes.CDLL(flight_profiler_agent_so_path)
+        lib.inject_init_frida_gum.argtypes = [ctypes.c_ulong]
+        lib.inject_init_frida_gum.restype = ctypes.c_int
+        if lib.inject_init_frida_gum(nm_symbol_offset) != 0:
+            logger.warning(f"[PyFlightProfiler] init frid-gum failed, gilstat is disabled!")
+    except:
+        logger.exception(f"[PyFlightProfiler] flight_profiler_agent load failed!!!")
+
+if PYTHON_VERSION_314:
+    load_frida_gum()
+
+listen_port = int(listen_port)
+logger.info("pyFlightProfiler: will use listen port " + str(listen_port))
+
+
+def run_app():
+    profiler = FlightProfilerServer("localhost", listen_port)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    tasks = [loop.create_task(profiler.run())]
+    loop.run_until_complete(asyncio.wait(tasks))
+
+
+profile_thread = threading.Thread(target=run_app)
+profile_thread.start()
+logger.info("pyFlightProfiler: start code inject successfully")
