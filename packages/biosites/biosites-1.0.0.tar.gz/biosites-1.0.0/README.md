@@ -1,0 +1,212 @@
+# Biosites
+
+A Python package for extracting links from bio link aggregator services like Linktree, inpock, lit.link, and others.
+
+## Features
+
+- Extract links from 10+ popular bio link services
+- Automatic redirect resolution for shortened URLs
+- Configurable user agents
+- Async/await support (Async API Only)
+- Type-safe with Pydantic models
+- Command-line interface
+
+## Supported Services
+
+- **Linktree** (linktr.ee, linktree.com)
+- **Lit.link** (lit.link)
+- **Littly** (litt.ly)
+- **Inpock** (link.inpock.co.kr)
+- **Bio.site** (bio.site)
+- **Instabio** (instabio.cc)
+- **LinkBio** (linkbio.co)
+- **Link.me** (link.me)
+- Generic HTML link extraction for unsupported services
+
+## Installation
+
+```bash
+pip install biosites
+```
+
+Or with poetry/uv:
+
+```bash
+poetry add biosites
+# or
+uv add biosites
+```
+
+## Usage
+
+### Command Line
+
+Extract links from a bio page:
+
+```bash
+biosites https://linktr.ee/username
+```
+
+Extract from shortened URL (automatically follows redirects):
+
+```bash
+biosites https://bit.ly/shortened-link
+```
+
+### Python API
+
+```python
+import asyncio
+from biosites import LinkExtractor
+
+async def main():
+    extractor = LinkExtractor()
+
+    # Extract links from a bio page
+    result = await extractor.extract("https://linktr.ee/username")
+
+    # Access extracted links
+    for link in result.links:
+        print(f"{link.title}: {link.url}")
+        if link.metadata:
+            print(f"  Metadata: {link.metadata}")
+
+    # Check service type
+    print(f"Service: {result.service_type}")
+
+asyncio.run(main())
+```
+
+### Custom User Agent
+
+```python
+from biosites import LinkExtractor
+
+extractor = LinkExtractor(
+    user_agent="MyBot/1.0 (https://example.com/bot)"
+)
+```
+
+### Check if URL is Supported
+
+```python
+from biosites import LinkExtractor
+
+extractor = LinkExtractor()
+supported, service = extractor.can_handle("https://linktr.ee/username")
+if supported:
+    print(f"URL will be handled by {service}")
+```
+
+### Handle Redirects
+
+The package automatically handles redirected URLs from shorteners:
+
+```python
+result = await extractor.extract("https://bit.ly/shortened")
+# Automatically follows to final bio link service
+
+# Access redirect information
+if result.metadata and "redirect_chain" in result.metadata:
+    print(f"Original URL: {result.metadata['original_url']}")
+    print(f"Redirect chain: {result.metadata['redirect_chain']}")
+```
+
+## Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/biosites.git
+cd biosites
+
+# Install dependencies
+uv venv
+uv pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Type Checking
+
+```bash
+mypy biosites
+```
+
+### Linting
+
+```bash
+ruff check biosites tests
+ruff format biosites tests
+```
+
+## Architecture
+
+The package uses a modular architecture:
+
+- **Base Extractor**: Abstract base class defining the interface
+- **Service Extractors**: Specialized extractors for each bio service
+- **Link Extractor**: Main entry point that routes to appropriate extractor
+- **Redirect Handler**: Handles URL shorteners and redirects
+- **Models**: Pydantic models for type safety
+
+Each extractor implements:
+
+- `can_handle(url)`: Check if the extractor supports the URL
+- `extract_links(html, url)`: Extract links from the HTML content
+
+## Adding New Services
+
+To add support for a new bio link service:
+
+1. Create a new extractor in `biosites/extractors/`
+2. Inherit from `BaseLinkExtractor`
+3. Implement `can_handle()` and `extract_links()` methods
+4. Register the extractor in `biosites/extractor.py`
+
+Example:
+
+```python
+from biosites.base import BaseLinkExtractor
+from biosites.models import ExtractedLink
+
+class NewServiceExtractor(BaseLinkExtractor):
+    @classmethod
+    def can_handle(cls, url: str) -> bool:
+        return "newservice.com" in url.lower()
+
+    async def extract_links(self, html: str, url: str) -> list[ExtractedLink]:
+        # Parse HTML and extract links
+        links = []
+        # ... extraction logic ...
+        return links
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/new-service`)
+3. Write tests for your changes
+4. Ensure all tests pass and type checking is clean
+5. Commit your changes with descriptive messages
+6. Push to your branch and create a Pull Request
+
+## Requirements
+
+- Python 3.10+
+- aiohttp
+- pydantic
+- beautifulsoup4
+- selectolax
+- click
