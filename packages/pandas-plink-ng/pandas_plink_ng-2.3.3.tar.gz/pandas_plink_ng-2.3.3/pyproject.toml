@@ -1,0 +1,72 @@
+[build-system]
+requires = [
+  "poetry-core",
+  "cffi>=1.17",
+  "cmake",
+  "setuptools;python_version>='3.12'"
+]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "pandas-plink-ng"
+version = "2.3.3"
+description = "Fork of pandas-plink with NumPy >=2.0 support and modern Python/GPU-stack compatibility"
+license = "MIT"
+
+# Keep original author for attribution, add you for maintenance
+authors = [
+  "Danilo Horta <danilo.horta@pm.me>",
+  "Kynon J Benjamin <kj.benjamin90@gmail.com>"
+]
+
+readme = "README.md"
+
+# Point these at YOUR fork so PyPI users land in the right place
+repository = "https://github.com/KrotosBenjamin/pandas-plink-ng"
+homepage   = "https://github.com/KrotosBenjamin/pandas-plink-ng"
+
+keywords = ["plink", "reader", "genetics", "genomics", "QTL", "fork"]
+
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+# make sure the compiled extension sources get included in the sdist/wheel
+include = [
+  { path = "pandas_plink/*.c",   format = "sdist" },
+  { path = "pandas_plink/*.h",   format = "sdist" },
+  { path = "pandas_plink/*.pyd", format = "wheel" },
+  { path = "pandas_plink/*.so",  format = "wheel" }
+]
+
+[[tool.poetry.packages]]
+include = "pandas_plink"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.15"
+
+# relaxed NumPy requirement for RAPIDS / CuPy / localqtl stack
+numpy = ">=2,<3"
+pandas = "^2.2"
+cffi = ">=1.17"
+tqdm = "^4.67"
+xarray = "*"
+zstandard = ">=0.23,<0.26"
+deprecated = "^1.2"
+pandera = { version = "*", extras = ["mypy", "dask"] }
+dask = { version = "*", extras = ["dataframe"] }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2"
+
+[tool.poetry.build]
+generate-setup-file = false
+script = "build_ext.py"
