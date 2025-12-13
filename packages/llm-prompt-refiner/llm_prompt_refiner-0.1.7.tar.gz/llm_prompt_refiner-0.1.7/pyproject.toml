@@ -1,0 +1,98 @@
+[project]
+name = "llm-prompt-refiner"
+version = "0.1.7"
+description = "A lightweight Python library for optimizing and cleaning LLM inputs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Xinghao Huang", email = "jacobhuang91@gmail.com" }
+]
+keywords = ["llm", "prompt", "optimization", "tokens", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Zero dependencies - lightweight core library
+dependencies = []
+
+[project.optional-dependencies]
+# Precise token counting with tiktoken (user-facing optional feature)
+token = [
+    "tiktoken>=0.7.0",
+]
+# Benchmark dependencies (users who want to run benchmarks)
+benchmark = [
+    "openai>=1.0.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    "scikit-learn>=1.3.0",
+    "tqdm>=4.65.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/JacobHuang91/prompt-refiner"
+Repository = "https://github.com/JacobHuang91/prompt-refiner"
+Issues = "https://github.com/JacobHuang91/prompt-refiner/issues"
+Documentation = "https://jacobhuang91.github.io/prompt-refiner/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prompt_refiner"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = []
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[dependency-groups]
+# Development dependencies (NOT published to PyPI, local dev only)
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    # Documentation
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-autorefs>=0.5.0",
+    "mike>=2.0.0",
+    # Examples dependencies
+    "tiktoken>=0.7.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",
+]
