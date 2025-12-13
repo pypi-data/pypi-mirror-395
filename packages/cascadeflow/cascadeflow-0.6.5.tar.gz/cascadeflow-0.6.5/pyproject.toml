@@ -1,0 +1,286 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cascadeflow"
+version = "0.6.5"
+description = "Smart AI model cascading for cost optimization - Save 40-85% on LLM costs with 2-6x faster responses. Available for Python and TypeScript/JavaScript."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Lemony Inc.", email = "hello@lemony.ai"}
+]
+maintainers = [
+    {name = "Lemony Inc.", email = "hello@lemony.ai"}
+]
+keywords = [
+    "ai",
+    "llm",
+    "cost-optimization",
+    "model-routing",
+    "cascade",
+    "inference",
+    "openai",
+    "anthropic",
+    "gpt",
+    "claude",
+    "machine-learning",
+    "groq",
+    "typescript",
+    "javascript",
+    "browser",
+    "edge-functions",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "tiktoken>=0.5.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+# Individual providers (API-based - require API keys)
+openai = ["openai>=1.0.0"]
+anthropic = ["anthropic>=0.8.0"]
+groq = ["groq>=0.4.0"]
+huggingface = ["huggingface-hub>=0.19.0"]
+together = ["together>=0.2.0"]
+
+# Local inference providers (run your own models)
+# Note: Ollama doesn't need a Python package - just HTTP requests to localhost:11434
+# Install Ollama separately from: https://ollama.ai
+vllm = ["vllm>=0.2.0"]  # For running vLLM in-process (or use vLLM server via HTTP)
+
+# Common API providers bundle (most popular)
+providers = [
+    "openai>=1.0.0",
+    "anthropic>=0.8.0",
+    "groq>=0.4.0",
+]
+
+# Local inference bundle
+local = [
+    "vllm>=0.2.0",
+]
+
+# Semantic routing (optional feature)
+semantic = [
+    "sentence-transformers>=2.2.0",
+    "fastembed>=0.2.0",
+]
+
+# Development tools (includes rich for terminal output)
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "python-dotenv>=1.0.0",
+    "fastembed>=0.2.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.5.0",
+    "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+# Documentation tools
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.23.0",
+]
+
+# Everything (all providers + semantic routing)
+all = [
+    "openai>=1.0.0",
+    "anthropic>=0.8.0",
+    "groq>=0.4.0",
+    "huggingface-hub>=0.19.0",
+    "together>=0.2.0",
+    "vllm>=0.2.0",
+    "sentence-transformers>=2.2.0",
+    "fastembed>=0.2.0",
+]
+
+[project.urls]
+Homepage = "https://lemony.ai"
+Documentation = "https://github.com/lemony-ai/cascadeflow"
+Repository = "https://github.com/lemony-ai/cascadeflow"
+"Bug Tracker" = "https://github.com/lemony-ai/cascadeflow/issues"
+Changelog = "https://github.com/lemony-ai/cascadeflow/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = {find = {where = ["."], exclude = ["tests*", "examples*", "docs*", "packages*", "node_modules*", ".venv*", "build*", "dist*"]}}
+
+[tool.setuptools.package-data]
+cascadeflow = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.idea
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "C4",  # flake8-comprehensions
+    "PT",  # flake8-pytest-style
+]
+ignore = [
+    "E501",  # Line too long - will fix gradually
+    "N801",  # Class name - cascadeflowLiteLLMCallback is external convention
+    "N806",  # Variable naming - external APIs use their conventions
+    "N816",  # MixedCase variable - external integrations use their conventions
+    "N818",  # Exception naming - GuardrailViolation is intentional
+    "B904",  # Exception chaining - will add gradually
+    "E722",  # Bare except - will fix gradually
+    "B007",  # Loop variable not used
+    "B008",  # Function call in defaults
+    "B017",  # assert raises
+    "B018",  # Useless expression
+    "B027",  # Empty method
+    "UP035",  # typing.Dict -> dict (will migrate gradually)
+    "PT011",  # pytest.raises too broad
+    "PT017",  # Found assertion on exception
+    "PT021",  # Use yield instead of request.addfinalizer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402", "I001"]  # F401: unused imports, E402: imports not at top (needed for backward compat), I001: unsorted imports
+"cascadeflow/core/batch.py" = ["F401"]  # Availability check imports
+"cascadeflow/core/cascade.py" = ["F401"]  # Availability check imports
+"cascadeflow/integrations/litellm.py" = ["F401"]  # Availability check imports
+"cascadeflow/quality/quality.py" = ["F401"]  # Availability check imports
+"cascadeflow/dynamic_config/watcher.py" = ["F821"]  # ConfigManager forward reference
+"cascadeflow/routing/tool_risk.py" = ["E741"]  # Ambiguous variable name in risk scoring
+"cascadeflow/schema/__init__.py" = ["A004"]  # TimeoutError re-export shadows builtin
+"cascadeflow/schema/domain_config.py" = ["F821"]  # ModelRegistry forward reference
+"cascadeflow/schema/exceptions.py" = ["A001"]  # TimeoutError class shadows builtin (intentional)
+"tests/**" = ["E402", "F401", "E741", "B023", "B006", "F841"]  # Test files: imports after setup, unused imports, ambiguous names, mutable defaults, unused vars
+"tests/_archive_development_tests/**" = ["F"]  # Archived tests: ignore all F (pyflakes) errors
+"examples/**" = ["F401"]  # Examples: unused imports OK
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+ignore_errors = false
+exclude = [
+    "build",
+    "dist",
+    ".venv",
+]
+# Temporarily relaxed settings - will gradually improve type coverage
+disable_error_code = [
+    "no-untyped-def",
+    "no-any-return",
+    "assignment",
+    "arg-type",
+    "var-annotated",
+    "attr-defined",
+    "operator",
+    "index",
+    "call-overload",
+    "dict-item",
+    "return-value",
+    "valid-type",
+    "union-attr",
+    "misc",
+    "override",
+    "no-redef",
+    "has-type",
+    "annotation-unchecked",
+    "name-defined",
+    "import-not-found",
+    "call-arg",
+    "import",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "openai.*",
+    "anthropic.*",
+    "groq.*",
+    "huggingface_hub.*",
+    "together.*",
+    "vllm.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--cov=cascadeflow",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--asyncio-mode=auto",
+]
+markers = [
+    "integration: marks tests that require external services or API keys (deselect with '-m \"not integration\"')",
+    "requires_api: marks tests that require API keys to run",
+    "requires_ollama: marks tests that require Ollama to be running",
+    "requires_vllm: marks tests that require vLLM to be running",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.coverage.run]
+source = ["cascadeflow"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
