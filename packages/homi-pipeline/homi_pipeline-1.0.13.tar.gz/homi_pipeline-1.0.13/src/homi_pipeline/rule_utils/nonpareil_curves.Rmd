@@ -1,0 +1,60 @@
+---
+title: "Nonpareil curves"
+output: html_document
+params:
+    metadata: "metadata.csv"
+    npo_path: "seq.f0.0.r0.0.nonhost.nonpareil/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!require("Nonpareil")){
+  install.packages('Nonpareil', repos="http://cran.us.r-project.org")
+  library("Nonpareil")
+}
+if (!require("data.table")){
+  install.packages('data.table', repos="http://cran.us.r-project.org")
+  library("data.table")
+}
+if (!require("ggplot2")){
+  install.packages('ggplot2', repos="http://cran.us.r-project.org")
+  library("ggplot2")
+}
+```
+
+# Curves
+```{r}
+metadata <- data.table::fread(params$metadata)
+metadata$Sample <- as.character(metadata$Sample)
+filepaths <- paste0(params$npo_path, "/",
+                    metadata$Sample, 
+                    ".npo")
+
+np <- Nonpareil.set(filepaths, labels=metadata$Sample)
+
+np.summary <- apply(summary(np), FUN=as.numeric, MARGIN=2)
+
+# Show current coverage (as %)
+coverages <- np.summary[,"C"]*100 
+summary(coverages)
+
+knitr::kable(coverages,
+            col.names="Estimated coverage (based on sequence redundancy)")
+
+ggplot(mapping=aes(y=coverages,
+                   x=np.summary[,"LR"]/1e9)) +
+  geom_point(size=3) +
+  labs(y="Estimated Percent Coverage",
+       x="Effective Sequencing Effort (Gbp)")
+
+ggplot(mapping=aes(y=coverages,
+                   x=np.summary[,"diversity"])) +
+  geom_point(size=3) +
+  labs(y="Estimated Percent Coverage",
+       x="Sequence Diversity Index")
+
+hist(coverages)
+hist(np.summary[,"diversity"])
+hist(np.summary[,"LR"]/1e9)
+```
