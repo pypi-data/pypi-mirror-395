@@ -1,0 +1,234 @@
+Metadata-Version: 2.4
+Name: byebye-docs-mcp
+Version: 0.2.1
+Summary: MCP server for AI-first development design document templates
+Project-URL: Homepage, https://github.com/pon-tanuki/byebye-docs
+Project-URL: Repository, https://github.com/pon-tanuki/byebye-docs
+Project-URL: Documentation, https://github.com/pon-tanuki/byebye-docs/blob/main/mcp-server/README.md
+Project-URL: Issues, https://github.com/pon-tanuki/byebye-docs/issues
+Author: pon-tanuki
+License-Expression: MIT
+Keywords: ai,claude,code-sync,design-docs,documentation,mcp
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Documentation
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: jsonschema>=4.0
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest-asyncio>=0.23; extra == 'dev'
+Requires-Dist: pytest>=8.0; extra == 'dev'
+Requires-Dist: ruff>=0.1; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# 🔌 byebye-docs MCP Server
+
+[![PyPI version](https://badge.fury.io/py/byebye-docs-mcp.svg)](https://badge.fury.io/py/byebye-docs-mcp)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Claude CodeやClaude Desktopと連携するMCPサーバー。
+
+**コードとドキュメントの同期？AIにやらせろ。**
+
+## 🚀 インストール
+
+```bash
+pip install byebye-docs-mcp
+# または
+uv tool install byebye-docs-mcp
+```
+
+以上。終わり。
+
+## ⚡ クイックスタート
+
+### 既存プロジェクトに導入
+
+```bash
+curl -sL https://raw.githubusercontent.com/pon-tanuki/byebye-docs/main/scripts/init-project.sh | bash -s /path/to/your-project
+```
+
+これで `.agent/` と `CLAUDE.md` と `.mcp.json` が全部セットアップされる。
+
+### 手動でやりたい人
+
+```bash
+# 1. インストール（上でやった）
+
+# 2. テンプレートをコピー
+git clone --depth 1 https://github.com/pon-tanuki/byebye-docs.git /tmp/byebye-docs
+cp -r /tmp/byebye-docs/.agent /path/to/your-project/
+cp /tmp/byebye-docs/CLAUDE.md /path/to/your-project/
+
+# 3. .mcp.json を作成（下記参照）
+```
+
+## 🔧 Claude Codeでの設定
+
+プロジェクトルートに `.mcp.json` を置く：
+
+```json
+{
+  "mcpServers": {
+    "byebye-docs": {
+      "command": "byebye-docs",
+      "env": {
+        "BYEBYE_DOCS_PROJECT_PATH": "."
+      }
+    }
+  }
+}
+```
+
+## 🛠️ できること
+
+### コード↔ドキュメント同期（目玉機能）
+
+| ツール | 何するの？ |
+|--------|-----------|
+| `diff_code_docs` | コードとドキュメントの差分を検出。「あれ、このAPIドキュメントに書いてなくね？」を見つける |
+| `extract_from_code` | コードからAPI/エンティティ情報を抽出してYAML出力。手で書くとかダルいじゃん |
+| `auto_sync` | コード変更をドキュメントに自動反映。preview で確認、apply で適用 |
+
+### ドキュメント管理
+
+| ツール | 何するの？ |
+|--------|-----------|
+| `list_templates` | 利用可能なテンプレート一覧 |
+| `create_document` | テンプレートから新規ドキュメント作成 |
+| `get_section` | ドキュメントの特定セクションを取得 |
+| `update_section` | ドキュメントの特定セクションを更新 |
+| `validate_document` | ドキュメントの構造チェック |
+| `fill_metadata` | メタデータ自動入力 |
+
+### リソース
+
+| URI | 何が取れる？ |
+|-----|-------------|
+| `template://structure` | テンプレート構造 |
+| `template://schema` | 検証スキーマ |
+| `project://current` | 現在のプロジェクト情報 |
+| `docs://list` | 既存ドキュメント一覧 |
+
+### プロンプト
+
+| 名前 | 何するの？ |
+|------|-----------|
+| `design-review` | 設計レビューワークフロー |
+| `update-architecture` | アーキテクチャ図更新ガイド |
+
+## 💡 使用例
+
+### コードとドキュメントの差分をチェック
+
+```python
+diff_code_docs(
+    code_path="src/",
+    doc_type="all",     # "api", "entities", "all"
+    language="auto"
+)
+```
+
+「お前のドキュメント、コードと合ってないぞ」って教えてくれる。
+
+### コードから情報を抽出
+
+```python
+extract_from_code(
+    code_path="src/",
+    extract_type="all",
+    output_format="yaml",
+    merge_with_existing=True   # 既存ドキュメントとマージ
+)
+```
+
+FastAPI のルートとか Pydantic のモデルとか、Express のルートとか TypeORM のエンティティとか、勝手に拾ってYAMLにしてくれる。
+
+### ドキュメントを自動同期
+
+```python
+# まずプレビュー（何が変わるか確認）
+auto_sync(mode="preview", code_path="src/")
+
+# 問題なさそうなら適用
+auto_sync(mode="apply", code_path="src/", target_docs=["api.yaml", "entities.yaml"])
+```
+
+バックアップも勝手に取ってくれる。安心。
+
+### テンプレートからドキュメント作成
+
+```python
+create_document(
+    template_type="context.yaml",
+    output_path=".agent/context.yaml",
+    metadata={
+        "project_name": "My Awesome Project",
+        "author": "Claude Agent"
+    }
+)
+```
+
+## 🔄 更新方法
+
+```bash
+pip install --upgrade byebye-docs-mcp
+# または
+uv tool install byebye-docs-mcp --force
+```
+
+## 🌍 環境変数
+
+| 変数名 | 説明 | デフォルト |
+|--------|------|-----------|
+| `BYEBYE_DOCS_PROJECT_PATH` | 対象プロジェクトのパス | カレントディレクトリ |
+
+## 🧑‍💻 開発者向け
+
+### ソースからビルド
+
+```bash
+git clone https://github.com/pon-tanuki/byebye-docs.git
+cd byebye-docs/mcp-server
+uv sync
+```
+
+### テスト
+
+```bash
+uv run pytest
+```
+
+### Lint
+
+```bash
+uv run ruff check .
+uv run ruff format .
+```
+
+## 🐍 対応言語（コード解析）
+
+### Python
+- FastAPI / Flask のルート検出
+- SQLAlchemy / Pydantic / dataclass のエンティティ検出
+
+### TypeScript / JavaScript
+- Express.js / NestJS のルート検出
+- TypeORM のエンティティ検出
+- Prisma モデル（`.prisma` ファイル）
+- TypeScript interface / type alias
+
+他の言語？PRウェルカム。
+
+## 📄 ライセンス
+
+MIT — 好きに使って。
