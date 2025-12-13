@@ -1,0 +1,217 @@
+"""
+Ranking boost calculations for tag importance.
+
+This module applies multiplicative boosts to PageRank scores based on:
+- Chat files: Files currently in conversation get 20x boost
+- Mentioned files: Files mentioned in prompts get 5x boost
+- Mentioned identifiers: Specific symbols mentioned get 10x boost
+
+These boosts ensure that conversational context directly influences the
+ranking, making the map more relevant to the current task.
+
+The boosts are multiplicative and can combine (e.g., a mentioned identifier
+in a chat file gets 20x * 10x = 200x boost).
+
+Supports both file-level and symbol-level ranking:
+- File-level: All symbols in a file share the file's PageRank score
+- Symbol-level: Each symbol gets its own PageRank score for fine-grained ranking
+"""
+
+from typing import List, Dict, Set, Optional, Callable, Tuple
+from grepmap.core.types import Tag, RankedTag
+from grepmap.core.config import (
+    BOOST_MENTIONED_IDENT, BOOST_MENTIONED_FILE, BOOST_CHAT_FILE,
+    BOOST_TEMPORAL_COUPLING, EXCLUDE_UNRANKED_THRESHOLD
+)
+
+
+class BoostCalculator:
+    """Applies contextual boosts to PageRank scores.
+
+    Boosts are multiplicative factors applied to base PageRank scores to
+    emphasize files and symbols relevant to the current conversation.
+
+    The boost hierarchy (from strongest to weakest):
+    1. Chat files (20x): Files actively being edited or discussed
+    2. Mentioned identifiers (10x): Specific symbols mentioned in prompts
+    3. Mentioned files (5x): Files referenced in conversation
+
+    These combine multiplicatively for compound effects.
+    """
+
+    def __init__(
+        self,
+        get_rel_fname: Callable[[str], str],
+        exclude_unranked: bool = False
+    ):
+        """Initialize BoostCalculator.
+
+        Args:
+            get_rel_fname: Function to convert absolute path to relative path
+            exclude_unranked: If True, exclude tags with near-zero PageRank
+        """
+        self.get_rel_fname = get_rel_fname
+        self.exclude_unranked = exclude_unranked
+
+    def apply_boosts(
+        self,
+        included_files: List[str],
+        tags_by_file: Dict[str, List[Tag]],
+        ranks: Dict[str, float],
+        chat_fnames: List[str],
+        mentioned_fnames: Optional[Set[str]] = None,
+        mentioned_idents: Optional[Set[str]] = None,
+        symbol_ranks: Optional[Dict[Tuple[str, str], float]] = None,
+        git_weights: Optional[Dict[str, float]] = None,
+        temporal_mates: Optional[Dict[str, List[Tuple[str, float]]]] = None,
+        caller_weights: Optional[Dict[str, float]] = None
+    ) -> List[RankedTag]:
+        """Apply boosts to PageRank scores and create RankedTag list.
+
+        The algorithm:
+        1. For each file and its definition tags
+        2. Get base PageRank score (symbol-level if available, else file-level)
+        3. Apply multiplicative boosts based on context and git metadata
+        4. Create RankedTag with boosted score
+        5. Sort by rank descending
+
+        Args:
+            included_files: List of absolute file paths that were processed
+            tags_by_file: Dict mapping absolute fname to its list of tags
+            ranks: Dict mapping relative fname to file-level PageRank score
+            chat_fnames: List of chat file absolute paths
+            mentioned_fnames: Set of mentioned file relative paths
+            mentioned_idents: Set of mentioned identifier names
+            symbol_ranks: Optional dict mapping (rel_fname, symbol_name) to
+                         symbol-level PageRank. When provided, uses per-symbol
+                         ranks instead of file-level for fine-grained selection.
+            git_weights: Optional dict mapping rel_fname to git-based boost factor.
+                        Applied multiplicatively to favor recent/churning files.
+            temporal_mates: Optional dict mapping rel_fname to list of
+                           (change_mate_fname, coupling_score) tuples.
+                           Files that change together with chat files get boosted.
+            caller_weights: Optional dict mapping rel_fname to caller boost factor.
+                           Applied to files that call focus symbols (reverse edge).
+                           Uses recipe.reverse_edge_bias for intent-driven boost.
+
+        Returns:
+            List of RankedTag objects sorted by rank descending
+        """
+        if mentioned_fnames is None:
+            mentioned_fnames = set()
+        if mentioned_idents is None:
+            mentioned_idents = set()
+
+        # Convert chat files to relative paths for comparison
+        chat_rel_fnames = set(self.get_rel_fname(f) for f in chat_fnames)
+
+        # Build set of files temporally coupled to chat files
+        temporal_boost_files: Set[str] = set()
+        if temporal_mates and chat_rel_fnames:
+            for chat_file in chat_rel_fnames:
+                mates = temporal_mates.get(chat_file, [])
+                for mate_fname, _score in mates:
+                    if mate_fname not in chat_rel_fnames:  # Don't double-boost
+                        temporal_boost_files.add(mate_fname)
+
+        ranked_tags = []
+
+        for fname in included_files:
+            rel_fname = self.get_rel_fname(fname)
+            file_rank = ranks.get(rel_fname, 0.0)
+
+            # Exclude files with low PageRank if exclude_unranked is True
+            # Use a small threshold to exclude near-zero ranks (likely disconnected nodes)
+            if self.exclude_unranked and file_rank <= EXCLUDE_UNRANKED_THRESHOLD:
+                continue
+
+            tags = tags_by_file.get(fname, [])
+
+            # Get git weight for this file (default 1.0 = no boost)
+            git_weight = git_weights.get(rel_fname, 1.0) if git_weights else 1.0
+
+            # Get caller weight for reverse edge boost (default 1.0 = no boost)
+            # This surfaces files that CALL focus symbols when debugging
+            caller_weight = caller_weights.get(rel_fname, 1.0) if caller_weights else 1.0
+
+            # Only boost definition tags (not references)
+            for tag in tags:
+                if tag.kind == "def":
+                    # Get base rank: symbol-level if available, else file-level
+                    if symbol_ranks is not None:
+                        base_rank = symbol_ranks.get((rel_fname, tag.name), file_rank)
+                    else:
+                        base_rank = file_rank
+
+                    # Calculate multiplicative boost based on context
+                    boost = self._calculate_boost(
+                        tag,
+                        rel_fname,
+                        chat_rel_fnames,
+                        mentioned_fnames,
+                        mentioned_idents,
+                        temporal_boost_files
+                    )
+
+                    # Apply git weight (recency/churn/authorship) and caller weight
+                    final_rank = base_rank * boost * git_weight * caller_weight
+                    ranked_tags.append(RankedTag(final_rank, tag))
+
+        # Sort by rank descending (highest importance first)
+        ranked_tags.sort(key=lambda x: x.rank, reverse=True)
+
+        return ranked_tags
+
+    def _calculate_boost(
+        self,
+        tag: Tag,
+        rel_fname: str,
+        chat_rel_fnames: Set[str],
+        mentioned_fnames: Set[str],
+        mentioned_idents: Set[str],
+        temporal_boost_files: Set[str]
+    ) -> float:
+        """Calculate multiplicative boost for a single tag.
+
+        Boosts are applied in order and multiply together using
+        configurable values from grepmap.core.config:
+        1. Base boost: 1.0 (no boost)
+        2. If identifier is mentioned: multiply by BOOST_MENTIONED_IDENT
+        3. If file is mentioned: multiply by BOOST_MENTIONED_FILE
+        4. If file is in chat: multiply by BOOST_CHAT_FILE
+        5. If file is temporally coupled to chat: multiply by BOOST_TEMPORAL_COUPLING
+
+        Example: A mentioned identifier in a chat file gets
+                 1.0 * BOOST_MENTIONED_IDENT * BOOST_CHAT_FILE
+
+        Args:
+            tag: The tag to boost
+            rel_fname: Relative filename of the tag
+            chat_rel_fnames: Set of chat file relative paths
+            mentioned_fnames: Set of mentioned file relative paths
+            mentioned_idents: Set of mentioned identifier names
+            temporal_boost_files: Set of files temporally coupled to chat files
+
+        Returns:
+            Multiplicative boost factor
+        """
+        boost = 1.0
+
+        # Boost for mentioned identifiers (strongest individual signal)
+        if tag.name in mentioned_idents:
+            boost *= BOOST_MENTIONED_IDENT
+
+        # Boost for mentioned files
+        if rel_fname in mentioned_fnames:
+            boost *= BOOST_MENTIONED_FILE
+
+        # Boost for chat files (strongest file-level signal)
+        if rel_fname in chat_rel_fnames:
+            boost *= BOOST_CHAT_FILE
+
+        # Boost for files that change together with chat files
+        # Surfaces related files without explicit mention
+        if rel_fname in temporal_boost_files:
+            boost *= BOOST_TEMPORAL_COUPLING
+
+        return boost
