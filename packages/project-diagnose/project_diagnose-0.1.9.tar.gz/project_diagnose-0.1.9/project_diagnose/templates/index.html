@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>Project Diagnose</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+    <h1>Project Diagnose</h1>
+    <button id="themeToggle">🌓 Тема</button>
+</header>
+
+<div class="toolbar">
+	<a href="/settings" class="button">⚙ Настройки</a>
+    <button id="refactorBtn">🛠 Рефакторинг</button>
+	<a href="/dump" class="button">📦 Dump проекта</a>
+    <a href="/report.txt" class="button">⬇ Скачать отчёт (.txt)</a>
+    <input id="searchInput" type="text" placeholder="Поиск в отчёте…" />
+</div>
+
+<section class="panel">
+    <h2>📈 Показатели проекта</h2>
+    <div class="metrics-row">
+        <div class="metric-card">
+            <div class="metric-label">Индекс хаоса</div>
+            <div class="metric-value">{{ "%.2f"|format(metrics.chaos) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Техническая карма</div>
+            <div class="metric-value">{{ "%.2f"|format(metrics.tech_karma) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">FRI</div>
+            <div class="metric-value">{{ "%.2f"|format(metrics.future_regret) }}</div>
+        </div>
+    </div>
+    <div class="chart-wrapper">
+        <canvas id="extChart"></canvas>
+    </div>
+</section>
+
+<section class="panel">
+    <h2 class="collapsible">📁 Структура проекта</h2>
+    <div class="content open">
+        <pre id="treeBlock">{{ tree }}</pre>
+    </div>
+</section>
+
+<section class="panel">
+    <h2 class="collapsible">📊 Отчёт анализа</h2>
+    <div class="content open">
+        <pre id="reportBlock">{{ report }}</pre>
+    </div>
+</section>
+
+<script>
+    // пробрасываем метрики из Python в JS
+    window.PROJECT_METRICS = {{ metrics | tojson }};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
