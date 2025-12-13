@@ -1,0 +1,1 @@
+from zempy.zosapi.analysis import registered
