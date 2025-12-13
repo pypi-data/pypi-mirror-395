@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: tabdeal-python
+Version: 0.4.7
+Summary: Official python package to use Tabdeal API
+Home-page: https://github.com/Tabdeal-Exchange/tabdeal-python
+Author: Amin Basiri
+Author-email: amin.bsr99@gmail.com
+Project-URL: Bug Tracker, https://github.com/Tabdeal-Exchange/tabdeal-python/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: requests==2.27.1
+Requires-Dist: websocket-client==1.3.3
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Tabdeal API Python SDK
+[![PyPI version](https://img.shields.io/pypi/v/tabdeal-python)](https://pypi.python.org/pypi/tabdeal-python)
+[![Python version](https://img.shields.io/pypi/pyversions/tabdeal-python)](https://www.python.org/downloads/)
+
+
+
+Official python package to use [Tabdeal Exchange](https://www.tabdeal.org/) API
+
+
+## Installation
+
+```bash
+pip install tabdeal-python
+```
+
+## Documentation
+
+[https://docs.tabdeal.org](https://docs.tabdeal.org/)
+
+[Postman Collection](https://github.com/Tabdeal-Exchange/tabdeal-api-postman)
+
+## RESTful APIs
+
+Usage examples:
+```python
+from tabdeal.enums import OrderSides, OrderTypes
+from tabdeal.spot import Spot
+
+api_key = '<api_key>'
+api_secret = '<api_secret>'
+
+
+client = Spot(api_key, api_secret)
+
+order = client.new_order(symbol='BTC_IRT',
+                         side=OrderSides.BUY,
+                         type=OrderTypes.MARKET,
+                         quantity="0.002")
+
+print(order)
+```
+
+### Exception
+
+There are 2 types of exceptions returned from the library:
+- `tabdeal.exceptions.ClientException`
+    - This is thrown when server returns `4XX`, it's an issue from client side.
+    - It has 4 properties:
+        - `status` - HTTP status code
+        - `code` - Server's error code
+        - `message` - Server's error message
+        - `detail` - Detail of exception
+- `tabdeal.exceptions.ServerException`
+    - This is thrown when server returns `5XX`, it's an issue from server side.
