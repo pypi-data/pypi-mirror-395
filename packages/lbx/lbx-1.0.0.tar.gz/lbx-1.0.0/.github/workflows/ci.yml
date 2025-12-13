@@ -1,0 +1,238 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - labeled
+      - unlabeled
+      - ready_for_review
+  schedule:
+    - cron: "0 8 * * 1" # Weekly on Monday at 08:00 UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  DEFAULT_PYTHON: "3.13"
+  FORCE_COLOR: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  # ============================================================================
+  # LINTING & FORMATTING
+  # ============================================================================
+  check:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python ${{ env.DEFAULT_PYTHON }}
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-check-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-check-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Run lint and type checking
+        run: nox -s check
+
+  # ============================================================================
+  # TESTS
+  # ============================================================================
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.13"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python ${{ matrix.python-version }}
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-tests-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-tests-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Run tests with coverage
+        run: nox -s tests-${{ matrix.python-version }}
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.python-version }}.${{ matrix.os }}
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v5
+        if: matrix.os == 'ubuntu-latest' && !cancelled()
+        with:
+          name: coverage-data-${{ matrix.python-version }}
+          path: .coverage.*
+          retention-days: 1
+          include-hidden-files: true
+          if-no-files-found: error
+
+  # ============================================================================
+  # COVERAGE REPORT
+  # ============================================================================
+  coverage:
+    name: Coverage Report
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always() && needs.test.result != 'cancelled'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python ${{ env.DEFAULT_PYTHON }}
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-coverage-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-coverage-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: Combine and report coverage
+        run: nox -s coverage
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+          if-no-files-found: error
+
+  # ============================================================================
+  # PULL REQUEST CHECKS
+  # ============================================================================
+  pr-title:
+    name: Validate PR Title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^[A-Za-z].+$
+
+  changelog:
+    name: Changelog Fragment
+    if: |
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'no-changelog') &&
+      !contains(github.event.pull_request.labels.*.name, 'dependencies')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for changelog fragment
+        run: |
+          if git diff --name-only --diff-filter=A ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | grep -qE "^changelog\.d/.*\.(md|rst|txt)$"; then
+            echo "Changelog fragment found"
+          else
+            echo "No changelog fragment found"
+            echo "Add a changelog fragment in changelog.d/ or label PR with 'no-changelog'"
+            exit 1
+          fi
+
+  # ============================================================================
+  # STATUS CHECK
+  # ============================================================================
+  ci-success:
+    name: CI Status
+    if: always()
+    needs: [check, test, coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all required jobs
+        uses: re-actors/alls-green@v1.2.2
+        with:
+          allowed-skips: coverage
+          jobs: ${{ toJSON(needs) }}
