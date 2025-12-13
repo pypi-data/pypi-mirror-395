@@ -1,0 +1,200 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forgebase"
+version = "0.1.7"
+description = "Cognitive Architecture Framework - Clean + Hexagonal Architecture with native observability. AI agent-friendly with programmatic API access."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Jorge, The Forge", email = "forge@forgebase.dev"}
+]
+keywords = [
+    "clean-architecture",
+    "hexagonal-architecture",
+    "ddd",
+    "domain-driven-design",
+    "ports-and-adapters",
+    "framework",
+    "observability",
+    "cognitive-architecture"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+
+# Core production dependencies
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Development dependencies (install with: pip install -e ".[dev]")
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "hypothesis>=6.0.0",  # Property-based testing
+
+    # Code quality
+    "ruff>=0.14.0",        # Linter and formatter
+    "mypy>=1.7.0",         # Type checking
+
+    # Architecture & Dependencies
+    "import-linter>=2.0.0",  # Architecture boundary validation
+    "deptry>=0.20.0",        # Dependency hygiene checking
+]
+
+# SQL repository support (optional)
+sql = [
+    "sqlalchemy>=2.0",
+]
+
+# Complete development + optional features
+all = [
+    "forgebase[dev,sql]",
+]
+
+[project.urls]
+Homepage = "https://github.com/symlabs-ai/forgebase"
+Documentation = "https://github.com/symlabs-ai/forgebase/blob/main/docs"
+Repository = "https://github.com/symlabs-ai/forgebase"
+Changelog = "https://github.com/symlabs-ai/forgebase/blob/main/CHANGELOG.md"
+
+# Setuptools configuration
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["forgebase*"]
+namespaces = false
+
+# Include documentation and examples in the package
+[tool.setuptools.package-data]
+forgebase = [
+    "_docs/*.md",     # Embedded documentation
+]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src/forgebase",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "property: Property-based tests",
+    "contract: Contract tests",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src/forgebase"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Ruff configuration
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "UP",    # pyupgrade
+    "TID",   # flake8-tidy-imports
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban relative imports
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/*" = ["B011"]      # Allow assert False in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["forgebase", "examples"]
+# Enforce absolute imports
+force-sort-within-sections = true
+# Group imports: stdlib, third-party, first-party, local
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+# Mypy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# Deptry configuration
+[tool.deptry]
+# Known first-party modules
+known_first_party = ["forgebase"]
+
+[tool.deptry.per_rule_ignores]
+# DEP002: Ignore development tools - they're CLI-only, not imported in src/
+DEP002 = [
+    "pytest",
+    "pytest-cov",
+    "hypothesis",
+    "ruff",
+    "mypy",
+    "import-linter",
+    "deptry",
+]
