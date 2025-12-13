@@ -1,0 +1,68 @@
+Metadata-Version: 2.4
+Name: claude-history-backup
+Version: 0.2.0
+Summary: Backup and manage Claude Code session history
+Author-email: Warren Zhu <wzhu@college.harvard.edu>
+License: MIT
+Keywords: backup,claude,cli,history
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: rich>=13.0.0
+Requires-Dist: typer>=0.9.0
+Description-Content-Type: text/markdown
+
+# claude-history-backup
+
+Backup and manage Claude Code session history before automatic cleanup removes old sessions. As of December 8th, all Claude Code sessions more than 1 month old will be removed without this tool. Adds automatic zipping to session files so they don't take up too much storage.
+
+## Install
+
+```bash
+# From PyPI
+pip install claude-history-backup
+
+# Or with uv
+uv tool install claude-history-backup
+```
+
+## Usage
+
+```bash
+# Show sync status
+claude-history status
+
+# Sync new sessions to backup (auto-archives previous backup)
+claude-history sync
+
+# Manually create archive
+claude-history archive
+
+# List all archives
+claude-history list-archives
+
+# Install daily launchd scheduler (macOS, runs missed jobs on wake)
+claude-history scheduler-install
+
+# Check scheduler status
+claude-history scheduler-status
+
+# Remove scheduler
+claude-history scheduler-remove
+
+# View backup log
+claude-history logs
+```
+
+## How It Works
+
+1. Claude Code stores sessions in `~/.claude/projects/`
+2. Claude periodically cleans up old sessions (appears to be ~1 month)
+3. This tool syncs sessions to a backup location before they're deleted
+4. Uses launchd (not cron) so missed jobs run when your Mac wakes up
+5. Auto-archives previous backups as zip files before each sync
