@@ -1,0 +1,34 @@
+jinx_name: sh
+description: Execute bash queries. Should be used to grep for file contents, list directories, explore information to answer user questions more practically.
+inputs:
+  - bash_command
+steps:
+  - name: execute_bash
+    engine: python
+    code: |
+      import subprocess
+      import os
+
+      cmd = '{{ bash_command }}'
+      output = ""
+
+      process = subprocess.Popen(
+          cmd,
+          shell=True,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE
+      )
+      stdout, stderr = process.communicate()
+
+      # Only show debug output if NPCSH_DEBUG is set
+      if os.environ.get("NPCSH_DEBUG") == "1":
+          import sys
+          print(f"[sh] cmd: {cmd}", file=sys.stderr)
+          print(f"[sh] stdout: {stdout.decode('utf-8', errors='ignore')[:200]}", file=sys.stderr)
+
+      if stderr:
+          output = f"Error: {stderr.decode('utf-8')}"
+      else:
+          output = stdout.decode('utf-8')
+
+
