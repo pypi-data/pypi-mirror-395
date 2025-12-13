@@ -1,0 +1,224 @@
+Metadata-Version: 2.4
+Name: agentic-crew
+Version: 0.1.0
+Summary: Framework-agnostic AI crew orchestration - declare once, run on CrewAI, LangGraph, or Strands
+Project-URL: Homepage, https://github.com/jbcom/agentic-crew
+Project-URL: Repository, https://github.com/jbcom/agentic-crew
+Project-URL: Documentation, https://github.com/jbcom/agentic-crew#readme
+Project-URL: Issues, https://github.com/jbcom/agentic-crew/issues
+Author-email: Jon Bogaty <jon@jonbogaty.com>
+License: MIT
+Keywords: ai-agents,crewai,langgraph,multi-agent,orchestration,strands
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.11
+Requires-Dist: pydantic>=2.12.4
+Requires-Dist: pyyaml>=6.0.3
+Provides-Extra: ai
+Requires-Dist: crewai[anthropic,tools]>=1.5.0; extra == 'ai'
+Requires-Dist: langchain-anthropic>=0.3.0; extra == 'ai'
+Requires-Dist: langgraph>=0.2.0; extra == 'ai'
+Requires-Dist: strands-agents>=0.1.0; extra == 'ai'
+Provides-Extra: all
+Requires-Dist: beautifulsoup4>=4.12.0; extra == 'all'
+Requires-Dist: crewai[anthropic,tools]>=1.5.0; extra == 'all'
+Requires-Dist: langchain-anthropic>=0.3.0; extra == 'all'
+Requires-Dist: langgraph>=0.2.0; extra == 'all'
+Requires-Dist: mcp>=1.0.0; extra == 'all'
+Requires-Dist: strands-agents>=0.1.0; extra == 'all'
+Requires-Dist: vendor-connectors[meshy]>=0.2.0; extra == 'all'
+Provides-Extra: crewai
+Requires-Dist: crewai[anthropic,tools]>=1.5.0; extra == 'crewai'
+Provides-Extra: dev
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: myst-parser>=3.0.0; extra == 'docs'
+Requires-Dist: sphinx-autodoc-typehints>=2.0.0; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme>=2.0.0; extra == 'docs'
+Requires-Dist: sphinx>=7.0.0; extra == 'docs'
+Provides-Extra: langgraph
+Requires-Dist: langchain-anthropic>=0.3.0; extra == 'langgraph'
+Requires-Dist: langgraph>=0.2.0; extra == 'langgraph'
+Provides-Extra: mcp
+Requires-Dist: mcp>=1.0.0; extra == 'mcp'
+Provides-Extra: meshy
+Requires-Dist: vendor-connectors[meshy]>=0.2.0; extra == 'meshy'
+Provides-Extra: scraping
+Requires-Dist: beautifulsoup4>=4.12.0; extra == 'scraping'
+Requires-Dist: crewai[tools]>=1.5.0; extra == 'scraping'
+Provides-Extra: strands
+Requires-Dist: strands-agents>=0.1.0; extra == 'strands'
+Provides-Extra: tests
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'tests'
+Requires-Dist: pytest-cov>=5.0.0; extra == 'tests'
+Requires-Dist: pytest-mock>=3.15.1; extra == 'tests'
+Requires-Dist: pytest-timeout>=2.4.0; extra == 'tests'
+Requires-Dist: pytest>=9.0.1; extra == 'tests'
+Description-Content-Type: text/markdown
+
+# agentic-crew
+
+**Framework-agnostic AI crew orchestration** - declare once, run on CrewAI, LangGraph, or Strands.
+
+## Why agentic-crew?
+
+The AI agent ecosystem is fragmented:
+- **CrewAI** - Full-featured but heavyweight
+- **LangGraph** - Great for flows but different API
+- **Strands** - Lightweight but AWS-specific
+
+agentic-crew solves this with a **universal crew format** that decomposes to any framework.
+
+## Installation
+
+```bash
+# Core (no framework - auto-detects at runtime)
+pip install agentic-crew
+
+# With specific framework
+pip install agentic-crew[crewai]      # CrewAI (recommended)
+pip install agentic-crew[langgraph]   # LangGraph
+pip install agentic-crew[strands]     # AWS Strands
+
+# All frameworks
+pip install agentic-crew[ai]
+```
+
+## Quick Start
+
+### 1. Define a Crew (YAML)
+
+```yaml
+# .crewai/manifest.yaml
+name: my-package
+version: "1.0"
+
+crews:
+  analyzer:
+    description: Analyze codebases
+    agents: crews/analyzer/agents.yaml
+    tasks: crews/analyzer/tasks.yaml
+```
+
+```yaml
+# crews/analyzer/agents.yaml
+code_reviewer:
+  role: Senior Code Reviewer
+  goal: Find bugs and improvements
+  backstory: Expert at code analysis
+```
+
+```yaml
+# crews/analyzer/tasks.yaml
+review_code:
+  description: Review the provided code for issues
+  expected_output: List of findings with severity
+  agent: code_reviewer
+```
+
+### 2. Run It
+
+```python
+from agentic_crew import run_crew
+
+# Auto-detects best framework
+result = run_crew("my-package", "analyzer", inputs={"code": "..."})
+```
+
+Or from CLI:
+
+```bash
+agentic-crew run my-package analyzer --input "Review this code: ..."
+```
+
+## Framework Decomposition
+
+The magic happens in `core/decomposer.py`:
+
+```python
+from agentic_crew.core.decomposer import detect_framework, get_runner
+
+# See what's available
+framework = detect_framework()  # "crewai", "langgraph", or "strands"
+
+# Get a runner
+runner = get_runner()  # Auto-selects best
+runner = get_runner("langgraph")  # Force specific
+
+# Build and run
+crew = runner.build_crew(config)
+result = runner.run(crew, inputs)
+```
+
+### Framework Priority
+
+1. **CrewAI** (if installed) - Most features, best for complex crews
+2. **LangGraph** (if CrewAI unavailable) - Good for flow-based logic
+3. **Strands** (fallback) - Lightweight, minimal deps
+
+## Package Integration
+
+Any package can define crews in a `.crewai/` directory:
+
+```
+my-package/
+├── .crewai/
+│   ├── manifest.yaml
+│   ├── knowledge/
+│   │   └── domain_docs/
+│   └── crews/
+│       └── my_crew/
+│           ├── agents.yaml
+│           └── tasks.yaml
+└── src/
+```
+
+Then run:
+
+```bash
+agentic-crew run my-package my_crew --input "..."
+```
+
+## Use Cases
+
+### 1. Connector Builder (vendor-connectors)
+
+A crew that scrapes API docs and generates HTTP connectors:
+
+```bash
+agentic-crew run vendor-connectors connector_builder \
+  --input '{"api_docs": "https://docs.meshy.ai/en"}'
+```
+
+### 2. Code Generation (any project)
+
+Define crews for your specific domain and run them on any framework.
+
+## Development
+
+```bash
+# Install with dev deps
+uv sync --extra dev --extra tests --extra crewai
+
+# Run tests
+uv run pytest tests/ -v
+
+# Lint
+uvx ruff check src/ tests/ --fix
+```
+
+## Related Projects
+
+- [vendor-connectors](https://github.com/jbcom/vendor-connectors) - HTTP connector library
+- [CrewAI](https://github.com/crewAIInc/crewAI) - Original crew framework
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Graph-based agents
+- [Strands](https://github.com/strands-agents/strands-agents-python) - AWS agent framework
+
+## License
+
+MIT
