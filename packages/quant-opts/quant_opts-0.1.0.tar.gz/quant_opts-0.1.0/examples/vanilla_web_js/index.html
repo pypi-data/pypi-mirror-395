@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>quant-opts WASM – Vanilla JS</title>
+</head>
+<body>
+  <h1>quant-opts WASM – Vanilla JS</h1>
+  <form id="form">
+    <label>Spot <input id="spot" type="number" step="0.01" value="105" /></label><br>
+    <label>Strike <input id="strike" type="number" step="0.01" value="100" /></label><br>
+    <label>Maturity (years) <input id="mat" type="number" step="0.001" value="0.25" /></label><br>
+    <label>Rate <input id="rate" type="number" step="0.0001" value="0.03" /></label><br>
+    <label>Dividend <input id="div" type="number" step="0.0001" value="0.01" /></label><br>
+    <label>Volatility <input id="vol" type="number" step="0.0001" value="0.22" /></label><br>
+    <button type="submit">Compute price</button>
+  </form>
+  <pre id="output">Loading WASM…</pre>
+
+  <script type="module">
+    import init, { price_call_bs } from '../../target/wasm/pkg-web/wasm_api.js';
+
+    const output = document.getElementById('output');
+    await init();
+    output.textContent = 'WASM loaded. Edit inputs and click compute.';
+
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const spot = parseFloat(document.getElementById('spot').value);
+      const strike = parseFloat(document.getElementById('strike').value);
+      const mat = parseFloat(document.getElementById('mat').value);
+      const rate = parseFloat(document.getElementById('rate').value);
+      const div = parseFloat(document.getElementById('div').value);
+      const vol = parseFloat(document.getElementById('vol').value);
+      try {
+        const price = price_call_bs(spot, strike, mat, rate, div, vol);
+        output.textContent = `Call price: ${price.toFixed(6)}`;
+      } catch (err) {
+        output.textContent = `Error: ${err}`;
+      }
+    });
+  </script>
+</body>
+</html>

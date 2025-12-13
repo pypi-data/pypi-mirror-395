@@ -1,0 +1,125 @@
+[package]
+name = "quant-opts"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91.1"
+license = "MIT"
+description = "High-performance Rust library for option pricing and risk"
+repository = "https://github.com/day01/quant-opts"
+documentation = "https://docs.rs/quant-opts"
+readme = "README.md"
+authors = ["Hayden Rose", "Prem Olszewski"]
+keywords = ["finance", "option", "pricing", "blackscholes", "quant", "quant-opts"]
+
+[lib]
+bench = false
+doctest = false
+crate-type = ["rlib", "cdylib"]
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
+
+
+[features]
+default = []
+wrappers = []
+lets-be-rational-validation = []
+visualize-bench = ["plotters"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+approx = "0.5.1"
+assert_approx_eq = "1.1.0"
+criterion = { version = "0.8.0", default-features = false }
+proptest = "1.9.0"
+rand = { version = "0.9.2", default-features = false, features = ["thread_rng"] }
+indicatif = "0.18"
+
+[target.wasm32-unknown-unknown.dev-dependencies]
+wasm-bindgen = "0.2.106"
+
+[dependencies]
+num-traits = "0.2.19"
+statrs = "0.18.0"
+plotters = { version = "0.3", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["std", "wasm_js"] }
+# Force wasm support on transitive rand 0.8 (statrs) which pulls getrandom 0.2
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+wasm-bindgen = "0.2.106"
+
+[[bench]]
+name = "black"
+path = "validation/black.rs"
+harness = false
+required-features = ["lets-be-rational-validation"]
+
+[[example]]
+name = "wasm_api"
+path = "examples/wasm_api/main.rs"
+
+# Benchmarks
+[[bench]]
+name = "pricing"
+harness = false
+
+[[bench]]
+name = "implied_volatility"
+harness = false
+
+[[bench]]
+name = "greeks"
+harness = false
+
+[[bench]]
+name = "single_option"
+path = "benches/single/option_pricing.rs"
+harness = false
+
+[[bench]]
+name = "single_greeks"
+path = "benches/single/greeks.rs"
+harness = false
+
+[[bench]]
+name = "single_iv"
+path = "benches/single/implied_volatility.rs"
+harness = false
+
+[[bench]]
+name = "batch_pricing"
+path = "benches/batch/pricing.rs"
+harness = false
+
+[[bench]]
+name = "batch_greeks"
+path = "benches/batch/greeks.rs"
+harness = false
+
+[[bench]]
+name = "throughput"
+path = "benches/throughput/option_pricing.rs"
+harness = false
+
+[[bench]]
+name = "scaling"
+path = "benches/throughput/scaling.rs"
+harness = false
+
+[[bench]]
+name = "visualize"
+path = "benches/throughput/visualize.rs"
+harness = false
+required-features = ["visualize-bench"]
+
+[[bench]]
+name = "batch_size_study"
+path = "benches/throughput/batch_size_study.rs"
+harness = false

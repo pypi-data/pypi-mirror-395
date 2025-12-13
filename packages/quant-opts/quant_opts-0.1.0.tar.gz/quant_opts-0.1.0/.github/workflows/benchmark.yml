@@ -1,0 +1,43 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'benches/**'
+      - 'Cargo.*'
+      - '.github/workflows/benchmark.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'benches/**'
+      - 'Cargo.*'
+      - '.github/workflows/benchmark.yml'
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-22.04  # Pinned for reproducibility
+    
+    # Minimal permissions for security
+    permissions:
+      pull-requests: write   # Allow PR commenting
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - uses: dtolnay/rust-toolchain@nightly
+      
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "bench-${{ runner.os }}"
+      
+      - uses: boa-dev/criterion-compare-action@v3
+        with:
+          branchName: ${{ github.event.pull_request.base.ref || 'main' }}
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,110 @@
+name: Publish quant-opts (crates.io + npm)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: '0.0.0'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install maturin
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip maturin
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check version input
+        run: |
+          CURRENT_VERSION=$(sed -n -e 's/^version = "\(.*\)"/\1/p' Cargo.toml)
+          INPUT_VERSION=${{ github.event.inputs.version }}
+          if [[ ! $INPUT_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Input version is not in semver format"
+            exit 1
+          fi
+          if [[ $(printf '%s\n' "$INPUT_VERSION" "$CURRENT_VERSION" | sort --version-sort | head -n1) == "$INPUT_VERSION" ]]; then
+            echo "Input version is not greater than current version ($CURRENT_VERSION)"
+            exit 1
+          fi
+
+      - name: Update crate version
+        run: |
+          sed -i "s/^version = .*/version = \"${{ github.event.inputs.version }}\"/" Cargo.toml
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build wasm bindings (web + bundler)
+        run: make wasm-bindings
+
+      - name: Build Python distributions (wheel + sdist)
+        run: |
+          source .venv/bin/activate
+          maturin build --release --sdist -m bindings/python/Cargo.toml --out dist
+
+      - name: Publish to PyPI (trusted publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+
+      - name: Publish npm package (bundler+web)
+        working-directory: target/wasm/pkg-react
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npm publish --access public --provenance
+
+      - name: Login to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+        run: cargo login <<< "$CARGO_REGISTRY_TOKEN"
+
+      - name: Publish crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+        run: cargo publish --verbose
+
+      - name: Commit and tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Cargo.toml Cargo.lock
+          git commit -m "Bump version to ${{ github.event.inputs.version }}"
+          git tag v${{ github.event.inputs.version }}
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin v${{ github.event.inputs.version }}
