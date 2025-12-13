@@ -1,0 +1,148 @@
+Metadata-Version: 2.4
+Name: envplusai
+Version: 0.0.3
+Summary: A lightweight Python package for managing environment variables with advanced features.
+Project-URL: Homepage, https://github.com/viswa-vr-de/pyenvplus
+Project-URL: Repository, https://github.com/viswa-vr-de/pyenvplus
+Project-URL: Documentation, https://github.com/viswa-vr-de/pyenvplus#readme
+Project-URL: Issues, https://github.com/viswa-vr-de/pyenvplus/issues
+Author-email: Viswavr <viswavr54@gmail.com>
+License: MIT
+Keywords: 12-factor,alias,app-settings,application-config,auto-env,automation,boolean,casting,clean,cli,config,config-management,configuration,configuration-management,cross-platform,deployment,dev-tools,developer-tools,development,devops,django,dotenv,dynamic-env,easy,easy-env,env loader,env-access,env-api,env-file,env-handler,env-helper,env-interface,env-library,env-module,env-package,env-parsing,env-plus,env-processor,env-reader,env-tools,env-utils,env-var,env-vars,env-wrapper,env-writer,environment,environment manager,environment-variables,envplus,extensible,fast,fastapi,flask,flexible,float,framework-agnostic,hot-reload,integer,json,library,lightweight,list,maintainable,microservices,modern,module,package,parsing,pipeline,powerful,production,productivity,python env,python-config,python-configuration,python-dotenv,python-environment,python-helpers,python-library,python-module,python-package,python-settings,python-tools,python-utils,python-variables,python3,python3.10,python3.11,python3.12,python3.6,python3.7,python3.8,python3.9,reliable,reload-env,robust-env,safe,scripting,secrets,secure,secure-env,settings,settings-management,simple,simple-env,smart-env,stable,strict mode,type-safe environment variables,typed,typed-env,utility,validated,validation,variables
+Requires-Python: >=3.6
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# envplus
+
+**envplus** is a lightweight, robust, and developer-friendly Python package designed to simplify environment variable management. It goes beyond basic `.env` loading by providing built-in type casting, automatic validation, hot reloading, and alias support—all in a single, easy-to-use interface.
+
+## 🚀 Why envplus?
+
+Managing environment variables in Python often involves repetitive boilerplate code:
+- Manually casting strings to integers or booleans.
+- checking if a variable exists and raising custom errors.
+- Restarting the application every time a `.env` value changes during development.
+- Handling legacy variable names (aliases) when migrating configurations.
+
+**envplus** solves these problems by providing a centralized `Env` handler that takes care of the heavy lifting, allowing you to focus on building your application. It is designed to work seamlessly with Flask, Django, FastAPI, scripts, and microservices.
+
+## ✨ Features
+
+- **Type Casting**: Effortlessly cast environment variables to `str`, `int`, `float`, `bool`, `list`, and `json`.
+- **Auto Validation**: Automatically detect missing keys and invalid types with clear, readable error messages.
+- **Hot Reload**: (Development Friendly) Automatically reload values when the `.env` file changes without restarting your app.
+- **Alias Support**: Define multiple keys for a single value (e.g., `DATABASE_URL` or `DB_URL`) to support legacy configs.
+- **Strict Mode**: Enforce the presence of critical environment variables, raising errors immediately if they are missing.
+- **Default Values**: Safe and predictable handling of default values when variables are absent.
+- **Debug Console**: A built-in helper to inspect loaded variables (sanitized for security).
+- **System Priority**: Always prioritizes system environment variables over `.env` file values.
+
+## 📦 Installation
+
+Install `envplus` via pip:
+
+```bash
+pip install envplus
+```
+
+## 🛠 Usage
+
+### 1. Basic Setup
+
+Create a `.env` file in your project root:
+
+```ini
+APP_ENV=development
+DEBUG=true
+PORT=8080
+ALLOWED_HOSTS=localhost,127.0.0.1
+DB_CONFIG={"host": "localhost", "port": 5432}
+API_KEY=
+```
+
+Initialize `envplus` in your application:
+
+```python
+from envplus import Env
+
+# Load environment variables
+env = Env()
+```
+
+### 2. Reading Variables with Type Casting
+
+Stop doing `int(os.getenv("PORT", 8000))`. Use `envplus` methods instead:
+
+```python
+# String (default behavior)
+app_env = env.str("APP_ENV", default="production")
+
+# Boolean (handles 'true', '1', 'yes', 'on', etc.)
+debug_mode = env.bool("DEBUG", default=False)
+
+# Integer
+port = env.int("PORT", default=3000)
+
+# Float
+threshold = env.float("THRESHOLD", default=0.5)
+
+# List (auto-splits by comma or custom delimiter)
+hosts = env.list("ALLOWED_HOSTS") 
+# Result: ['localhost', '127.0.0.1']
+
+# JSON (parses JSON strings into Python objects)
+db_config = env.json("DB_CONFIG")
+# Result: {'host': 'localhost', 'port': 5432}
+```
+
+### 3. Strict Mode & Validation
+
+Ensure your application doesn't start with missing configuration.
+
+```python
+# Enable strict mode
+env = Env(strict=True)
+
+# This will raise a MissingEnvError if "SECRET_KEY" is not found
+secret = env.str("SECRET_KEY")
+
+# This is still safe because a default is provided
+optional_val = env.str("OPTIONAL_KEY", default="fallback")
+```
+
+### 4. Alias Support
+
+Great for migrations or supporting multiple naming conventions.
+
+```python
+# Tries 'DATABASE_URL' first. If missing, tries 'DB_CONNECTION_STRING'.
+db_url = env.alias(["DATABASE_URL", "DB_CONNECTION_STRING"])
+```
+
+### 5. Hot Reloading
+
+Perfect for local development. If you change your `.env` file while the app is running, `envplus` will pick up the new value on the next access.
+
+```python
+# ... modify .env file ...
+print(env.str("MY_VAR")) # Returns the updated value!
+```
+
+### 6. Debugging
+
+Print a summary of all loaded environment variables to the console.
+
+```python
+env.debug()
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
