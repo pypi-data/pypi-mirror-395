@@ -1,0 +1,96 @@
+from matplotlib.patches import FancyArrowPatch
+from sympy.external import import_module
+from spb.backends.matplotlib.renderers.renderer import MatplotlibRenderer
+
+
+class Arrow3D(FancyArrowPatch):
+    """Draws a 3D arrow based on FancyArrowPatch.
+
+    Reference
+    =========
+
+    [1] https://gist.github.com/WetHat/1d6cd0f7309535311a539b42cccca89c
+    [2] https://matplotlib.org/stable/api/_as_gen/matplotlib.patches.FancyArrowPatch.html
+    """
+
+    def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+        super().__init__((0, 0), (0, 0), *args, **kwargs)
+        self._xyz = (x, y, z)
+        self._dxdydz = (dx, dy, dz)
+        mpl_toolkits = import_module("mpl_toolkits")
+        self.proj_transform = mpl_toolkits.mplot3d.proj3d.proj_transform
+
+    # NOTE: when looking at coverage results, draw() and do_3d_projection()
+    # appears to be unused.
+    # One might be inclined to removed them. Don't! Matplotlib probably
+    # executes these methods at visualization time, when the figure is actually
+    # shown on screen. They are not going to be executed when the figure is
+    # created.
+    def draw(self, renderer):
+        x1, y1, z1 = self._xyz
+        dx, dy, dz = self._dxdydz
+        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+
+        xs, ys, zs = self.proj_transform((x1, x2), (y1, y2), (z1, z2), self.axes.M)
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+        super().draw(renderer)
+
+    def do_3d_projection(self, renderer=None):
+        np = import_module("numpy")
+        x1, y1, z1 = self._xyz
+        dx, dy, dz = self._dxdydz
+        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+
+        xs, ys, zs = self.proj_transform((x1, x2), (y1, y2), (z1, z2), self.axes.M)
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+
+        return np.min(zs)
+
+
+def _draw_arrow_3d(renderer, data):
+    p, s = renderer.plot, renderer.series
+    x1, y1, z1, x2, y2, z2 = data
+    dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
+    mpatches = p.matplotlib.patches
+
+    arrowstyle = mpatches.ArrowStyle(
+        "fancy", head_width=2, head_length=3)
+    pkw = dict(
+        mutation_scale=2,
+        arrowstyle=arrowstyle,
+        shrinkA=0, shrinkB=0,
+        color=next(p._cl)
+    )
+    kw = p.merge({}, pkw, s.rendering_kw)
+    arrow = Arrow3D(x1, y1, z1, dx, dy, dz, **kw)
+    p._ax.add_patch(arrow)
+
+    if s.show_in_legend:
+        proxy_artist = p.Line2D(
+            [], [],
+            color=kw["color"], label=s.get_label(p.use_latex)
+        )
+        p._legend_handles.append(proxy_artist)
+    return [arrow, kw]
+
+
+def _update_arrow3d(renderer, data, handle):
+    """
+    NOTE: Altough FancyArrowPatch is able to update an arrow position in a 2D
+    space, it doesn't work with Arrow3D. Hence, let's remove the previous
+    arrow and add a new one.
+    """
+    p = renderer.plot
+    x1, y1, z1, x2, y2, z2 = data
+    dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
+    handle[0].remove()
+    kw = handle[1]
+    arrow = Arrow3D(x1, y1, z1, dx, dy, dz, **kw)
+    p._ax.add_patch(arrow)
+    handle[0] = arrow
+
+
+class Arrow3DRendererFancyArrowPatch(MatplotlibRenderer):
+    draw_update_map = {
+        _draw_arrow_3d: _update_arrow3d
+    }

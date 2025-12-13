@@ -1,0 +1,5024 @@
+import pytest
+from pytest import raises, warns
+from spb.series import (
+    LineOver1DRangeSeries, Parametric2DLineSeries, Parametric3DLineSeries,
+    SurfaceOver2DRangeSeries, ContourSeries, ParametricSurfaceSeries,
+    ImplicitSeries, Implicit3DSeries, RiemannSphereSeries,
+    Vector2DSeries, Vector3DSeries, SliceVector3DSeries,
+    ComplexSurfaceSeries, ComplexDomainColoringSeries,
+    ComplexPointSeries, Geometry2DSeries, Geometry3DSeries,
+    PlaneSeries, List2DSeries, List3DSeries, AbsArgLineSeries,
+    ColoredLineOver1DRangeSeries,
+    HVLineSeries, HLineSeries, VLineSeries, Arrow2DSeries, Arrow3DSeries,
+    RootLocusSeries, SGridLineSeries, ZGridLineSeries, PoleZeroSeries,
+    SystemResponseSeries, ColoredSystemResponseSeries, NyquistLineSeries,
+    NicholsLineSeries, NyquistLineSeries, SystemResponseSeries
+)
+from spb.series.base import _set_discretization_points
+from spb import plot3d_spherical
+from sympy.abc import j, k, l, d, s, x, y
+from sympy import (
+    latex, exp, symbols, Tuple, I, pi, sin, cos, tan, log, sqrt, oo,
+    re, im, arg, frac, Plane, Circle, Point, Sum, S, Abs, lambdify,
+    Function, dsolve, Eq, Ynm, floor, Ne, Piecewise, hyper, nsolve,
+    Polygon, Line, Segment, Point3D, Line3D, Expr, Ellipse, ceiling,
+    factorial
+)
+from sympy.physics.control import TransferFunction
+from sympy.vector import CoordSys3D, gradient
+from sympy.external import import_module
+import numpy as np
+
+ct = import_module("control")
+scipy = import_module("scipy")
+plotly = import_module("plotly")
+pn = import_module("panel")
+ipy = import_module("ipywidgets")
+
+# NOTE:
+#
+# These tests are meant to verify that the data series generates the expected
+# numerical data.
+#
+# If your issue is related to the processing and generation of *Series
+# objects, consider adding tests to tests/graphics/ or to
+# tests/plot_functions/.
+# If your issue is related to a particular keyword affecting a backend
+# behaviour, consider adding tests to tests/backends/test_*.py
+#
+
+tf1 = (s**2 - 4) / (s**3 + 2*s - 3)
+tf2 = TransferFunction.from_rational_expression(tf1)
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_detect_poles():
+    x, u = symbols("x, u")
+
+    s1 = LineOver1DRangeSeries(
+        tan(x), (x, -pi, pi),
+        n=1000,
+        detect_poles=False
+    )
+    xx1, yy1 = s1.get_data()
+    s2 = LineOver1DRangeSeries(
+        tan(x), (x, -pi, pi),
+        n=1000,
+        detect_poles=True, eps=0.01
+    )
+    xx2, yy2 = s2.get_data()
+    # eps is too small: doesn't detect any poles
+    s3 = LineOver1DRangeSeries(
+        tan(x), (x, -pi, pi),
+        n=1000,
+        detect_poles=True, eps=1e-06
+    )
+    xx3, yy3 = s3.get_data()
+
+    assert np.allclose(xx1, xx2) and np.allclose(xx1, xx3)
+    assert not np.any(np.isnan(yy1))
+    assert not np.any(np.isnan(yy3))
+    assert np.any(np.isnan(yy2))
+
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        s1 = LineOver1DRangeSeries(
+            frac(x), (x, -10, 10),
+            n=1000,
+            detect_poles=False
+        )
+        xx1, yy1 = s1.get_data()
+        s2 = LineOver1DRangeSeries(
+            frac(x), (x, -10, 10),
+            n=1000,
+            detect_poles=True, eps=0.05
+        )
+        s3 = LineOver1DRangeSeries(
+            frac(x), (x, -10, 10),
+            n=1000,
+            detect_poles="symbolic"
+        )
+        xx1, yy1 = s1.get_data()
+        xx2, yy2 = s2.get_data()
+        xx3, yy3 = s3.get_data()
+        assert np.allclose(xx1, xx2) and np.allclose(xx1, xx3)
+        assert not np.any(np.isnan(yy1))
+        assert np.any(np.isnan(yy2)) and np.any(np.isnan(yy2))
+        assert not np.allclose(yy1, yy2, equal_nan=True)
+        assert len(s3.poles_locations) == 21
+
+    s1 = LineOver1DRangeSeries(
+        tan(u * x), (x, -pi, pi),
+        params={u: 1},
+        n=1000,
+        detect_poles=False,
+    )
+    xx1, yy1 = s1.get_data()
+    s2 = LineOver1DRangeSeries(
+        tan(u * x), (x, -pi, pi),
+        params={u: 1},
+        n=1000,
+        detect_poles=True, eps=0.01,
+    )
+    xx2, yy2 = s2.get_data()
+    # eps is too small: doesn't detect any poles
+    s3 = LineOver1DRangeSeries(
+        tan(u * x), (x, -pi, pi),
+        params={u: 1},
+        n=1000,
+        detect_poles=True, eps=1e-06,
+    )
+    xx3, yy3 = s3.get_data()
+
+    assert np.allclose(xx1, xx2) and np.allclose(xx1, xx3)
+    assert not np.any(np.isnan(yy1))
+    assert not np.any(np.isnan(yy3))
+    assert np.any(np.isnan(yy2))
+
+    s1 = Parametric2DLineSeries(
+        1 / cos(x), 1 / sin(x), (x, 1e-05, 2*pi),
+        detect_poles=False, n=1000)
+    s2 = Parametric2DLineSeries(
+        1 / cos(x), 1 / sin(x), (x, 1e-05, 2*pi),
+        detect_poles=True, n=1000)
+    xx1, yy1, pp1 = s1.get_data()
+    xx2, yy2, pp2 = s2.get_data()
+    assert not np.isnan(xx1).any()
+    assert not np.isnan(yy1).any()
+    assert not np.isnan(pp1).any()
+    assert np.isnan(xx2).any()
+    assert np.isnan(yy2).any()
+    assert not np.isnan(pp2).any()
+
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        u, v = symbols("u, v", real=True)
+        n = S(1) / 3
+        f = (u + I * v) ** n
+        r, i = re(f), im(f)
+        s1 = Parametric2DLineSeries(
+            r.subs(u, -2), i.subs(u, -2), (v, -2, 2),
+            n=1000,
+            detect_poles=False,
+        )
+        s2 = Parametric2DLineSeries(
+            r.subs(u, -2), i.subs(u, -2), (v, -2, 2),
+            n=1000,
+            detect_poles=True,
+        )
+        xx1, yy1, pp1 = s1.get_data()
+        assert not np.isnan(yy1).any()
+        xx2, yy2, pp2 = s2.get_data()
+        assert np.isnan(yy2).any()
+
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        f = (x * u + x * I * v) ** n
+        r, i = re(f), im(f)
+        s1 = Parametric2DLineSeries(
+            r.subs(u, -2), i.subs(u, -2), (v, -2, 2),
+            params={x: 1},
+            n1=1000,
+            detect_poles=False,
+        )
+        xx1, yy1, pp1 = s1.get_data()
+        assert not np.isnan(yy1).any()
+        s2 = Parametric2DLineSeries(
+            r.subs(u, -2), i.subs(u, -2), (v, -2, 2),
+            params={x: 1},
+            n1=1000,
+            detect_poles=True,
+        )
+        xx2, yy2, pp2 = s2.get_data()
+        assert np.isnan(yy2).any()
+
+
+@pytest.mark.filterwarnings("ignore:NumPy is unable to evaluate with complex numbers some of the functions")
+def test_detect_poles_symbolic_warning():
+    # the detect_poles="symbolic" algorithm relies on
+    # sympy.calculus.util.continuous_domain
+    # There are SymPy functions that are not yet implemented in
+    # continuous_domain.
+    # Rather than stopping the execution with an error, it should
+    # raise a warning.
+
+    x = symbols("x")
+    expr = (floor(x) + S.Half) / (1 - (x - S.Half) ** 2)
+    s = LineOver1DRangeSeries(expr, (x, -3.5, 3.5), detect_poles="symbolic")
+    with warns(
+        UserWarning,
+        match="Unable to apply the symbolic poles detection algorithm",
+    ):
+        s.get_data()
+
+
+def test_number_discretization_points():
+    # verify that the different ways to set the number of discretization
+    # points are consistent with each other.
+    x, y, z = symbols("x:z")
+
+    for pt in [
+        LineOver1DRangeSeries, Parametric2DLineSeries, Parametric3DLineSeries
+    ]:
+        kw1 = _set_discretization_points({"n": 10}, pt)
+        kw2 = _set_discretization_points({"n": [10, 20, 30]}, pt)
+        kw3 = _set_discretization_points({"n1": 10}, pt)
+        assert all(("n1" in kw) and kw["n1"] == 10 for kw in [kw1, kw2, kw3])
+
+    for pt in [
+        SurfaceOver2DRangeSeries, ContourSeries, ParametricSurfaceSeries,
+        ComplexSurfaceSeries, ComplexDomainColoringSeries, Vector2DSeries,
+        ImplicitSeries,
+    ]:
+        kw1 = _set_discretization_points({"n": 10}, pt)
+        kw2 = _set_discretization_points({"n": [10, 20, 30]}, pt)
+        kw3 = _set_discretization_points({"n1": 10, "n2": 20}, pt)
+        assert kw1["n1"] == kw1["n2"] == 10
+        assert all((kw["n1"] == 10) and (kw["n2"] == 20) for kw in [kw2, kw3])
+
+    for pt in [Vector3DSeries, SliceVector3DSeries, Implicit3DSeries]:
+        kw1 = _set_discretization_points({"n": 10}, pt)
+        kw2 = _set_discretization_points({"n": [10, 20, 30]}, pt)
+        kw3 = _set_discretization_points({"n1": 10, "n2": 20, "n3": 30}, pt)
+        assert kw1["n1"] == kw1["n2"] == kw1["n3"] == 10
+        assert all(
+            ((kw["n1"] == 10) and (kw["n2"] == 20) and (kw["n3"] == 30))
+            for kw in [kw2, kw3]
+        )
+
+    # verify that line-related series can deal with large float number of
+    # discretization points
+    LineOver1DRangeSeries(
+        cos(x), (x, -5, 5), n=1e04
+    ).get_data()
+    LineOver1DRangeSeries(
+        cos(x), (x, -5, 5), n1=1e04
+    ).get_data()
+    AbsArgLineSeries(
+        sqrt(x), (x, -5, 5), n=1e04
+    ).get_data()
+
+
+def test_list2dseries():
+    xx = np.linspace(-3, 3, 10)
+    yy1 = np.cos(xx)
+    yy2 = np.linspace(-3, 3, 20)
+
+    # same number of elements: everything is fine
+    s = List2DSeries(xx, yy1)
+    assert not s.is_parametric
+    assert s.get_label() == ""
+    # different number of elements: error
+    raises(ValueError, lambda: List2DSeries(xx, yy2))
+
+    # no color func: returns only x, y components and s in not parametric
+    s = List2DSeries(xx, yy1, label="test")
+    xxs, yys = s.get_data()
+    assert np.allclose(xx, xxs)
+    assert np.allclose(yy1, yys)
+    assert not s.is_parametric
+    assert s.get_label() == "test"
+
+    # numbers will be converted to iterables
+    s = List2DSeries(1, 2, label="test")
+    xx, yy = s.get_data()
+    assert (len(xx) == 1) and np.isclose(xx[0], 1)
+    assert (len(yy) == 1) and np.isclose(yy[0], 2)
+
+
+def test_list3dseries():
+    zz1 = np.linspace(-3, 3, 10)
+    xx = np.cos(zz1)
+    yy = np.sin(zz1)
+    zz2 = np.linspace(-3, 3, 20)
+
+    # same number of elements: everything is fine
+    s = List3DSeries(xx, yy, zz1)
+    assert not s.is_parametric
+    assert s.get_label() == ""
+    # different number of elements: error
+    raises(ValueError, lambda: List3DSeries(xx, yy, zz2))
+
+    # no color func: returns only x, y components and s in not parametric
+    s = List3DSeries(xx, yy, zz1, label="test")
+    xxs, yys, zzs = s.get_data()
+    assert np.allclose(xx, xxs)
+    assert np.allclose(yy, yys)
+    assert np.allclose(zz1, zzs)
+    assert not s.is_parametric
+    assert s.get_label() == "test"
+
+    # numbers will be converted to iterables
+    s = List3DSeries(1, 2, 3, label="test")
+    xx, yy, zz = s.get_data()
+    assert (len(xx) == 1) and np.isclose(xx[0], 1)
+    assert (len(yy) == 1) and np.isclose(yy[0], 2)
+    assert (len(zz) == 1) and np.isclose(zz[0], 3)
+
+
+def test_complexpointseries():
+    # verify that ComplexPointSeries returns the correct data depending on
+    # the provided keyword arguments
+
+    x = symbols("x")
+
+    s = ComplexPointSeries([1 + 2 * I, 3 + 4 * I])
+    xx, yy = s.get_data()
+    assert s.is_scatter and (not s.is_parametric) and (not s.color_func)
+    assert np.allclose(xx, [1, 3])
+    assert np.allclose(yy, [2, 4])
+
+    s = ComplexPointSeries([1 + x * I, 1 + x + 4 * I], params={x: 2})
+    xx, yy = s.get_data()
+    assert s.is_scatter and (not s.is_parametric) and (not s.color_func)
+    assert np.allclose(xx, [1, 3])
+    assert np.allclose(yy, [2, 4])
+
+
+def test_interactive_vs_noninteractive():
+    # verify that if a *Series class receives a `params` dictionary, it sets
+    # is_interactive=True
+    x, y, z, u, v = symbols("x, y, z, u, v")
+
+    s = LineOver1DRangeSeries(cos(x), (x, -5, 5))
+    assert not s.is_interactive
+    s = LineOver1DRangeSeries(u * cos(x), (x, -5, 5), params={u: 1})
+    assert s.is_interactive
+
+    s = AbsArgLineSeries(cos(x), (x, -5, 5))
+    assert not s.is_interactive
+    s = AbsArgLineSeries(u * cos(x), (x, -5, 5), params={u: 1})
+    assert s.is_interactive
+
+    s = Parametric2DLineSeries(cos(x), sin(x), (x, -5, 5))
+    assert not s.is_interactive
+    s = Parametric2DLineSeries(
+        u * cos(x), u * sin(x), (x, -5, 5),
+        params={u: 1}
+    )
+    assert s.is_interactive
+
+    s = Parametric3DLineSeries(cos(x), sin(x), x, (x, -5, 5))
+    assert not s.is_interactive
+    s = Parametric3DLineSeries(
+        u * cos(x), u * sin(x), x, (x, -5, 5),
+        params={u: 1}
+    )
+    assert s.is_interactive
+
+    s = SurfaceOver2DRangeSeries(cos(x * y), (x, -5, 5), (y, -5, 5))
+    assert not s.is_interactive
+    s = SurfaceOver2DRangeSeries(
+        u * cos(x * y), (x, -5, 5), (y, -5, 5),
+        params={u: 1}
+    )
+    assert s.is_interactive
+
+    s = ContourSeries(cos(x * y), (x, -5, 5), (y, -5, 5))
+    assert not s.is_interactive
+    s = ContourSeries(u * cos(x * y), (x, -5, 5), (y, -5, 5), params={u: 1})
+    assert s.is_interactive
+
+    s = ParametricSurfaceSeries(
+        u * cos(v), v * sin(u), u + v, (u, -5, 5), (v, -5, 5)
+    )
+    assert not s.is_interactive
+    s = ParametricSurfaceSeries(
+        u * cos(v * x), v * sin(u), u + v, (u, -5, 5), (v, -5, 5),
+        params={x: 1}
+    )
+    assert s.is_interactive
+
+    s = Vector2DSeries(cos(y), sin(x), (x, -5, 5), (y, -5, 5))
+    assert not s.is_interactive
+    s = Vector2DSeries(
+        u * cos(y), u * sin(x), (x, -5, 5), (y, -5, 5),
+        params={u: 1}
+    )
+    assert s.is_interactive
+
+    s = Vector3DSeries(
+        cos(y), sin(x), z, (x, -5, 5), (y, -5, 5), (z, -5, 5)
+    )
+    assert not s.is_interactive
+    s = Vector3DSeries(
+        u * cos(y), u * sin(x), z,
+        (x, -5, 5), (y, -5, 5), (z, -5, 5),
+        params={u: 1},
+    )
+    assert s.is_interactive
+
+    s = SliceVector3DSeries(
+        Plane((0, 0, 0), (0, 1, 0)),
+        cos(y), sin(x), z,
+        (x, -5, 5), (y, -5, 5), (z, -5, 5),
+    )
+    assert not s.is_interactive
+    s = SliceVector3DSeries(
+        Plane((0, 0, 0), (0, 1, 0)),
+        u * cos(y), u * sin(x), z,
+        (x, -5, 5), (y, -5, 5), (z, -5, 5),
+        params={u: 1},
+    )
+    assert s.is_interactive
+
+    s = PlaneSeries(
+        Plane((x, y, 0), (0, 1, 0)), (x, -5, 5), (y, -5, 5), (z, -5, 5))
+    assert not s.is_interactive
+    s = PlaneSeries(
+        Plane((u * x, y, 0), (0, 1, 0)),
+        (x, -5, 5), (y, -5, 5), (z, -5, 5),
+        params={u: 1},
+    )
+    assert s.is_interactive
+
+    s = Geometry2DSeries(Circle(Point(0, 0), 5))
+    assert not s.is_interactive
+    s = Geometry2DSeries(Circle(Point(0, 0), u * 5), params={u: 1})
+    assert s.is_interactive
+
+    s = ComplexSurfaceSeries(sqrt(z), (z, -5 - 5j, 5 + 5j))
+    assert not s.is_interactive
+    s = ComplexSurfaceSeries(sqrt(u * z), (z, -5 - 5j, 5 + 5j), params={u: 1})
+    assert s.is_interactive
+
+    s = ComplexDomainColoringSeries(sqrt(z), (z, -5 - 5j, 5 + 5j))
+    assert not s.is_interactive
+    s = ComplexDomainColoringSeries(
+        sqrt(u * z), (z, -5 - 5j, 5 + 5j), params={u: 1})
+    assert s.is_interactive
+
+    s = ComplexPointSeries([3 + 2 * I, 4 * I, 2])
+    assert not s.is_interactive
+    s = ComplexPointSeries([3 + u * 2 * I, 4 * I, u * 2], params={u: 1})
+    assert s.is_interactive
+
+
+def test_lin_log_scale():
+    # Verify that data series create the correct spacing in the data.
+    x, y, z = symbols("x, y, z")
+
+    s = LineOver1DRangeSeries(
+        x, (x, 1, 10),
+        n=50,
+        xscale="linear"
+    )
+    xx, _ = s.get_data()
+    assert np.isclose(xx[1] - xx[0], xx[-1] - xx[-2])
+
+    s = LineOver1DRangeSeries(
+        x, (x, 1, 10),
+        n=50,
+        xscale="log"
+    )
+    xx, _ = s.get_data()
+    assert not np.isclose(xx[1] - xx[0], xx[-1] - xx[-2])
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, pi / 2, 1.5 * pi),
+        n=50,
+        xscale="linear"
+    )
+    _, _, param = s.get_data()
+    assert np.isclose(param[1] - param[0], param[-1] - param[-2])
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, pi / 2, 1.5 * pi),
+        n=50,
+        xscale="log"
+    )
+    _, _, param = s.get_data()
+    assert not np.isclose(param[1] - param[0], param[-1] - param[-2])
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, pi / 2, 1.5 * pi),
+        n=50,
+        xscale="linear"
+    )
+    _, _, _, param = s.get_data()
+    assert np.isclose(param[1] - param[0], param[-1] - param[-2])
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, pi / 2, 1.5 * pi),
+        n=50,
+        xscale="log"
+    )
+    _, _, _, param = s.get_data()
+    assert not np.isclose(param[1] - param[0], param[-1] - param[-2])
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, 1, 5), (y, 1, 5),
+        n=10,
+        xscale="linear", yscale="linear",
+    )
+    xx, yy, _ = s.get_data()
+    assert np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, 1, 5), (y, 1, 5),
+        n=10,
+        xscale="log", yscale="log"
+    )
+    xx, yy, _ = s.get_data()
+    assert not np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert not np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = ContourSeries(
+        cos(x**2 + y**2), (x, 1, 5), (y, 1, 5),
+        n=10,
+        xscale="linear", yscale="linear",
+    )
+    xx, yy, _ = s.get_data()
+    assert np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = ContourSeries(
+        cos(x**2 + y**2), (x, 1, 5), (y, 1, 5),
+        n=10,
+        xscale="log", yscale="log"
+    )
+    xx, yy, _ = s.get_data()
+    assert not np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert not np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)),
+        (x, -5, 5), (y, -5, 5), (z, -5, 5),
+        xscale="linear", yscale="linear", zscale="linear"
+    )
+    xx, yy, zz = s.get_data()
+    assert np.isclose(
+        xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2]
+    )
+    assert np.isclose(
+        yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0]
+    )
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)),
+        (x, 1e-5, 5), (y, 1e-5, 5), (z, 1e-5, 5),
+        xscale="log", yscale="log", zscale="log"
+    )
+    xx, yy, zz = s.get_data()
+    assert not np.isclose(
+        xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2]
+    )
+    assert not np.isclose(
+        yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0]
+    )
+
+    s = ImplicitSeries(
+        cos(x**2 + y**2) > 0, (x, 1, 5), (y, 1, 5),
+        n1=10, n2=10, adaptive=False,
+        xscale="linear", yscale="linear",
+    )
+    xx, yy, _, _ = s.get_data()
+    assert np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = ImplicitSeries(
+        cos(x**2 + y**2) > 0, (x, 1, 5), (y, 1, 5),
+        n=10, adaptive=False,
+        xscale="log", yscale="log"
+    )
+    xx, yy, _, _ = s.get_data()
+    assert not np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert not np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = Implicit3DSeries(
+        x**2 + y**3 - z**2, (x, -2, 2), (y, -2, 2), (z, -2, 2),
+        n=5, xscale="linear", yscale="linear", zscale="linear"
+    )
+    xx, yy, zz, _ = s.get_data()
+    assert np.isclose(
+        xx[:, 0, 0][1] - xx[:, 0, 0][0], xx[:, 0, 0][-1] - xx[:, 0, 0][-2]
+    )
+    assert np.isclose(
+        yy[0, :, 0][1] - yy[0, :, 0][0], yy[0, :, 0][-1] - yy[0, :, 0][-2]
+    )
+    assert np.isclose(
+        zz[0, 0, :][1] - zz[0, 0, :][0], zz[0, 0, :][-1] - zz[0, 0, :][-2]
+    )
+
+    s = Implicit3DSeries(
+        x**2 + y**3 - z**2, (x, -2, 2), (y, -2, 2), (z, -2, 2),
+        n=5, xscale="log", yscale="log", zscale="log"
+    )
+    xx, yy, zz, _ = s.get_data()
+    assert not np.isclose(
+        xx[:, 0, 0][1] - xx[:, 0, 0][0], xx[:, 0, 0][-1] - xx[:, 0, 0][-2]
+    )
+    assert not np.isclose(
+        yy[0, :, 0][1] - yy[0, :, 0][0], yy[0, :, 0][-1] - yy[0, :, 0][-2]
+    )
+    assert not np.isclose(
+        zz[0, 0, :][1] - zz[0, 0, :][0], zz[0, 0, :][-1] - zz[0, 0, :][-2]
+    )
+
+    s = AbsArgLineSeries(
+        cos(x), (x, 1e-05, 1e05),
+        n=10,
+        xscale="linear"
+    )
+    xx, yy, _ = s.get_data()
+    assert np.isclose(xx[1] - xx[0], xx[-1] - xx[-2])
+
+    s = AbsArgLineSeries(
+        cos(x), (x, 1e-05, 1e05),
+        n=10,
+        xscale="log"
+    )
+    xx, yy, _ = s.get_data()
+    assert not np.isclose(xx[1] - xx[0], xx[-1] - xx[-2])
+
+    s = Vector2DSeries(
+        x, y,
+        (x, 1, 1e05), (y, 1, 1e05),
+        xscale="linear", yscale="linear"
+    )
+    xx, yy, _, _ = s.get_data()
+    assert np.isclose(
+        xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2]
+    )
+    assert np.isclose(
+        yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0]
+    )
+
+    s = Vector2DSeries(
+        x, y,
+        (x, 1, 1e05), (y, 1, 1e05),
+        xscale="log", yscale="log"
+    )
+    xx, yy,  _, _ = s.get_data()
+    assert not np.isclose(
+        xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2]
+    )
+    assert not np.isclose(
+        yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0]
+    )
+
+    s = Vector3DSeries(
+        x, y, z,
+        (x, 1, 1e05), (y, 1, 1e05), (z, 1, 1e05),
+        xscale="linear", yscale="linear", zscale="linear",
+    )
+    xx, yy, zz, _, _, _ = s.get_data()
+    assert np.isclose(
+        xx[:, 0, 0][1] - xx[:, 0, 0][0], xx[:, 0, 0][-1] - xx[:, 0, 0][-2]
+    )
+    assert np.isclose(
+        yy[0, :, 0][1] - yy[0, :, 0][0], yy[0, :, 0][-1] - yy[0, :, 0][-2]
+    )
+    assert np.isclose(
+        zz[0, 0, :][1] - zz[0, 0, :][0], zz[0, 0, :][-1] - zz[0, 0, :][-2]
+    )
+
+    s = Vector3DSeries(
+        x, y, z,
+        (x, 1, 1e05), (y, 1, 1e05), (z, 1, 1e05),
+        xscale="log", yscale="log", zscale="log",
+    )
+    xx, yy, zz, _, _, _ = s.get_data()
+    assert not np.isclose(
+        xx[:, 0, 0][1] - xx[:, 0, 0][0], xx[:, 0, 0][-1] - xx[:, 0, 0][-2]
+    )
+    assert not np.isclose(
+        yy[0, :, 0][1] - yy[0, :, 0][0], yy[0, :, 0][-1] - yy[0, :, 0][-2]
+    )
+    assert not np.isclose(
+        zz[0, 0, :][1] - zz[0, 0, :][0], zz[0, 0, :][-1] - zz[0, 0, :][-2]
+    )
+
+    s = ComplexSurfaceSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I), n1=10, n2=10,
+        xscale="linear", yscale="linear"
+    )
+    xx, yy, _ = s.get_data()
+    assert np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+    s = ComplexSurfaceSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I), n1=10, n2=10,
+        xscale="log", yscale="log"
+    )
+    xx, yy, _ = s.get_data()
+    assert not np.isclose(xx[0, 1] - xx[0, 0], xx[0, -1] - xx[0, -2])
+    assert not np.isclose(yy[1, 0] - yy[0, 0], yy[-1, 0] - yy[-2, 0])
+
+
+def test_rendering_kw():
+    # verify that each series exposes the `rendering_kw` attribute
+    u, v, x, y, z = symbols("u, v, x:z")
+
+    s = List2DSeries([1, 2, 3], [4, 5, 6])
+    assert isinstance(s.rendering_kw, dict)
+
+    s = List3DSeries([1, 2, 3], [4, 5, 6], [6, 7, 8])
+    assert isinstance(s.rendering_kw, dict)
+
+    s = LineOver1DRangeSeries(1, (x, -5, 5))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = AbsArgLineSeries(1, (x, -5, 5))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Parametric2DLineSeries(sin(x), cos(x), (x, 0, pi))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Parametric3DLineSeries(cos(x), sin(x), x, (x, 0, 2 * pi))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = SurfaceOver2DRangeSeries(x + y, (x, -2, 2), (y, -3, 3))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Implicit3DSeries(
+        x**2 + y**3 - z**2, (x, -2, 2), (y, -3, 3), (z, -4, 4))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = ContourSeries(x + y, (x, -2, 2), (y, -3, 3))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = ParametricSurfaceSeries(1, x, y, (x, 0, 1), (y, 0, 1))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = ComplexPointSeries(x + I * y)
+    assert isinstance(s.rendering_kw, dict)
+
+    s = ComplexSurfaceSeries(1, (x, -5 - 2 * I, 5 + 2 * I))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = ComplexDomainColoringSeries(1, (x, -5 - 2 * I, 5 + 2 * I))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Vector2DSeries(-y, x, (x, -3, 3), (y, -4, 4))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Vector3DSeries(z, -y, x, (x, -3, 3), (y, -4, 4), (z, -5, 5))
+    assert isinstance(s.rendering_kw, dict)
+
+    s = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)), z, -y, x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1)
+    )
+    assert isinstance(s.rendering_kw, dict)
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)),
+        (x, -5, 4), (y, -3, 2), (z, -6, 7)
+    )
+    assert isinstance(s.rendering_kw, dict)
+
+    s = Geometry2DSeries(Circle(Point(0, 0), 5))
+    assert isinstance(s.rendering_kw, dict)
+
+
+def test_data_shape():
+    # Verify that the series produces the correct data shape when the input
+    # expression is a number.
+    u, x, y, z = symbols("u, x:z")
+
+    # scalar expression: it should return a numpy ones array
+    s = LineOver1DRangeSeries(1, (x, -5, 5))
+    xx, yy = s.get_data()
+    assert len(xx) == len(yy)
+    assert np.all(yy == 1)
+
+    s = LineOver1DRangeSeries(1, (x, -5, 5), n=10)
+    xx, yy = s.get_data()
+    assert len(xx) == len(yy) == 10
+    assert np.all(yy == 1)
+
+    s = AbsArgLineSeries(1, (x, -5, 5))
+    xx, _abs, _arg = s.get_data()
+    assert len(xx) == len(_abs) == len(_arg)
+    assert np.all(_abs == 1)
+
+    s = AbsArgLineSeries(1, (x, -5, 5), n=10)
+    xx, _abs, _arg = s.get_data()
+    assert len(xx) == len(_abs) == len(_arg) == 10
+    assert np.all(_abs == 1)
+
+    s = Parametric2DLineSeries(sin(x), 1, (x, 0, pi))
+    xx, yy, param = s.get_data()
+    assert (len(xx) == len(yy)) and (len(xx) == len(param))
+    assert np.all(yy == 1)
+
+    s = Parametric2DLineSeries(1, sin(x), (x, 0, pi))
+    xx, yy, param = s.get_data()
+    assert (len(xx) == len(yy)) and (len(xx) == len(param))
+    assert np.all(xx == 1)
+
+    s = Parametric2DLineSeries(sin(x), 1, (x, 0, pi))
+    xx, yy, param = s.get_data()
+    assert (len(xx) == len(yy)) and (len(xx) == len(param))
+    assert np.all(yy == 1)
+
+    s = Parametric2DLineSeries(1, sin(x), (x, 0, pi))
+    xx, yy, param = s.get_data()
+    assert (len(xx) == len(yy)) and (len(xx) == len(param))
+    assert np.all(xx == 1)
+
+    s = Parametric3DLineSeries(cos(x), sin(x), 1, (x, 0, 2 * pi))
+    xx, yy, zz, param = s.get_data()
+    assert (
+        (len(xx) == len(yy)) and (len(xx) == len(zz))
+        and (len(xx) == len(param))
+    )
+    assert np.all(zz == 1)
+
+    s = Parametric3DLineSeries(cos(x), 1, x, (x, 0, 2 * pi))
+    xx, yy, zz, param = s.get_data()
+    assert (
+        (len(xx) == len(yy)) and (len(xx) == len(zz))
+        and (len(xx) == len(param))
+    )
+    assert np.all(yy == 1)
+
+    s = Parametric3DLineSeries(1, sin(x), x, (x, 0, 2 * pi))
+    xx, yy, zz, param = s.get_data()
+    assert (
+        (len(xx) == len(yy)) and (len(xx) == len(zz))
+        and (len(xx) == len(param))
+    )
+    assert np.all(xx == 1)
+
+    s = SurfaceOver2DRangeSeries(1, (x, -2, 2), (y, -3, 3))
+    xx, yy, zz = s.get_data()
+    assert (xx.shape == yy.shape) and (xx.shape == zz.shape)
+    assert np.all(zz == 1)
+
+    s = Implicit3DSeries(
+        x**2 + y**3 - z**2,
+        (x, -2, 2), (y, -3, 3), (z, -4, 4),
+        n1=5, n2=8, n3=10
+    )
+    xx, yy, zz, f = s.get_data()
+    assert f.shape == xx.shape == yy.shape == zz.shape == (5, 8, 10)
+
+    s = ParametricSurfaceSeries(1, x, y, (x, 0, 1), (y, 0, 1))
+    xx, yy, zz, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == uu.shape == vv.shape
+    assert np.all(xx == 1)
+
+    s = ParametricSurfaceSeries(1, 1, y, (x, 0, 1), (y, 0, 1))
+    xx, yy, zz, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == uu.shape == vv.shape
+    assert np.all(yy == 1)
+
+    s = ParametricSurfaceSeries(x, 1, 1, (x, 0, 1), (y, 0, 1))
+    xx, yy, zz, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == uu.shape == vv.shape
+    assert np.all(zz == 1)
+
+    s = AbsArgLineSeries(1, (x, -5, 5), modules=None)
+    xx, yy, aa = s.get_data()
+    assert (xx.shape == yy.shape) and (xx.shape == aa.shape)
+    assert np.all(aa == 0)
+
+    s = AbsArgLineSeries(1, (x, -5, 5), modules="mpmath")
+    xx, yy, aa = s.get_data()
+    assert (xx.shape == yy.shape) and (xx.shape == aa.shape)
+    assert np.all(aa == 0)
+
+    s = ComplexSurfaceSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I),
+        n1=10, n2=10, modules=None
+    )
+    xx, yy, zz = s.get_data()
+    assert (len(xx.shape) == 2)
+    assert (xx.shape == yy.shape) and (xx.shape == zz.shape)
+    assert np.all(zz == 1)
+
+    s = ComplexSurfaceSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I), n1=10, n2=10, modules="mpmath"
+    )
+    assert (len(xx.shape) == 2)
+    xx, yy, zz = s.get_data()
+    assert (xx.shape == yy.shape) and (xx.shape == zz.shape)
+    assert np.all(zz == 1)
+
+    s = ComplexDomainColoringSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I), n1=10, n2=10, modules=None
+    )
+    rr, ii, mag, arg, colors, _ = s.get_data()
+    assert (len(rr.shape) == 2)
+    assert (rr.shape == ii.shape) and (rr.shape[:2] == colors.shape[:2])
+    assert (rr.shape == mag.shape) and (rr.shape == arg.shape)
+
+    s = ComplexDomainColoringSeries(
+        1, (x, -5 - 2 * I, 5 + 2 * I), n1=10, n2=10, modules="mpmath"
+    )
+    rr, ii, mag, arg, colors, _ = s.get_data()
+    assert (len(rr.shape) == 2)
+    assert (rr.shape == ii.shape) and (rr.shape[:2] == colors.shape[:2])
+    assert (rr.shape == mag.shape) and (rr.shape == arg.shape)
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_only_integers():
+    x, y, u, v = symbols("x, y, u, v")
+
+    s = LineOver1DRangeSeries(
+        sin(x), (x, -5.5, 4.5), "",
+        only_integers=True
+    )
+    xx, _ = s.get_data()
+    assert len(xx) == 10
+    assert xx[0] == -5 and xx[-1] == 4
+
+    s = AbsArgLineSeries(
+        sqrt(x), (x, -5.5, 4.5), "",
+        only_integers=True
+    )
+    xx, _, _ = s.get_data()
+    assert len(xx) == 10
+    assert xx[0] == -5 and xx[-1] == 4
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi), "",
+        only_integers=True
+    )
+    _, _, p = s.get_data()
+    assert len(p) == 7
+    assert p[0] == 0 and p[-1] == 6
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 2 * pi), "",
+        only_integers=True
+    )
+    _, _, _, p = s.get_data()
+    assert len(p) == 7
+    assert p[0] == 0 and p[-1] == 6
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -5.5, 5.5), (y, -3.5, 3.5), "",
+        only_integers=True,
+    )
+    xx, yy, _ = s.get_data()
+    assert xx.shape == yy.shape == (7, 11)
+    assert np.allclose(xx[:, 0] - (-5) * np.ones(7), 0)
+    assert np.allclose(xx[0, :] - np.linspace(-5, 5, 11), 0)
+    assert np.allclose(yy[:, 0] - np.linspace(-3, 3, 7), 0)
+    assert np.allclose(yy[0, :] - (-3) * np.ones(11), 0)
+
+    r = 2 + sin(7 * u + 5 * v)
+    expr = (r * cos(u) * sin(v), r * sin(u) * sin(v), r * cos(v))
+    s = ParametricSurfaceSeries(
+        *expr, (u, 0, 2 * pi), (v, 0, pi), "",
+        only_integers=True
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == uu.shape == vv.shape == (4, 7)
+
+    s = ComplexSurfaceSeries(
+        sqrt(x), (x, -3.5 - 2.5j, 3.5 + 2.5j), "",
+        only_integers=True
+    )
+    xx, yy, zz = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == (5, 7)
+    assert xx[0, 0] == -3 and xx[-1, -1] == 3
+    assert yy[0, 0] == -2 and yy[-1, -1] == 2
+
+    s = ComplexDomainColoringSeries(
+        sqrt(x), (x, -3.5 - 2.5j, 3.5 + 2.5j), "",
+        only_integers=True
+    )
+    xx, yy, zz, aa, _, _ = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == aa.shape == (5, 7)
+    assert xx[0, 0] == -3 and xx[-1, -1] == 3
+    assert yy[0, 0] == -2 and yy[-1, -1] == 2
+
+    # only_integers also works with scalar expressions
+    s = LineOver1DRangeSeries(
+        1, (x, -5.5, 4.5), "",
+        only_integers=True
+    )
+    xx, _ = s.get_data()
+    assert len(xx) == 10
+    assert xx[0] == -5 and xx[-1] == 4
+
+    s = Parametric2DLineSeries(
+        cos(x), 1, (x, 0, 2 * pi), "",
+        only_integers=True
+    )
+    _, _, p = s.get_data()
+    assert len(p) == 7
+    assert p[0] == 0 and p[-1] == 6
+
+    s = SurfaceOver2DRangeSeries(
+        1, (x, -5.5, 5.5), (y, -3.5, 3.5), "",
+        only_integers=True
+    )
+    xx, yy, _ = s.get_data()
+    assert xx.shape == yy.shape == (7, 11)
+    assert np.allclose(xx[:, 0] - (-5) * np.ones(7), 0)
+    assert np.allclose(xx[0, :] - np.linspace(-5, 5, 11), 0)
+    assert np.allclose(yy[:, 0] - np.linspace(-3, 3, 7), 0)
+    assert np.allclose(yy[0, :] - (-3) * np.ones(11), 0)
+
+    r = 2 + sin(7 * u + 5 * v)
+    expr = (r * cos(u) * sin(v), 1, r * cos(v))
+    s = ParametricSurfaceSeries(
+        *expr, (u, 0, 2 * pi), (v, 0, pi), "",
+        only_integers=True
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == uu.shape == vv.shape == (4, 7)
+
+    s = ComplexSurfaceSeries(
+        1, (x, -3.5 - 2.5j, 3.5 + 2.5j), "",
+        only_integers=True
+    )
+    xx, yy, zz = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == (5, 7)
+    assert xx[0, 0] == -3 and xx[-1, -1] == 3
+    assert yy[0, 0] == -2 and yy[-1, -1] == 2
+
+    s = ComplexDomainColoringSeries(
+        1, (x, -3.5 - 2.5j, 3.5 + 2.5j), "",
+        only_integers=True
+    )
+    xx, yy, zz, aa, _, _ = s.get_data()
+    assert xx.shape == yy.shape == zz.shape == aa.shape == (5, 7)
+    assert xx[0, 0] == -3 and xx[-1, -1] == 3
+    assert yy[0, 0] == -2 and yy[-1, -1] == 2
+
+    s = Vector2DSeries(
+        -y, x, (x, -3.5, 3.5), (y, -4.5, 4.5), "",
+        only_integers=True
+    )
+    xx, yy, uu, vv = s.get_data()
+    assert xx.shape == yy.shape == uu.shape == vv.shape == (9, 7)
+    assert xx[0, 0] == -3 and xx[-1, -1] == 3
+    assert yy[0, 0] == -4 and yy[-1, -1] == 4
+
+
+def test_vector_data_shape():
+    # verify that vector data series generates data with the correct shape
+
+    x, y, z = symbols("x:z")
+
+    s = Vector2DSeries(x, y, (x, -5, 5), (y, -3, 3), "test", n1=10, n2=15)
+    assert all(t.shape == (15, 10) for t in s.get_data())
+
+    # at least one vector component is a scalar
+    s = Vector2DSeries(1, y, (x, -5, 5), (y, -3, 3), "test", n1=10, n2=15)
+    assert all(t.shape == (15, 10) for t in s.get_data())
+
+    s = Vector3DSeries(
+        x, y, z, (x, -5, 5), (y, -3, 3), (z, -2, 2), "test",
+        n1=10, n2=15, n3=20
+    )
+    assert all(t.shape == (10, 15, 20) for t in s.get_data())
+
+    # at least one vector component is a scalar
+    s = Vector3DSeries(
+        x, 1, z, (x, -5, 5), (y, -3, 3), (z, -2, 2), "test",
+        n1=10, n2=15, n3=20
+    )
+    assert all(t.shape == (10, 15, 20) for t in s.get_data())
+
+
+@pytest.mark.parametrize("is_filled, is_scatter", [
+    (True, True),
+    (True, False),
+    (False, True),
+    (False, False),
+])
+def test_is_scatter_is_filled(is_filled, is_scatter):
+    # verify that `is_scatter` and `is_filled` are attributes and that they
+    # they receive the correct values
+
+    x, u = symbols("x, u")
+
+    s = LineOver1DRangeSeries(
+        cos(x), (x, -5, 5), "",
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = AbsArgLineSeries(
+        cos(x), (x, -5, 5), "",
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = List2DSeries(
+        [0, 1, 2], [3, 4, 5],
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = List3DSeries(
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, -5, 5),
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, -5, 5),
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+    s = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I],
+        is_scatter=is_scatter, is_filled=is_filled
+    )
+    assert (s.is_filled is is_filled) and (s.is_scatter is is_scatter)
+
+
+@pytest.mark.parametrize("is_filled", [True, False])
+def test_is_filled_2d(is_filled):
+    # verify that the is_filled attribute is exposed by the following series
+    x, y = symbols("x, y")
+
+    expr = cos(x**2 + y**2)
+    ranges = (x, -2, 2), (y, -2, 2)
+
+    s = ContourSeries(expr, *ranges)
+    assert s.is_filled
+    s = ContourSeries(expr, *ranges, is_filled=is_filled)
+    assert s.is_filled is is_filled
+
+    s = Geometry2DSeries(Circle(Point(0, 0), 5))
+    assert s.is_filled
+    s = Geometry2DSeries(Circle(Point(0, 0), 5), is_filled=is_filled)
+    assert s.is_filled is is_filled
+
+    # ComplexSurfaceSeries generates data for 3D surfaces or 2D contours
+    s = ComplexSurfaceSeries(sqrt(x), (x, -2 - 2j, 2 + 2j))
+    assert s.is_filled
+    s = ComplexSurfaceSeries(
+        sqrt(x), (x, -2 - 2j, 2 + 2j), is_filled=is_filled
+    )
+    assert s.is_filled is is_filled
+
+
+def test_steps():
+    x, u = symbols("x, u")
+
+    def do_test(s1, s2):
+        if (not s1.is_parametric) and s1.is_2Dline:
+            xx1, _ = s1.get_data()
+            xx2, _ = s2.get_data()
+        elif s1.is_parametric and s1.is_2Dline:
+            xx1, _, _ = s1.get_data()
+            xx2, _, _ = s2.get_data()
+        elif (not s1.is_parametric) and s1.is_3Dline:
+            xx1, _, _ = s1.get_data()
+            xx2, _, _ = s2.get_data()
+        else:
+            xx1, _, _, _ = s1.get_data()
+            xx2, _, _, _ = s2.get_data()
+        assert len(xx1) != len(xx2)
+
+    s1 = LineOver1DRangeSeries(
+        cos(x), (x, -5, 5), "", n=40, steps=False
+    )
+    s2 = LineOver1DRangeSeries(
+        cos(x), (x, -5, 5), "", n=40, steps=True
+    )
+    do_test(s1, s2)
+
+    s1 = AbsArgLineSeries(
+        cos(x), (x, -5, 5), "",
+        n=40, steps=False
+    )
+    s2 = AbsArgLineSeries(
+        cos(x), (x, -5, 5), "",
+        n=40, steps=True
+    )
+    do_test(s1, s2)
+
+    s1 = List2DSeries([0, 1, 2], [3, 4, 5], steps=False)
+    s2 = List2DSeries([0, 1, 2], [3, 4, 5], steps=True)
+    do_test(s1, s2)
+
+    s1 = List3DSeries(
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], steps=False
+    )
+    s2 = List3DSeries(
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], steps=True
+    )
+    do_test(s1, s2)
+
+    s1 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, -5, 5), n=40, steps=False
+    )
+    s2 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, -5, 5), n=40, steps=True
+    )
+    do_test(s1, s2)
+
+    s1 = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, -5, 5), n=40, steps=False
+    )
+    s2 = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, -5, 5), n=40, steps=True
+    )
+    do_test(s1, s2)
+
+    s1 = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I], steps=False)
+    s2 = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I], steps=True)
+    do_test(s1, s2)
+
+
+def test_steps_2():
+    # verify that steps="pre", steps="post", steps="middle" creates
+    # different data.
+    x = symbols("x")
+    s1 = LineOver1DRangeSeries(x, (x, -10, 10), n=21, steps=True)
+    s2 = LineOver1DRangeSeries(x, (x, -10, 10), n=21, steps="pre")
+    s3 = LineOver1DRangeSeries(x, (x, -10, 10), n=21, steps="post")
+    s4 = LineOver1DRangeSeries(x, (x, -10, 10), n=21, steps="mid")
+    d1 = s1.get_data()
+    d2 = s2.get_data()
+    d3 = s3.get_data()
+    d4 = s4.get_data()
+    assert len(d1[0]) == len(d2[0]) == len(d3[0]) == len(d4[0]) - 1
+    assert np.allclose(d1, d2)
+    assert not np.allclose(d1, d3)
+
+    raises(ValueError, lambda: LineOver1DRangeSeries(
+        x, (x, -10, 10), n=21, steps="a"))
+
+
+def test_interactive():
+    u, x, y, z = symbols("u, x:z")
+
+    # verify that InteractiveSeries produces the same numerical data as their
+    # corresponding non-interactive series.
+    def do_test(data1, data2):
+        assert len(data1) == len(data2)
+        for d1, d2 in zip(data1, data2):
+            assert np.allclose(d1, d2)
+
+    s1 = LineOver1DRangeSeries(u * cos(x), (x, -5, 5), params={u: 1}, n=50)
+    s2 = LineOver1DRangeSeries(cos(x), (x, -5, 5), n=50)
+    do_test(s1.get_data(), s2.get_data())
+
+    # complex function evaluated over a real line with numpy
+    s1 = AbsArgLineSeries(
+        u * cos(x), (x, -5, 5), params={u: 1}, n=50, modules=None)
+    s2 = AbsArgLineSeries(
+        cos(x), (x, -5, 5), n=50, modules=None)
+    do_test(s1.get_data(), s2.get_data())
+
+    # complex function evaluated over a real line with mpmath
+    s1 = AbsArgLineSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3, 3),
+        n=11,
+        modules="mpmath"
+    )
+    s2 = AbsArgLineSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3, 3), "",
+        n=11,
+        modules="mpmath",
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = Parametric2DLineSeries(
+        u * cos(x), u * sin(x), (x, -5, 5), params={u: 1}, n=50)
+    s2 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, -5, 5), n=50)
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = Parametric3DLineSeries(
+        u * cos(x), u * sin(x), u * x, (x, -5, 5), params={u: 1}, n=50
+    )
+    s2 = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, -5, 5),
+        n=50
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = SurfaceOver2DRangeSeries(
+        u * cos(x**2 + y**2), (x, -3, 3), (y, -3, 3),
+        params={u: 1},
+        n1=50, n2=50,
+    )
+    s2 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -3, 3), (y, -3, 3),
+        n1=50, n2=50
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = ParametricSurfaceSeries(
+        u * cos(x + y), sin(x + y), x - y,
+        (x, -3, 3), (y, -3, 3),
+        params={u: 1},
+        n1=50, n2=50,
+    )
+    s2 = ParametricSurfaceSeries(
+        cos(x + y), sin(x + y), x - y,
+        (x, -3, 3), (y, -3, 3),
+        n1=50, n2=50,
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = Vector2DSeries(
+        -u * y, u * x, (x, -3, 3), (y, -2, 2), params={u: 1},
+        n1=15, n2=15
+    )
+    s2 = Vector2DSeries(-y, x, (x, -3, 3), (y, -2, 2), n1=15, n2=15)
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = Vector3DSeries(
+        u * z, -u * y, u * x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1),
+        params={u: 1},
+        n1=15, n2=15, n3=15,
+    )
+    s2 = Vector3DSeries(
+        z, -y, x, (x, -3, 3), (y, -2, 2), (z, -1, 1),
+        n1=15, n2=15, n3=15
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = SliceVector3DSeries(
+        Plane((-u, 0, 0), (1, 0, 0)), u * z, -u * y, u * x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1),
+        params={u: 1},
+        n1=15, n2=15, n3=15,
+    )
+    s2 = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)), z, -y, x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1),
+        n1=15, n2=15, n3=15,
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    # real part of a complex function evaluated over a real line with numpy
+    expr = re((z**2 + 1) / (z**2 - 1))
+    s1 = LineOver1DRangeSeries(
+        u * expr, (z, -3, 3),
+        n=50,
+        modules=None,
+        params={u: 1}
+    )
+    s2 = LineOver1DRangeSeries(
+        expr, (z, -3, 3),
+        n=50,
+        modules=None
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    # real part of a complex function evaluated over a real line with mpmath
+    expr = re((z**2 + 1) / (z**2 - 1))
+    s1 = LineOver1DRangeSeries(
+        u * expr, (z, -3, 3),
+        n=50,
+        modules="mpmath",
+        params={u: 1}
+    )
+    s2 = LineOver1DRangeSeries(
+        expr, (z, -3, 3),
+        n=50,
+        modules="mpmath"
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    # surface over a complex domain
+    s1 = ComplexSurfaceSeries(
+        u * (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        params={u: 1},
+        modules=None,
+    )
+    s2 = ComplexSurfaceSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        modules=None,
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = ComplexSurfaceSeries(
+        u * (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        params={u: 1},
+        modules="mpmath",
+    )
+    s2 = ComplexSurfaceSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        modules="mpmath",
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    # domain coloring or 3D
+    s1 = ComplexDomainColoringSeries(
+        u * (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        params={u: 1},
+        modules=None,
+    )
+    s2 = ComplexDomainColoringSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        modules=None,
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+    s1 = ComplexDomainColoringSeries(
+        u * (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        params={u: 1},
+        modules="mpmath",
+    )
+    s2 = ComplexDomainColoringSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=20, n2=20,
+        modules="mpmath",
+    )
+    do_test(s1.get_data(), s2.get_data())
+
+
+def test_list2dseries_interactive():
+    x, y, u = symbols("x, y, u")
+
+    s = List2DSeries([1, 2, 3], [1, 2, 3])
+    assert not s.is_interactive
+
+    # symbolic expressions as coordinates, but no ``params``
+    raises(ValueError, lambda: List2DSeries([cos(x)], [sin(x)]))
+
+    # too few parameters
+    raises(
+        ValueError,
+        lambda: List2DSeries([cos(x), y], [sin(x), 2], params={u: 1})
+    )
+
+    s = List2DSeries([cos(x)], [sin(x)], params={x: 1})
+    assert s.is_interactive
+
+    s = List2DSeries([x, 2, 3, 4], [4, 3, 2, x], params={x: 3})
+    xx, yy = s.get_data()
+    assert np.allclose(xx, [3, 2, 3, 4])
+    assert np.allclose(yy, [4, 3, 2, 3])
+    assert not s.is_parametric
+
+    # numeric lists + params is present -> interactive series and
+    # lists are converted to Tuple.
+    s = List2DSeries([1, 2, 3], [1, 2, 3], params={x: 1})
+    assert s.is_interactive
+    assert isinstance(s.list_x, Tuple)
+    assert isinstance(s.list_y, Tuple)
+
+
+def test_list3dseries_interactive():
+    x, y, u = symbols("x, y, u")
+
+    s = List3DSeries([1, 2, 3], [1, 2, 3], [1, 2, 3])
+    assert not s.is_interactive
+
+    # symbolic expressions as coordinates, but no ``params``
+    raises(ValueError, lambda: List3DSeries([cos(x)], [sin(x)], [x]))
+
+    # too few parameters
+    raises(
+        ValueError,
+        lambda: List3DSeries([cos(x), y], [sin(x), 2], [x, y], params={u: 1}),
+    )
+
+    s = List3DSeries([cos(x)], [sin(x)], [x], params={x: 1})
+    assert s.is_interactive
+
+    s = List3DSeries([x, 2, 3, 4], [4, 3, 2, x], [1, 3, 4, x], params={x: 3})
+    xx, yy, zz = s.get_data()
+    assert s.is_interactive
+    assert np.allclose(xx, [3, 2, 3, 4])
+    assert np.allclose(yy, [4, 3, 2, 3])
+    assert np.allclose(zz, [1, 3, 4, 3])
+    assert not s.is_parametric
+
+
+def test_mpmath():
+    # test that the argument of complex functions evaluated with mpmath
+    # might be different than the one computed with Numpy (different
+    # behaviour at branch cuts)
+    z, u = symbols("z, u")
+
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        s1 = LineOver1DRangeSeries(
+            im(sqrt(-z)), (z, -5, 5), n=20, modules=None
+        )
+        s2 = LineOver1DRangeSeries(
+            im(sqrt(-z)), (z, -5, 5), n=20, modules="mpmath"
+        )
+        xx1, yy1 = s1.get_data()
+        xx2, yy2 = s2.get_data()
+        assert np.allclose(xx1, xx2)
+        assert not np.allclose(yy1, yy2)
+
+    # here, there will be different values at x+0j for positive x
+    s1 = ComplexSurfaceSeries(
+        arg(sqrt(-z)), (z, -3 - 3j, 3 + 3j), n1=21, n2=21, modules=None
+    )
+    s2 = ComplexSurfaceSeries(
+        arg(sqrt(-z)), (z, -3 - 3j, 3 + 3j), n1=21, n2=21, modules="mpmath"
+    )
+    xx1, yy1, zz1 = s1.get_data()
+    xx2, yy2, zz2 = s2.get_data()
+    assert np.allclose(xx1, xx2)
+    assert np.allclose(yy1, yy2)
+    assert not np.allclose(zz1, zz2)
+
+    s1 = ComplexDomainColoringSeries(
+        arg(sqrt(-z)), (z, -3 - 3j, 3 + 3j),
+        n1=21, n2=21,
+        coloring="a", modules=None
+    )
+    s2 = ComplexDomainColoringSeries(
+        arg(sqrt(-z)), (z, -3 - 3j, 3 + 3j),
+        n1=21, n2=21,
+        coloring="a", modules="mpmath",
+    )
+    xx1, yy1, _, aa1, ii1, _ = s1.get_data()
+    xx2, yy2, _, aa2, ii2, _ = s2.get_data()
+    assert np.allclose(xx1, xx2)
+    assert np.allclose(yy1, yy2)
+    assert not np.allclose(aa1, aa2)
+    assert not np.allclose(ii1, ii2)
+
+
+def test_str():
+    u, x, y, z = symbols("u, x:z")
+
+    s = LineOver1DRangeSeries(cos(x), (x, -4, 3))
+    assert str(s) == "cartesian line: cos(x) for x over (-4, 3)"
+
+    d = {"return": "real"}
+    s = LineOver1DRangeSeries(cos(x), (x, -4, 3), **d)
+    assert str(s) == "cartesian line: re(cos(x)) for x over (-4, 3)"
+
+    d = {"return": "imag"}
+    s = LineOver1DRangeSeries(cos(x), (x, -4, 3), **d)
+    assert str(s) == "cartesian line: im(cos(x)) for x over (-4, 3)"
+
+    d = {"return": "abs"}
+    s = LineOver1DRangeSeries(cos(x), (x, -4, 3), **d)
+    assert str(s) == "cartesian line: abs(cos(x)) for x over (-4, 3)"
+
+    d = {"return": "arg"}
+    s = LineOver1DRangeSeries(cos(x), (x, -4, 3), **d)
+    assert str(s) == "cartesian line: arg(cos(x)) for x over (-4, 3)"
+
+    s = LineOver1DRangeSeries(
+        cos(u * x), (x, -4, 3),
+        params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive cartesian line: cos(u*x) for x over (-4, 3) and parameters (u,)"
+    )
+
+    s = LineOver1DRangeSeries(
+        cos(u * x), (x, -u, 3 * y),
+        params={u: 1, y: 1}
+    )
+    assert (
+        str(s)
+        == "interactive cartesian line: cos(u*x) for x over (-u, 3*y) and parameters (u, y)"
+    )
+
+    s = AbsArgLineSeries(sqrt(x), (x, -5 + 2j, 5 + 2j))
+    assert str(s) == "cartesian abs-arg line: sqrt(x) for x over (-5.0 + 2.0*I, 5.0 + 2.0*I)"
+
+    s = AbsArgLineSeries(cos(u * x), (x, -4, 3), params={u: 1})
+    assert (
+        str(s)
+        == "interactive cartesian abs-arg line: cos(u*x) for x over (-4, 3) and parameters (u,)"
+    )
+
+    s = Parametric2DLineSeries(cos(x), sin(x), (x, -4, 3))
+    assert (
+        str(s) == "parametric cartesian line: (cos(x), sin(x)) for x over (-4, 3)"
+    )
+
+    s = Parametric2DLineSeries(
+        cos(u * x), sin(x), (x, -4, 3),
+        params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive parametric cartesian line: (cos(u*x), sin(x)) for x over (-4, 3) and parameters (u,)"
+    )
+
+    s = Parametric2DLineSeries(
+        cos(u * x), sin(x), (x, -u, 3 * y),
+        params={u: 1, y: 1}
+    )
+    assert (
+        str(s)
+        == "interactive parametric cartesian line: (cos(u*x), sin(x)) for x over (-u, 3*y) and parameters (u, y)"
+    )
+
+    s = Parametric3DLineSeries(cos(x), sin(x), x, (x, -4, 3))
+    assert (
+        str(s)
+        == "3D parametric cartesian line: (cos(x), sin(x), x) for x over (-4, 3)"
+    )
+
+    s = Parametric3DLineSeries(
+        cos(u * x), sin(x), x, (x, -4, 3),
+        params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive 3D parametric cartesian line: (cos(u*x), sin(x), x) for x over (-4, 3) and parameters (u,)"
+    )
+
+    s = Parametric3DLineSeries(
+        cos(u * x), sin(x), x, (x, -u, 3 * y), params={u: 1, y: 1}
+    )
+    assert (
+        str(s)
+        == "interactive 3D parametric cartesian line: (cos(u*x), sin(x), x) for x over (-u, 3*y) and parameters (u, y)"
+    )
+
+    s = SurfaceOver2DRangeSeries(cos(x * y), (x, -4, 3), (y, -2, 5))
+    assert (
+        str(s)
+        == "cartesian surface: cos(x*y) for x over (-4, 3) and y over (-2, 5)"
+    )
+
+    s = SurfaceOver2DRangeSeries(
+        cos(u * x * y), (x, -4, 3), (y, -2, 5),
+        params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive cartesian surface: cos(u*x*y) for x over (-4, 3) and y over (-2, 5) and parameters (u,)"
+    )
+
+    s = SurfaceOver2DRangeSeries(
+        cos(u * x * y), (x, -4 * u, 3), (y, -2, 5 * u), params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive cartesian surface: cos(u*x*y) for x over (-4*u, 3) and y over (-2, 5*u) and parameters (u,)"
+    )
+
+    s = ContourSeries(cos(x * y), (x, -4, 3), (y, -2, 5))
+    assert str(s) == "contour: cos(x*y) for x over (-4, 3) and y over (-2, 5)"
+
+    s = ContourSeries(cos(u * x * y), (x, -4, 3), (y, -2, 5), params={u: 1})
+    assert (
+        str(s)
+        == "interactive contour: cos(u*x*y) for x over (-4, 3) and y over (-2, 5) and parameters (u,)"
+    )
+
+    s = ParametricSurfaceSeries(
+        cos(x * y), sin(x * y), x * y, (x, -4, 3), (y, -2, 5)
+    )
+    assert (
+        str(s)
+        == "parametric cartesian surface: (cos(x*y), sin(x*y), x*y) for x over (-4, 3) and y over (-2, 5)"
+    )
+
+    s = ParametricSurfaceSeries(
+        cos(u * x * y), sin(x * y), x * y, (x, -4, 3), (y, -2, 5),
+        params={u: 1}
+    )
+    assert (
+        str(s)
+        == "interactive parametric cartesian surface: (cos(u*x*y), sin(x*y), x*y) for x over (-4, 3) and y over (-2, 5) and parameters (u,)"
+    )
+
+    s = ImplicitSeries(x < y, (x, -5, 4), (y, -3, 2))
+    assert (
+        str(s)
+        == "Implicit expression: x < y for x over (-5, 4) and y over (-3, 2)"
+    )
+
+    s = ComplexPointSeries(2 + 3 * I)
+    assert str(s) == "complex points: (2 + 3*I,)"
+
+    s = ComplexPointSeries([2 + 3 * I, 4 * I])
+    assert str(s) == "complex points: (2 + 3*I, 4*I)"
+
+    s = ComplexPointSeries(2 + 3 * I * y, params={y: 1})
+    assert str(s) == "interactive complex points: (3*I*y + 2,) and parameters (y,)"
+
+    s = ComplexPointSeries([2 + 3 * I, 4 * I * y], params={y: 1})
+    assert str(s) == "interactive complex points: (2 + 3*I, 4*I*y) and parameters (y,)"
+
+    d = {"threed": False, "return": "real"}
+    s = ComplexSurfaceSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), **d)
+    assert (
+        str(s)
+        == "complex contour: re(sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    d = {"threed": True, "return": "real"}
+    s = ComplexSurfaceSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), **d)
+    assert (
+        str(s)
+        == "complex cartesian surface: re(sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    d = {"threed": True, "return": "imag"}
+    s = ComplexSurfaceSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), **d)
+    assert (
+        str(s)
+        == "complex cartesian surface: im(sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    d = {"threed": True, "return": "abs"}
+    s = ComplexSurfaceSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), **d)
+    assert (
+        str(s)
+        == "complex cartesian surface: abs(sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    d = {"threed": True, "return": "arg"}
+    s = ComplexSurfaceSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), **d)
+    assert (
+        str(s)
+        == "complex cartesian surface: arg(sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    s = ComplexDomainColoringSeries(
+        sqrt(z), (z, -2 - 3j, 4 + 5j), threed=False)
+    assert (
+        str(s)
+        == "complex domain coloring: sqrt(z) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    s = ComplexDomainColoringSeries(sqrt(z), (z, -2 - 3j, 4 + 5j), threed=True)
+    assert (
+        str(s)
+        == "complex 3D domain coloring: sqrt(z) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0)"
+    )
+
+    d = {"return": "real"}
+    s = ComplexSurfaceSeries(
+        x * sqrt(z), (z, -2 - 3j, 4 + 5j), threed=False, params={x: 1}, **d
+    )
+    assert (
+        str(s)
+        == "interactive complex contour: re(x*sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0) and parameters (x,)"
+    )
+
+    s = ComplexSurfaceSeries(
+        x * sqrt(z), (z, -2 - 3j, 4 + 5j), threed=True, params={x: 1}, **d
+    )
+    assert (
+        str(s)
+        == "interactive complex cartesian surface: re(x*sqrt(z)) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0) and parameters (x,)"
+    )
+
+    a, b = symbols("a, b", real=True)
+    s = ComplexSurfaceSeries(
+        x * sqrt(z), (z, -2 * a - 3j, 4 + 5j * b),
+        threed=True,
+        params={x: 1, a: 1, b: 1},
+        **d
+    )
+    assert (
+        str(s)
+        == "interactive complex cartesian surface: re(x*sqrt(z)) for re(z) over (-2*a, 4.0) and im(z) over (-3.0, 5.0*b) and parameters (x, a, b)"
+    )
+
+    s = ComplexDomainColoringSeries(
+        x * sqrt(z), (z, -2 - 3j, 4 + 5j), "test",
+        params={x: 1}, threed=False
+    )
+    assert (
+        str(s)
+        == "interactive complex domain coloring: x*sqrt(z) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0) and parameters (x,)"
+    )
+
+    s = ComplexDomainColoringSeries(
+        x * sqrt(z), (z, -2 - 3j, 4 + 5j), "test", params={x: 1}, threed=True
+    )
+    assert (
+        str(s)
+        == "interactive complex 3D domain coloring: x*sqrt(z) for re(z) over (-2.0, 4.0) and im(z) over (-3.0, 5.0) and parameters (x,)"
+    )
+
+    a, b = symbols("a, b", real=True)
+    s = ComplexDomainColoringSeries(
+        x * sqrt(z), (z, -2 * a - 3j, 4 + 5j * b),
+        threed=True,
+        params={x: 1, a: 1, b: 1},
+    )
+    assert (
+        str(s)
+        == "interactive complex 3D domain coloring: x*sqrt(z) for re(z) over (-2*a, 4.0) and im(z) over (-3.0, 5.0*b) and parameters (x, a, b)"
+    )
+
+    s = Vector2DSeries(-y, x, (x, -5, 4), (y, -3, 2))
+    assert str(s) == "2D vector series: [-y, x] over (x, -5.0, 4.0), (y, -3.0, 2.0)"
+
+    s = Vector3DSeries(z, y, x, (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    assert (
+        str(s)
+        == "3D vector series: [z, y, x] over (x, -5.0, 4.0), (y, -3.0, 2.0), (z, -6.0, 7.0)"
+    )
+
+    s = Vector2DSeries(
+        -y, x * z, (x, -5, 4), (y, -3, 2), "test",
+        params={z: 1}
+    )
+    assert (
+        str(s)
+        == "interactive 2D vector series: [-y, x*z] over (x, -5.0, 4.0), (y, -3.0, 2.0) and parameters (z,)"
+    )
+
+    a, b = symbols("a, b")
+    s = Vector2DSeries(
+        -y, x * z, (x, -5 * a, 4 * b), (y, -3 * b, 2 * a), "test",
+        params={z: 1, a: 1, b: 1},
+    )
+    assert (
+        str(s)
+        == "interactive 2D vector series: [-y, x*z] over (x, -5*a, 4*b), (y, -3*b, 2*a) and parameters (z, a, b)"
+    )
+
+    s = Vector3DSeries(
+        -y, x * z, x,
+        (x, -5, 4), (y, -3, 2), (z, -6, 7), "test",
+        params={z: 1}
+    )
+    assert (
+        str(s)
+        == "interactive 3D vector series: [-y, x*z, x] over (x, -5.0, 4.0), (y, -3.0, 2.0), (z, -6.0, 7.0) and parameters (z,)"
+    )
+
+    s = SliceVector3DSeries(
+        Plane((0, 0, 0), (1, 0, 0)), z, y, x,
+        (x, -5, 4), (y, -3, 2), (z, -6, 7)
+    )
+    assert (
+        str(s)
+        == "sliced 3D vector series: [z, y, x] over (x, -5.0, 4.0), (y, -3.0, 2.0), (z, -6.0, 7.0) at plane series: Plane(Point3D(0, 0, 0), (1, 0, 0)) over (x, -5, 4), (y, -3, 2), (z, -6, 7)"
+    )
+
+    s = SliceVector3DSeries(
+        Plane((0, 0, 0), (1, 0, 0)), u * z, u * y, x,
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        params={u: 1},
+    )
+    assert (
+        str(s)
+        == "sliced interactive 3D vector series: [u*z, u*y, x] over (x, -5.0, 4.0), (y, -3.0, 2.0), (z, -6.0, 7.0) and parameters (u,) at plane series: Plane(Point3D(0, 0, 0), (1, 0, 0)) over (x, -5, 4), (y, -3, 2), (z, -6, 7)"
+    )
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)),
+        (x, -5, 4), (y, -3, 2), (z, -6, 7)
+    )
+    assert (
+        str(s)
+        == "plane series: Plane(Point3D(0, 0, 0), (1, 1, 1)) over (x, -5, 4), (y, -3, 2), (z, -6, 7)"
+    )
+
+    s = PlaneSeries(
+        Plane((z, 0, 0), (1, 1, 1)),
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        params={z: 1}
+    )
+    assert (
+        str(s)
+        == "interactive plane series: Plane(Point3D(z, 0, 0), (1, 1, 1)) over (x, -5, 4), (y, -3, 2), (z, -6, 7) and parameters (z,)"
+    )
+
+    s = Geometry2DSeries(Circle(Point(0, 0), 5))
+    assert str(s) == "2D geometry entity: Circle(Point2D(0, 0), 5)"
+
+    s = Geometry2DSeries(Circle(Point(x, 0), 5), params={x: 1})
+    assert (
+        str(s)
+        == "interactive 2D geometry entity: Circle(Point2D(x, 0), 5) and parameters (x,)"
+    )
+
+    s = Implicit3DSeries(
+        x**2 + y**3 - z**2, (x, -2, 2), (y, -3, 3), (z, -4, 4))
+    assert (
+        str(s)
+        == "implicit surface series: x**2 + y**3 - z**2 for x over (-2.0, 2.0) and y over (-3.0, 3.0) and z over (-4.0, 4.0)"
+    )
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+def test_str_control_system():
+
+    s, o = symbols("s, o")
+    tf = TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)
+    ser = NicholsLineSeries(tf, (o, 0.01, 100))
+    assert (
+        str(ser)
+        == "nichols line of TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)"
+    )
+
+    a, b, c = symbols("a:c")
+    tf = TransferFunction(a*s**2 + b*s + c, s**3 + 10*s**2 + 5 * s + 1, s)
+    ser = NicholsLineSeries(
+        tf, (o, 0.01, 100),
+        params={a: 1, b: 2, c: 3})
+    assert (
+        str(ser)
+        == "interactive nichols line of TransferFunction(a*s**2 + b*s + c, s**3 + 10*s**2 + 5*s + 1, s) and parameters (a, b, c)"
+    )
+
+    tf = TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)
+    ser = NyquistLineSeries(tf, (o, 0.01, 100))
+    assert (
+        str(ser)
+        == "nyquist line of TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)"
+    )
+
+    tf = TransferFunction(a*s**2 + b*s + c, s**3 + 10*s**2 + 5 * s + 1, s)
+    ser = NyquistLineSeries(tf, (o, 0.01, 100), params={a: 1, b: 2, c: 3})
+    assert (
+        str(ser)
+        == "interactive nyquist line of TransferFunction(a*s**2 + b*s + c, s**3 + 10*s**2 + 5*s + 1, s) and parameters (a, b, c)"
+    )
+
+    tf = TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)
+    ser = SystemResponseSeries(tf, (o, 0.01, 100), response_type="step")
+    assert (
+        str(ser)
+        == "step response of TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)"
+    )
+
+    ser = SystemResponseSeries(tf, (o, 0.01, 100), response_type="impulse")
+    assert (
+        str(ser)
+        == "impulse response of TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)"
+    )
+
+    ser = SystemResponseSeries(tf, (o, 0.01, 100), response_type="ramp")
+    assert (
+        str(ser)
+        == "ramp response of TransferFunction(50*s**2 - 20*s + 15, -10*s**2 + 40*s + 30, s)"
+    )
+
+
+@pytest.mark.parametrize("use_cm", [True, False])
+def test_use_cm(use_cm):
+    # verify that the `use_cm` attribute is implemented.
+
+    u, x, y, z = symbols("u, x:z")
+
+    s = List2DSeries([1, 2, 3, 4], [5, 6, 7, 8], use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+    s = List3DSeries(
+        [1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12],
+        use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = AbsArgLineSeries(sqrt(x), (x, -5 + 2j, 5 + 2j), use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+    s = Parametric2DLineSeries(cos(x), sin(x), (x, -4, 3), use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+    s = Parametric3DLineSeries(cos(x), sin(x), x, (x, -4, 3), use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x * y), (x, -4, 3), (y, -2, 5),
+        use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = ParametricSurfaceSeries(
+        cos(x * y), sin(x * y), x * y, (x, -4, 3), (y, -2, 5),
+        use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = ComplexSurfaceSeries(
+        sqrt(z), (z, -2 - 3j, 4 + 5j),
+        threed=False, use_cm=use_cm
+    )
+    assert s.use_cm is True
+
+    s = ComplexSurfaceSeries(
+        sqrt(z), (z, -2 - 3j, 4 + 5j),
+        threed=True, use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = ComplexDomainColoringSeries(
+        sqrt(z), (z, -2 - 3j, 4 + 5j), threed=False, use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = ComplexDomainColoringSeries(
+        sqrt(z), (z, -2 - 3j, 4 + 5j), threed=True, use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = Vector2DSeries(-y, x, (x, -5, 4), (y, -3, 2), use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+    s = Vector3DSeries(
+        z, y, x,
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = SliceVector3DSeries(
+        Plane((0, 0, 0), (1, 0, 0)), z, y, x,
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        use_cm=use_cm,
+    )
+    assert s.use_cm is use_cm
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)),
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        use_cm=use_cm
+    )
+    assert s.use_cm is use_cm
+
+    s = Geometry2DSeries(Circle(Point(0, 0), 5), use_cm=use_cm)
+    assert s.use_cm is use_cm
+
+
+def test_sums():
+    # test that data series are able to deal with sums
+    x, y, u = symbols("x, y, u")
+
+    def do_test(data1, data2):
+        assert len(data1) == len(data2)
+        for d1, d2 in zip(data1, data2):
+            assert np.allclose(d1, d2)
+
+    s = LineOver1DRangeSeries(
+        Sum(1 / x**y, (x, 1, 1000)), (y, 2, 10),
+        only_integers=True
+    )
+    xx, yy = s.get_data()
+
+    s1 = LineOver1DRangeSeries(
+        Sum(1 / x, (x, 1, y)), (y, 2, 10),
+        only_integers=True
+    )
+    xx1, yy1 = s1.get_data()
+
+    s2 = LineOver1DRangeSeries(
+        Sum(u / x, (x, 1, y)), (y, 2, 10),
+        params={u: 1}, only_integers=True
+    )
+    xx2, yy2 = s2.get_data()
+    xx1 = xx1.astype(float)
+    xx2 = xx2.astype(float)
+    do_test([xx1, yy1], [xx2, yy2])
+
+
+def test_absargline():
+    # verify that AbsArgLineSeries produces the correct results
+    x, u = symbols("x, u")
+
+    s1 = AbsArgLineSeries(sqrt(x), (x, -5, 5), n=10)
+    s2 = AbsArgLineSeries(
+        sqrt(u * x), (x, -5, 5),
+        n=10, params={u: 1}
+    )
+    data1 = s1.get_data()
+    data2 = s2.get_data()
+    assert len(data1) == len(data2)
+    for d1, d2 in zip(data1, data2):
+        assert np.allclose(d1, d2)
+    # there shouldn't be nan values
+    assert np.invert(np.isnan(data1[1])).all()
+    assert np.invert(np.isnan(data1[2])).all()
+
+
+def test_apply_transforms():
+    # verify that transformation functions get applied to the output
+    # of data series
+    s, t, x, y, z, u, v = symbols("s, t, x:z, u, v")
+
+    s1 = LineOver1DRangeSeries(
+        cos(x), (x, -2 * pi, 2 * pi),
+        n=10
+    )
+    s2 = LineOver1DRangeSeries(
+        cos(x), (x, -2 * pi, 2 * pi),
+        n=10,
+        tx=np.rad2deg
+    )
+    s3 = LineOver1DRangeSeries(
+        cos(x), (x, -2 * pi, 2 * pi),
+        n=10,
+        ty=np.rad2deg
+    )
+    s4 = LineOver1DRangeSeries(
+        cos(x), (x, -2 * pi, 2 * pi),
+        n=10,
+        tx=np.rad2deg, ty=np.rad2deg
+    )
+
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    x3, y3 = s3.get_data()
+    x4, y4 = s4.get_data()
+    assert np.isclose(x1[0], -2 * np.pi) and np.isclose(x1[-1], 2 * np.pi)
+    assert (y1.min() < -0.9) and (y1.max() > 0.9)
+    assert np.isclose(x2[0], -360) and np.isclose(x2[-1], 360)
+    assert (y2.min() < -0.9) and (y2.max() > 0.9)
+    assert np.isclose(x3[0], -2 * np.pi) and np.isclose(x3[-1], 2 * np.pi)
+    assert (y3.min() < -52) and (y3.max() > 52)
+    assert np.isclose(x4[0], -360) and np.isclose(x4[-1], 360)
+    assert (y4.min() < -52) and (y4.max() > 52)
+
+    xx = np.linspace(-2 * np.pi, 2 * np.pi, 10)
+    yy = np.cos(xx)
+    s1 = List2DSeries(xx, yy)
+    s2 = List2DSeries(xx, yy, tx=np.rad2deg, ty=np.rad2deg)
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    assert np.isclose(x1[0], -2 * np.pi) and np.isclose(x1[-1], 2 * np.pi)
+    assert (y1.min() < -0.9) and (y1.max() > 0.9)
+    assert np.isclose(x2[0], -360) and np.isclose(x2[-1], 360)
+    assert (y2.min() < -52) and (y2.max() > 52)
+
+    zz = np.linspace(-2 * np.pi, 2 * np.pi, 10)
+    xx = np.cos(zz)
+    yy = np.cos(zz)
+    s1 = List3DSeries(xx, yy, zz)
+    s2 = List3DSeries(
+        xx, yy, zz,
+        tx=lambda t: 2 * t,
+        ty=lambda t: 3 * t,
+        tz=lambda t: 4 * t
+    )
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    assert np.allclose(xx, x1) and np.allclose(yy, y1) and np.allclose(zz, z1)
+    assert np.allclose(xx, x2 / 2)
+    assert np.allclose(yy, y2 / 3)
+    assert np.allclose(zz, z2 / 4)
+
+    s1 = AbsArgLineSeries(
+        cos(x) + sin(I * x), (x, -2 * pi, 2 * pi),
+        n=10
+    )
+    s2 = AbsArgLineSeries(
+        cos(x) + sin(I * x), (x, -2 * pi, 2 * pi),
+        n=10,
+        tx=np.rad2deg,
+        ty=lambda x: 2 * x,
+        tz=lambda x: 3 * x,
+    )
+    x1, y1, a1 = s1.get_data()
+    x2, y2, a2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, y2 / 2)
+    assert np.allclose(a1, a2 / 3)
+
+    s1 = Parametric2DLineSeries(
+        sin(x), cos(x), (x, -pi, pi),
+        n=10
+    )
+    s2 = Parametric2DLineSeries(
+        sin(x), cos(x), (x, -pi, pi),
+        n=10,
+        tx=np.rad2deg,
+        ty=np.rad2deg,
+        tp=np.rad2deg,
+    )
+    x1, y1, a1 = s1.get_data()
+    x2, y2, a2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, np.deg2rad(y2))
+    assert np.allclose(a1, np.deg2rad(a2))
+
+    s1 = Parametric3DLineSeries(
+        sin(x), cos(x), x, (x, -pi, pi),
+        n=10)
+    s2 = Parametric3DLineSeries(
+        sin(x), cos(x), x, (x, -pi, pi),
+        n=10, tp=np.rad2deg
+    )
+    x1, y1, z1, a1 = s1.get_data()
+    x2, y2, z2, a2 = s2.get_data()
+    assert np.allclose(x1, x2)
+    assert np.allclose(y1, y2)
+    assert np.allclose(z1, z2)
+    assert np.allclose(a1, np.deg2rad(a2))
+
+    s1 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2),
+        (x, -2 * pi, 2 * pi), (y, -2 * pi, 2 * pi),
+        n1=10, n2=10,
+    )
+    s2 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2),
+        (x, -2 * pi, 2 * pi), (y, -2 * pi, 2 * pi),
+        n1=10, n2=10,
+        tx=np.rad2deg,
+        ty=lambda x: 2 * x,
+        tz=lambda x: 3 * x,
+    )
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, y2 / 2)
+    assert np.allclose(z1, z2 / 3)
+
+    plane = Plane((-1, 0, 0), (1, 1, 1))
+    s1 = PlaneSeries(plane, (x, -2, 2), (y, -2, 2), (z, -2, 2))
+    s2 = PlaneSeries(
+        plane, (x, -2, 2), (y, -2, 2), (z, -2, 2),
+        tx=lambda x: x*2, ty=lambda y: y*3, tz=lambda z: z*4)
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    assert np.allclose(x2, x1*2)
+    assert np.allclose(y2, y1*3)
+    assert np.allclose(z2, z1*4, equal_nan=True)
+
+    s1 = ParametricSurfaceSeries(
+        u + v, u - v, u * v,
+        (u, 0, 2 * pi), (v, 0, pi),
+        n1=10, n2=10
+    )
+    s2 = ParametricSurfaceSeries(
+        u + v, u - v, u * v,
+        (u, 0, 2 * pi), (v, 0, pi),
+        n1=10, n2=10,
+        tx=np.rad2deg,
+        ty=lambda x: 2 * x,
+        tz=lambda x: 3 * x,
+    )
+    x1, y1, z1, u1, v1 = s1.get_data()
+    x2, y2, z2, u2, v2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, y2 / 2)
+    assert np.allclose(z1, z2 / 3)
+    assert np.allclose(u1, u2)
+    assert np.allclose(v1, v2)
+
+    s1 = Vector2DSeries(sin(y), cos(x), (x, -pi, pi), (y, -pi, pi), n1=5, n2=5)
+    s2 = Vector2DSeries(
+        sin(y), cos(x),
+        (x, -pi, pi), (y, -pi, pi),
+        n1=5, n2=5,
+        tx=np.rad2deg,
+        ty=lambda x: 2 * x,
+    )
+    x1, y1, u1, v1 = s1.get_data()
+    x2, y2, u2, v2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, y2 / 2)
+    assert np.allclose(u1, np.deg2rad(u2))
+    assert np.allclose(v1, v2 / 2)
+
+    s1 = Vector3DSeries(
+        x, y, z,
+        (x, -1, 1), (y, -1, 1), (z, -1, 1),
+        n1=5, n2=5, n3=5
+    )
+    s2 = Vector3DSeries(
+        x, y, z,
+        (x, -1, 1), (y, -1, 1), (z, -1, 1),
+        n1=5, n2=5, n3=5,
+        tx=np.rad2deg,
+        ty=lambda x: 2 * x,
+        tz=lambda x: 3 * x,
+    )
+    x1, y1, z1, u1, v1, w1 = s1.get_data()
+    x2, y2, z2, u2, v2, w2 = s2.get_data()
+    assert np.allclose(x1, np.deg2rad(x2))
+    assert np.allclose(y1, y2 / 2)
+    assert np.allclose(z1, z2 / 3)
+    assert np.allclose(u1, np.deg2rad(u2))
+    assert np.allclose(v1, v2 / 2)
+    assert np.allclose(w1, w2 / 3)
+
+    s1 = ComplexPointSeries([1 + 2 * I, 3 + 4 * I])
+    s2 = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I],
+        tx=lambda x: x*2, ty=lambda y: y*3)
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    assert np.allclose(x2, x1*2)
+    assert np.allclose(y2, y1*3)
+
+    s1 = ComplexSurfaceSeries(sqrt(x), (x, -2-2j, 2+2j), n1=10, n2=10)
+    s2 = ComplexSurfaceSeries(
+        sqrt(x), (x, -2-2j, 2+2j), n1=10, n2=10,
+        tx=lambda x: x*2, ty=lambda y: y*3, tz=lambda z: z*4)
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    assert np.allclose(x2, x1*2)
+    assert np.allclose(y2, y1*3)
+    assert np.allclose(z2, z1*4)
+
+    s1 = ComplexDomainColoringSeries(
+        (z**2 + 1) / (z**2 - 1), (z, -3 - 4 * I, 3 + 4 * I),
+        n1=10, n2=10
+    )
+    s2 = ComplexDomainColoringSeries(
+        (z**2 + 1) / (z**2 - 1),
+        (z, -3 - 4 * I, 3 + 4 * I),
+        n1=10, n2=10,
+        tx=lambda t: t*2,
+        ty=lambda t: t*3,
+        tz=lambda t: t*4,
+    )
+    x1, y1, z1, a1, b1, c1 = s1.get_data()
+    x2, y2, z2, a2, b2, c2 = s2.get_data()
+    assert np.allclose(x1*2, x2)
+    assert np.allclose(y1*3, y2)
+    assert np.allclose(z1*4, z2)
+    assert np.allclose(a1, a2)
+    assert np.allclose(b1, b2)
+    assert np.allclose(c1, c2)
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+def test_apply_transforms_control():
+    s, t = symbols("s, t")
+
+    G = (8*s**2 + 18*s + 32) / (s**3 + 6*s**2 + 14*s + 24)
+    s1 = SystemResponseSeries(G, (t, 0, 10), n=10)
+    s2 = SystemResponseSeries(
+        G, (t, 0, 10), n=10, tx=lambda x: x+1, ty=lambda y: y-1)
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    assert np.allclose(x2, x1 + 1)
+    assert np.allclose(y2, y1 - 1)
+
+    s1 = ColoredSystemResponseSeries(
+        G, (t, 0, 10), n=10, color_func=lambda x, y: x*y)
+    s2 = ColoredSystemResponseSeries(
+        G, (t, 0, 10), n=10, color_func=lambda x, y: x*y,
+        tx=lambda x: x+1, ty=lambda y: y-1)
+    x1, y1, p1 = s1.get_data()
+    x2, y2, p2 = s2.get_data()
+    assert np.allclose(p1, x1 * y1)
+    assert np.allclose(x2, x1 + 1)
+    assert np.allclose(y2, y1 - 1)
+    assert np.allclose(p2, p1)
+
+    s1 = PoleZeroSeries(G, return_poles=True)
+    s2 = PoleZeroSeries(
+        G, return_poles=True, tx=lambda x: x+1, ty=lambda y: y-1)
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    assert np.allclose(x2, x1 + 1)
+    assert np.allclose(y2, y1 - 1)
+
+
+@pytest.mark.parametrize(
+    "g",
+    [
+        Circle(Point(0, 0), 5),
+        Ellipse(Point(0, 0), 5, 1),
+        Segment(Point(4, 3), Point(1, 1)),
+        Line(Point(2,3), Point(3,5)),
+        Point(1, 1),
+        Polygon((0,0), 1, n=3),
+    ]
+)
+def test_apply_transforms_geometry_2d(g):
+    s1 = Geometry2DSeries(g)
+    s2 = Geometry2DSeries(g, tx=lambda x: x*2, ty=lambda y: y*3)
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    assert np.allclose(x2, x1*2)
+    assert np.allclose(y2, y1*3)
+
+
+@pytest.mark.parametrize(
+    "g",
+    [
+        Point3D(2, 3, 4),
+        Line3D(Point3D(2, 3, 4), Point3D(3, 5, 1)),
+    ]
+)
+def test_apply_transforms_geometry_3d(g):
+    s1 = Geometry3DSeries(g)
+    s2 = Geometry3DSeries(
+        g, tx=lambda x: x*2, ty=lambda y: y*3, tz=lambda z: z*4)
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    assert np.allclose(x2, x1*2)
+    assert np.allclose(y2, y1*3)
+    assert np.allclose(z2, z1*4)
+
+
+def test_series_labels():
+    # verify that series return the correct label, depending on the plot
+    # type and input arguments. If the user set custom label on a data series,
+    # it should returned un-modified.
+
+    x, y, z, u, v = symbols("x, y, z, u, v")
+    wrapper = "$%s$"
+
+    expr = cos(x)
+    s1 = LineOver1DRangeSeries(expr, (x, -2, 2), None)
+    s2 = LineOver1DRangeSeries(expr, (x, -2, 2), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = (cos(x), sin(x))
+    s1 = Parametric2DLineSeries(*expr, (x, -2, 2), None, use_cm=True)
+    s2 = Parametric2DLineSeries(*expr, (x, -2, 2), "test", use_cm=True)
+    s3 = Parametric2DLineSeries(*expr, (x, -2, 2), None, use_cm=False)
+    s4 = Parametric2DLineSeries(*expr, (x, -2, 2), "test", use_cm=False)
+    assert s1.get_label(False) == "x"
+    assert s1.get_label(True) == wrapper % "x"
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+    assert s3.get_label(False) == str(expr)
+    assert s3.get_label(True) == wrapper % latex(expr)
+    assert s4.get_label(False) == "test"
+    assert s4.get_label(True) == "test"
+
+    expr = (cos(x), sin(x), x)
+    s1 = Parametric3DLineSeries(*expr, (x, -2, 2), None, use_cm=True)
+    s2 = Parametric3DLineSeries(*expr, (x, -2, 2), "test", use_cm=True)
+    s3 = Parametric3DLineSeries(*expr, (x, -2, 2), None, use_cm=False)
+    s4 = Parametric3DLineSeries(*expr, (x, -2, 2), "test", use_cm=False)
+    assert s1.get_label(False) == "x"
+    assert s1.get_label(True) == wrapper % "x"
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+    assert s3.get_label(False) == str(expr)
+    assert s3.get_label(True) == wrapper % latex(expr)
+    assert s4.get_label(False) == "test"
+    assert s4.get_label(True) == "test"
+
+    expr = cos(x**2 + y**2)
+    s1 = SurfaceOver2DRangeSeries(expr, (x, -2, 2), (y, -2, 2), None)
+    s2 = SurfaceOver2DRangeSeries(expr, (x, -2, 2), (y, -2, 2), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = (cos(x - y), sin(x + y), x - y)
+    s1 = ParametricSurfaceSeries(*expr, (x, -2, 2), (y, -2, 2), None)
+    s2 = ParametricSurfaceSeries(*expr, (x, -2, 2), (y, -2, 2), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = Eq(cos(x - y), 0)
+    s1 = ImplicitSeries(expr, (x, -10, 10), (y, -10, 10), None)
+    s2 = ImplicitSeries(expr, (x, -10, 10), (y, -10, 10), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+    expr = x**2 + y**2 - 5
+    s3 = ImplicitSeries(expr, (x, -10, 10), (y, -10, 10), None)
+    assert s3.get_label(False) == f"Eq({str(expr)}, 0)"
+    assert s3.get_label(True) == wrapper % (latex(expr) + " = 0")
+
+    expr = (-sin(y), cos(x))
+    s1 = Vector2DSeries(*expr, (x, -2, 2), (y, -2, 2), None)
+    s2 = Vector2DSeries(*expr, (x, -2, 2), (y, -2, 2), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = (-sin(y), cos(x), cos(z))
+    s1 = Vector3DSeries(*expr, (x, -2, 2), (y, -2, 2), (z, -2, 2), None)
+    s2 = Vector3DSeries(*expr, (x, -2, 2), (y, -2, 2), (z, -2, 2), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    s1 = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)), *expr,
+        (x, -2, 2), (y, -2, 2), (z, -2, 2), None
+    )
+    s2 = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)), *expr,
+        (x, -2, 2), (y, -2, 2), (z, -2, 2), "test"
+    )
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    plane = Plane((-1, 0, 0), (1, 1, 0))
+    s1 = PlaneSeries(plane, (x, -2, 2), (y, -2, 2), (z, -2, 2), None)
+    s2 = PlaneSeries(plane, (x, -2, 2), (y, -2, 2), (z, -2, 2), "test")
+    assert s1.get_label(False) == str(plane)
+    assert s1.get_label(True) == wrapper % latex(plane)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = Circle(Point(0, 0), 5)
+    s1 = Geometry2DSeries(expr, label=None)
+    s2 = Geometry2DSeries(expr, label="test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    s1 = List2DSeries([0, 1, 2, 3], [0, 1, 2, 3], "test")
+    assert s1.get_label(False) == "test"
+    assert s1.get_label(True) == "test"
+
+    s1 = List3DSeries([0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3], "test")
+    assert s1.get_label(False) == "test"
+    assert s1.get_label(True) == "test"
+
+    s1 = ComplexPointSeries([1 + 2 * I, 3 + 4 * I], "test")
+    assert s1.get_label(False) == "test"
+    assert s1.get_label(True) == "test"
+
+    expr = cos(x)
+    s1 = AbsArgLineSeries(expr, (x, 1e-05, 1e05), None)
+    s2 = AbsArgLineSeries(expr, (x, 1e-05, 1e05), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = sqrt(x)
+    s1 = ComplexSurfaceSeries(expr, (x, -3.5 - 2.5j, 3.5 + 2.5j), None)
+    s2 = ComplexSurfaceSeries(expr, (x, -3.5 - 2.5j, 3.5 + 2.5j), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = sqrt(x)
+    s1 = ComplexDomainColoringSeries(expr, (x, -3.5 - 2.5j, 3.5 + 2.5j), None)
+    s2 = ComplexDomainColoringSeries(
+        expr, (x, -3.5 - 2.5j, 3.5 + 2.5j), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    expr = x**2 + y**3 - z**2
+    s1 = Implicit3DSeries(expr, (x, -2, 2), (y, -3, 3), (z, -4, 4), None)
+    s2 = Implicit3DSeries(expr, (x, -2, 2), (y, -3, 3), (z, -4, 4), "test")
+    assert s1.get_label(False) == str(expr)
+    assert s1.get_label(True) == wrapper % latex(expr)
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    s1 = Arrow2DSeries((0, 1), (2, 3))
+    assert s1.get_label(False) == "(0.0, 1.0) -> (2.0, 4.0)"
+    assert s1.get_label(True) == r"$\left(0.0, 1.0\right) \rightarrow \left(2.0, 4.0\right)$"
+    s2 = Arrow2DSeries((0, 1), (2, 3), "test")
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+    s1 = Arrow3DSeries((0, 1, 2), (3, 4, 5))
+    assert s1.get_label(False) == "(0.0, 1.0, 2.0) -> (3.0, 5.0, 7.0)"
+    assert s1.get_label(True) == r"$\left(0.0, 1.0, 2.0\right) \rightarrow \left(3.0, 5.0, 7.0\right)$"
+    s2 = Arrow3DSeries((0, 1, 2), (3, 4, 5), "test")
+    assert s2.get_label(False) == "test"
+    assert s2.get_label(True) == "test"
+
+
+@pytest.mark.parametrize(
+    "use_cm", [None, True, False]
+)
+def test_surface_use_cm(use_cm):
+    # verify that SurfaceOver2DRangeSeries and ParametricSurfaceSeries get
+    # the same value for use_cm
+
+    x, y, u, v = symbols("x, y, u, v")
+    kwargs = {}
+    if use_cm is not None:
+        kwargs["use_cm"] = use_cm
+
+    # they read the same value from default settings
+    s1 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2), **kwargs)
+    s2 = ParametricSurfaceSeries(
+        u * cos(v), u * sin(v), u, (u, 0, 1), (v, 0, 2 * pi), **kwargs)
+    assert s1.use_cm == s2.use_cm
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_sliced_vector_interactive_series():
+    # verify that interactive SliceVector3DSeries using an instance of
+    # SurfaceBaseSeries as a slice, produced the correct results,
+    # ie both the vector series and the slice series updates their parameters.
+    x, y, z, u, v, t = symbols("x, y, z, u, v, t")
+
+    N = CoordSys3D("N")
+    i, j, k = N.base_vectors()
+    xn, yn, zn = N.base_scalars()
+    expr = -(xn**2) * tan(t) ** 2 + yn**2 + zn**2
+    g = gradient(expr)
+    m = g.magnitude()
+
+    slice_series = ParametricSurfaceSeries(
+        u / tan(t), u * cos(v), u * sin(v),
+        (u, 0.0, 1.0), (v, 0.0, 2 * pi),
+        label="slice",
+        params={t: 0.5},
+        n1=5, n2=5,
+    )
+    slice_copy = ParametricSurfaceSeries(
+        u / tan(t), u * cos(v), u * sin(v),
+        (u, 0.0, 1.0), (v, 0.0, 2 * pi),
+        label="slice_copy",
+        params={t: 0.5},
+        n1=5, n2=5,
+    )
+    s = SliceVector3DSeries(
+        slice_series, *(g / m).to_matrix(N),
+        (xn, -5, 5), (yn, -5, 5), (zn, -5, 5),
+        label="vector",
+        params={t: 0.5}
+    )
+
+    x1, y1, z1, _, _ = slice_copy.get_data()
+    x3, y3, z3, _, _ = slice_series.get_data()
+    x2, y2, z2, _, _, _ = s.get_data()
+    assert np.allclose(x1, x2) and np.allclose(y1, y2) and np.allclose(z1, z2)
+    assert np.allclose(x1, x3) and np.allclose(y1, y3) and np.allclose(z1, z3)
+
+    # now update the parameter: slice shoud produce the same data as slice_copy
+    v = 0.25
+    slice_copy.params = {t: v}
+    s.params = {t: v}
+    x1, y1, z1, _, _ = slice_copy.get_data()
+    x3, y3, z3, _, _ = slice_series.get_data()
+    x2, y2, z2, _, _, _ = s.get_data()
+    assert np.allclose(x1, x2) and np.allclose(y1, y2) and np.allclose(z1, z2)
+    assert np.allclose(x1, x3) and np.allclose(y1, y3) and np.allclose(z1, z3)
+
+
+def test_sliced_vector_series_slice_exprs():
+    # given a vector field discretized in some domain, for example x,y,z,
+    # the slice expression can be f(x, y) or f(y, z) or f(x, z) and the series
+    # would return correct data.
+
+    x, y, z = symbols("x, y, z")
+
+    _slice_xy = cos(sqrt(x**2 + y**2))
+    s = SliceVector3DSeries(
+        _slice_xy, z, y, x,
+        (x, -10, 10), (y, -5, 5), (z, -3, 3),
+        n1=4, n2=8, n3=12
+    )
+    data = s.get_data()
+    assert all(d.shape == (8, 4) for d in data)
+    assert np.allclose(data[0][0, :], np.linspace(-10, 10, 4))
+    assert np.allclose(data[1][:, 0], np.linspace(-5, 5, 8))
+
+    _slice_yz = cos(sqrt(y**2 + z**2))
+    s = SliceVector3DSeries(
+        _slice_yz, z, y, x,
+        (x, -10, 10), (y, -5, 5), (z, -3, 3),
+        n1=4, n2=8, n3=12
+    )
+    data = s.get_data()
+    assert all(d.shape == (12, 8) for d in data)
+    assert np.allclose(data[1][0, :], np.linspace(-5, 5, 8))
+    assert np.allclose(data[2][:, 0], np.linspace(-3, 3, 12))
+
+    _slice_xz = cos(sqrt(x**2 + z**2))
+    s = SliceVector3DSeries(
+        _slice_xz, z, y, x,
+        (x, -10, 10), (y, -5, 5), (z, -3, 3),
+        n1=4, n2=8, n3=12
+    )
+    data = s.get_data()
+    assert all(d.shape == (12, 4) for d in data)
+    assert np.allclose(data[0][0, :], np.linspace(-10, 10, 4))
+    assert np.allclose(data[2][:, 0], np.linspace(-3, 3, 12))
+
+
+def test_sliced_vector_series_slice_instantiation():
+    # verify that the sliced surface is instantiated correctly.
+
+    x, y, z, t = symbols("x, y, z, t")
+
+    _slice_xy = cos(sqrt(x**2 + y**2))
+    s = SliceVector3DSeries(
+        _slice_xy, z, y, x,
+        (x, -10, 10), (y, -5, 5), (z, -3, 3),
+        n1=4, n2=8, n3=12
+    )
+    assert isinstance(s.slice_surf_series, SurfaceOver2DRangeSeries)
+    assert not s.slice_surf_series.is_interactive
+
+    _slice_xy = cos(sqrt(x**2 + y**2)) * t
+    s = SliceVector3DSeries(
+        _slice_xy, z, y, x,
+        (x, -10, 10), (y, -5, 5), (z, -3, 3),
+        n1=4, n2=8, n3=12,
+        params={t: 1},
+    )
+    assert isinstance(s.slice_surf_series, SurfaceOver2DRangeSeries)
+    assert s.slice_surf_series.is_interactive
+
+
+def test_is_polar_2d_parametric():
+    # verify that Parametric2DLineSeries isable to apply polar discretization,
+    # which is used when polar_plot is executed with polar_axis=True
+    t, u = symbols("t u")
+
+    # NOTE: a sufficiently big n must be provided, or else tests
+    # are going to fail
+    # No colormap
+    f = sin(4 * t)
+    s1 = Parametric2DLineSeries(
+        f * cos(t), f * sin(t), (t, 0, 2 * pi),
+        n=10,
+        is_polar=False,
+        use_cm=False,
+    )
+    x1, y1, p1 = s1.get_data()
+    s2 = Parametric2DLineSeries(
+        f * cos(t), f * sin(t), (t, 0, 2 * pi),
+        n=10,
+        is_polar=True,
+        use_cm=False,
+    )
+    th, r, p2 = s2.get_data()
+    assert (not np.allclose(x1, th)) and (not np.allclose(y1, r))
+    assert np.allclose(p1, p2)
+
+    # With colormap
+    s3 = Parametric2DLineSeries(
+        f * cos(t), f * sin(t), (t, 0, 2 * pi),
+        n=10,
+        is_polar=False,
+        color_func=lambda t: 2 * t,
+    )
+    x3, y3, p3 = s3.get_data()
+    s4 = Parametric2DLineSeries(
+        f * cos(t), f * sin(t), (t, 0, 2 * pi),
+        n=10,
+        is_polar=True,
+        color_func=lambda t: 2 * t,
+    )
+    th4, r4, p4 = s4.get_data()
+    assert np.allclose(p3, p4) and (not np.allclose(p1, p3))
+    assert np.allclose(x3, x1) and np.allclose(y3, y1)
+    assert np.allclose(th4, th) and np.allclose(r4, r)
+
+
+def test_is_polar_3d():
+    # verify that SurfaceOver2DRangeSeries is able to apply
+    # polar discretization
+
+    x, y, t = symbols("x, y, t")
+    expr = (x**2 - 1) ** 2
+    s1 = SurfaceOver2DRangeSeries(
+        expr, (x, 0, 1.5), (y, 0, 2 * pi),
+        n=10, is_polar=False
+    )
+    s2 = SurfaceOver2DRangeSeries(
+        expr, (x, 0, 1.5), (y, 0, 2 * pi),
+        n=10, is_polar=True
+    )
+    x1, y1, z1 = s1.get_data()
+    x2, y2, z2 = s2.get_data()
+    x22, y22 = x1 * np.cos(y1), x1 * np.sin(y1)
+    assert np.allclose(x2, x22)
+    assert np.allclose(y2, y22)
+
+
+def test_color_func():
+    # verify that eval_color_func produces the expected results in order to
+    # maintain back compatibility with the old sympy.plotting module
+
+    x, y, z, u, v = symbols("x, y, z, u, v")
+
+    # color func: returns x, y, color and s is parametric
+    xx = np.linspace(-3, 3, 10)
+    yy1 = np.cos(xx)
+    s = List2DSeries(xx, yy1, color_func=lambda x, y: 2 * x, use_cm=True)
+    xxs, yys, col = s.get_data()
+    assert np.allclose(xx, xxs)
+    assert np.allclose(yy1, yys)
+    assert np.allclose(2 * xx, col)
+    assert s.is_parametric
+
+    s = List2DSeries(xx, yy1, color_func=lambda x, y: 2 * x, use_cm=False)
+    assert len(s.get_data()) == 2
+    assert not s.is_parametric
+
+    zz = np.linspace(-3, 3, 10)
+    xx = np.cos(zz)
+    yy = np.sin(zz)
+    s = List3DSeries(
+        xx, yy, zz, color_func=lambda x, y, z: 2 * x, use_cm=True)
+    xxs, yys, zzs, col = s.get_data()
+    assert np.allclose(xx, xxs)
+    assert np.allclose(yy, yys)
+    assert np.allclose(zz, zzs)
+    assert np.allclose(2 * xx, col)
+    assert s.is_parametric
+
+    s = List3DSeries(
+        xx, yy, zz, color_func=lambda x, y, z: 2 * x, use_cm=False)
+    assert len(s.get_data()) == 3
+    assert not s.is_parametric
+
+    s = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I], color_func=lambda x, y: x * y, use_cm=True
+    )
+    xx, yy, col = s.get_data()
+    assert s.is_parametric
+    assert np.allclose(xx, [1, 3])
+    assert np.allclose(yy, [2, 4])
+    assert np.allclose(col, [2, 12])
+
+    s = ComplexPointSeries(
+        [1 + 2 * I, 3 + 4 * I],
+        color_func=lambda x, y: x * y,
+        use_cm=False
+    )
+    assert len(s.get_data()) == 2
+    assert not s.is_parametric
+
+    s = LineOver1DRangeSeries(
+        sin(x), (x, -5, 5),
+        n=10,
+        color_func=lambda x: x
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, xx)
+    s = LineOver1DRangeSeries(
+        sin(x), (x, -5, 5),
+        n=10,
+        color_func=lambda x, y: y
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, yy)
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda t: t
+    )
+    xx, yy, col = s.get_data()
+    assert (not np.allclose(xx, col)) and (not np.allclose(yy, col))
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda x, y: x * y,
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, xx * yy)
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda x, y, t: x * y * t,
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, xx * yy * np.linspace(0, 2 * np.pi, 10))
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda t: t
+    )
+    xx, yy, zz, col = s.get_data()
+    assert (not np.allclose(xx, col)) and (not np.allclose(yy, col))
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda x, y, z: x * y * z,
+    )
+    xx, yy, zz, col = s.get_data()
+    assert np.allclose(col, xx * yy * zz)
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 2 * pi),
+        n=10,
+        color_func=lambda x, y, z, t: x * y * z * t,
+    )
+    xx, yy, zz, col = s.get_data()
+    assert np.allclose(col, xx * yy * zz * np.linspace(0, 2 * np.pi, 10))
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2),
+        n1=10, n2=10,
+        color_func=lambda x: x,
+    )
+    xx, yy, zz = s.get_data()
+    col = s.eval_color_func(xx, yy, zz)
+    assert np.allclose(xx, col)
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2),
+        n1=10, n2=10,
+        color_func=lambda x, y: x * y,
+    )
+    xx, yy, zz = s.get_data()
+    col = s.eval_color_func(xx, yy, zz)
+    assert np.allclose(xx * yy, col)
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2),
+        n1=10, n2=10,
+        color_func=lambda x, y, z: x * y * z,
+    )
+    xx, yy, zz = s.get_data()
+    col = s.eval_color_func(xx, yy, zz)
+    assert np.allclose(xx * yy * zz, col)
+
+    s = ParametricSurfaceSeries(
+        1, x, y, (x, 0, 1), (y, 0, 1),
+        n1=10, n2=10,
+        color_func=lambda u: u,
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv)
+    assert np.allclose(uu, col)
+    s = ParametricSurfaceSeries(
+        1, x, y, (x, 0, 1), (y, 0, 1),
+        n1=10, n2=10,
+        color_func=lambda u, v: u * v,
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv)
+    assert np.allclose(uu * vv, col)
+    s = ParametricSurfaceSeries(
+        1, x, y, (x, 0, 1), (y, 0, 1),
+        n1=10, n2=10,
+        color_func=lambda x, y, z: x * y * z,
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv)
+    assert np.allclose(xx * yy * zz, col)
+    s = ParametricSurfaceSeries(
+        1, x, y, (x, 0, 1), (y, 0, 1),
+        n1=10, n2=10,
+        color_func=lambda x, y, z, u, v: x * y * z * u * v,
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv)
+    assert np.allclose(xx * yy * zz * uu * vv, col)
+
+    s = Vector2DSeries(
+        sin(x - y), cos(x + y), (x, -3, 3), (y, -3, 3),
+        color_func=lambda x, y, u, v: u + v)
+    xx, yy, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, uu, vv)
+    assert np.allclose(col, uu + vv)
+
+    s = Vector3DSeries(
+        z, y, x, (x, -10, 10), (y, -10, 10), (z, -10, 10),
+        color_func=lambda x, y, z, u, v, w: u + v + w
+    )
+    xx, yy, zz, uu, vv, ww = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv, ww)
+    assert np.allclose(col, uu + vv + ww)
+
+    # Interactive Series
+    s = List2DSeries(
+        [0, 1, 2, x],
+        [x, 2, 3, 4],
+        color_func=lambda x, y: 2 * x,
+        params={x: 1},
+        use_cm=True,
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(xx, [0, 1, 2, 1])
+    assert np.allclose(yy, [1, 2, 3, 4])
+    assert np.allclose(2 * xx, col)
+    assert s.is_parametric and s.use_cm
+
+    s = List2DSeries(
+        [0, 1, 2, x],
+        [x, 2, 3, 4],
+        color_func=lambda x, y: 2 * x,
+        params={x: 1},
+        use_cm=False,
+    )
+    assert len(s.get_data()) == 2
+    assert not s.is_parametric
+
+    s = List3DSeries(
+        [0, 1, 2, x],
+        [x, 2, 3, 4],
+        [1, 3, 2, x],
+        color_func=lambda x, y, z: 2 * x,
+        params={x: 1},
+        use_cm=True,
+    )
+    xx, yy, zz, col = s.get_data()
+    assert np.allclose(xx, [0, 1, 2, 1])
+    assert np.allclose(yy, [1, 2, 3, 4])
+    assert np.allclose(zz, [1, 3, 2, 1])
+    assert np.allclose(2 * xx, col)
+    assert s.is_parametric and s.use_cm
+
+    s = List3DSeries(
+        [0, 1, 2, x],
+        [x, 2, 3, 4],
+        [1, 3, 2, x],
+        color_func=lambda x, y, z: 2 * x,
+        params={x: 1},
+        use_cm=False,
+    )
+    assert len(s.get_data()) == 3
+    assert not s.is_parametric
+
+    s = ComplexPointSeries(
+        [1 + x * I, 1 + x + 4 * I],
+        color_func=lambda x, y: x * y,
+        params={x: 2},
+        use_cm=True,
+    )
+    xx, yy, col = s.get_data()
+    assert s.is_parametric and s.use_cm
+    assert np.allclose(xx, [1, 3])
+    assert np.allclose(yy, [2, 4])
+    assert np.allclose(col, [2, 12])
+
+    s = ComplexPointSeries(
+        [1 + x * I, 1 + x + 4 * I],
+        color_func=lambda x, y: x * y,
+        params={x: 2},
+        use_cm=False,
+    )
+    assert len(s.get_data()) == 2
+    assert not s.is_parametric
+
+
+def test_color_func_scalar_val():
+    # verify that eval_color_func returns a numpy array even when color_func
+    # evaluates to a scalar value
+
+    x, y = symbols("x, y")
+
+    s = LineOver1DRangeSeries(
+        sin(x), (x, -5, 5),
+        n=10, color_func=lambda x: 1
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, np.ones(xx.shape))
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        n=10, color_func=lambda t: 1
+    )
+    xx, yy, col = s.get_data()
+    assert np.allclose(col, np.ones(xx.shape))
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 2 * pi),
+        n=10, color_func=lambda t: 1
+    )
+    xx, yy, zz, col = s.get_data()
+    assert np.allclose(col, np.ones(xx.shape))
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2),
+        n1=10, n2=10,
+        color_func=lambda x: 1,
+    )
+    xx, yy, zz = s.get_data()
+    assert np.allclose(s.eval_color_func(xx), np.ones(xx.shape))
+
+    s = ParametricSurfaceSeries(
+        1, x, y, (x, 0, 1), (y, 0, 1),
+        n1=10, n2=10,
+        color_func=lambda u: 1,
+    )
+    xx, yy, zz, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv)
+    assert np.allclose(col, np.ones(xx.shape))
+
+
+def test_line_surface_color():
+    # verify the back-compatibility with the old sympy.plotting module.
+    # By setting line_color or surface_color to be a callable, it will set
+    # the color_func attribute.
+
+    x, y, z = symbols("x, y, z")
+
+    s = LineOver1DRangeSeries(
+        sin(x), (x, -5, 5),
+        n=10, line_color=lambda x: x
+    )
+    assert (s.line_color is None) and callable(s.color_func)
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        n=10, line_color=lambda t: t
+    )
+    assert (s.line_color is None) and callable(s.color_func)
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -2, 2), (y, -2, 2),
+        n1=10, n2=10, surface_color=lambda x: x,
+    )
+    assert (s.surface_color is None) and callable(s.color_func)
+
+
+def test_complex():
+    # verify that series is evaluated with discretized ranges of type complex.
+
+    x, y, u = symbols("x y u")
+
+    def do_test(data1, data2):
+        assert len(data1) == len(data2)
+        for d1, d2 in zip(data1, data2):
+            assert np.allclose(d1, d2)
+
+    expr1 = sqrt(x) * exp(-(x**2))
+    expr2 = sqrt(u * x) * exp(-(x**2))
+    s1 = LineOver1DRangeSeries(
+        im(expr1), (x, -5, 5),
+        n=10
+    )
+    s2 = LineOver1DRangeSeries(
+        im(expr2), (x, -5, 5),
+        n=10, params={u: 1}
+    )
+    data1 = s1.get_data()
+    data2 = s2.get_data()
+
+    do_test(data1, data2)
+    assert (not np.allclose(data1[1], 0)) and (not np.allclose(data2[1], 0))
+
+    s1 = Parametric2DLineSeries(
+        re(expr1), im(expr1), (x, -pi, pi),
+        n=10
+    )
+    s2 = Parametric2DLineSeries(
+        re(expr2), im(expr2), (x, -pi, pi),
+        n=10, params={u: 1}
+    )
+    data1 = s1.get_data()
+    data2 = s2.get_data()
+    do_test(data1, data2)
+    assert (not np.allclose(data1[1], 0)) and (not np.allclose(data2[1], 0))
+
+    s1 = SurfaceOver2DRangeSeries(
+        im(expr1), (x, -5, 5), (y, -10, 10),
+        n1=30, n2=3
+    )
+    s2 = SurfaceOver2DRangeSeries(
+        im(expr2), (x, -5, 5), (y, -10, 10),
+        n1=30, n2=3, params={u: 1}
+    )
+    data1 = s1.get_data()
+    data2 = s2.get_data()
+    do_test(data1, data2)
+    assert (not np.allclose(data1[1], 0)) and (not np.allclose(data2[1], 0))
+
+
+def test_expr_is_lambda_function():
+    # verify that when a numpy function is provided, the series will be able
+    # to evaluate it. Also, label should be empty in order to prevent some
+    # backend from crashing.
+
+    f = lambda x: np.cos(x)
+    s2 = LineOver1DRangeSeries(
+        f, ("x", -5, 5), n=10)
+    s2.get_data()
+    assert s2.label == ""
+
+    fx = lambda x: np.cos(x)
+    fy = lambda x: np.sin(x)
+    s2 = Parametric2DLineSeries(
+        fx, fy, ("x", 0, 2 * pi),
+        n=10)
+    s2.get_data()
+    assert s2.label == ""
+
+    fz = lambda x: x
+    s2 = Parametric3DLineSeries(
+        fx, fy, fz, ("x", 0, 2 * pi),
+        n=10)
+    s2.get_data()
+    assert s2.label == ""
+
+    f = lambda x, y: np.cos(x**2 + y**2)
+    s1 = SurfaceOver2DRangeSeries(
+        f, ("a", -2, 2), ("b", -3, 3),
+        n1=10, n2=10
+    )
+    s1.get_data()
+    s2 = ContourSeries(
+        f, ("a", -2, 2), ("b", -3, 3),
+        n1=10, n2=10)
+    s2.get_data()
+    assert s1.label == s2.label == ""
+
+    fx = lambda u, v: np.cos(u + v)
+    fy = lambda u, v: np.sin(u - v)
+    fz = lambda u, v: u * v
+    s1 = ParametricSurfaceSeries(
+        fx, fy, fz, ("u", 0, pi), ("v", 0, 2 * pi),
+        n1=10, n2=10
+    )
+    s1.get_data()
+    assert s1.label == ""
+
+    raises(
+        TypeError,
+        lambda: ImplicitSeries(
+            lambda t: np.sin(t), ("x", -5, 5), ("y", -6, 6)),
+    )
+
+    f = lambda x, y, z: x**2 + y**3 - z**2
+    s1 = Implicit3DSeries(f, ("x", -2, 2), ("y", -2, 2), ("z", -2, 2))
+    s1.get_data()
+    assert s1.label == ""
+
+    raises(TypeError, lambda: List2DSeries(lambda t: t, lambda t: t))
+    raises(TypeError, lambda: List3DSeries(lambda t: t, lambda t: t))
+    raises(TypeError, lambda: ComplexPointSeries(lambda t: t))
+    raises(
+        TypeError,
+        lambda: ComplexSurfaceSeries(
+            lambda z: (z**2 + 1) / (z**2 - 1), ("z", -3 - 4 * I, 3 + 4 * I)
+        ),
+    )
+
+    s1 = ComplexDomainColoringSeries(
+        lambda z: (z**2 + 1) / (z**2 - 1), ("z", -3 - 4 * I, 3 + 4 * I)
+    )
+    s1.get_data()
+    assert s1.label == ""
+
+
+def test_plane_series():
+    # verify that PlaneSeries produces the expected results and that it passes
+    # through the provided point
+
+    def compute_distance(xx, yy, zz, point):
+        p1 = np.array([xx[0, 0], yy[0, 0], zz[0, 0]])
+        p2 = np.array([xx[-1, 0], yy[-1, 0], zz[-1, 0]])
+        p3 = np.array([xx[0, -1], yy[0, -1], zz[0, -1]])
+        v1 = p3 - p1
+        v2 = p2 - p1
+        n = np.cross(v1, v2)
+        n = n / np.sqrt(np.dot(n, n))
+        pv = np.array(point) - p1
+        distance = np.dot(n, pv)
+        return distance
+
+    x, y, z = symbols("x:z")
+
+    # plane parallel to YZ plane
+    p = (0, 0, 0)
+    s = PlaneSeries(
+        Plane(p, (1, 0, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(xx, 0) and (not np.allclose(yy, 0))
+        and (not np.allclose(zz, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    p = (-2, 4, 6)
+    s = PlaneSeries(
+        Plane(p, (1, 0, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(xx, -2) and (not np.allclose(yy, 0))
+        and (not np.allclose(zz, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    # plane parallel to XZ plane
+    p = (0, 0, 0)
+    s = PlaneSeries(
+        Plane(p, (0, 1, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(yy, 0) and (not np.allclose(xx, 0))
+        and (not np.allclose(zz, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    p = (-2, 4, 6)
+    s = PlaneSeries(
+        Plane(p, (0, 1, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(yy, 4) and (not np.allclose(xx, 0))
+        and (not np.allclose(zz, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    # plane parallel to XY plane
+    p = (0, 0, 0)
+    s = PlaneSeries(
+        Plane(p, (0, 0, 1)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(zz, 0) and (not np.allclose(yy, 0))
+        and (not np.allclose(xx, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    p = (-2, 4, 6)
+    s = PlaneSeries(
+        Plane(p, (0, 0, 1)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert (
+        np.allclose(zz, 6) and (not np.allclose(yy, 0))
+        and (not np.allclose(xx, 0)))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    # generic vertical plane
+    p = (0, 0, 0)
+    s = PlaneSeries(
+        Plane(p, (1, 1, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert all(not np.allclose(t, 0) for t in [xx, yy, zz])
+    assert all(np.allclose(zz[i, :], zz[i, 0]) for i in range(zz.shape[0]))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    p = (-2, 4, 6)
+    s = PlaneSeries(
+        Plane(p, (1, 1, 0)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    xx, yy, zz = s.get_data()
+    assert all(not np.allclose(t, 0) for t in [xx, yy, zz])
+    assert all(np.allclose(zz[i, :], zz[i, 0]) for i in range(zz.shape[0]))
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    # generic plane
+    p = (0, 0, 0)
+    s = PlaneSeries(
+        Plane(p, (1, 1, 1)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    s._use_nan = False
+    xx, yy, zz = s.get_data()
+    assert all(not np.allclose(t, 0) for t in [xx, yy, zz])
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+    p = (-2, 4, 6)
+    s = PlaneSeries(
+        Plane(p, (-1, -1, 1)), (x, -5, 4), (y, -3, 2), (z, -6, 7))
+    s._use_nan = False
+    xx, yy, zz = s.get_data()
+    assert all(not np.allclose(t, 0) for t in [xx, yy, zz])
+    assert np.isclose(compute_distance(xx, yy, zz, p), 0)
+
+
+@pytest.mark.parametrize("show_in_legend", [True, False])
+def test_show_in_legend_lines(show_in_legend):
+    # verify that lines series correctly set the show_in_legend attribute
+    x, u = symbols("x, u")
+
+    s = LineOver1DRangeSeries(
+        cos(x), (x, -2, 2), "test", show_in_legend=show_in_legend)
+    assert s.show_in_legend is show_in_legend
+
+    s = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 1), "test", show_in_legend=show_in_legend)
+    assert s.show_in_legend is show_in_legend
+
+    s = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 1), "test", show_in_legend=show_in_legend
+    )
+    assert s.show_in_legend is show_in_legend
+
+
+def test_particular_case_1():
+    # Verify that symbolic expressions and numerical lambda functions are
+    # evaluated with the same algorithm.
+    def do_test(a, b):
+        d1 = a.get_data()
+        d2 = b.get_data()
+        for t, v in zip(d1, d2):
+            assert np.allclose(t, v)
+
+    n = symbols("n")
+    a = S(2) / 3
+    epsilon = 0.01
+    xn = (n**3 + n**2) ** (S(1) / 3) - (n**3 - n**2) ** (S(1) / 3)
+    expr = Abs(xn - a) - epsilon
+    math_func = lambdify([n], expr)
+
+    s3 = LineOver1DRangeSeries(expr, (n, -10, 10), "", n=10)
+    s4 = LineOver1DRangeSeries(math_func, ("n", -10, 10), "", n=10)
+    do_test(s3, s4)
+
+
+@pytest.mark.parametrize("normalize", [True, False])
+def test_vector_series_normalize(normalize):
+    # verify that vector series exposes the normalize attribute
+
+    x, y, z, u = symbols("x, y, z, u")
+
+    # default behaviour
+    s = Vector2DSeries(-sin(y), cos(x), (x, -2, 2), (y, -2, 2))
+    assert not s.normalize
+    s = Vector2DSeries(
+        -sin(y), cos(x), (x, -2, 2), (y, -2, 2), normalize=normalize)
+    assert s.normalize is normalize
+
+    s = Vector3DSeries(
+        -sin(y), cos(x), z,
+        (x, -2, 2), (y, -2, 2), (z, -2, 2))
+    assert not s.normalize
+    s = Vector3DSeries(
+        -sin(y), cos(x), z,
+        (x, -2, 2), (y, -2, 2), (z, -2, 2),
+        normalize=normalize
+    )
+    assert s.normalize is normalize
+
+    s = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)),
+        z, -y, x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1)
+    )
+    assert not s.normalize
+    s = SliceVector3DSeries(
+        Plane((-1, 0, 0), (1, 0, 0)),
+        z, -y, x,
+        (x, -3, 3), (y, -2, 2), (z, -1, 1),
+        normalize=normalize,
+    )
+    assert s.normalize is normalize
+
+
+def test_complex_params_number_eval():
+    # The main expression contains terms like sqrt(xi - 1), with
+    # parameter (0 <= xi <= 1).
+    # There shouldn't be any NaN values on the output.
+    xi, wn, x0, v0, t = symbols("xi, omega_n, x0, v0, t")
+    x = Function("x")(t)
+    eq = x.diff(t, 2) + 2 * xi * wn * x.diff(t) + wn**2 * x
+    sol = dsolve(eq, x, ics={x.subs(t, 0): x0, x.diff(t).subs(t, 0): v0})
+    params = {wn: 0.5, xi: 0.25, x0: 0.45, v0: 0.0}
+    s = LineOver1DRangeSeries(
+        sol.rhs, (t, 0, 100), n=5, params=params)
+    x, y = s.get_data()
+    assert not np.isnan(x).any()
+    assert not np.isnan(y).any()
+
+    # Fourier Series of a sawtooth wave
+    # The main expression contains a Sum with a symbolic upper range.
+    # The lambdified code looks like:
+    #       sum(blablabla for for n in range(1, m+1))
+    # But range requires integer numbers, whereas per above example, the series
+    # casts parameters to complex. Verify that the series is able to detect
+    # upper bounds in summations and cast it to int in order to get successfull
+    # evaluation
+    x, T, n, m = symbols("x, T, n, m")
+    # the sawtooth is frac(x / T)
+    fs = S(1) / 2 - (1 / pi) * Sum(sin(2 * n * pi * x / T) / n, (n, 1, m))
+    params = {T: 4.5, m: 5}
+    s = LineOver1DRangeSeries(
+        fs, (x, 0, 10), n=5, params=params)
+    x, y = s.get_data()
+    assert not np.isnan(x).any()
+    assert not np.isnan(y).any()
+
+
+def test_complex_range_line_plot_1():
+    # verify that univariate functions are evaluated with a complex
+    # data range (with zero imaginary part). There shouln't be any
+    # NaN value in the output.
+
+    x, u = symbols("x, u")
+    expr1 = im(sqrt(x) * exp(-(x**2)))
+    expr2 = im(sqrt(u * x) * exp(-(x**2)))
+    s2 = LineOver1DRangeSeries(
+        expr1, (x, -10, 10), n=30)
+    s3 = LineOver1DRangeSeries(
+        expr2, (x, -10, 10), n=30, params={u: 1})
+    data2 = s2.get_data()
+    data3 = s3.get_data()
+
+    assert not np.isnan(data2[1]).any()
+    assert not np.isnan(data3[1]).any()
+    assert (
+        np.allclose(data2[0], data3[0]) and np.allclose(data2[1], data3[1]))
+
+
+def test_complex_range_line_plot_2():
+    # verify that univariate functions are evaluated with a complex
+    # data range (with non-zero imaginary part). There shouln't be any
+    # NaN value in the output.
+
+    x, u = symbols("x, u")
+    s = LineOver1DRangeSeries(
+        abs(sqrt(x)), (x, -5 - 2j, 5 - 2j), n=10)
+    xx, yy = s.get_data()
+    assert np.isclose(xx[0], -5)
+    assert np.isclose(xx[-1], 5)
+    assert not np.isnan(xx).any()
+    assert not np.isnan(yy).any()
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_force_real_eval():
+    # verify that force_real_eval=True produces inconsistent results when
+    # compared with evaluation of complex domain.
+    x = symbols("x")
+
+    expr = im(sqrt(x) * exp(-(x**2)))
+    s1 = LineOver1DRangeSeries(
+        expr, (x, -10, 10), n=10, force_real_eval=False
+    )
+    s2 = LineOver1DRangeSeries(
+        expr, (x, -10, 10), n=10, force_real_eval=True
+    )
+    d1 = s1.get_data()
+    d2 = s2.get_data()
+    assert not np.allclose(d1[1], 0)
+    assert np.allclose(d2[1], 0)
+
+
+@pytest.mark.parametrize("clabels", [True, False])
+def test_contour_series_show_clabels(clabels):
+    # verify that a contour series has the abiliy to set the visibility of
+    # labels to contour lines
+
+    x, y = symbols("x, y")
+    s = ContourSeries(cos(x * y), (x, -2, 2), (y, -2, 2))
+    assert s.show_clabels
+
+    s = ContourSeries(cos(x * y), (x, -2, 2), (y, -2, 2), clabels=clabels)
+    assert s.show_clabels is clabels
+
+
+def test_LineOver1DRangeSeries_complex_range():
+    # verify that LineOver1DRangeSeries can accept a complex range
+    # if the imaginary part of the start and end values are the same
+
+    x = symbols("x")
+
+    s = LineOver1DRangeSeries(abs(sqrt(x)), (x, -10, 10))
+    assert s.ranges[0] == (x, -10, 10)
+    s = LineOver1DRangeSeries(abs(sqrt(x)), (x, -10 - 2j, 10 - 2j))
+    r = s.ranges[0]
+    assert r[0] == x
+    assert complex(r[1]) == -10 - 2j
+    assert complex(r[2]) == 10 - 2j
+    assert s.ranges[0]
+    raises(
+        ValueError,
+        lambda: LineOver1DRangeSeries(abs(sqrt(x)), (x, -10 - 2j, 10 + 2j)))
+
+
+def test_symbolic_plotting_ranges():
+    # verify that data series can use symbolic plotting ranges
+
+    x, y, z, a, b = symbols("x, y, z, a, b")
+
+    def do_test(s1, s2, new_params):
+        d1 = s1.get_data()
+        d2 = s2.get_data()
+        for u, v in zip(d1, d2):
+            assert np.allclose(u, v)
+        s2.params = new_params
+        d2 = s2.get_data()
+        for u, v in zip(d1, d2):
+            assert not np.allclose(u, v)
+
+    s1 = LineOver1DRangeSeries(sin(x), (x, 0, 1), n=10)
+    s2 = LineOver1DRangeSeries(
+        sin(x), (x, a, b), params={a: 0, b: 1}, n=10
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        LineOver1DRangeSeries(sin(x), (x, a, b), params={a: 1}, n=10)
+
+    s1 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 1), n=10)
+    s2 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, a, b), params={a: 0, b: 1}, n=10
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        Parametric2DLineSeries(
+            cos(x), sin(x), (x, a, b), params={a: 0}, n=10)
+
+    s1 = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, 0, 1), n=10)
+    s2 = Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, a, b),
+        params={a: 0, b: 1},
+        n=10
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        Parametric3DLineSeries(
+            cos(x), sin(x), x, (x, a, b),
+            params={a: 0},
+            n=10)
+
+    s1 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -pi, pi), (y, -pi, pi),
+        n1=5, n2=5
+    )
+    s2 = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -pi * a, pi * a), (y, -pi * b, pi * b),
+        params={a: 1, b: 1},
+        n1=5, n2=5,
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        SurfaceOver2DRangeSeries(
+            cos(x**2 + y**2), (x, -pi * a, pi * a), (y, -pi * b, pi * b),
+            params={a: 1},
+            n1=5, n2=5)
+
+    # one range symbol is included into another range's minimum or maximum val
+    with raises(
+        ValueError,
+        match="Range symbols can't be included into"
+    ):
+        SurfaceOver2DRangeSeries(
+            cos(x**2 + y**2), (x, -pi * a + y, pi * a), (y, -pi * b, pi * b),
+            params={a: 1},
+            n1=5, n2=5)
+
+    s1 = ParametricSurfaceSeries(
+        cos(x - y), sin(x + y), x - y, (x, -2, 2), (y, -2, 2), n1=5, n2=5
+    )
+    s2 = ParametricSurfaceSeries(
+        cos(x - y), sin(x + y), x - y,
+        (x, -2 * a, 2), (y, -2, 2 * b),
+        params={a: 1, b: 1},
+        n1=5, n2=5,
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        ParametricSurfaceSeries(
+            cos(x - y), sin(x + y), x - y,
+            (x, -2 * a, 2), (y, -2, 2 * b),
+            params={a: 1},
+            n1=5, n2=5)
+
+    s1 = ComplexSurfaceSeries(sin(x), (x, -2 - 2j, 2 + 2j), n1=5, n2=5)
+    s2 = ComplexSurfaceSeries(
+        sin(x), (x, -2 * a - 2j, 2 + 2j * b), n1=5, n2=5, params={a: 1, b: 1}
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        ComplexSurfaceSeries(
+            sin(x), (x, -2 * a - 2j, 2 + 2j * b), n1=5, n2=5, params={a: 1})
+
+    s1 = ComplexDomainColoringSeries(sin(x), (x, -2 - 2j, 2 + 2j), n1=5, n2=5)
+    s2 = ComplexDomainColoringSeries(
+        sin(x), (x, -2 * a - 2j, 2 + 2j * b), n1=5, n2=5, params={a: 1, b: 1}
+    )
+    d1 = s1.get_data()
+    d2 = s2.get_data()
+    for u, v in zip(d1, d2):
+        assert np.allclose(u, v)
+    s2.params = {a: 0.5, b: 1.5}
+    d2 = s2.get_data()
+    # NOTE: the last one is the colorbar, which is equal in both cases
+    for u, v in zip(d1[:-1], d2[:-1]):
+        assert not np.allclose(u, v)
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        ComplexDomainColoringSeries(
+            sin(x), (x, -2 * a - 2j, 2 + 2j * b), n1=5, n2=5, params={a: 1})
+
+    s1 = Vector2DSeries(-cos(y), sin(x), (x, -5, 4), (y, -3, 2), n1=4, n2=4)
+    s2 = Vector2DSeries(
+        -cos(y), sin(x),
+        (x, -5 * a, 4 * b),
+        (y, -3 * b, 2 * a),
+        n1=4, n2=4,
+        params={a: 1, b: 1},
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        Vector2DSeries(
+            -cos(y), sin(x),
+            (x, -5 * a, 4 * b),
+            (y, -3 * b, 2 * a),
+            n1=4, n2=4,
+            params={a: 1})
+
+    s1 = Vector3DSeries(
+        -cos(y), sin(x), sin(z),
+        (x, -5, 4), (y, -3, 2), (z, -6, 7),
+        n1=4, n2=4
+    )
+    s2 = Vector3DSeries(
+        -cos(y), sin(x), sin(z),
+        (x, -5 * a, 4 * b),
+        (y, -3 * b, 2 * a),
+        (z, -6 * a, 7 * b),
+        n1=4, n2=4,
+        params={a: 1, b: 1},
+    )
+    do_test(s1, s2, {a: 0.5, b: 1.5})
+
+    # missing a parameter
+    with raises(
+        ValueError,
+        match="Unkown symbols found in plotting range"
+    ):
+        Vector3DSeries(
+            -cos(y), sin(x), sin(z),
+            (x, -5 * a, 4 * b),
+            (y, -3 * b, 2 * a),
+            (z, -6 * a, 7 * b),
+            n1=4, n2=4,
+            params={a: 1})
+
+
+def test_color_func_expression():
+    # verify that color_func is able to deal with instances of Expr: they will
+    # be lambdified with the same signature used for the main expression.
+
+    # NOTE: considering how complicated the following expression is,
+    # in this case it is easier to use plot3d_spherical to generate the
+    # data series.
+    phi, theta = symbols("phi, theta", real=True)
+    r = re(Ynm(3, 1, theta, phi).expand(func=True).rewrite(sin).expand())
+    p = plot3d_spherical(
+        abs(r), (theta, 0, pi), (phi, 0, 2 * pi),
+        color_func=r,
+        use_cm=True, n=20, force_real_eval=True,
+        grid=False, show=False,
+    )
+    d = p[0].get_data()
+    assert isinstance(p[0].color_func, Expr)
+    assert callable(p[0].evaluator.request_color_func(p[0].modules))
+    # the following statement should not raise errors
+    p[0].evaluator.eval_color_func(*d)
+
+    x, y, z = symbols("x, y, z")
+    s1 = LineOver1DRangeSeries(
+        cos(x), (x, -10, 10),
+        color_func=sin(x),
+        n=10
+    )
+    s2 = LineOver1DRangeSeries(
+        cos(x), (x, -10, 10),
+        color_func=lambda x: np.cos(x),
+        n=10
+    )
+    assert all(isinstance(t, ColoredLineOver1DRangeSeries) for t in [s1, s2])
+    # the following statement should not raise errors
+    d1 = s1.get_data()
+    assert isinstance(s1.color_func, Expr)
+    assert callable(s1.evaluator.request_color_func(s1.modules))
+    d2 = s2.get_data()
+    assert not np.allclose(d1[-1], d2[-1])
+
+    s1 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        color_func=sin(x),
+        n=10, use_cm=True,
+    )
+    s2 = Parametric2DLineSeries(
+        cos(x), sin(x), (x, 0, 2 * pi),
+        color_func=lambda x: np.cos(x),
+        n=10, use_cm=True,
+    )
+    # the following statement should not raise errors
+    d1 = s1.get_data()
+    assert isinstance(s1.color_func, Expr)
+    assert callable(s1.evaluator.request_color_func(s1.modules))
+    d2 = s2.get_data()
+    assert not np.allclose(d1[-1], d2[-1])
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x**2 + y**2), (x, -pi, pi), (y, -pi, pi),
+        color_func=sin(x**2 + y**2),
+        n1=5, n2=5,
+    )
+
+    s = Vector2DSeries(
+        sin(x - y), cos(x + y), (x, -3, 3), (y, -3, 3),
+        color_func=x*y)
+    xx, yy, uu, vv = s.get_data()
+    col = s.eval_color_func(xx, yy, uu, vv)
+    assert np.allclose(col, xx * yy)
+
+    s = Vector3DSeries(
+        z, y, x, (x, -10, 10), (y, -10, 10), (z, -10, 10),
+        color_func=x * y * z
+    )
+    xx, yy, zz, uu, vv, ww = s.get_data()
+    col = s.eval_color_func(xx, yy, zz, uu, vv, ww)
+    assert np.allclose(col, xx * yy * zz)
+
+    # the following statement should not raise errors
+    d = s.get_data()
+    assert isinstance(s.color_func, Expr)
+    assert callable(s.evaluator.request_color_func(s.modules))
+
+    xx = [1, 2, 3, 4, 5]
+    yy = [1, 2, 3, 4, 5]
+    zz = [1, 2, 3, 4, 5]
+    raises(
+        ValueError,
+        lambda: List2DSeries(xx, yy, use_cm=True, color_func=sin(x)))
+    raises(
+        ValueError,
+        lambda: List3DSeries(xx, yy, zz, use_cm=True, color_func=sin(x)))
+
+
+def test_color_func_expression_eval_with_sympy():
+    # this is a case in which the color_func is a symbolic expression,
+    # containing functions that, at the time of writing this, cannot be
+    # evaluated with numpy/scipy. Hence, the code should be able to perform
+    # the evaluation with sympy.
+
+    x = symbols("x")
+    s = LineOver1DRangeSeries(
+        cos(x), (x, 0, 2*pi),
+        color_func=hyper([2,4,6,8], [2,3,5,7,11], x), n=10
+    )
+    with warns(
+        UserWarning,
+        match="The evaluation with NumPy/SciPy failed."
+    ):
+        s.get_data()
+
+
+def test_color_func_lambda_errors():
+    # verify that color_func lambdas requiring a wrong number of arguments
+    # raise appropriate error
+
+    x, y, z = symbols("x, y, z")
+
+    def do_test(code_to_execute, series_type):
+        name = series_type.__name__
+        with raises(
+            ValueError,
+            match=f"Error while processing the `color_func` of {name}"
+        ):
+            code_to_execute()
+
+    s = LineOver1DRangeSeries(cos(x), (x, -pi, pi), color_func=lambda: 1, n=5)
+    do_test(lambda: s.get_data(), ColoredLineOver1DRangeSeries)
+
+    s = Parametric2DLineSeries(cos(x), sin(x), (x, 0, pi),
+        color_func=lambda: 1)
+    do_test(lambda: s.get_data(), Parametric2DLineSeries)
+
+    s = Parametric3DLineSeries(cos(x), sin(x), x, (x, 0, pi),
+        color_func=lambda: 1)
+    do_test(lambda: s.get_data(), Parametric3DLineSeries)
+
+    s = SurfaceOver2DRangeSeries(
+        cos(x*y), (x, -pi, pi), (y, -pi, pi), color_func=lambda: 1, n=5)
+    xx, yy, zz = s.get_data()
+    do_test(lambda: s.eval_color_func(xx, yy, zz), SurfaceOver2DRangeSeries)
+
+    s = ContourSeries(
+        cos(x*y), (x, -pi, pi), (y, -pi, pi), color_func=lambda: 1, n=5)
+    xx, yy, zz = s.get_data()
+    do_test(lambda: s.eval_color_func(xx, yy, zz), ContourSeries)
+
+    s = PlaneSeries(
+        Plane((0, 0, 0), (1, 1, 1)), (x, -pi, pi), (y, -pi, pi), (z, -pi, pi),
+        color_func=lambda: 1, n=5)
+    xx, yy, zz = s.get_data()
+    do_test(lambda: s.eval_color_func(xx, yy, zz), PlaneSeries)
+
+    s = List2DSeries([1, 2], [3, 4], color_func=lambda t: t, use_cm=True)
+    do_test(lambda: s.eval_color_func(xx, yy, zz), List2DSeries)
+
+    s = List3DSeries([1, 2], [3, 4], [5, 6], color_func=lambda t: t, use_cm=True)
+    do_test(lambda: s.eval_color_func(xx, yy, zz), List3DSeries)
+
+
+def test_color_func_expr_errors():
+    # verify that color_func expressions requiring a different free symbols
+    # than expr, raise appropriate error
+
+    x, y, z = symbols("x, y, z")
+    def do_test(create_series):
+        with raises(
+            ValueError,
+            match="Incompatible expression and parameters"
+        ):
+            create_series()
+
+    do_test(lambda: LineOver1DRangeSeries(
+        cos(x), (x, -pi, pi), color_func=x+y))
+    do_test(lambda: Parametric2DLineSeries(
+        cos(x), sin(x), (x, -pi, pi), color_func=x+y))
+    do_test(lambda: Parametric3DLineSeries(
+        cos(x), sin(x), x, (x, -pi, pi), color_func=x+y))
+    do_test(lambda: SurfaceOver2DRangeSeries(
+        cos(x*y), (x, -pi, pi), (y, 0, pi), color_func=x+y+z))
+    do_test(lambda: ContourSeries(
+        cos(x*y), (x, -pi, pi), (y, 0, pi), color_func=x+y+z))
+
+
+def test_2d_complex_domain_coloring_schemes():
+    # verify that domain coloring schemes produce different data from one
+    # another
+
+    z = symbols("z")
+    expr = (z - 1) / (z**2 + z + 1)
+    n1 = n2 = 10
+    colorings = "abcdefghijklmno"
+    series = [
+        ComplexDomainColoringSeries(
+            expr, (z, -3 - 3 * I, 3 + 3 * I), "", coloring=c, n1=n1, n2=n2
+        )
+        for c in colorings
+    ]
+    imgs = [s.get_data()[-2] for s in series]
+    for i in range(len(series) - 1):
+        for j in range(i + 1, len(series)):
+            assert not np.allclose(imgs[i], imgs[j])
+
+
+@pytest.mark.skipif(plotly is None, reason="plotly is not installed")
+def test_2d_complex_domain_coloring_cmap_blevel():
+    # verify that complex domain coloring is applying colormap and black level
+
+    z = symbols("z")
+    expr = (z - 1) / (z**2 + z + 1)
+    n1 = n2 = 10
+    s1 = ComplexDomainColoringSeries(
+        expr, (z, -3 - 3 * I, 3 + 3 * I), "",
+        coloring="b", cmap=None, blevel=0.75,
+        n1=n1, n2=n2,
+    )
+    s2 = ComplexDomainColoringSeries(
+        expr, (z, -3 - 3 * I, 3 + 3 * I), "",
+        coloring="b", cmap=None, blevel=0.85,
+        n1=n1, n2=n2,
+    )
+    s3 = ComplexDomainColoringSeries(
+        expr, (z, -3 - 3 * I, 3 + 3 * I), "",
+        coloring="b", cmap="twilight", blevel=0.75,
+        n1=n1, n2=n2,
+    )
+    s4 = ComplexDomainColoringSeries(
+        expr, (z, -3 - 3 * I, 3 + 3 * I), "",
+        coloring="b", cmap="twilight", blevel=0.85,
+        n1=n1, n2=n2,
+    )
+    d1, d2, d3, d4 = [t.get_data() for t in [s1, s2, s3, s4]]
+    assert not np.allclose(d1[-2], d2[-2])
+    assert not np.allclose(d1[-2], d3[-2])
+    assert not np.allclose(d1[-2], d4[-2])
+    assert not np.allclose(d2[-2], d3[-2])
+    assert not np.allclose(d2[-2], d4[-2])
+    assert not np.allclose(d3[-2], d4[-2])
+
+
+def test_2d_complex_domain_coloring_zero_infinity():
+    # verify that the domain coloring image is different for the same function
+    # when evaluate around zero and around infinity, and that Riemann mask
+    # works.
+
+    z = symbols("z")
+    expr = (z - 1) / (z**2 + z + 1)
+    n1 = n2 = 10
+    s1 = ComplexDomainColoringSeries(
+        expr, (z, -1.25 - 1.25 * I, 1.25 + 1.25 * I), "",
+        coloring="b", at_infinity=False, riemann_mask=False,
+        n1=n1, n2=n2,
+    )
+    s2 = ComplexDomainColoringSeries(
+        expr, (z, -1.25 - 1.25 * I, 1.25 + 1.25 * I), "",
+        coloring="b", at_infinity=False, riemann_mask=True,
+        n1=n1, n2=n2,
+    )
+    s3 = ComplexDomainColoringSeries(
+        expr, (z, -1.25 - 1.25 * I, 1.25 + 1.25 * I), "",
+        coloring="b", at_infinity=True, riemann_mask=False,
+        n1=n1, n2=n2,
+    )
+    s4 = ComplexDomainColoringSeries(
+        expr, (z, -1.25 - 1.25 * I, 1.25 + 1.25 * I), "",
+        coloring="b", at_infinity=True, riemann_mask=True,
+        n1=n1, n2=n2,
+    )
+    assert s1.expr != s3.expr
+    assert s2.expr != s4.expr
+    assert s1.expr == s2.expr
+    assert s3.expr == s4.expr
+    d1, d2, d3, d4 = [t.get_data() for t in [s1, s2, s3, s4]]
+    assert not np.allclose(d1[-2], d2[-2])
+    assert not np.allclose(d1[-2], d3[-2])
+    assert not np.allclose(d1[-2], d4[-2])
+    assert not np.allclose(d2[-2], d3[-2])
+    assert not np.allclose(d2[-2], d4[-2])
+    assert not np.allclose(d3[-2], d4[-2])
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_riemann_sphere_series():
+    # verify that it correctly instatiates and doesn't raise error when
+    # producing data.
+
+    z = symbols("z")
+    expr = (z - 1) / (z**2 + z + 1)
+    t, p = symbols("theta phi")
+    s = RiemannSphereSeries(expr, (t, 0, pi), (p, 0, 2 * pi), n1=5, n2=15)
+    d = s.get_data()
+    assert d[0].shape == (5, 15)
+
+
+@pytest.mark.parametrize(
+    "val, horizontal, label, params",
+    [
+        (4.5, True, "", None),
+        (4.5, False, "test", None),
+        (x + y, True, "", {x: 1, y: 2}),
+        (x + y, True, "test", {x: 1, y: 2}),
+    ]
+)
+def test_hvline_series(val, horizontal, label, params):
+    kwargs = {}
+    if params:
+        kwargs["params"] = params
+    s = HVLineSeries(val, horizontal, label=label, **kwargs)
+    assert s.is_horizontal is horizontal
+    assert s.is_interactive is (params is not None)
+    assert s.get_label(False) == label
+    loc = s.get_data()
+    assert isinstance(loc, float)
+    assert np.isclose(loc, val if not params else 3)
+
+
+def test_complex_surface_contour():
+    # verify that ComplexSurfaceSeries exposes the proper attributes
+    # to be rendered as a contour.
+
+    z = symbols("z")
+    s = ComplexSurfaceSeries(sqrt(z), (z, -5 - 5j, 5 + 5j))
+    assert s.is_filled
+    assert s.show_clabels
+
+    s = ComplexSurfaceSeries(
+        sqrt(z), (z, -5 - 5j, 5 + 5j), is_filled=False, clabels=False
+    )
+    assert not s.is_filled
+    assert not s.show_clabels
+
+
+def test_exclude_points():
+    # verify that exclude works as expected
+
+    x = symbols("x")
+
+    expr = (floor(x) + S.Half) / (1 - (x - S.Half) ** 2)
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        s = LineOver1DRangeSeries(
+            expr, (x, -3.5, 3.5),
+            n=100, exclude=list(range(-3, 4))
+        )
+    xx, yy = s.get_data()
+    assert not np.isnan(xx).any()
+    assert np.count_nonzero(np.isnan(yy)) == 7
+    assert len(xx) > 100
+
+    e1 = log(floor(x)) * cos(x)
+    e2 = log(floor(x)) * sin(x)
+    with warns(
+        UserWarning,
+        match="NumPy is unable to evaluate with complex numbers some of",
+    ):
+        s = Parametric2DLineSeries(
+            e1, e2, (x, 1, 12),
+            n=100, exclude=list(range(1, 13))
+        )
+    xx, yy, pp = s.get_data()
+    assert not np.isnan(pp).any()
+    assert np.count_nonzero(np.isnan(xx)) == 12
+    assert np.count_nonzero(np.isnan(yy)) == 12
+    assert len(xx) > 100
+
+
+def test_exclude_points_2():
+    x = symbols("x")
+    expr = Piecewise(
+        (cos(x), (x < 0)),
+        (sin(x), True)
+    )
+
+    # here, the exclusion point happens precisely at a discretization point
+    s1 = LineOver1DRangeSeries(expr, (x, -1, 1), n=11, exclude=[0])
+    xx1, yy1 = s1.get_data()
+    assert len(xx1) == len(yy1) == 13 # 2 points have been added near the esclusion
+    assert not np.isnan(xx1).any()
+    assert np.isnan(yy1).any()
+    assert np.allclose(
+        xx1,
+        np.array([
+            -1., -0.8, -0.6, -0.4, -0.2,
+            -2.e-05, 0, 2.e-05, 0.2, 0.4, 0.6, 0.8, 1.
+        ])
+    )
+    assert np.allclose(
+        yy1,
+        np.array([
+            0.54030231, 0.69670671, 0.82533561, 0.92106099, 0.98006658,
+            1, np.nan, 2.e-05, 0.19866933, 0.38941834, 0.56464247, 0.71735609,
+            0.84147098]),
+        equal_nan=True
+    )
+
+    # here, the exclusion point falls in between two discretization points
+    s2 = LineOver1DRangeSeries(expr, (x, -1, 1), n=12, exclude=[0])
+    xx2, yy2 = s2.get_data()
+    assert len(xx2) == len(yy2) == 14
+    assert 0.0 in xx2
+    assert not np.isnan(xx2).any()
+    assert np.isnan(yy2).any()
+    assert np.allclose(
+        xx2,
+        np.array([
+            -1.00000000e+00, -8.18181818e-01, -6.36363636e-01, -4.54545455e-01,
+            -2.72727273e-01, -9.09090909e-04,  0.00000000e+00,  9.09090909e-04,
+            9.09090909e-02,  2.72727273e-01,  4.54545455e-01,  6.36363636e-01,
+            8.18181818e-01,  1.00000000e+00])
+    )
+    assert np.allclose(
+        yy2,
+        np.array([
+            5.40302306e-01, 6.83549435e-01, 8.04262070e-01, 8.98460691e-01,
+            9.63039864e-01, 9.99999587e-01, np.nan, 9.09090784e-04,
+            9.07839235e-02, 2.69358908e-01, 4.39053968e-01, 5.94274788e-01,
+            7.29904220e-01, 8.41470985e-01]),
+        equal_nan=True
+    )
+
+
+@pytest.mark.filterwarnings("ignore:NumPy is unable to evaluate with complex numbers some of the functions")
+def test_exclude_points_3():
+    # at the time of writing this, numpy/scipy are unable to evaluate the
+    # hyper function. Here I test the exclusion algorithm performs the
+    # evaluations with sympy in the proximity of the exclusion points.
+
+    x = symbols("x")
+    s = LineOver1DRangeSeries(
+        hyper((1.0331469998003, 9.67916472867169), (10.0,), x),
+        (x, -5, 0.5),
+        exclude=[0], n=10)
+
+    with warns(
+        UserWarning,
+        match="The evaluation with NumPy/SciPy failed."
+    ):
+        xx, yy = s.get_data()
+        assert np.allclose(xx, [
+            -5.00000000e+00, -4.38888889e+00, -3.77777778e+00, -3.16666667e+00,
+            -2.55555556e+00, -1.94444444e+00, -1.33333333e+00, -7.22222222e-01,
+            -1.11111111e-03,  0.00000000e+00,  1.11111111e-03,  5.00000000e-01])
+        assert np.allclose(yy, [
+            0.16192905, 0.18079556, 0.20453862, 0.23531307, 0.2767561 ,
+            0.33552226, 0.42521825, 0.57864633, 0.99889011, np.nan,
+            1.00111233, 1.98563064], equal_nan=True)
+
+
+@pytest.mark.filterwarnings("ignore:NumPy is unable to evaluate with complex numbers some of the functions")
+def test_exclude_points_4():
+    # verify that the exclude points algorithm also work if the first
+    # discretization point is included in the exclusion list
+
+    x = symbols("x")
+    s = LineOver1DRangeSeries(
+        ceiling(x), (x, -2, 2), n=10, exclude=np.arange(-2, 3))
+    xx, yy = s.get_data()
+    assert np.allclose(xx, [
+        -2., -1.99555556, -1.55555556, -1.00111111, -1.,
+       -0.99888889, -0.66666667, -0.00222222,  0.,  0.00222222,
+        0.22222222,  0.99888889,  1.,  1.00111111,  1.11111111,
+        1.55555556,  1.99555556,  2.])
+    assert np.allclose(yy, [
+        np.nan, -1., -1., -1., np.nan, -0., -0., -0., np.nan,  1.,  1.,  1.,
+        np.nan, 2.,  2.,  2.,  2., np.nan], equal_nan=True)
+
+
+def test_unwrap():
+    # verify that unwrap works as expected
+
+    x, y = symbols("x, y")
+    expr = 1 / (x**3 + 2 * x**2 + x)
+    expr = arg(expr.subs(x, I * y * 2 * pi))
+    s1 = LineOver1DRangeSeries(
+        expr, (y, 1e-05, 1e05),
+        xscale="log", n=10, unwrap=False
+    )
+    s2 = LineOver1DRangeSeries(
+        expr, (y, 1e-05, 1e05),
+        xscale="log", n=10, unwrap=True
+    )
+    s3 = LineOver1DRangeSeries(
+        expr, (y, 1e-05, 1e05),
+        xscale="log", n=10, unwrap={"period": 4}
+    )
+    x1, y1 = s1.get_data()
+    x2, y2 = s2.get_data()
+    x3, y3 = s3.get_data()
+    assert np.allclose(x1, x2)
+    # there must not be nan values in the results of these evaluations
+    assert all(not np.isnan(t).any() for t in [y1, y2, y3])
+    assert not np.allclose(y1, y2)
+    assert not np.allclose(y1, y3)
+    assert not np.allclose(y2, y3)
+
+
+def test_implicit_3d_series_plane():
+    # verify that if a Plane is given to Implicit3DSeries, the equation will
+    # be extracted
+
+    x, y, z = symbols("x:z")
+
+    s = Implicit3DSeries(
+        Plane((0, 0, 0), (1, 1, 1)), (x, -2, 2), (y, -3, 3), (z, -4, 4)
+    )
+    assert s.expr == x + y + z
+
+
+@pytest.mark.filterwarnings("ignore:The provided expression is an unequality.")
+@pytest.mark.parametrize("adaptive", [True, False])
+def test_implicit_2d_series_ne(adaptive):
+    # verify that objects of type Ne don't raise any error
+
+    x, y = symbols("x y")
+    expr = Ne(x * y, 1)
+    s = ImplicitSeries(expr, (x, -10, 10), (y, -10, 10), adaptive=adaptive)
+    s.get_data()
+
+
+@pytest.mark.parametrize("depth, expected_length", [
+    (0, 2854),
+    (1, 4884),
+    (2, 8934),
+    (3, 17040),
+    (4, 33258),
+])
+def test_implicit_2d_adaptive_true_depth(depth, expected_length):
+    x, y = symbols("x y")
+    expr = Ne(x * y, 1)
+    s = ImplicitSeries(
+        expr, (x, -10, 10), (y, -10, 10), adaptive=True, depth=depth)
+    d = s.get_data()
+    assert len(d[0]) == expected_length
+
+
+@pytest.mark.parametrize(
+    "start, direc, label, rkw, sil, params",
+    [
+        ((1, 2), (3, 4), None, None, True, None),
+        ((1, 2), (3, 4), "test", {"color": "r"}, False, None),
+        (Tuple(j, k), (3, 4), None, None, True, {j: (1, 0, 2), k: (2, 0, 3)}),
+        (Tuple(j, k), (3, 4), "test", {"color": "r"}, False, {j: (1, 0, 2), k: (2, 0, 3)}),
+    ]
+)
+def test_arrow2dserie(start, direc, label, rkw, sil, params):
+    kw = {"rendering_kw": rkw, "show_in_legend": sil}
+    if params:
+        params = {k: v[0] for k, v in params.items()}
+        kw["params"] = params
+    s = Arrow2DSeries(start, direc, label, **kw)
+    assert np.allclose(
+        s.get_data(),
+        [1, 2, 4, 6]
+    )
+    assert s.show_in_legend is sil
+    if not params:
+        assert s.get_label(False) == (
+            "(1.0, 2.0) -> (4.0, 6.0)" if not label else label)
+        assert str(s) == "2D arrow from (1.0, 2.0) to (4.0, 6.0)"
+    else:
+        assert s.get_label(False) == (
+            "(j, k) -> (j + 3, k + 4)" if not label else label)
+        assert str(s) == "interactive 2D arrow from (j, k) to (j + 3, k + 4) and parameters (j, k)"
+    assert s.rendering_kw == ({} if not rkw else rkw)
+    assert s.is_interactive == (len(s.params) > 0)
+    assert s.params == ({} if not params else params)
+
+
+
+@pytest.mark.parametrize(
+    "start, direc, label, rkw, sil, params",
+    [
+        ((1, 2, 3), (4, 5, 6), None, None, True, None),
+        ((1, 2, 3), (4, 5, 6), "test", {"color": "r"}, False, None),
+        (Tuple(j, k, l), (4, 5, 6), None, None, True, {j: (1, 0, 2), k: (2, 0, 3), l: (3, 0, 4)}),
+        (Tuple(j, k, l), (4, 5, 6), "test", {"color": "r"}, False, {j: (1, 0, 2), k: (2, 0, 3), l: (3, 0, 4)}),
+    ]
+)
+def test_arrow3dserie(start, direc, label, rkw, sil, params):
+    kw = {"rendering_kw": rkw, "show_in_legend": sil}
+    if params:
+        params = {k: v[0] for k, v in params.items()}
+        kw["params"] = params
+    s = Arrow3DSeries(start, direc, label, **kw)
+    assert np.allclose(
+        s.get_data(),
+        [1, 2, 3, 5, 7, 9]
+    )
+    assert s.show_in_legend is sil
+    if not params:
+        assert s.get_label(False) == (
+            "(1.0, 2.0, 3.0) -> (5.0, 7.0, 9.0)" if not label else label)
+        assert str(s) == "3D arrow from (1.0, 2.0, 3.0) to (5.0, 7.0, 9.0)"
+    else:
+        assert s.get_label(False) == (
+            "(j, k, l) -> (j + 4, k + 5, l + 6)" if not label else label)
+        assert str(s) == "interactive 3D arrow from (j, k, l) to (j + 4, k + 5, l + 6) and parameters (j, k, l)"
+    assert s.rendering_kw == ({} if not rkw else rkw)
+    assert s.is_interactive == (len(s.params) > 0)
+    assert s.params == ({} if not params else params)
+
+
+def test_domain_coloring_k_plus_log():
+    # verify that domain coloring with `coloring="k"` and `coloring="k+log"`
+    # produces different results
+    z = symbols("z")
+    expr = (
+        0.351176005452417 / (0.493390296887743 * z + 1)**8 +
+        3.64807283221185 / (0.973899493572263 * z + 1)**7 +
+        3.55305005674673 / (0.97390632979091 * z + 1)**8 +
+        3.75759485136629 / (0.974408144493035 * z + 1)**6 +
+        3.87452265783084 / (0.975328100372965 * z + 1)**5 +
+        3.98256013950831 / (0.975943004928512 * z + 1)**4 +
+        4.08962026313833 / (0.976651199767166 * z + 1)**3 +
+        4.19610711073318 / (0.977667149308349 * z + 1)**2 +
+        4.39 / (z + 1.02197) - 107.7301
+    )
+    s1 = ComplexDomainColoringSeries(
+        expr, (z, -5-2*1j, 1+2*1j),
+        coloring="k", n1=15, n2=10
+    )
+    s2 = ComplexDomainColoringSeries(
+        expr, (z, -5-2*1j, 1+2*1j),
+        coloring="k+log", n1=15, n2=10
+    )
+    assert np.allclose(s1.get_data()[:3], s2.get_data()[:3])
+    assert not np.allclose(s1.get_data()[-2], s2.get_data()[-2])
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_line_series_hyper_function():
+    # https://github.com/Davide-sd/sympy-plot-backends/issues/34
+    x = symbols("x")
+    s = LineOver1DRangeSeries(
+        Piecewise(
+            (hyper((1.0331469998003, 9.67916472867169), (10.0,), x), x < 0.6),
+            (7, True)
+        ), (x, 0, 1)
+    )
+    with warns(
+        UserWarning,
+        match="The evaluation with NumPy/SciPy failed."
+    ):
+        s.get_data()
+
+
+def test_eval_lambda_functions():
+    # verify that evaluation with is able to deal with
+    # user-defined Python functions.
+
+    # what is going to happen?
+    # 1. f is evaluated with an array of numbers. Because the comparison
+    #    `if x < 0`` requires x to be a number, the evaluation fails
+    #    with ValueError.
+    # 2. The module detects the failure and attempt a different strategy,
+    #    vectorizing the function. So, the function will be evaluated for
+    #    each element of the array `x`.
+    # 3. The expected output will be created.
+    def f(x):
+        if x < 0:
+            return -x
+        else:
+            return x
+    t = symbols("t")
+    s = LineOver1DRangeSeries(f, (t, -2, 2), n=5,
+        force_real_eval=True)
+    x, y = s.get_data()
+    assert np.allclose(x, [-2., -1.,  0.,  1.,  2.])
+    assert np.allclose(y, [2., 1.,  0.,  1.,  2.])
+
+    # using numpy vectorization:
+    # 1. f is evaluated with an array of numbers. The function is coded to
+    #    use numpy's vectorization, so no error will be raised.
+    # 2. The expected output will be created.
+    def f(x):
+        y = x.copy()
+        idx = x < 0
+        y[idx] = -y[idx]
+        return y
+    s = LineOver1DRangeSeries(f, (t, -2, 2), n=5,
+        force_real_eval=True)
+    x, y = s.get_data()
+    assert np.allclose(x, [-2., -1.,  0.,  1.,  2.])
+    assert np.allclose(y, [2., 1.,  0.,  1.,  2.])
+
+    # this user-defined function uses sympy's `nsolve`:
+    # 1. f is evaluated with an array of numbers. `nsolve` receives an array
+    #    of numbers, it thinks it is dealing with N equations. Hence, it
+    #    expects `t` to be a list of N symbols. But `t` is just one symbol.
+    #    Hence, this error is raised:
+    #    TypeError: object of type 'Symbol' has no len()
+    # 2. The module detects the failure and attempt a different strategy,
+    #    vectorizing the function. So, the function will be evaluated for
+    #    each element of the array `x`.
+    # 3. The expected output will be created.
+    t = symbols("t")
+
+    def g(x):
+        return nsolve(sin(t) - x, t, 0)
+
+    s = LineOver1DRangeSeries(g, (t, -1, 1), n=5)
+    x, y = s.get_data()
+    assert np.allclose(x, [-1., -0.5,  0.,  0.5,  1.])
+    assert np.allclose(y, [-1.57079581, -0.52359878,  0.,  0.52359878, 1.57079583])
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+@pytest.mark.parametrize(
+    "tf, label, rendering_kw",
+    [
+        (tf1, None, None),
+        (tf1, "a", {"color": "r"}),
+        (tf2, None, None),
+        (tf2, "a", {"color": "r"})
+    ]
+)
+def test_root_locus_series(tf, label, rendering_kw):
+    # verify that RootLocusSeries is able to deal with symbolic
+    # transfer functions
+
+    r = RootLocusSeries(tf, label=label, rendering_kw=rendering_kw)
+    assert isinstance(r.expr, TransferFunction)
+    assert r.label == (label if label else str(tf2))
+    assert r.rendering_kw == (rendering_kw if rendering_kw else {})
+    data = r.get_data()
+    # quick way to verify that I'm using ct.root_locus for data generation
+    assert len(data) == 2
+    # the following tests that there are 3 "branches" on the root locus plot
+    assert data[0].shape[1] == 3
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+@pytest.mark.skipif(scipy is None, reason="scipy is not installed")
+def test_root_locus_series_2():
+    # verify that RootLocusSeries is able to deal with transfer functions
+    # from the ``control`` module and from ``scipy.signal``.
+    G1 = ct.tf([1, 0, -0.5], [1, 2, 3, 4])
+    s1 = RootLocusSeries(G1)
+    assert s1.expr is None
+    assert isinstance(s1.system, ct.TransferFunction)
+    assert len(s1.get_data()) == 2
+
+    G2 = scipy.signal.TransferFunction([1, 0, -0.5], [1, 2, 3, 4])
+    s2 = RootLocusSeries(G2)
+    assert s2.expr is None
+    assert isinstance(s2.system, ct.TransferFunction)
+    assert len(s2.get_data()) == 2
+
+
+def test_sgrid_line_series_1():
+    xi = [0, 0.2, 0.5, 1]
+    wn = [1, 2, 3]
+    s = SGridLineSeries(xi, wn, [], [], auto=False)
+    xi_dict, wn_dict, y_tp, x_ts = s.get_data()
+    xi_ret = [k[0] for k in xi_dict.keys()]
+    assert np.allclose(xi_ret, xi)
+    assert all(k in list(xi_dict.values())[0].keys()
+        for k in ["x", "y", "label"])
+    assert np.allclose(list(wn_dict.keys()), wn)
+    assert all(k in list(wn_dict.values())[0].keys()
+        for k in ["x", "y", "label", "lx", "ly"])
+    assert len(y_tp) == 0
+    assert len(x_ts) == 0
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+def test_sgrid_line_series_2():
+    xi = [0, 0.2, 0.5, 1]
+    wn = [1, 2, 3]
+    # when one or more data series (RootLocusSeries or PoleZeroSeries or
+    # List2DSeries) are associated to a SGridLineSeries, it autocomputes
+    # the damping ratios and natural frequencies
+    s = symbols("s")
+    G1 = (s**2 + 1) / (s**3 + 2*s**2 + 3*s + 4)
+    r1 = RootLocusSeries(G1)
+    g1 = SGridLineSeries(xi, wn, [], [], auto=True)
+    # need to set data limits (this is usually done by renderers)
+    r1.get_data()
+    g1.set_axis_limits(r1.xlim, r1.ylim)
+    xi_dict, wn_dict, y_tp, x_ts = g1.get_data()
+    xi_ret = [k[0] for k in xi_dict.keys()]
+    assert len(xi_ret) != len(xi)
+    assert len(wn_dict) != len(wn)
+
+    G2 = (s**2 - 4) / (s**3 + 2*s - 3)
+    r2 = RootLocusSeries(G2)
+    g2 = SGridLineSeries(xi, wn, [], [], auto=True)
+    r2.get_data()
+    g2.set_axis_limits(r2.xlim, r2.ylim)
+    xi_dict2, wn_dict2, y_tp2, x_ts2 = g2.get_data()
+    xi_ret2 = [k[0] for k in xi_dict2.keys()]
+    assert not np.allclose(xi_ret, xi_ret2)
+    assert not np.allclose(list(wn_dict.keys()), list(wn_dict2.keys()))
+
+    s = SGridLineSeries(xi, wn, [1, np.pi], [1, 4])
+    xi_dict, wn_dict, y_tp, x_ts = s.get_data()
+    assert np.allclose(y_tp, [np.pi, 1])
+    assert np.allclose(x_ts, [-4, -1])
+
+
+def test_sgrid_line_series_interactive():
+    a, b, c, d = symbols("a:d")
+    params = {a: 0.5, b: 2, c: 2*pi, d: 8}
+    xi = [0.1, 0.2, a]
+    wn = [1, b]
+    tp = [1, pi, c]
+    ts = [1, 4, d]
+    s = SGridLineSeries(xi, wn, tp, ts, auto=False, params=params)
+    assert s.is_interactive
+    xi_dict, wn_dict, y_tp, x_ts = s.get_data()
+    xi_ret = [k[0] for k in xi_dict.keys()]
+    assert np.allclose(xi_ret, [0.1, 0.2, 0.5])
+    assert np.allclose(list(wn_dict.keys()), [1, 2])
+    assert np.allclose(y_tp, [np.pi, 1, 0.5])
+    assert np.allclose(x_ts, [-4, -1, -0.5])
+
+    # xi > 1 -> ValueError
+    params = {a: 1.5, b: 2, c: 2*pi, d: 8}
+    s = SGridLineSeries(xi, wn, tp, ts, auto=False, params=params)
+    raises(ValueError, lambda: s.get_data())
+
+
+def test_zgrid_line_series():
+    xi = [0, 0.2, 0.5, 0.9]
+    wn = [1, 2, 3]
+    s = ZGridLineSeries(xi, wn, [], [])
+    data = s.get_data()
+    assert len(data) == 4
+    assert all(isinstance(d, dict) for d in data)
+    assert np.allclose(list(data[0].keys()), xi)
+    assert np.allclose(list(data[1].keys()), wn)
+    assert all(len(d) == 0 for d in data[2:])
+
+    tp = [2, 3, 5, 10]
+    ts = [3, 7, 9, 11]
+    s = ZGridLineSeries(xi, wn, tp, ts)
+    data = s.get_data()
+    assert np.allclose(list(data[2].keys()), tp)
+    assert np.allclose(list(data[3].keys()), ts)
+
+    assert all(k in list(data[0].values())[0].keys()
+        for k in ["x1", "x2", "y1", "y2", "label", "lx", "ly"])
+    assert all(k in list(data[1].values())[0].keys()
+        for k in ["x", "y", "label", "lx", "ly"])
+    assert all(k in list(data[2].values())[0].keys()
+        for k in ["x", "y", "label", "lx", "ly"])
+    assert all(k in list(data[3].values())[0].keys()
+        for k in ["x", "y", "label", "lx", "ly"])
+
+
+def test_zgrid_line_series_interactive():
+    a, b, c, d = symbols("a:d")
+    params = {a: 0.5, b: 2, c: 0.3, d: 0.8}
+    xi = [0.1, 0.2, a]
+    wn = [1, b]
+    tp = [0.1, 0.2, c]
+    ts = [0.3, 0.5, d]
+    s = ZGridLineSeries(xi, wn, tp, ts, params=params)
+    xi_dict, wn_dict, tp_dict, ts_dict = s.get_data()
+    assert np.allclose(list(xi_dict.keys()), [0.1, 0.2, 0.5])
+    assert np.allclose(list(wn_dict.keys()), [1, 2])
+    assert np.allclose(list(tp_dict.keys()), [0.1, 0.2, 0.3])
+    assert np.allclose(list(ts_dict.keys()), [0.3, 0.5, 0.8])
+
+
+@pytest.mark.skipif(scipy is None, reason="scipy is not installed")
+def test_pole_zero_series():
+    def do_test(tf):
+        s1 = PoleZeroSeries(tf, return_poles=True)
+        x, y = s1.get_data()
+        assert np.allclose(x, [-2, -0.5, -0.5, -1])
+        assert np.allclose(y, [0, 0.8660254, -0.8660254, 0])
+
+        s2 = PoleZeroSeries(tf, return_poles=False)
+        x, y = s2.get_data()
+        assert np.allclose(x, [0, 0])
+        assert np.allclose(y, [1, -1])
+
+    s = symbols("s")
+    tf1 = TransferFunction(s**2 + 1, s**4 + 4*s**3 + 6*s**2 + 5*s + 2, s)
+    tf2 = ct.TransferFunction([1, 0, 1], [1, 4, 6, 5, 2])
+    tf3 = scipy.signal.TransferFunction([1, 0, 1], [1, 4, 6, 5, 2])
+    do_test(tf1)
+    do_test(tf2)
+    do_test(tf3)
+
+
+@pytest.mark.skipif(ct is None, reason="control is not installed")
+def test_pole_zero_series_interactive():
+    a, b, c, d, s = symbols("a, b, c, d, s")
+    tf1 = TransferFunction(a * s**2 + b, s**4 + c*s**3 + d*s**2 + 5*s + 2, s)
+    params = {a: 1, b: 1, c: 4, d: 6}
+
+    s1 = PoleZeroSeries(tf1, params=params, return_poles=True)
+    assert s1.is_interactive
+    x, y = s1.get_data()
+    assert np.allclose(x, [-2, -0.5, -0.5, -1])
+    assert np.allclose(y, [0, 0.8660254, -0.8660254, 0])
+
+    s2 = PoleZeroSeries(tf1, params=params, return_poles=False)
+    assert s2.is_interactive
+    x, y = s2.get_data()
+    assert np.allclose(x, [0, 0])
+    assert np.allclose(y, [1, -1])
+
+    new_params = {a: 4, b: 1, c: 5, d: 7}
+    s1.params = new_params
+    s2.params = new_params
+    x, y = s1.get_data()
+    assert np.allclose(x,
+        [-3.26953084208114, -1, -0.365234578959429, -0.365234578959429 ])
+    assert np.allclose(y, [0, 0, 0.691601229992822, -0.691601229992822])
+
+    x, y = s2.get_data()
+    assert np.allclose(x, [0, 0])
+    assert np.allclose(y, [0.5, -0.5])
+
+
+@pytest.mark.skipif(pn is None, reason="panel is not installed")
+def test_params_multi_value_widgets_1():
+    # verify that data series are able to deal with widgets returning
+    # multiple values
+
+    a, b, c, x = symbols("a:c x")
+    range_slider = pn.widgets.RangeSlider(
+        value=(-2, 2), start=-5, end=5, step=0.1)
+    s = LineOver1DRangeSeries(cos(c * x), (x, a, b), n=10,
+        params={
+            (a, b): range_slider,
+            c: (1, 0, 5)
+        })
+    # verify that tuples in params.keys() are going to be expanded
+    assert len(s.params) == 3
+    assert s.params[a] is range_slider
+    assert s.params[b] is range_slider
+    assert s.params[c] == (1, 0, 5)
+    # simulate update event
+    new_params = {(a, b): (-3, 4), c: 2}
+    s.params = new_params
+    assert s.params == {a: -3, b: 4, c: 2}
+
+
+def test_implicit_2d_series_boolean_and():
+    x, y = symbols("x, y")
+
+    cond1 = y + 2*Abs(x) > 0
+    cond2 = x > 0
+    cond3 = y < 0
+
+    s1 = ImplicitSeries(cond1, (x, -5, 5), (y, -10, 10), adaptive=False)
+    assert s1.adaptive is False
+    s1.get_data()
+    assert s1.adaptive is False
+
+    s2 = ImplicitSeries(cond1, (x, -5, 5), (y, -10, 10), adaptive=True)
+    assert s2.adaptive is True
+    # because of Abs, the adaptive algorithm is going to fail, so the uniform
+    # meshing algorithm takes over
+    with warns(
+        UserWarning,
+        match="Adaptive meshing could not be applied to the expression, thus uniform meshing will be used."
+    ):
+        s2.get_data()
+    assert s2.adaptive is False
+
+    s3 = ImplicitSeries(cond2, (x, -5, 5), (y, -10, 10), adaptive=False)
+    assert s3.adaptive is False
+    s3.get_data()
+    assert s3.adaptive is False
+
+    s4 = ImplicitSeries(cond2, (x, -5, 5), (y, -10, 10), adaptive=True)
+    assert s4.adaptive is True
+    s4.get_data()
+    assert s4.adaptive is True
+
+    with warns(
+        UserWarning,
+        match="The provided expression contains Boolean functions."
+    ):
+        # Because of boolean And, the adaptive algorithm takes over
+        s5 = ImplicitSeries(
+            cond2 & cond3, (x, -5, 5), (y, -10, 10), adaptive=False)
+        assert s5.adaptive is True
+        s5.get_data()
+        assert s5.adaptive is True
+
+    with warns(
+        UserWarning,
+        match="The provided expression contains Boolean functions."
+    ):
+        s6 = ImplicitSeries(cond2 & cond3, (x, -5, 5), (y, -10, 10), adaptive=True)
+        assert s6.adaptive is True
+        s6.get_data()
+        assert s6.adaptive is True
+
+    with warns(
+        UserWarning,
+        match="The provided expression contains Boolean functions."
+    ):
+        s7 = ImplicitSeries(cond1 & cond2, (x, -5, 5), (y, -10, 10), adaptive=True)
+
+    assert s7.adaptive is True
+    # because of Abs, the adaptive algorithm is going to fail, so the uniform
+    # meshing algorithm takes over
+    with warns(
+        UserWarning,
+        match="Adaptive meshing could not be applied to the expression, thus uniform meshing will be used."
+    ):
+        s7.get_data()
+    assert s7.adaptive is False
+
+
+def test_validation_kwargs():
+    x, y, z = symbols("x, y, z")
+
+    def do_test(warning_checker, wrong_correct_map):
+        for warning in warning_checker:
+            user_warning = warning.message
+            msg = user_warning.args[0]
+            for k, v in wrong_correct_map.items():
+                assert f"'{k}': did you mean '{v}'?" in msg
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `LineOver1DRangeSeries`."
+    ) as w:
+        LineOver1DRangeSeries(cos(x), (x, 0, 2*pi), adative=True)
+        do_test(w, {"adative": "name"})
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `SurfaceOver2DRangeSeries`."
+    ) as w:
+        SurfaceOver2DRangeSeries(
+            cos(x*y), (x, 0, pi), (y, -pi, pi), x_scale="log", yscale="log")
+        do_test(w, {"x_scale": "xscale"})
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `ImplicitSeries`."
+    ) as w:
+        ImplicitSeries(cos(x*y), (x, 0, pi), (y, -pi, pi), adative=True, dep=2)
+        do_test(w, {"adative": "adaptive", "dep": "depth"})
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `Vector2DSeries`."
+    ) as w:
+        Vector2DSeries(
+            -y, x, (x, 0, pi), (y, -pi, pi),
+            adaptive=True, stream_lines=True, scala=False)
+        do_test(w, {
+            "adaptive": "name",
+            "stream_lines": "streamlines",
+            "scala": "scalar"
+        })
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `ComplexDomainColoringSeries`."
+    ) as w:
+        ComplexDomainColoringSeries(cos(z), (z, -2-2j, 2+2j), phase_res=3)
+        do_test(w, {"phase_res": "phaseres"})
+
+    with warns(
+        UserWarning,
+        match="The following keyword arguments are unused by `Geometry2DSeries`."
+    ) as w:
+        Geometry2DSeries(Polygon((4, 0), 4, n=5), isfilled=True)
+        do_test(w, {"isfilled": "is_filled"})
+
+
+@pytest.mark.parametrize("sum_range, esr1, esr2", [
+    ((x, 1, oo), (x, 1, 100), (x, 1, 1000)),
+    ((x, -oo, -1), (x, -100, -1), (x, -1000, -1)),
+    ((x, -oo, -oo), (x, -100, -100), (x, -1000, -1000))
+])
+def test_process_sums_1(sum_range, esr1, esr2):
+    # verify that Sum containing infinity in its boundary, gets replaced with
+    # a Sum with arbitrary big numbers instead.
+
+    expr = Sum(1 / x**y, sum_range)
+    s1 = LineOver1DRangeSeries(expr, (y, 2, 10), sum_bound=100, n=10)
+    s2 = LineOver1DRangeSeries(expr, (y, 2, 10), sum_bound=1000, n=10)
+    assert s1.evaluator.expr.args[-1] == esr1
+    assert s2.evaluator.expr.args[-1] == esr2
+    xx1, yy1 = s1.get_data()
+    xx2, yy2 = s2.get_data()
+    assert np.allclose(xx1, xx2)
+    assert not np.allclose(yy1, yy2)
+
+
+def test_process_sums_2():
+    # it should also work with parametric expressions
+
+    t, n = symbols("t, n")
+    e1 = Sum((-1)**n * t**(2*(n + 1)) / factorial(2*n), (n, 0, oo))
+    e2 = Sum((-1)**n * t**(2*(n + 1)) / factorial(2*(n + 1)), (n, 0, oo))
+    s1 = Parametric2DLineSeries(e1, e2, (t, 0, 2*pi), sum_bound=10, n=10)
+    s2 = Parametric2DLineSeries(e1, e2, (t, 0, 2*pi), sum_bound=100, n=10)
+    assert s1.evaluator.expr == Tuple(
+        e1.subs(oo, 10), e2.subs(oo, 10))
+    assert s2.evaluator.expr == Tuple(
+        e1.subs(oo, 100), e2.subs(oo, 100))
+    xx1, yy1, pp1 = s1.get_data()
+    xx2, yy2, pp2 = s2.get_data()
+    assert np.allclose(pp1, pp2)
+    assert not np.allclose(xx1, xx2)
+    assert not np.allclose(yy1, yy2)
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_evaluate_big_numbers_1():
+    # Consider this expression: expr = t**(2 * (n + 1))
+    # Once lambdified with NumPy/Scipy or even with SymPy it generates a
+    # code like this one: `f = lambda t, n:  t**(2*n + 2)`.
+    # Notice the `**` to indicate power. When the function receives numerical
+    # values (type float or complex), the evaluation will be performed by
+    # Python. If `n` is sufficiently big (n=193 or above), the evaluation fails
+    # with OverflowError, regardless of the evaluation module requested by
+    # the user.
+    # evaluation with lambdiy and Python+Numpy should fail because
+    # of OverflowErrors. If modules="sympy" it should succeed, but only
+    # because I implemented a custom SymPyPrinter!
+    t, n = symbols("t, n")
+    expr = t**(2 * (n + 1))
+
+    # sufficiently low upper bound, Numpy should be enough to evaluate each
+    # point to a finite number
+    for n_val in [5, 100, 192]:
+        s = LineOver1DRangeSeries(
+            expr.subs(n, n_val), (t, 0, 2*pi), n=10)
+        xx, yy = s.get_data()
+        assert np.allclose(xx, np.linspace(0, 2*np.pi, 10))
+        assert not np.isinf(yy).any()
+
+    # for larger upper bounds, an overflow happens and inf is returned
+    for n_val in [193, 875, 900, 1000]:
+        s = LineOver1DRangeSeries(
+            expr.subs(n, n_val), (t, 0, 2*pi), n=10)
+        xx, yy = s.get_data()
+        assert np.allclose(xx, np.linspace(0, 2*np.pi, 10))
+        # there are inf values because Python went in OverflowError
+        assert np.isinf(yy).any()
+        # let's check that's the case
+        f, = s.evaluator.request_lambda_functions("numpy")
+        assert np.isinf(f(xx[-1]))
+
+    # sympy (with the modified printer), should be able to compute finite
+    # numbers for every lower bound
+    for n_val in [193]:
+        s = LineOver1DRangeSeries(
+            expr.subs(n, n_val), (t, 0, 2*pi), n=10, modules="sympy")
+        xx, yy = s.get_data()
+        # there are inf values because, while the evaluation with SymPy succeed
+        # in getting numerical value, the conversion to float/complex is unable
+        # to deal with such big numbers and goes into OverflowError
+        assert np.allclose(xx, np.linspace(0, 2*np.pi, 10))
+        assert np.isinf(yy).any()
+        # let's check that's the case
+        f, = s.evaluator.request_lambda_functions("sympy")
+        assert f(xx[-1]).is_finite
+
+
+# NOTE: why skip if scipy is not installed?
+# `factorial` is implemented by scipy, not numpy. So, if scipy is not
+# installed, then s3 will be evaluated by sympy, producing the same data
+# as s4
+@pytest.mark.skipif(scipy is None, reason="scipy is not installed")
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_evaluate_big_numbers_2():
+    # similarly to the previous test, the following expressions
+    # involves the exponentiation, resulting in too huge numbers
+    # to be dealt by Python/Numpy, followed by a division.
+    # Evaluating the expressions with SymPy will ultimately produce finite
+    # float numbers because of the division by another large number.
+
+    t, n = symbols("t, n")
+    e1 = Sum((-1)**n * t**(2*(n + 1)) / factorial(2*n), (n, 0, oo))
+    e2 = Sum((-1)**n * t**(2*(n + 1)) / factorial(2*(n + 1)), (n, 0, oo))
+    all_finite = lambda x: not (np.isnan(x).any() or np.isinf(x).any())
+
+    # very low upper bound of the sum: numpy should be able to
+    # evaluate the series, but the results might be inaccurate
+    s1 = Parametric2DLineSeries(
+        e1, e2, (t, 0, 2*pi), n=10, sum_bound=5)
+    xx1, yy1, pp1 = s1.get_data()
+    assert all_finite(xx1)
+    assert all_finite(yy1)
+    assert np.allclose(pp1, np.linspace(0, 2*np.pi, 10))
+
+    # sufficiently low upper bound of the sum: numpy should be able to
+    # evaluate the series, and the results might be much better than before
+    s2 = Parametric2DLineSeries(
+        e1, e2, (t, 0, 2*pi), n=10, sum_bound=50)
+    xx2, yy2, pp2 = s2.get_data()
+    assert all_finite(xx2)
+    assert all_finite(yy2)
+    assert np.allclose(pp1, pp2)
+    assert not np.allclose(xx1, xx2)
+    assert not np.allclose(yy1, yy2)
+
+    # high upper bound of the sum: numpy will fail to evaluate it because of
+    # OverflowError, but sympy (with the custom printer) should be able to
+    # evaluate the series, and the results might be much better than before
+    s3 = Parametric2DLineSeries(
+        e1, e2, (t, 0, 2*pi), n=10, sum_bound=1000)
+    xx3, yy3, pp3 = s3.get_data()
+    assert not all_finite(xx3)
+    assert not all_finite(yy3)
+    assert np.allclose(pp1, pp3)
+
+    s4 = Parametric2DLineSeries(
+        e1, e2, (t, 0, 2*pi), n=10, sum_bound=1000, modules="sympy")
+    xx4, yy4, pp4 = s4.get_data()
+    assert all_finite(xx4)
+    assert all_finite(yy4)
+    assert np.allclose(pp1, pp4)
+    assert np.allclose(xx2, xx4)
+    assert np.allclose(yy2, yy4)
+
+
+def test_ComplexDomainColoringSeries_cast_to_float():
+    # verify that instances of NumberSymbol get cast to float
+
+    z = symbols("z")
+    s = ComplexDomainColoringSeries(z, (z, -2-2j, 2+2j), phaseoffset=pi)
+    assert isinstance(s.phaseoffset, float) and np.isclose(s.phaseoffset, np.pi)
+
+
+@pytest.mark.parametrize("cls_", [HLineSeries, VLineSeries])
+def test_HVLineSeries_label(cls_):
+    # no label is provided: no label should be shown
+    s = cls_(0.1)
+    assert s.label == ""
+    assert s.get_label(True) == ""
+    assert s.get_label(False) == ""
+
+    label = "test"
+    s = cls_(0.1, label=label)
+    assert s.label == label
+    assert s.get_label(True) == label
+    assert s.get_label(False) == label
