@@ -1,0 +1,203 @@
+name: Testing, Building & Publishing omar
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test_fortran_backend:
+    name: Test Fortran backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev meson ninja-build
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.2'
+          
+      - name: Install Python dependencies
+        run: |
+          pip install numpy meson ninja
+          
+      - name: Configure Meson build
+        run: |
+          meson setup builddir --buildtype=debug
+          
+      - name: Compile Fortran tests
+        run: |
+          meson compile -C builddir
+          
+      - name: Run Fortran tests
+        run: |
+          meson test -C builddir --verbose
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: test_fortran_backend
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-13 is an intel runner, macos-14 is apple silicon
+        os: [ ubuntu-latest, windows-latest, macos-13, macos-14 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install gfortran on macOS
+        if: runner.os == 'macOS'
+        run: |
+          if ! command -v gfortran &> /dev/null; then
+            echo "Attempting to install gfortran via Homebrew..."
+            brew update || echo "Brew update failed, continuing..."
+            brew install gfortran
+            echo "$(brew --prefix gcc)/bin" >> $GITHUB_PATH
+          else
+            echo "gfortran already found."
+          fi
+        shell: bash 
+      - name: Set macOS deployment target
+        if: runner.os == 'macOS'
+        run: |
+          if [[ "$(sw_vers -productVersion)" == 13.* ]]; then
+            echo "Setting MACOSX_DEPLOYMENT_TARGET=13.0"
+            echo "MACOSX_DEPLOYMENT_TARGET=13.0" >> $GITHUB_ENV
+          else
+            # Default to 14.0 for macos-14 and potentially newer runners
+            echo "Setting MACOSX_DEPLOYMENT_TARGET=14.0"
+            echo "MACOSX_DEPLOYMENT_TARGET=14.0" >> $GITHUB_ENV
+          fi
+        shell: bash
+      - name: Install cibuildwheel with uv support
+        run: |
+          pip install cibuildwheel[uv]
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22.0
+      - name: Upload wheels artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+  build_source_distribution:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Build source distribution
+        run: uv build --sdist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-sdist
+          path: dist/*.tar.gz
+  publish_to_pypi:
+    name: Publish Wheels & Sdist to PyPI
+    needs: [build_wheels, build_source_distribution]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/omar
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'BUILD!')
+
+    steps:
+      - name: Download all distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          pattern: python-package-*
+          merge-multiple: true
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+  create_github_release:
+    name: Create GitHub Release
+    needs: [publish_to_pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
+      id-token: write
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'BUILD!')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper version detection
+
+      - name: Download all distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          pattern: python-package-*
+          merge-multiple: true
+
+      - name: Extract version from package
+        id: extract_version
+        run: |
+          # Extract version from the sdist filename
+          SDIST_FILE=$(ls dist/*.tar.gz | head -n 1)
+          VERSION=$(basename "$SDIST_FILE" .tar.gz | sed 's/.*-//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Create basic release notes
+          cat > release_notes.md << EOF
+          ## Release ${{ steps.extract_version.outputs.version }}
+
+          This release has been automatically published to PyPI.
+          
+          ### Installation
+          \`\`\`bash
+          pip install omar==${{ steps.extract_version.outputs.version }}
+          \`\`\`
+
+          ### Changes
+          - Built from commit ${{ github.sha }}
+          - Commit message: ${{ github.event.head_commit.message }}
+
+          ### Artifacts
+          This release includes:
+          - Source distribution (sdist)
+          - Binary wheels for multiple platforms (Linux, Windows, macOS)
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.extract_version.outputs.version }}
+          name: Release v${{ steps.extract_version.outputs.version }}
+          body_path: release_notes.md
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true  # This will append auto-generated notes

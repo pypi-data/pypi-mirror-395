@@ -1,0 +1,85 @@
+[project]
+name = "omar"
+version = "0.0.1.post3"
+authors = [
+  { name="Tim Walter", email="tim.walter@tum.de" },
+]
+description = "Open Multivariate Adaptive Regression"
+readme = "README.md"
+license = {file = 'LICENSE.txt'}
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3 :: Only',
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    'Intended Audience :: Science/Research',
+    'Intended Audience :: Developers',
+    'Topic :: Software Development',
+    'Topic :: Scientific/Engineering',
+    'Typing :: Typed',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+]
+dependencies  = [
+    "meson-python>=0.18.0",
+    "numpy>=2.2.6",
+    "scipy>=1.15.3",
+    "llvmlite>=0.46.0.dev0; python_version == '3.14'",
+    "llvmlite>=0.45.1; python_version < '3.14'",
+    "numba==0.63.0rc1; python_version == '3.14'",
+    "numba>=0.61.2; python_version < '3.14'",
+    "jaxtyping>=0.3.2",
+    "beartype>=0.21.0",
+    "matplotlib>=3.10.3",
+    "scipy>=1.15.3",
+    "ninja>=1.11.1.4",
+    "pytest>=8.4.0"
+]
+
+[build-system]
+build-backend = "mesonpy"
+requires = [
+    "meson-python>=0.18.0",
+    "numpy>=2.2.6",
+    "scipy>=1.15.3",
+    "llvmlite>=0.46.0.dev0; python_version == '3.14'",
+    "llvmlite>=0.45.1; python_version < '3.14'",
+    "numba>=0.63.0rc1; python_version == '3.14'",
+    "numba>=0.61.2; python_version < '3.14'",
+    "jaxtyping>=0.3.2",
+    "beartype>=0.21.0",
+    "matplotlib>=3.10.3",
+    "scipy>=1.15.3",
+    "ninja>=1.11.1.4",
+    "pytest>=8.4.0"
+]
+
+
+[project.urls]
+Homepage = "https://github.com/Helge-Stein-Group/omar"
+Issues = "https://github.com/Helge-Stein-Group/omar/issues"
+
+[tool.cibuildwheel]
+build-frontend = "build[uv]"
+skip = "cp36-* cp37-* cp-38* pp37-* *-manylinux_i686 *_ppc64le *_s390x *_universal2 *-musllinux*  *-win32 "
+test-requires = ["pytest"]
+test-command = "pytest {project}/omar/tests/unit_test.py"
+
+[tool.cibuildwheel.linux]
+before-all = "yum -y update && yum -y install blas-devel lapack-devel freetype-devel"
+
+[tool.cibuildwheel.windows]
+before-build = """
+    C:\\msys64\\usr\\bin\\bash -lc "pacman -Syu --noconfirm" && \
+    C:\\msys64\\usr\\bin\\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack" && \
+    echo "C:\\msys64\\mingw64\\lib" >> %GITHUB_PATH% && \
+    echo "C:\\msys64\\mingw64\\bin" >> %GITHUB_PATH% && \
+    uv pip install delvewheel
+"""
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin"
+test-command = "set PATH=C:\\msys64\\mingw64\\bin;%PATH%"
+
