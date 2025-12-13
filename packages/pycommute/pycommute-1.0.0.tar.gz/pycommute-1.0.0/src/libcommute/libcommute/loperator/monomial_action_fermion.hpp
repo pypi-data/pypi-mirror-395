@@ -1,0 +1,121 @@
+/*******************************************************************************
+ *
+ * This file is part of libcommute, a quantum operator algebra DSL and
+ * exact diagonalization toolkit for C++11/14/17.
+ *
+ * Copyright (C) 2016-2025 Igor Krivenko
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ ******************************************************************************/
+#ifndef LIBCOMMUTE_LOPERATOR_MONOMIAL_ACTION_FERMION_HPP_
+#define LIBCOMMUTE_LOPERATOR_MONOMIAL_ACTION_FERMION_HPP_
+
+#include "../expression/generator_fermion.hpp"
+#include "bit_ops.hpp"
+#include "elementary_space_fermion.hpp"
+#include "hilbert_space.hpp"
+#include "monomial_action.hpp"
+#include "state_vector.hpp"
+
+#include <algorithm>
+#include <cassert>
+#include <vector>
+
+//
+// Action of a monomial comprised of fermionic algebra generators
+//
+
+namespace libcommute {
+
+template <> class monomial_action<fermion> {
+
+  // Is this monomial a constant?
+  bool is_const = false;
+  // Bit masks used to change bits
+  sv_index_type annihilation_mask = 0;
+  sv_index_type creation_mask = 0;
+  // Bit masks for particle counting
+  sv_index_type annihilation_count_mask;
+  sv_index_type creation_count_mask;
+
+public:
+  template <typename... IndexTypes>
+  monomial_action(detail::monomial_range_t<IndexTypes...> const& m_range,
+                  hilbert_space<IndexTypes...> const& hs) {
+
+    if(m_range.second == m_range.first) {
+      is_const = true;
+      return;
+    }
+
+    std::vector<int> creation_set_bits;
+    std::vector<int> annihilation_set_bits;
+
+    for(auto it = m_range.first; it != m_range.second; ++it) {
+      if(!is_fermion(*it)) throw unknown_generator<IndexTypes...>(*it);
+
+      elementary_space_fermion<IndexTypes...> es(it->indices());
+      if(!hs.has(es)) throw unknown_generator<IndexTypes...>(*it);
+
+      auto br = hs.bit_range(es);
+      // All fermionic elementary spaces are 2-dimensional
+      assert(br.first == br.second);
+
+      bool dagger =
+          dynamic_cast<generator_fermion<IndexTypes...> const&>(*it).dagger();
+
+      (dagger ? creation_set_bits : annihilation_set_bits)
+          .emplace_back(br.first);
+      (dagger ? creation_mask : annihilation_mask) |=
+          (sv_index_type(1) << br.first);
+    }
+
+    auto const& range = hs.algebra_bit_range(fermion);
+
+    creation_count_mask = compute_count_mask(creation_set_bits, range);
+    annihilation_count_mask = compute_count_mask(annihilation_set_bits, range);
+  }
+
+  template <typename ScalarType>
+  inline bool act(sv_index_type& index, ScalarType& coeff) const {
+
+    if(is_const) return true;
+
+    // Fermions
+    if((index & annihilation_mask) != annihilation_mask)
+      return false; // Zero after acting with the annihilation operators
+
+    sv_index_type inter_index = index & ~annihilation_mask;
+
+    if(((inter_index ^ creation_mask) & creation_mask) != creation_mask)
+      return false; // Zero after acting with the creation operators
+
+    index = ~(~inter_index & ~creation_mask);
+    bool minus =
+        detail::parity_popcount((inter_index & annihilation_count_mask) ^
+                                (index & creation_count_mask));
+    if(minus) mul_assign(coeff, scalar_traits<ScalarType>::make_const(-1));
+    return true;
+  }
+
+private:
+  inline static sv_index_type compute_count_mask(std::vector<int> const& d,
+                                                 bit_range_t const& bit_range) {
+    sv_index_type mask = 0;
+    bool is_on = (d.size() % 2 == 1);
+    for(int i = bit_range.first; i <= bit_range.second; ++i) {
+      if(std::find(d.begin(), d.end(), i) != d.end())
+        is_on = !is_on;
+      else if(is_on)
+        mask |= (sv_index_type(1) << i);
+    }
+    return mask;
+  }
+};
+
+} // namespace libcommute
+
+#endif

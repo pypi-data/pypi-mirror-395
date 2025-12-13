@@ -1,0 +1,97 @@
+![pycommute logo](docs/images/logo.svg)
+
+[![Package on PyPI](https://img.shields.io/pypi/v/pycommute.svg)](
+https://pypi.org/project/pycommute)
+[![Package on Anaconda.org](https://anaconda.org/krivenko/pycommute/badges/version.svg)](
+https://anaconda.org/channels/krivenko/packages/pycommute/overview)
+[![Build and test](https://github.com/krivenko/pycommute/actions/workflows/build-and-test.yml/badge.svg)](
+https://github.com/krivenko/pycommute/actions/workflows/build-and-test.yml)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-red)](
+https://krivenko.github.io/pycommute)
+
+*pycommute* is a Python package providing bindings for the
+[libcommute](https://github.com/krivenko/libcommute) quantum operator algebra
+library.
+
+You can find a few
+[usage examples](https://krivenko.github.io/pycommute/examples.html) and an
+[API reference](https://krivenko.github.io/pycommute/reference.html) at
+*pycommute*'s [documentation website](https://krivenko.github.io/pycommute/).
+
+Automated installation of the PyPI package
+------------------------------------------
+
+```
+$ pip install pycommute
+```
+
+Automated installation of the conda package
+-------------------------------------------
+
+```
+$ conda install krivenko::pycommute
+```
+
+Installation from sources
+-------------------------
+
+* [Download](https://github.com/krivenko/libcommute/releases) source code of
+  *libcommute* 1.0.0 or newer and optionally
+  [install](https://krivenko.github.io/libcommute/installation.html) it.
+
+* Install Python prerequisites:
+
+  - [packaging >= 17.0](https://pypi.org/project/packaging/)
+  - [pybind11 >= 3.0.0](https://pypi.org/project/pybind11/)
+  - [numpy >= 1.12.0](https://pypi.org/project/numpy/)
+
+* Run the following command in the unpacked source archive of *pycommute*,
+
+```
+LIBCOMMUTE_INCLUDEDIR="<path_to_libcommute>/include" pip install .
+```
+
+``<path_to_libcommute>`` must be either installation or source directory of
+*libcommute*.
+
+Docker images
+-------------
+
+Docker images of tagged releases of *pycommute* are available from
+[Docker Hub](https://hub.docker.com/repository/docker/ikrivenko/pycommute).
+
+```
+$ docker run --rm -p 8888:8888 ikrivenko/pycommute:latest
+```
+
+This command will pull the most recent image and launch a
+[Jupyter](https://jupyter.org/) notebook server accessible at
+[http://127.0.0.1:8888/](http://127.0.0.1:8888/). The server is run in a
+directory with a few interactive example notebooks.
+
+Citing
+------
+
+If you find this package useful for your research, you can help me by citing it
+using the following BibTeX entry.
+
+```
+@article{pycommute,
+    title = {{libcommute/pycommute: A quantum operator algebra domain-specific
+              language and exact diagonalization toolkit}},
+    author = {Igor Krivenko},
+    journal = {SoftwareX},
+    volume = {17},
+    pages = {100937},
+    year = {2022},
+    issn = {2352-7110},
+    doi = {10.1016/j.softx.2021.100937}
+}
+```
+
+License
+-------
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
