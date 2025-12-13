@@ -1,0 +1,475 @@
+# NetShare
+![1763844410242](https://raw.githubusercontent.com/ly2xxx/netshare/main/image/README/1763844410242.png)
+![1763936492583](https://raw.githubusercontent.com/ly2xxx/netshare/main/image/README/1763936492583.png)
+A secure, Python-based network file sharing tool that enables easy sharing of folders from Windows, Mac, or Linux computers to Android devices, Quest VR headsets, and other devices over your local WiFi network.
+
+## 🚀 Features
+
+- **🔒 Security First**: Built-in rate limiting, file extension filtering, and path traversal protection
+- **📱 Mobile Friendly**: QR code generation for instant mobile access
+- **🎯 Simple Setup**: GUI and command-line options for easy folder selection
+- **⚡ Fast Transfer**: Direct WiFi connection with no external servers
+- **🛡️ Configurable Security**: Customizable file size limits, extension blocking, and access controls
+- **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
+- **📊 Access Logging**: Optional request logging for monitoring
+
+## 📋 Requirements
+
+- Python 3.7 or higher
+- Local WiFi network (same network for sharing device and receiving device)
+- Modern web browser on receiving device
+
+## 🔧 Installation
+
+### From PyPI (Recommended)
+
+The easiest way to install NetShare is via pip:
+
+```bash
+pip install netshare
+```
+
+Then run it with:
+
+```bash
+netshare --gui                              # GUI mode
+netshare --folder /path                     # Specify folder
+netshare --url https://example.com          # Generate QR code for any URL
+netshare --help                             # Show all options
+```
+
+### From Source
+
+1. **Clone or download this repository**:
+   ```bash
+   git clone https://github.com/yourusername/netshare.git
+   cd netshare
+   ```
+
+2. **Install in editable mode**:
+   ```bash
+   pip install -e .
+   ```
+
+3. **Run NetShare**:
+   ```bash
+   netshare --gui
+   ```
+
+### Using Virtual Environment (Recommended)
+
+1. **Create virtual environment**:
+   ```bash
+   python -m venv netshare-env
+
+   # Windows
+   netshare-env\Scripts\activate
+
+   # macOS/Linux
+   source netshare-env/bin/activate
+   ```
+
+2. **Install in editable mode**:
+   ```bash
+   pip install -e .
+   ```
+
+3. **Run the application**:
+   ```bash
+   netshare --gui
+   ```
+
+## 🚀 Quick Start
+
+### Method 1: GUI Mode (Easiest)
+
+```bash
+netshare --gui
+```
+
+1. Select folders using the graphical interface
+2. Server starts automatically
+3. Scan the QR code with your mobile device or use the displayed URL
+
+### Method 2: Command Line
+
+```bash
+netshare --folder "C:\Users\YourName\Documents" --port 8000
+```
+
+### Method 3: Interactive Mode
+
+```bash
+netshare
+```
+
+Follow the prompts to enter folder paths.
+
+### Method 4: Standalone QR Code Generation
+
+Generate a QR code for any URL without starting a file server:
+
+```bash
+# Generate QR code with default filename (netshare_qr.png)
+netshare --url https://example.com
+
+# Generate QR code with custom output filename
+netshare --url https://example.com --output qr.png
+
+# Another example with different filename
+netshare --url https://example.com --output example.png
+```
+
+This is useful for creating QR codes for websites, shared links, or any other URLs.
+
+## 📖 Detailed Usage
+
+### Command Line Options
+
+```bash
+netshare [options]
+
+Options:
+  --gui                 Use GUI to select folders
+  --folder, -f FOLDER   Folder to share (can be specified multiple times)
+  --port, -p PORT       Port to run server on (default: 5000)
+  --url, -u URL         Generate QR code for the given URL (standalone mode)
+  --output, -o PATH     Output path for QR code PNG file (default: netshare_qr.png)
+  -h, --help            Show help message
+
+Examples:
+  netshare --gui                                       # Use GUI to select folders
+  netshare --folder /path/to/share                     # Share specific folder
+  netshare --folder "C:\Users\Documents" --port 8000
+  netshare --url https://example.com                   # Generate QR code for URL
+  netshare --url https://example.com --output qr.png   # Generate QR with custom filename
+  netshare --url https://example.com --output example.png
+```
+
+### Accessing Shared Files
+
+1. **Start NetShare** using any method above
+2. **Note the server URL** displayed in the terminal (e.g., `http://192.168.1.100:5000`)
+3. **On your mobile/target device**:
+   - Scan the QR code with your camera app, OR
+   - Open a web browser and navigate to the displayed URL
+4. **Browse and download** files through the web interface
+
+### Using the Web Interface
+
+- **Home Page**: Shows all shared folders
+- **Browse**: Click folders to navigate directory structure
+- **Download**: Click files to download them
+- **Breadcrumbs**: Use the navigation path to go back to parent folders
+
+## 🔧 Configuration
+
+### Security Settings
+
+Edit `netshare/config.py` in your installation directory to customize security settings:
+
+```python
+class SecurityConfig:
+    # Maximum file size to serve (20GB default)
+    MAX_FILE_SIZE = 20 * 1024 * 1024 * 1024
+
+    # Block dangerous file extensions
+    BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1']
+
+    # Allow only specific extensions (empty = allow all)
+    ALLOWED_EXTENSIONS = []  # e.g., ['.pdf', '.jpg', '.mp4']
+
+    # Enable/disable features
+    ALLOW_DIRECTORY_LISTING = True
+    ALLOW_FILE_DOWNLOAD = True
+
+    # Security limits
+    MAX_PATH_DEPTH = 20
+    RATE_LIMIT = 100  # requests per minute per IP
+```
+
+### Application Settings
+
+```python
+class AppConfig:
+    DEFAULT_PORT = 5000
+    SERVER_NAME = "NetShare"
+    ENABLE_ACCESS_LOG = True  # Log all requests
+```
+
+## 🛠️ Advanced Usage
+
+### Custom Port Configuration
+```bash
+# Use a different port if 5000 is occupied
+netshare --folder ~/Documents --port 8080
+```
+
+### Multiple Folder Sharing
+```bash
+# Share multiple folders simultaneously
+netshare --folder ~/Documents --folder ~/Pictures --folder ~/Downloads
+```
+
+### Running as Background Service
+```bash
+# Run in background (Linux/macOS)
+nohup netshare --folder ~/shared &
+
+# Windows (run in separate command window)
+start netshare --folder C:\Shared
+```
+
+## 📱 Mobile Access Tips
+
+### Android Devices
+1. Use any web browser (Chrome, Firefox, etc.)
+2. QR code scanner apps work with the generated codes
+3. Bookmark the URL for easy future access
+
+### Quest VR Headsets
+1. Use the built-in browser
+2. QR code scanning may require companion mobile app
+3. Save URL in browser bookmarks for easy access
+
+### iOS Devices
+1. Use Safari or any web browser
+2. Camera app can scan QR codes directly
+3. Add to home screen for app-like experience
+
+## 🚨 Troubleshooting
+
+### Connection Issues
+
+**Problem**: Cannot access from mobile device
+```bash
+Solutions:
+1. Ensure both devices are on the same WiFi network
+2. Check if firewall is blocking the port (5000 by default)
+3. Try a different port: --port 8080
+4. Verify the IP address is correct
+```
+
+**Problem**: "Connection refused" error
+```bash
+Solutions:
+1. Make sure NetShare server is running
+2. Check if another application is using the port
+3. Try running as administrator (Windows) or with sudo (Linux/Mac)
+```
+
+**Windows Firewall Configuration (Windows Only)**
+
+If you can access NetShare from the host PC but not from other devices on the same WiFi network, you need to configure Windows Firewall:
+
+**Step 1: Run the diagnostic script** (optional, to check current settings)
+```powershell
+# In PowerShell (as Administrator)
+cd path\to\netshare
+.\firewall_diagnostic.ps1
+```
+
+**Step 2: Fix the firewall rules**
+1. **Open PowerShell as Administrator**:
+   - Press Windows key
+   - Type "PowerShell"
+   - Right-click "Windows PowerShell"
+   - Select "Run as Administrator"
+
+2. **Navigate to NetShare directory**:
+   ```powershell
+   cd path\to\netshare
+   ```
+
+3. **Run the firewall fix script**:
+   ```powershell
+   .\fix_firewall.ps1
+   ```
+
+4. **Test the connection** from your mobile device using the displayed URL (e.g., `http://192.168.0.96:8080`)
+
+**Why is this needed?** Windows Firewall rules may only apply to "Public" network profiles, while your home network is set to "Private". The fix script creates rules that work on all network profiles.
+
+**Alternative: Use firewall-friendly port**
+```bash
+# Port 8080 is more commonly allowed by firewalls
+netshare --port 8080
+```
+
+### File Access Issues
+
+**Problem**: Cannot download certain files
+```bash
+Solutions:
+1. Check BLOCKED_EXTENSIONS in netshare/config.py
+2. Verify file size under MAX_FILE_SIZE limit
+3. Ensure ALLOW_FILE_DOWNLOAD = True in netshare/config.py
+```
+
+**Problem**: Folders not showing
+```bash
+Solutions:
+1. Verify folder paths exist and are accessible
+2. Check ALLOW_DIRECTORY_LISTING = True in netshare/config.py
+3. Ensure proper read permissions on folders
+```
+
+### Network Connectivity
+
+**Problem**: QR code doesn't work
+```bash
+Solutions:
+1. Manually type the URL into browser
+2. Check IP address is reachable: ping [IP_ADDRESS]
+3. Restart router if needed
+4. Use different QR code scanner app
+```
+
+### Performance Issues
+
+**Problem**: Slow file transfers
+```bash
+Solutions:
+1. Check WiFi signal strength
+2. Reduce MAX_FILE_SIZE if memory limited
+3. Close other network applications
+4. Use 5GHz WiFi band if available
+```
+
+## 🔐 Security Best Practices
+
+### Recommended Security Settings
+
+1. **Limit file types**:
+   ```python
+   ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.png', '.mp4', '.doc', '.txt']
+   ```
+
+2. **Reduce file size limits** for better performance:
+   ```python
+   MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024  # 1GB
+   ```
+
+3. **Enable access logging** to monitor usage:
+   ```python
+   ENABLE_ACCESS_LOG = True
+   ```
+
+4. **Use non-default ports** to reduce discovery:
+   ```bash
+   netshare --folder ~/Documents --port 8543
+   ```
+
+### Network Security
+
+- **Use on trusted networks only** (home/office WiFi)
+- **Avoid public WiFi** for file sharing
+- **Stop the server** when not needed (Ctrl+C)
+- **Monitor access logs** for unusual activity
+- **Share only necessary folders**, not entire drives
+
+## 🔧 API Reference
+
+NetShare provides a simple REST API:
+
+### Get Shared Folders
+```http
+GET /api/folders
+```
+Returns JSON list of available shared folders.
+
+Example response:
+```json
+[
+  {
+    "index": 0,
+    "name": "Documents",
+    "path": "/home/user/Documents"
+  }
+]
+```
+
+## 🏗️ Architecture
+
+```
+NetShare Architecture:
+
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│   Mobile Device │────│  WiFi Router │────│  NetShare Host  │
+│   (Browser)     │    │              │    │  (Python Flask) │
+└─────────────────┘    └──────────────┘    └─────────────────┘
+         │                                           │
+         │              HTTP Requests                │
+         └───────────────────────────────────────────┘
+                        (Port 5000)
+
+Components:
+- Flask web server for HTTP requests
+- QR code generator for easy mobile access
+- Security middleware for safe file access
+- Path validation to prevent directory traversal
+- Rate limiting to prevent abuse
+```
+
+## 📝 Technical Notes
+
+### Dependencies
+- **Flask 3.0.0**: Web server framework
+- **qrcode 7.4.2**: QR code generation
+- **Pillow 10.1.0**: Image processing for QR codes
+
+### File Structure
+```
+netshare/
+├── netshare/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── app.py          # Main application
+│   ├── config.py       # Configuration settings
+│   └── templates/      # HTML templates
+│       ├── index.html
+│       ├── browse.html
+│       └── error.html
+├── requirements.txt
+├── pyproject.toml      # Package configuration
+├── LICENSE
+└── README.md          # This documentation
+```
+
+### Supported File Operations
+- ✅ Download files
+- ✅ Browse directories
+- ✅ View file information (size, type)
+- ❌ Upload files (not supported)
+- ❌ Delete files (not supported)
+- ❌ Modify files (not supported)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is open source. Please check the repository for license details.
+
+## 🆘 Support
+
+If you encounter issues:
+
+1. Check the troubleshooting section above
+2. Verify your Python and dependency versions
+3. Check firewall and network settings
+4. Review the access logs for error details
+
+For persistent issues, please create an issue in the repository with:
+- Operating system and Python version
+- Complete error messages
+- Steps to reproduce the problem
+
+---
+
+**⚠️ Security Notice**: NetShare is designed for local network file sharing. Only use on trusted networks and share folders containing non-sensitive files. Always stop the server when not in use.

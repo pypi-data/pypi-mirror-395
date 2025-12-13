@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetShare - Shared Folders</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .server-url {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-url code {
+            color: white;
+            font-size: 1.1em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .folders-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .folders-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .folder-list {
+            list-style: none;
+        }
+
+        .folder-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+        }
+
+        .folder-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .folder-link {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            text-decoration: none;
+            color: white;
+        }
+
+        .folder-icon {
+            width: 50px;
+            height: 50px;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .folder-info {
+            flex-grow: 1;
+        }
+
+        .folder-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .folder-path {
+            font-size: 0.9em;
+            opacity: 0.9;
+            font-family: 'Courier New', monospace;
+        }
+
+        .arrow {
+            font-size: 1.5em;
+            margin-left: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .qr-code-section {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .qr-code-section h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .qr-image {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 200px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .qr-help {
+            color: rgba(255,255,255,0.9);
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .folder-management {
+            margin-top: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 8px;
+            border: 2px dashed rgba(102, 126, 234, 0.3);
+        }
+
+        .folder-management h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        .add-folder-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .add-folder-form input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+
+        .add-folder-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-folder-form button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .add-folder-form button:hover {
+            transform: translateY(-2px);
+        }
+
+        .remove-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background 0.2s;
+            font-weight: 500;
+        }
+
+        .remove-button:hover {
+            background: #c82333;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .browse-button {
+            background: #28a745;
+            min-width: auto;
+            padding: 12px 20px;
+        }
+
+        .browse-button:hover {
+            background: #218838;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .modal-header h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .current-path {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .folder-browser-list {
+            list-style: none;
+        }
+
+        .folder-browser-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .folder-browser-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .folder-browser-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .folder-browser-item.disabled:hover {
+            background: transparent;
+        }
+
+        .folder-browser-item svg {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .folder-browser-item.up-directory {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 2px solid #eee;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .modal-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .modal-button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal-button.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            color: #dc3545;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .folders-container {
+                padding: 20px;
+            }
+
+            .folder-link {
+                padding: 15px;
+            }
+
+            .folder-icon {
+                width: 40px;
+                height: 40px;
+                margin-right: 15px;
+            }
+
+            .folder-name {
+                font-size: 1.1em;
+            }
+
+            .folder-path {
+                font-size: 0.8em;
+            }
+
+            .qr-image {
+                max-width: 150px;
+            }
+
+            .add-folder-form {
+                flex-direction: column;
+            }
+
+            .add-folder-form button {
+                width: 100%;
+            }
+
+            .folder-management {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NetShare</h1>
+            <p>Network File Sharing</p>
+            <div class="server-url">
+                <code>{{ server_url }}</code>
+            </div>
+
+            <div class="qr-code-section">
+                <h3>Scan to Access on Mobile</h3>
+                <img src="/qr-code" alt="QR Code" class="qr-image" />
+                <p class="qr-help">Scan this QR code with your phone camera</p>
+            </div>
+        </div>
+
+        <div class="folders-container">
+            <h2 class="folders-title">Shared Folders ({{ folders|length }})</h2>
+
+            {% if folders %}
+                <ul class="folder-list">
+                    {% for folder in folders %}
+                    <li class="folder-item">
+                        <a href="/browse/{{ loop.index0 }}" class="folder-link">
+                            <svg class="folder-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 8L3 18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V10C21 8.89543 20.1046 8 19 8H11L9 6H5C3.89543 6 3 6.89543 3 8Z" fill="white" fill-opacity="0.9"/>
+                                <path d="M3 8L3 18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V10C21 8.89543 20.1046 8 19 8H11L9 6H5C3.89543 6 3 6.89543 3 8Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="folder-info">
+                                <div class="folder-name">{{ folder.name }}</div>
+                                <div class="folder-path">{{ folder.full_path }}</div>
+                            </div>
+                            <span class="arrow">→</span>
+                            <button onclick="event.preventDefault(); removeFolder({{ loop.index0 }});" class="remove-button">Remove</button>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 8L3 18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V10C21 8.89543 20.1046 8 19 8H11L9 6H5C3.89543 6 3 6.89543 3 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <h3>No folders shared</h3>
+                    <p>Add folders using the form below</p>
+                </div>
+            {% endif %}
+
+            <div class="folder-management">
+                <h3>Manage Shared Folders</h3>
+
+                <div class="add-folder-form">
+                    <input type="text" id="folderPath" placeholder="Enter folder path or click Browse..." />
+                    <button onclick="openFolderBrowser()" class="browse-button">Browse</button>
+                    <button onclick="addFolder()">Add Folder</button>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Folder Browser Modal -->
+    <div id="folderBrowserModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Folder</h3>
+                <div class="current-path" id="currentPathDisplay">Loading...</div>
+            </div>
+            <div class="modal-body" id="folderBrowserBody">
+                <div class="loading-message">Loading...</div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="selectCurrentFolder()" class="modal-button primary" id="selectButton" disabled>Select This Folder</button>
+                <button onclick="closeFolderBrowser()" class="modal-button secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBrowsePath = null;
+
+        // Folder Browser Functions
+        async function openFolderBrowser() {
+            const modal = document.getElementById('folderBrowserModal');
+            modal.classList.add('active');
+            currentBrowsePath = null;
+            await browsePath('');
+        }
+
+        function closeFolderBrowser() {
+            const modal = document.getElementById('folderBrowserModal');
+            modal.classList.remove('active');
+            currentBrowsePath = null;
+        }
+
+        async function browsePath(path) {
+            const body = document.getElementById('folderBrowserBody');
+            const pathDisplay = document.getElementById('currentPathDisplay');
+            const selectButton = document.getElementById('selectButton');
+
+            body.innerHTML = '<div class="loading-message">Loading...</div>';
+            selectButton.disabled = true;
+
+            try {
+                const url = path ? `/api/browse-filesystem?path=${encodeURIComponent(path)}` : '/api/browse-filesystem';
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.success) {
+                    body.innerHTML = `<div class="error-message">${data.message}</div>`;
+                    return;
+                }
+
+                currentBrowsePath = data.current_path;
+
+                // Update path display
+                if (currentBrowsePath) {
+                    pathDisplay.textContent = currentBrowsePath;
+                    selectButton.disabled = false;
+                } else {
+                    pathDisplay.textContent = 'Select a drive or location';
+                    selectButton.disabled = true;
+                }
+
+                // Build folder list
+                let html = '<ul class="folder-browser-list">';
+
+                // Show drives if no path selected
+                if (data.drives && data.drives.length > 0) {
+                    for (const drive of data.drives) {
+                        const disabled = !drive.accessible ? 'disabled' : '';
+                        html += `
+                            <li class="folder-browser-item ${disabled}" onclick="${drive.accessible ? `browsePath('${drive.path.replace(/\\/g, '\\\\')}')` : ''}">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 6H9L11 8H20C20.5523 8 21 8.44772 21 9V18C21 18.5523 20.5523 19 20 19H4C3.44772 19 3 18.5523 3 18V7C3 6.44772 3.44772 6 4 6Z" stroke="#667eea" stroke-width="2"/>
+                                </svg>
+                                ${drive.name}
+                            </li>
+                        `;
+                    }
+                } else {
+                    // Show parent directory if available
+                    if (data.parent) {
+                        html += `
+                            <li class="folder-browser-item up-directory" onclick="browsePath('${data.parent.replace(/\\/g, '\\\\')}')">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                .. (Parent Directory)
+                            </li>
+                        `;
+                    }
+
+                    // Show subdirectories
+                    if (data.directories && data.directories.length > 0) {
+                        for (const dir of data.directories) {
+                            const disabled = !dir.accessible ? 'disabled' : '';
+                            html += `
+                                <li class="folder-browser-item ${disabled}" onclick="${dir.accessible ? `browsePath('${dir.path.replace(/\\/g, '\\\\')}')` : ''}">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M4 6H9L11 8H20C20.5523 8 21 8.44772 21 9V18C21 18.5523 20.5523 19 20 19H4C3.44772 19 3 18.5523 3 18V7C3 6.44772 3.44772 6 4 6Z" stroke="#667eea" stroke-width="2"/>
+                                    </svg>
+                                    ${dir.name}
+                                </li>
+                            `;
+                        }
+                    } else {
+                        html += '<li class="folder-browser-item disabled"><em>No subdirectories</em></li>';
+                    }
+                }
+
+                html += '</ul>';
+                body.innerHTML = html;
+
+            } catch (error) {
+                body.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+            }
+        }
+
+        function selectCurrentFolder() {
+            if (currentBrowsePath) {
+                document.getElementById('folderPath').value = currentBrowsePath;
+                closeFolderBrowser();
+            }
+        }
+
+        // Original Functions
+        async function addFolder() {
+            const pathInput = document.getElementById('folderPath');
+            const path = pathInput.value.trim();
+
+            if (!path) {
+                showStatus('Please enter a folder path', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/folders', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path: path})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    pathInput.value = '';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function removeFolder(index) {
+            if (!confirm('Are you sure you want to remove this folder from sharing?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/folders/${index}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Network error: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.style.display = 'block';
+
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Allow Enter key to add folder
+        document.getElementById('folderPath').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addFolder();
+            }
+        });
+    </script>
+</body>
+</html>
