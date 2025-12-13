@@ -1,0 +1,133 @@
+{% load static %}
+{% load filename_extras %}
+{% load replace_filters %}
+<html>
+  <head>
+	  <script>
+	  function confirmDeleteFile() {
+                return confirm("Are you sure you want to these files? The assistant will be rebuilt. It may take a minute or two.");
+            }
+	  </script>
+
+    <style>
+     a {
+  	color: blue;
+  	text-decoration: none;
+	}
+      .instructions {
+        display: block;
+        margin: 5px 0 10px 0;
+        padding-left: 0;
+        width: 100%;
+        font-size: 14px;
+        color: #666;
+        float: none;
+        clear: both;
+      }
+
+      .actual_instructions {
+        display: block;
+        width: 100%;
+        margin: 5px 0 10px 0;
+        padding-left: 0;
+        font-size: 14px;
+        color: #666;
+        float: none;
+        clear: both;
+      }
+
+      textarea  {
+        font-size: 10px;
+        width: 100%;
+        width: calc(0.6em * 80);
+        box-sizing: border-box;
+        resize: none;
+
+
+      }
+
+      .temperature{
+        display: block;
+        margin: 5px 0 10px 0;
+        padding-left: 0;
+        font-size: 14px;
+        color: #666;
+        float: none;
+        clear: both;
+      }
+      body {
+  padding: 50px;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* ensures full height */
+  box-sizing: border-box;
+}
+
+
+
+    </style>
+  </head>
+  <body style="backgroundColor=pink; display: flex; justify-content: center;  height: 100vh; margin: 0;">
+    <div class='container'>
+
+
+      {% block content %}
+      <h4>Edit Assistant: <a href="/django_ragamuffin/query/{{ assistant.name  | replace:".,/" }}">{{ assistant.name  | replace:".,/" }} </a> </h4>
+	<b> All files </b>
+        <div style="margin: 2 auto; padding: 0rem;  ">
+
+	{% if form.custom_data %}
+            {% for k,v,c, d  in  form.custom_data %}
+	    <small>
+		    [ <span name='file_row' class="form-row"> 
+			    <a href="/django_ragamuffin/media/{{d}}/{{ v }}"> {{v}} </a>  </span> ]
+		    </span>
+	    </small>
+            {% endfor %}
+	  {% endif %}
+
+	{% if form.local_files %}
+	<p/> <b> Local files </b>
+          <form method="post" style="display: inline;" >
+            {% csrf_token %}
+            {% for k,v,c,d  in  form.local_files %}
+	    <small>
+		    [ <span name='file_row' class="form-row"> <input name="deletion" type="checkbox" value="{{ k }}"> </input> 
+			    <a href="/django_ragamuffin/media/{{d}}/{{ v }}"> {{v}} </a>  </span> ]
+	    </small>
+            {% endfor %}
+	 <div>
+	<button onclick="return confirmDeleteFile()" type="submit">Delete checked local files :  </button> 
+	 </div>
+          </form>
+	  {% endif %}
+
+
+	  <p/>
+	  <a href="/django_ragamuffin/upload/{{assistant.pk}}/"> <button> Upload new file  for the assistant <b>{{ assistant.name }}</b> </button> </a>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="{{ field.name}}" >
+              <h4> {{ field.label_tag}} </h4>
+              <div class="{{ field.name}}">
+                {{ field }}
+              </div>
+              {% if field.help_text %}
+                {{ field.help_text | safe }}
+              {% endif %}
+              {% for error in field.errors %}
+                <div class="error">{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+          <button type="submit">Submit</button>
+        </form>
+      {% endblock %}
+    </div>
+  </body>
+</html>
