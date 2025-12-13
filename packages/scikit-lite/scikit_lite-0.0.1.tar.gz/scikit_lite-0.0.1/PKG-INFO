@@ -1,0 +1,133 @@
+Metadata-Version: 2.4
+Name: scikit-lite
+Version: 0.0.1
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: numpy>=2.3.5
+Requires-Dist: maturin>=1.10.2 ; extra == 'dev'
+Requires-Dist: pre-commit>=4.5.0 ; extra == 'dev'
+Requires-Dist: pytest>=7.0.0 ; extra == 'dev'
+Requires-Dist: ruff>=0.14.8 ; extra == 'dev'
+Provides-Extra: dev
+License-File: LICENSE
+Summary: Lightweight machine learning library with scikit-learn compatible API
+Keywords: machine-learning,scikit-learn,numpy,linear-regression,ml,data-science
+Author: scikit-lite contributors
+Maintainer: scikit-lite contributors
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://github.com/kowanietz/scikit-lite
+Project-URL: Repository, https://github.com/kowanietz/scikit-lite
+Project-URL: Issues, https://github.com/kowanietz/scikit-lite/issues
+
+# scikit-lite
+
+⚠️ **PRE-ALPHA** - This package is in very early development. APIs will change.
+
+A simple machine learning library built for educational purposes.
+
+## Installation
+
+For users:
+
+```bash
+pip install scikit-lite
+```
+
+## Development Installation
+
+### Prerequisites
+- Python >= 3.11
+- Rust and Cargo (install from https://rustup.rs)
+- uv (install with `pip install uv`)
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kowanietz/scikit-lite.git
+   cd scikit-lite
+   ```
+
+2. Install dependencies and build Rust extensions:
+   ```bash
+   uv sync --extra dev
+   uv run maturin develop
+   ```
+
+3. Verify installation:
+   ```bash
+   python -c "import sklite; print(sklite.rust_health_check())"
+   ```
+
+
+## Development Workflow
+
+### Rebuilding After Changes
+
+When you modify Rust code in `src/`:
+```bash
+# Quick rebuild (debug mode)
+uv run maturin develop
+
+# Optimized rebuild (release mode, slower build but faster runtime)
+uv run maturin develop --release
+```
+
+### Code Quality
+```bash
+# Install pre-commit hooks (one-time setup)
+uv run pre-commit install
+
+# Run all checks manually
+uv run pre-commit run --all-files
+```
+
+## Publishing to PyPI
+
+### Prerequisites
+
+1. Ensure versions match in both:
+   - `pyproject.toml`: `version = "x.y.z"`
+   - `Cargo.toml`: `version = "x.y.z"`
+
+2. Set PyPI token:
+   ```bash
+   export MATURIN_PYPI_TOKEN="your-pypi-token"
+   ```
+
+### Publish
+
+```bash
+# Build and publish in one command
+uv run maturin publish --release
+```
+
+Maturin will automatically:
+- Build optimized wheels for your platform
+- Upload to PyPI
+
+TODO: Migrate release workflow to GitHub Actions for multiplatform builds.
+
+## Contributing
+
+This project is in early development. Contributions are welcome but please note the API is unstable.
+
+## License
+
+MIT License - See LICENSE file for details.
+
+## Acknowledgments
+
+Inspired by scikit-learn's excellent API design and educational resources.
+
