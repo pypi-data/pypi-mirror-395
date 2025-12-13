@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_vpn=self.webpackChunkmy_vpn||[]).push([[1903],{1912:s=>{s.exports=JSON.parse('{"blogBasePath":"/blog","blogTitle":"Blog","authorsListPath":"/blog/authors"}')}}]);
