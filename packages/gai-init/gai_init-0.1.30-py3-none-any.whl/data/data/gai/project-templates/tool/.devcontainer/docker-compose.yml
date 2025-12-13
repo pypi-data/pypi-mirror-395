@@ -1,0 +1,30 @@
+services:
+    devcontainer:
+        image: kakkoii1337/{{PROJECT_NAME}}:0.1.0
+        container_name: {{PROJECT_NAME}}_devcontainer
+        build:
+            context: ..
+            dockerfile: .devcontainer/Dockerfile.devcontainer
+        volumes:
+            # Use anonymous volume for virtual environment
+            - /workspace/.venv
+
+            # Make sure this matches the workspaceFolder in .devcontainer/devcontainer.json
+            - ..:/workspace:cached
+
+            # ~/.gai
+            - $HOME/.gai:/home/vscode/.gai
+
+            # ~/.cache
+            - $HOME/.cache:/home/vscode/.cache
+
+            - /var/run/docker.sock:/var/run/docker.sock
+        command: sleep infinity
+        network_mode: host # Use host network mode for direct access to gai-tools-web-svr
+
+    # {{PROJECT_NAME}}-svr:
+    #     image: kakkoii1337/{{PROJECT_NAME}}-svr:0.1.0
+    #     container_name: {{PROJECT_NAME}}-svr
+    #     volumes:
+    #         - ~/.gai:/home/vscode/.gai # ✅ Ensure ~/.gai is mounted from host
+    #     network_mode: host # Use host network mode for direct access to gai-tools-web-svr
