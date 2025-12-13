@@ -1,0 +1,80 @@
+?start: command
+
+?command: select
+        | cd
+        | create
+        | mk
+        | rename
+        | mv
+        | delete
+        | del
+        | copy
+        | cp
+        | export_txt
+        | export_csv
+        | export_json
+        | import_txt
+        | export_all
+        | add
+        | analyze
+        | remove
+        | rmc
+        | reset_commander
+        | set_commander
+        | commander
+        | meta
+        | top_commanders
+        | sync_db
+        | list
+        | ls
+        | exit
+        | find
+        | search
+        | clear
+        | cls
+        | DECKNAME        -> unknown
+
+select : "select" DECKNAME            -> select_cmd
+cd     : "cd" DECKNAME                -> select_cmd
+create : "create" DECKNAME            -> create_cmd
+mk     : "mk" DECKNAME                -> create_cmd
+rename : "rename" DECKNAME DECKNAME       -> rename_cmd
+mv     : "mv" DECKNAME DECKNAME       -> mv_cmd
+delete : "delete" DECKNAME            -> delete_cmd
+del    : "del" DECKNAME               -> delete_cmd
+copy   : "copy" DECKNAME DECKNAME         -> copy_cmd
+cp     : "cp" DECKNAME DECKNAME       -> copy_cmd
+export_txt : "export_txt" PATH DECKNAME?    -> export_txt_cmd
+export_csv : "export_csv" PATH DECKNAME?    -> export_csv_cmd
+export_json : "export_json" PATH DECKNAME?  -> export_json_cmd
+import_txt : "import_txt" PATH DECKNAME   -> import_txt_cmd
+export_all : "export_all" PATH       -> export_all_cmd
+add     : "add" CARDNAME INT?         -> add_cmd
+remove  : "remove" CARDNAME INT?      -> remove_cmd
+rmc     : "rmc" CARDNAME INT?         -> remove_cmd
+reset_commander : "reset-commander" -> reset_cmd
+commander : "commander"           -> commander_cmd
+set_commander : "set-commander" CARDNAME -> set_cmd
+meta : "meta" CARDNAME CARDNAME?  -> meta_cmd
+top_commanders : "top-commanders"  -> top_commanders_cmd
+sync_db : "sync-db"               -> sync_db_cmd
+list : "list" INT?                -> list_cmd
+ls : "ls" INT?                    -> list_cmd
+find : "find" CARDNAME               -> find_cmd
+search : "search" CARDNAME           -> search_cmd
+exit : "exit"                    -> exit_cmd
+analyze : "analyze" DECKNAME?         -> analyze_cmd
+clear : "clear"                    -> clear_cmd
+cls : "cls"                       -> clear_cmd
+
+PATH: ESCAPED_STRING
+    | /[a-zA-Z0-9_\-\/\.]+/
+DECKNAME: ESCAPED_STRING
+        | /[A-Za-z0-9_-]+/
+CARDNAME: ESCAPED_STRING
+        | /.+?(?=\s+\d+$|$)/
+
+%import common.ESCAPED_STRING
+%import common.INT
+%import common.WS
+%ignore WS
