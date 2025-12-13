@@ -1,0 +1,384 @@
+# Copyright © 2009-2022 Jakub Wilk <jwilk@jwilk.net>
+# Copyright © 2022-2024 FriedrichFroebel
+#
+# This file is part of didjvu.
+#
+# didjvu is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# didjvu is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# for more details.
+
+"""
+Wrappers for the DjVuLibre utilities
+"""
+
+import os
+import re
+import struct
+
+from didjvu import ipc
+from didjvu import temporary
+from didjvu import utils
+
+DPI_MIN = 72
+DPI_DEFAULT = 300
+DPI_MAX = 6000
+
+LOSS_LEVEL_MIN = 0
+LOSS_LEVEL_CLEAN = 1
+LOSS_LEVEL_LOSSY = 100
+LOSS_LEVEL_MAX = 200
+
+SUBSAMPLE_MIN = 1
+SUBSAMPLE_DEFAULT = 3
+SUBSAMPLE_MAX = 12
+
+IW44_SLICES_DEFAULT = (74, 89, 99)
+IW44_N_SLICES_MAX = 63
+# https://sourceforge.net/p/djvu/djvulibre-git/ci/release.3.5.27.1/tree/tools/c44.cpp#l246
+
+
+class Crcb:
+    def __init__(self, sort_key, name):
+        self._sort_key = sort_key
+        self._name = name
+
+    def __str__(self):
+        return self._name
+
+
+class CRCB:
+    full = Crcb(3, 'full')
+    normal = Crcb(2, 'normal')
+    half = Crcb(1, 'half')
+    none = Crcb(0, 'none')
+
+    values = [full, normal, half, none]
+
+
+def bitonal_to_djvu(image, dpi=300, loss_level=0):
+    pbm_file = temporary.file(suffix='.pbm')
+    image.save(pbm_file.name)
+    djvu_file = temporary.file(suffix='.djvu', mode='r+b')
+    args = [
+        'cjb2',
+        '-dpi', str(dpi),
+        '-losslevel', str(loss_level),
+        pbm_file.name,
+        djvu_file.name
+    ]
+
+    def wait_function():
+        ipc.Subprocess(args).wait()
+        pbm_file.close()
+
+    return utils.Proxy(djvu_file, wait_function, [pbm_file])
+
+
+def photo_to_djvu(image, dpi=100, slices=IW44_SLICES_DEFAULT, gamma=2.2, mask_image=None, crcb=CRCB.normal):
+    ppm_file = temporary.file(suffix='.ppm')
+    image.save(ppm_file.name)
+    if not isinstance(crcb, Crcb):
+        raise TypeError
+    with temporary.directory() as djvu_dir:
+        args = [
+            'c44',
+            '-dpi', str(dpi),
+            '-slice', ','.join(map(str, slices)),
+            '-gamma', f'{gamma:.1f}',
+            f'-crcb{crcb}',
+        ]
+        if mask_image is not None:
+            pbm_file = temporary.file(suffix='.pbm')
+            mask_image.save(pbm_file.name)
+            args += ['-mask', pbm_file.name]
+        djvu_path = os.path.join(djvu_dir, 'result.djvu')
+        args += [ppm_file.name, djvu_path]
+        ipc.Subprocess(args).wait()
+        if mask_image is not None:
+            pbm_file.close()
+        ppm_file.close()
+        return temporary.hardlink(djvu_path, suffix='.djvu')
+
+
+def djvu_to_iw44(djvu_file):
+    # TODO: Use Multichunk.
+    iw44_file = temporary.file(suffix='.iw44')
+    args = ['djvuextract', djvu_file.name, 'BG44=' + iw44_file.name]
+    with open(os.devnull, 'wb') as dev_null:
+        return utils.Proxy(iw44_file, ipc.Subprocess(args, stderr=dev_null).wait, [djvu_file])
+
+
+def _int_or_none(x):
+    if x is None:
+        return
+    if isinstance(x, int):
+        return x
+    raise TypeError
+
+
+def _chunk_order(key):
+    # INCL must go before Sjbz.
+    if key[0] == 'incl':
+        return -2
+    # djvuextract expects Sjbz before PPM.
+    if key[0] == 'sjbz':
+        return -1
+    return 0
+
+
+class Multichunk:
+    _chunk_names = 'Sjbz Smmr BG44 BGjp BG2k FGbz FG44 FGjp FG2k INCL Djbz'
+    _chunk_names = {x.lower(): x for x in _chunk_names.split()}
+    _info_re = re.compile(r' (\d+)x(\d+),.* (\d+) dpi,').search
+
+    def __init__(self, width=None, height=None, dpi=None, **chunks):
+        self.width = _int_or_none(width)
+        self.height = _int_or_none(height)
+        self.dpi = _int_or_none(dpi)
+        self._chunks = {}
+        self._dirty = set()  # Chunks that need to be re-read from the file.
+        self._pristine = False  # Should save() be a no-op?
+        self._file = None
+        for key, value in chunks.items():
+            self[key] = value
+
+    def _load_file(self):
+        args = ['djvudump', self._file.name]
+        dump = ipc.Subprocess(args, stdout=ipc.PIPE)
+        self.width = self.height = self.dpi = None
+        keys = set()
+        try:
+            header = dump.stdout.readline()
+            if not header.startswith('  FORM:DJVU '):
+                raise ValueError
+            for line in dump.stdout:
+                if line[:4] == '    ' and line[8:9] == ' ':
+                    key = line[4:8]
+                    if key == 'INFO':
+                        m = self._info_re(line[8:])
+                        self.width, self.height, self.dpi = m.groups()
+                    else:
+                        keys.add(key.lower())
+                else:
+                    raise ValueError
+        finally:
+            dump.wait()
+        self._chunks = {key: None for key in keys}
+        self._dirty.add(self._chunks)
+        self._pristine = True
+
+    @classmethod
+    def from_file(cls, djvu_file):
+        self = cls()
+        self._file = djvu_file
+        self._load_file()
+        return self
+
+    def __contains__(self, key):
+        key = key.lower()
+        if key in self._chunks:
+            return True
+
+    def __setitem__(self, key, value):
+        if key == 'image':
+            ppm_file = temporary.file(suffix='.ppm')
+            value.save(ppm_file.name)
+            key = 'PPM'
+            value = ppm_file
+        else:
+            key = key.lower()
+            if key not in self._chunk_names:
+                raise ValueError
+        self._chunks[key] = value
+        self._dirty.discard(key)
+        self._pristine = False
+
+    def __getitem__(self, key):
+        key = key.lower()
+        value = self._chunks[key]
+        if key in self._dirty:
+            self.save()
+            self._load_file()
+            self._update_chunks()
+            value = self._chunks[key]
+            assert value is not None
+        return value
+
+    def _update_chunks(self):
+        assert self._file is not None
+        args = ['djvuextract', self._file.name]
+        chunk_files = {}
+        for key in self._dirty:
+            chunk_file = temporary.file(suffix=f'.{key}-chunk')
+            args += [f'{self._chunk_names[key]}={chunk_file.name}']
+            chunk_files[key] = chunk_file
+        with open(os.devnull, 'wb') as dev_null:
+            djvu_extract = ipc.Subprocess(args, stderr=dev_null)
+        for key in self._chunks:
+            self._chunks[key] = utils.Proxy(chunk_files[key], djvu_extract.wait, [self._file])
+            self._dirty.discard(key)
+        assert not self._dirty
+        # The file reference is not needed anymore.
+        self._file = None
+
+    def save(self):
+        if (self._file is not None) and self._pristine:
+            return self._file
+        if self.width is None:
+            raise ValueError
+        if self.height is None:
+            raise ValueError
+        if self.dpi is None:
+            raise ValueError
+        if len(self._chunks) == 0:
+            raise ValueError
+        args = ['djvumake', None, f'INFO={self.width},{self.height},{self.dpi}']
+        incl_dir = None
+        for key, value in sorted(self._chunks.items(), key=_chunk_order):
+            try:
+                key = self._chunk_names[key]
+            except KeyError:
+                pass
+            if key == 'INCL':
+                # This is tricky. DjVuLibre used to require (at least until v3.5.27) full path for INCL,
+                # but now it requires just basename:
+                # https://sourceforge.net/p/djvu/djvulibre-git/ci/2fea3cdd3eb2b9ae60a43a851dbd838b6939af4b/
+                # Let's work around this inconsistency.
+                new_incl_dir = os.path.dirname(value)
+                if incl_dir is None:
+                    incl_dir = new_incl_dir
+                elif incl_dir != new_incl_dir:
+                    raise ValueError
+                value = os.path.basename(value)
+            if not isinstance(value, str):
+                value = value.name
+            if key == 'BG44':
+                value += ':99'
+            args += [f'{key}={value}']
+
+        def chdir():
+            os.chdir(incl_dir or '.')
+
+        with temporary.directory() as tmpdir:
+            djvu_filename = args[1] = os.path.join(tmpdir, 'result.djvu')
+            ipc.Subprocess(args, preexec_fn=chdir).wait()
+            self._chunks.pop('PPM', None)
+            assert 'PPM' not in self._dirty
+            self._file = temporary.hardlink(djvu_filename)
+            self._pristine = True
+            return self._file
+
+    def close(self):
+        if 'sjbz' in self:
+            self['sjbz'].close()
+        if 'PPM' in self:
+            self['PPM'].close()
+        for chunk in self._chunks.values():
+            chunk.close()
+
+
+_DJVU_HEADER = b'AT&TFORM\0\0\0\0DJVMDIRM\0\0\0\0\1'
+
+
+def bundle_djvu_via_indirect(*component_filenames):
+    with temporary.directory() as tmpdir:
+        page_ids = []
+        page_sizes = []
+        for filename in component_filenames:
+            page_id = os.path.basename(filename)
+            os.symlink(filename, os.path.join(tmpdir, page_id))
+            page_ids += [page_id]
+            page_size = os.path.getsize(filename)
+            if page_size >= 1 << 24:
+                # Would overflow; but 0 is fine, too.
+                page_size = 0
+            page_sizes += [page_size]
+        with temporary.file(dir=tmpdir, suffix='djvu') as index_file:
+            index_file.write(_DJVU_HEADER)
+            index_file.write(struct.pack('>H', len(page_ids)))
+            index_file.flush()
+            bzz = ipc.Subprocess(['bzz', '-e', '-', '-'], stdin=ipc.PIPE, stdout=index_file)
+            try:
+                for page_size in page_sizes:
+                    bzz.stdin.write(struct.pack('>I', page_size)[1:])
+                for page_id in page_ids:
+                    bzz.stdin.write(struct.pack('B', not page_id.endswith('.iff')))
+                for page_id in page_ids:
+                    bzz.stdin.write(page_id.encode('utf-8'))
+                    bzz.stdin.write(b'\0')
+            finally:
+                bzz.stdin.close()
+                bzz.wait()
+            index_file_size = index_file.tell()
+            i = 0
+            while True:
+                i = _DJVU_HEADER.find(b'\0' * 4, i)
+                if i < 0:
+                    break
+                index_file.seek(i)
+                index_file.write(struct.pack('>I', index_file_size - i - 4))
+                i += 4
+            index_file.flush()
+            djvu_file = temporary.file(suffix='.djvu')
+            ipc.Subprocess(['djvmcvt', '-b', index_file.name, djvu_file.name]).wait()
+    return djvu_file
+
+
+def bundle_djvu(*component_filenames):
+    assert len(component_filenames) > 0
+    if any(c.endswith('.iff') for c in component_filenames):
+        # We can't use `djvm -c`.
+        return bundle_djvu_via_indirect(*component_filenames)
+    else:
+        djvu_file = temporary.file(suffix='.djvu')
+        args = ['djvm', '-c', djvu_file.name]
+        args += component_filenames
+        return utils.Proxy(djvu_file, ipc.Subprocess(args).wait, None)
+
+
+def require_cli():
+    ipc.require(
+        'cjb2',
+        'c44',
+        'djvuextract',
+        'djvudump',
+        'djvumake',
+        'bzz',
+        'djvmcvt',
+    )
+
+
+_PAGE_ID_CHARACTERS = re.compile(r'^[A-Za-z\d_+.-]*$').match
+
+
+def validate_page_id(page_id):
+    if not _PAGE_ID_CHARACTERS(page_id):
+        raise ValueError('page identifier must consist only of lowercase ASCII letters, digits, _, +, - and dot')
+    if page_id[:1] in {'.', '+', '-'}:
+        raise ValueError('page identifier cannot start with +, - or a dot')
+    if '..' in page_id:
+        raise ValueError('page identifier cannot contain two consecutive dots')
+    assert page_id == os.path.basename(page_id)
+    if page_id.endswith('.djvu'):
+        return page_id
+    else:
+        raise ValueError('page identifier must end with the .djvu extension')
+
+
+__all__ = [
+    'bitonal_to_djvu', 'photo_to_djvu', 'djvu_to_iw44',
+    'bundle_djvu',
+    'require_cli',
+    'validate_page_id',
+    'Multichunk',
+    'DPI_MIN', 'DPI_DEFAULT', 'DPI_MAX',
+    'LOSS_LEVEL_MIN', 'LOSS_LEVEL_CLEAN', 'LOSS_LEVEL_LOSSY', 'LOSS_LEVEL_MAX',
+    'SUBSAMPLE_MIN', 'SUBSAMPLE_DEFAULT', 'SUBSAMPLE_MAX',
+    'IW44_SLICES_DEFAULT',
+    'CRCB',
+]
