@@ -1,0 +1,49 @@
+# --- DataModule ---
+data:
+  class_path: assi.datasets.dataset_segmented.SegmentedDataModule
+  init_args:
+    storage:
+      class_path: assi.datastorage.LocalStorage
+      init_args:
+        dataset_base_folder: .cache\mimii\
+        metadata_path: .cache\mimii\0_dB_pump\metadata.csv
+    
+    frame_length: 3072
+    frame_hop: 3072
+    batch_size: 200
+    metadata_query: split == 'train'
+    num_workers: 4
+    use_cache: false
+
+# --- Model ---
+model:
+  class_path: assi.models.AEModel
+  init_args:
+    channels: [0, ]
+    input_dim: 640
+    transform_n_fft: 1024
+    transform_hop_length: 512
+
+    
+# --- Seed ---
+seed_everything: 42
+
+# --- Trainer ---
+trainer:
+  max_epochs: 2
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        save_weights_only: true
+        save_top_k: 3
+        monitor: val_loss
+  logger:
+    class_path: lightning.pytorch.loggers.CSVLogger
+    init_args:
+      save_dir: ${assi.lightning_logs_dir:}
+
+# --- Optimizer ---
+optimizer:
+  class_path: Adam
+  init_args:
+    lr: 0.001
