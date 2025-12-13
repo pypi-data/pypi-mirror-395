@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ page_title or "Docs" }} — {{ config.get('PROJECT_NAME','SyntaxMatrix') }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;">
+  <div id="syntaxmatrix-docs-root"></div>
+  <script>
+  (function () {
+    const host = document.getElementById('syntaxmatrix-docs-root');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `
+      <style>
+        :host { all: initial; }
+        .doc { box-sizing:border-box; max-width: 980px; margin: 0 auto; padding: 24px;
+               color:#1b1f23; background:#fff; font: 16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Helvetica,Arial,Noto Sans,sans-serif; }
+        .doc * { box-sizing: inherit; text-align: left; }
+        .doc h1 { font-size: 2rem; margin: 0 0 .75rem }
+        .doc h2 { margin-top: 2rem; padding-bottom: .4rem; border-bottom: 1px solid #e1e4e8; }
+        .doc h3 { margin-top: 1.25rem; }
+        .doc p, .doc li { line-height: 1.65; }
+        .doc ul, .doc ol { padding-left: 24px; }
+        .doc blockquote { border-left: 4px solid #e1e4e8; margin: 1rem 0; padding: .25rem 1rem; color: #586069; background: #fafbfc; }
+        .doc code, .doc pre { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; }
+        .doc pre { white-space: pre; background:#f6f8fa; border:1px solid #e1e4e8; padding:12px; border-radius:8px; overflow:auto; position: relative; }
+        .copy-btn { position:absolute; top:8px; right:8px; border:1px solid #e1e4e8; background:#fff; padding:2px 8px; border-radius:6px; font-size:.8rem; cursor:pointer; }
+        .doc table { border-collapse: collapse; width: 100%; }
+        .doc th, .doc td { border:1px solid #e1e4e8; padding:6px 10px; vertical-align: top; }
+        .doc img { max-width:100%; height:auto; }
+        .note { background:#f6f8fa; border:1px solid #e1e4e8; padding:10px 12px; border-radius:8px; }
+        @media (prefers-color-scheme: dark) {
+          .doc { background:#0d1117; color:#c9d1d9; }
+          .doc h2 { border-color:#30363d; }
+          .doc pre, .note { background:#161b22; border-color:#30363d; }
+          .copy-btn { background:#0d1117; border-color:#30363d; color:#c9d1d9; }
+          .doc th, .doc td { border-color:#30363d; }
+        }
+      </style>
+      <article class="doc"><p class="note">Loading documentation…</p></article>
+    `;
+    const container = shadow.querySelector('.doc');
+
+    function addCopyButtons() {
+      shadow.querySelectorAll('pre > code').forEach(code => {
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(code.textContent || '');
+          btn.textContent = 'Copied';
+          setTimeout(() => btn.textContent = 'Copy', 900);
+        });
+        code.parentElement.appendChild(btn);
+      });
+    }
+
+    const mk = document.createElement('script');
+    mk.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+    mk.onload = () => {
+      fetch('/static/docs.md', { cache: 'no-cache' })
+        .then(r => r.text())
+        .then(md => { container.innerHTML = window.marked.parse(md); addCopyButtons(); })
+        .catch(() => { container.innerHTML = '<p style="color:#b00">Could not load <code>static/docs.md</code>.</p>'; });
+    };
+    shadow.appendChild(mk);
+  })();
+  </script>
+</body>
+</html>
