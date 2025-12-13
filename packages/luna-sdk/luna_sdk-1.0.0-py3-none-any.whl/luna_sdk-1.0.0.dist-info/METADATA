@@ -1,0 +1,127 @@
+Metadata-Version: 2.4
+Name: luna-sdk
+Version: 1.0.0
+Summary: Official Python SDK for the Eclipse Softworks Platform API
+Project-URL: Homepage, https://github.com/eclipse-softworks/luna-sdk
+Project-URL: Documentation, https://docs.eclipse.dev/luna/python
+Project-URL: Repository, https://github.com/eclipse-softworks/luna-sdk.git
+Project-URL: Changelog, https://github.com/eclipse-softworks/luna-sdk/blob/main/CHANGELOG.md
+Author-email: Eclipse Softworks <sdk@eclipse.dev>
+License: MIT
+Keywords: api,async,client,eclipse,luna,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: AsyncIO
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Typing :: Typed
+Requires-Python: >=3.9
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: keyring>=24.0.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.7.0; extra == 'dev'
+Requires-Dist: pre-commit>=3.6.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.12.0; extra == 'dev'
+Requires-Dist: pytest>=7.4.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.6; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: mkdocs-material>=9.5.0; extra == 'docs'
+Requires-Dist: mkdocs>=1.5.0; extra == 'docs'
+Requires-Dist: mkdocstrings[python]>=0.24.0; extra == 'docs'
+Provides-Extra: telemetry
+Requires-Dist: opentelemetry-api>=1.20.0; extra == 'telemetry'
+Requires-Dist: opentelemetry-sdk>=1.20.0; extra == 'telemetry'
+Description-Content-Type: text/markdown
+
+# luna-sdk
+
+Official Python SDK for the Eclipse Softworks Platform API.
+
+## Installation
+
+```bash
+pip install luna-sdk
+```
+
+## Quick Start
+
+```python
+import asyncio
+from luna import LunaClient
+
+async def main():
+    # API Key authentication
+    async with LunaClient(api_key="lk_live_xxxx") as client:
+        # List users
+        users = await client.users.list(limit=10)
+        
+        # Get a specific user
+        user = await client.users.get("usr_123")
+        
+        # Create a new user
+        from luna import UserCreate
+        new_user = await client.users.create(
+            UserCreate(email="john@example.com", name="John Doe")
+        )
+
+asyncio.run(main())
+```
+
+## Authentication
+
+### API Key
+
+```python
+client = LunaClient(api_key="lk_live_xxxx")
+```
+
+### OAuth Token
+
+```python
+async def save_tokens(tokens):
+    # Save tokens to database
+    pass
+
+client = LunaClient(
+    access_token=session.access_token,
+    refresh_token=session.refresh_token,
+    on_token_refresh=save_tokens,
+)
+```
+
+## Error Handling
+
+```python
+from luna import LunaClient, NotFoundError, RateLimitError
+
+try:
+    await client.users.get("usr_nonexistent")
+except NotFoundError as e:
+    print(f"User not found: {e.message}")
+except RateLimitError as e:
+    print(f"Rate limited, retry after: {e.retry_after}")
+```
+
+## Configuration
+
+```python
+client = LunaClient(
+    api_key="lk_live_xxxx",
+    base_url="https://api.staging.eclipse.dev",
+    timeout=60.0,
+    max_retries=5,
+    log_level="debug",
+)
+```
+
+## License
+
+MIT © Eclipse Softworks
