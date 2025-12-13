@@ -1,0 +1,635 @@
+"""
+Implements a LEGEND Data Object representing a special struct of arrays of
+equal length and corresponding utilities.
+"""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Mapping
+from types import ModuleType
+from typing import Any
+from warnings import warn
+
+import awkward as ak
+import numexpr as ne
+import numpy as np
+import pandas as pd
+from pandas.io.formats import format as fmt
+
+import lgdo
+
+from .array import Array
+from .arrayofequalsizedarrays import ArrayOfEqualSizedArrays
+from .lgdo import LGDO, LGDOCollection
+from .scalar import Scalar
+from .struct import Struct
+from .vectorofvectors import VectorOfVectors
+
+log = logging.getLogger(__name__)
+
+
+class Table(Struct, LGDOCollection):
+    """A special struct of arrays or subtable columns of equal length.
+
+    Note
+    ----
+    If you write to a table and don't fill it up to its total size, be sure to
+    resize it before passing to data processing functions, as they will call
+    :meth:`__len__` to access valid data, which returns the ``size`` attribute.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        # allow for (un-)pickling LGDO objects.
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.size = None
+        return obj
+
+    def __init__(
+        self,
+        col_dict: Mapping[str, LGDOCollection] | pd.DataFrame | ak.Array | None = None,
+        size: int | None = None,
+        attrs: Mapping[str, Any] | None = None,
+    ) -> None:
+        r"""
+        Parameters
+        ----------
+        size
+            sets the number of rows in the table. :class:`.Array`\ s in
+            `col_dict will be resized to match size if both are not ``None``.
+            If `size` is left as ``None``, the number of table rows is
+            determined from the length of the first array in `col_dict`. If
+            neither is provided, a default length of 1024 is used.
+        col_dict
+            instantiate this table using the supplied mapping of column names
+            and array-like objects. Supported input types are: mapping of
+            strings to LGDOCollections, :class:`pd.DataFrame` and :class:`ak.Array`.
+            Note 1: no copy is performed, the objects are used directly (unless
+            :class:`ak.Array` is provided).  Note 2: if `size` is not ``None``,
+            all arrays will be resized to match it.  Note 3: if the arrays have
+            different lengths, all will be resized to match the length of the
+            first array.
+        attrs
+            A set of user attributes to be carried along with this LGDO.
+
+        Notes
+        -----
+        the :attr:`loc` attribute is initialized to 0.
+        """
+        if isinstance(col_dict, pd.DataFrame):
+            col_dict = {k: Array(v) for k, v in col_dict.items()}
+
+        if isinstance(col_dict, ak.Array):
+            col_dict = _ak_to_lgdo_or_col_dict(col_dict)
+
+        # call Struct constructor
+        Struct.__init__(self, obj_dict=col_dict, attrs=attrs)
+        # no need to call the LGDOCollection constructor, as we are calling the
+        # Struct constructor already
+
+        # if col_dict is not empty, set size according to it
+        # if size is also supplied, resize all fields to match it
+        # otherwise, warn if the supplied fields have varying size
+        if col_dict is not None and len(col_dict) > 0:
+            self.resize(new_size=size, do_warn=(size is None))
+
+        # if no col_dict, just set the size
+        else:
+            self.size = size if size is not None else None
+
+    def datatype_name(self) -> str:
+        return "table"
+
+    def __len__(self) -> int:
+        """Provides ``__len__`` for this array-like class."""
+        return self.size
+
+    def reserve_capacity(self, capacity: int | Mapping[str | int]) -> None:
+        """Set size (number of rows) of internal memory buffer
+
+        Parameters
+        ----------
+        capacity
+            new capacities for fields in table. If `int`, set all capacities
+            to value; if `Mapping`, set capacity field-by-field.
+        """
+        if isinstance(capacity, int):
+            for obj in self.values():
+                obj.reserve_capacity(capacity)
+        else:
+            for field, cap in capacity.items():
+                self[field].reserve_capacity(cap)
+
+    def get_capacity(self) -> dict[str, int]:
+        "Return mapping from field name to capacity"
+        return {k: v.get_capacity() for k, v in self.items()}
+
+    def trim_capacity(self) -> int:
+        "Set capacity for each column to be minimum needed to support size"
+        for v in self.values():
+            v.trim_capacity()
+
+    def resize(
+        self, new_size: int | None = None, do_warn: bool = False, trim: bool = False
+    ) -> None:
+        """Resize all columns of the table
+
+        Parameters
+        ----------
+        new_size
+            new size of table. If ``None`` use size of first field found
+        do_warn
+            emit a warning if contents for any field must be resized. This
+            is intended for use with ``new_size = None``
+        trim
+            call :meth:`trim_capacity` after resizing to conserve memory
+        """
+        # if new_size = None, use the size from the first field
+        for field, obj in self.items():
+            if new_size is None:
+                new_size = len(obj)
+            elif len(obj) != new_size:
+                if do_warn:
+                    log.warning(
+                        f"warning: resizing field {field}"
+                        f"with size {len(obj)} != {new_size}"
+                    )
+                if isinstance(obj, Table):
+                    obj.resize(new_size, trim)
+                else:
+                    obj.resize(new_size, trim)
+        self.size = new_size
+
+    def insert(self, i: int, vals: Table | Mapping[str, Any]) -> None:
+        """Insert new row(s) into table
+
+        Parameters
+        ----------
+        i
+            row at which to insert values
+        vals
+            values to add. Require same keys as table
+        """
+        new_size = None
+        for k, ar in self.items():
+            ar.insert(i, vals[k])
+            if new_size is None:
+                new_size = len(ar)
+            elif new_size != len(ar):
+                msg = "inserted vals must all have same length"
+                raise ValueError(msg)
+        self.size = new_size
+
+    def add_field(
+        self,
+        name: str,
+        obj: LGDOCollection | Mapping[str, LGDOCollection],
+        use_obj_size: bool = False,
+    ) -> None:
+        """Add a field (column) to the table.
+
+        Use the name "field" here to match the terminology used in
+        :class:`.Struct`.
+
+        Parameters
+        ----------
+        name
+            key to use for field. Key can be nested (e.g. ``name1.name2`` or
+            ``name1/name2``); this will navigate through the tree, creating
+            new fields as needed
+        obj
+            object to add. Can be any :class:`.LGDOCollection`, or a mapping from names
+            to LGDOCollections that will be converted to an LGDO :class:`.Table`.
+            Size of ``obj`` should match size of this Table
+        use_obj_size
+            if ``True``, resize the table to match the length of `obj`.
+        """
+        if not isinstance(obj, LGDO):
+            if isinstance(obj, Mapping):
+                obj = Table(obj, size=self.size)
+            else:
+                msg = "cannot add field of type"
+                raise TypeError(msg, type(obj).__name__)
+
+        super().add_field(name, obj)
+
+        if self.size is None:
+            self.size = len(obj)
+
+        # check / update sizes
+        if self.size != len(obj):
+            warn(
+                f"warning: you are trying to add {name} with length {len(obj)} to a table with size {self.size} and data might be lost. \n"
+                f"With 'use_obj_size' set to:\n"
+                f"  - True, the table will be resized to length {len(obj)} by padding/clipping its columns.\n"
+                f"  - False (default), object {name} will be padded/clipped to length {self.size}.",
+                UserWarning,
+                stacklevel=2,
+            )
+            new_size = len(obj) if use_obj_size else self.size
+            self.resize(new_size=new_size)
+
+    def replace(self, i: int, vals: Mapping | Table) -> None:
+        for k, ar in self.items():
+            ar.replace(i, vals[k])
+
+    def add_column(
+        self, name: str, obj: LGDOCollection, use_obj_size: bool = False
+    ) -> None:
+        """Alias for :meth:`.add_field` using table terminology 'column'."""
+        self.add_field(name, obj, use_obj_size=use_obj_size)
+
+    def remove_column(self, name: str, delete: bool = False) -> None:
+        """Alias for :meth:`Struct.remove_field` using table terminology 'column'."""
+        super().remove_field(name, delete)
+
+    def join(
+        self,
+        other_table: Table,
+        cols: list[str] | None = None,
+        keep_mine: bool = False,
+        prefix: str = "",
+        suffix: str = "",
+        do_warn: bool = True,
+    ) -> None:
+        """Add the columns of another table to this table.
+
+        Notes
+        -----
+        Following the join, both tables have access to `other_table`'s fields
+        (but `other_table` doesn't have access to this table's fields). No
+        memory is allocated in this process. `other_table` can go out of scope
+        and this table will retain access to the joined data.
+
+        Parameters
+        ----------
+        other_table
+            the table whose columns are to be joined into this table.
+        cols
+            a list of names of columns from `other_table` to be joined into
+            this table.
+        keep_mine
+            if there is a column name conflict, keep this Tables col if
+            ``True``, or joined Table's column if ``False`` (default).
+        prefix
+            prepend to joined column names; can be used to avoid name conflicts.
+        suffix
+            append to joined column names; can be used to avoid name conflicts.
+        do_warn
+            set to ``False`` to turn off warnings associated with mismatched
+            `loc` parameter or :meth:`add_column` warnings.
+        """
+        if len(other_table) != len(self) and do_warn:
+            log.warning(
+                f"len(other_table) ({len(other_table)}) != len(self) ({len(self)})"
+            )
+        if cols is None:
+            cols = other_table.keys()
+        for name in cols:
+            joined_name = f"{prefix}{name}{suffix}"
+            if joined_name in self and keep_mine:
+                continue
+            self.add_column(joined_name, other_table[name])
+
+    def get_dataframe(
+        self,
+        cols: list[str] | None = None,
+        copy: bool = False,  # noqa: ARG002
+        prefix: str = "",
+    ) -> pd.DataFrame:
+        """Get a :class:`pandas.DataFrame` from the data in the table.
+
+        Warning
+        -------
+        This method is deprecated. Use :meth:`.view_as` to view the table as a
+        Pandas dataframe.
+
+        Notes
+        -----
+        The requested data must be array-like, with the ``nda`` attribute.
+
+        Parameters
+        ----------
+        cols
+            a list of column names specifying the subset of the table's columns
+            to be added to the dataframe.
+        copy
+            When ``True``, the dataframe allocates new memory and copies data
+            into it. Otherwise, the raw ``nda``'s from the table are used directly.
+        prefix
+            The prefix to be added to the column names. Used when recursively getting the
+            dataframe of a Table inside this Table
+        """
+        warn(
+            "`get_dataframe` is deprecated and will be removed in a future release. "
+            "Instead use `view_as` to get the Table data as a pandas dataframe "
+            "or awkward Array. ",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.view_as(library="pd", cols=cols, prefix=prefix)
+
+    def flatten(self, _prefix="") -> Table:
+        """Flatten the table, if nested.
+
+        Returns a new :class:`Table` (that references, not copies, the existing
+        columns) with columns in nested tables being moved to the first level
+        (and renamed appropriately).
+
+        Examples
+        --------
+        >>> repr(tbl)
+        "Table(dict={'a': Array([1 2 3], attrs={'datatype': 'array<1>{real}'}), 'tbl': Table(dict={'b': Array([4 5 6], attrs={'datatype': 'array<1>{real}'}), 'tbl1': Table(dict={'z': Array([9 9 9], attrs={'datatype': 'array<1>{real}'})}, attrs={'datatype': 'table{z}'})}, attrs={'datatype': 'table{b,tbl1}'})}, attrs={'datatype': 'table{a,tbl}'})"
+        >>> tbl.flatten().keys()
+        dict_keys(['a', 'tbl__b', 'tbl__tbl1__z'])
+        """
+        flat_table = Table(size=self.size)
+        for key, obj in self.items():
+            if isinstance(obj, Table):
+                flat_table.join(obj.flatten(_prefix=f"{_prefix}{key}__"))
+            else:
+                flat_table.add_column(_prefix + key, obj)
+
+        return flat_table
+
+    def eval(
+        self,
+        expr: str,
+        parameters: Mapping[str, str] | None = None,
+        modules: Mapping[str, ModuleType] | None = None,
+        with_units: bool = False,
+        library: str | None = None,
+    ) -> LGDO:
+        """Apply column operations to the table and return a new LGDO.
+
+        Internally uses :func:`numexpr.evaluate` if dealing with columns
+        representable as NumPy arrays or :func:`eval` if
+        :class:`.VectorOfVectors` are involved. In the latter case, the VoV
+        columns are viewed as :class:`ak.Array` and the respective routines are
+        therefore available.
+
+        To columns nested in subtables can be accessed by scoping with two
+        underscores (``__``). For example: ::
+
+          tbl.eval("a + tbl2__b")
+
+        computes the sum of column `a` and column `b` in the subtable `tbl2`.
+
+        Parameters
+        ----------
+        expr
+            if the expression only involves non-:class:`.VectorOfVectors`
+            columns, the syntax is the one supported by
+            :func:`numexpr.evaluate` (see `here
+            <https://numexpr.readthedocs.io/projects/NumExpr3/en/latest/index.html>`_
+            for documentation). Note: because of internal limitations,
+            reduction operations must appear the last in the stack. If at least
+            one considered column is a :class:`.VectorOfVectors`, plain
+            :func:`eval` is used and :class:`ak.Array` transforms can be used
+            through the ``ak.`` prefix. (NumPy functions are analogously
+            accessible through ``np.``). See also examples below.
+        parameters
+            a dictionary of function parameters. Passed to
+            :func:`numexpr.evaluate`` as `local_dict` argument or to
+            :func:`eval` as `locals` argument.
+        modules
+            a dictionary of additional modules used by the expression. If this
+            is not `None` then :func:`eval`is used and the expression can
+            depend on any modules from this dictionary in addition to awkward
+            and numpy. These are passed to :func:`eval` as `globals` argument.
+        with_units
+            attach units to the columns as in :meth:`LGDO.view_as`.
+        library
+            library to convert the columns to with :meth:`LGDO.view_as`,
+            supported libraries are ``np``, ``ak`` or ``lgdo`` (pass in directly
+            the unconverted LGDO objects).
+
+        Examples
+        --------
+        >>> import lgdo
+        >>> tbl = lgdo.Table(
+        ...   col_dict={
+        ...     "a": lgdo.Array([1, 2, 3]),
+        ...     "b": lgdo.VectorOfVectors([[5], [6, 7], [8, 9, 0]]),
+        ...   }
+        ... )
+        >>> print(tbl.eval("a + b"))
+        [[6],
+         [8 9],
+         [11 12  3],
+        ]
+        >>> print(tbl.eval("np.sum(a) + ak.sum(b)"))
+        41
+        """
+        if parameters is None:
+            parameters = {}
+
+        # get the valid python variable names in the expression
+        c = compile(expr, "0vbb is real!", "eval")
+
+        # make a dictionary of low-level objects (numpy or awkward)
+        # for later computation
+        flat_self = self.flatten()
+        self_unwrap = {}
+        has_only_np = False
+        for obj in c.co_names:
+            if obj in flat_self:
+                # use the user-selected library or use the np/ak default depending on the type.
+                col_library = library or "np"
+                if library is None and isinstance(flat_self[obj], VectorOfVectors):
+                    col_library = "ak"
+                has_only_np = has_only_np or col_library == "np"
+
+                if col_library == "lgdo":
+                    self_unwrap[obj] = flat_self[obj]
+                else:
+                    self_unwrap[obj] = flat_self[obj].view_as(
+                        col_library, with_units=with_units
+                    )
+
+        msg = f"evaluating {expr!r} with locals={(self_unwrap | parameters)} and {has_only_np=}"
+        log.debug(msg)
+
+        def _make_lgdo(data):
+            if data.ndim == 0:
+                return Scalar(data.item())
+            if data.ndim == 1:
+                return Array(data)
+            if data.ndim == 2:
+                return ArrayOfEqualSizedArrays(nda=data)
+
+            msg = (
+                f"evaluation resulted in {data.ndim}-dimensional data, "
+                "I don't know which LGDO this corresponds to"
+            )
+            raise RuntimeError(msg)
+
+        # use numexpr if we are only dealing with numpy data types (and no global dictionary)
+        if has_only_np and modules is None:
+            try:
+                out_data = ne.evaluate(
+                    expr,
+                    local_dict=(self_unwrap | parameters),
+                )
+
+                msg = f"...the result is {out_data!r}"
+                log.debug(msg)
+
+                # need to convert back to LGDO
+                # np.evaluate should always return a numpy thing?
+                return _make_lgdo(out_data)
+
+            except Exception:
+                msg = (
+                    f"Warning {expr} could not be evaluated with numexpr probably "
+                    "due to some not allowed characters, trying with eval()."
+                )
+                log.debug(msg)
+
+        # resort to good ol' eval()
+        globs = {"ak": ak, "np": np, "lgdo": lgdo}
+        if modules is not None:
+            globs = globs | modules
+
+        out_data = eval(expr, globs, (self_unwrap | parameters))
+
+        msg = f"...the result is {out_data!r}"
+        log.debug(msg)
+
+        # need to convert back to LGDO
+        if isinstance(out_data, ak.Array):
+            if out_data.ndim == 1:
+                return Array(out_data.to_numpy())
+            return VectorOfVectors(out_data)
+
+        # modules can still produce numpy array
+        if isinstance(out_data, np.ndarray):
+            return _make_lgdo(out_data)
+
+        if np.isscalar(out_data):
+            return Scalar(out_data)
+
+        # if out_data is already an LGDO just return it
+        if isinstance(out_data, LGDO):
+            return out_data
+
+        msg = (
+            f"evaluation resulted in a {type(out_data)} object, "
+            "I don't know which LGDO this corresponds to"
+        )
+        raise RuntimeError(msg)
+
+    def __str__(self):
+        opts = fmt.get_dataframe_repr_params()
+        opts["show_dimensions"] = False
+        opts["index"] = False
+
+        try:
+            string = self.view_as("pd").to_string(**opts)
+        except ValueError:
+            string = "Cannot print Table with VectorOfVectors yet!"
+
+        string += "\n"
+        for k, v in self.items():
+            attrs = v.getattrs()
+            if attrs:
+                string += f"\nwith attrs['{k}']={attrs}"
+
+        attrs = self.getattrs()
+        if attrs:
+            string += f"\nwith attrs={attrs}"
+
+        return string
+
+    def view_as(
+        self,
+        library: str,
+        with_units: bool = False,
+        cols: list[str] | None = None,
+        prefix: str = "",
+    ) -> pd.DataFrame | np.NDArray | ak.Array:
+        r"""View the Table data as a third-party format data structure.
+
+        This is typically a zero-copy or nearly zero-copy operation.
+
+        Supported third-party formats are:
+
+        - ``pd``: returns a :class:`pandas.DataFrame`
+        - ``ak``: returns an :class:`ak.Array` (record type)
+
+        Notes
+        -----
+        Conversion to Awkward array only works when the key is a string.
+
+        Parameters
+        ----------
+        library
+            format of the returned data view.
+        with_units
+            forward physical units to the output data.
+        cols
+            a list of column names specifying the subset of the table's columns
+            to be added to the data view structure.
+        prefix
+            The prefix to be added to the column names. Used when recursively
+            getting the dataframe of a :class:`Table` inside this
+            :class:`Table`.
+
+        See Also
+        --------
+        .LGDO.view_as
+        """
+        if cols is None:
+            cols = self.keys()
+
+        if library == "pd":
+            df = {}
+
+            for col in cols:
+                data = self[col]
+
+                if isinstance(data, Table):
+                    log.debug(f"viewing Table {col=!r} recursively")
+
+                    tmp_df = data.view_as(
+                        "pd", with_units=with_units, prefix=f"{prefix}{col}_"
+                    )
+                    for k, v in tmp_df.items():
+                        df[k] = v
+
+                else:
+                    log.debug(
+                        f"viewing {type(data).__name__} column {col!r} as Pandas Series"
+                    )
+                    df[f"{prefix}{col}"] = data.view_as("pd", with_units=with_units)
+
+            return pd.DataFrame(df, copy=False)
+
+        if library == "np":
+            msg = f"Format {library!r} is not supported for Tables."
+            raise TypeError(msg)
+
+        if library == "ak":
+            # NOTE: passing the Table directly (which inherits from a dict) makes it
+            # somehow really slow. ak.Array can unroll dicts just fine, but then uses
+            # ak.from_iter to convert the arrays, instead of a zero-copy operation.
+            return ak.Array(
+                {col: self[col].view_as("ak", with_units=with_units) for col in cols}
+            )
+
+        msg = f"{library!r} is not a supported third-party format."
+        raise TypeError(msg)
+
+
+def _ak_to_lgdo_or_col_dict(array: ak.Array):
+    if isinstance(array.type.content, ak.types.RecordType):
+        return {field: _ak_to_lgdo_or_col_dict(array[field]) for field in array.fields}
+    if array.type.content.parameters.get("__array__") == "string":
+        # Variable length strings aren't quite up to snuff yet, so pad the
+        # fixed-width string length in case we want to update the array
+        # TODO: numpy 2.2.5 fixes this; but it required python v3.10 or higher
+        s_len = np.max(ak.num(array))
+        return Array(np.array(array, dtype=f"<U{s_len * 2}"))
+    if isinstance(array.type.content, ak.types.NumpyType):
+        return Array(ak.to_numpy(array))
+    return VectorOfVectors(array)
