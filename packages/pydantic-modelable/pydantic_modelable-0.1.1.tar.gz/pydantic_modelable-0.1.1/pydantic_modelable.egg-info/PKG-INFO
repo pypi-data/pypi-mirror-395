@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: pydantic-modelable
+Version: 0.1.1
+Summary: A set of pydantic utilities, to extend models on package load
+Author-email: David Pineau <dav.pineau@gmail.com>
+License-Expression: BSD-3-Clause
+Project-URL: Homepage, https://github.com/Joacchim/pydantic-modelable
+Project-URL: Source, https://github.com/Joacchim/pydantic-modelable
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Framework :: Pydantic :: 2
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic>=2.11
+Requires-Dist: aenum>=3.1.13
+Provides-Extra: test
+Requires-Dist: mypy==1.18.2; extra == "test"
+Requires-Dist: ruff==0.13.2; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Provides-Extra: doc
+Requires-Dist: mkdocs; extra == "doc"
+Requires-Dist: mkdocstrings[python]; extra == "doc"
+Dynamic: license-file
+
+# pydantic-modelable
+
+A set of utilities around pydantic that allows to create extensible pydantic
+models, with little code, in an aim to have models extended by third-party
+python code.
+
+
+## Features
+
+Using `pydantic` for type modelisation and validation has become a very common
+practice. That being said, some advanced uses are not natively supported,
+although the pydantic types are extremely flexible, such as dynamic
+extensibility of the models.
+
+It can be very useful to define extensible models relying on this mechanism,
+and `pydantic_modelable`, as it may provide the following benefits:
+ - Reduction of code maintenance (defining an "extension" registers it
+   automatically wherever the base was setup)
+ - Easy extension of a core library's models and features through the loading
+   of extension modules
+ - Automatically updated Model schemas for inclusion in any schema-based
+   tooling or framework (ex: FastAPI's OpenAPI Schema generation tooling)
+
+With a few additional parameters to your model's constructor, inheriting from
+`pydantic_modelable.Modelable`, you can thus configure specific behaviors for
+your extensible model:
+ - discriminated union: `discriminator=attr_name`
+
+You can then register other models into your base model using decorators
+embedded into your base model by the `pydantic_modelable.Modelable` class:
+ - `extends_enum`
+ - `extends_union(dicriminated_union_attr_name: str)`
+ - `as_attribute(attr_name: str, optional: bool, default_factory: Callable[[], BaseModel])`
+
+
+## Limitations
+
+As pydantic-modelable relies on altering the pydantic models at runtime, the
+type-checking tools are usually not able to understand that the model was
+extended and its type signature was changed. This, sadly, often leads to an
+extensive use of `#type: ignore` directives in the code relating to the use
+of the extended models.
