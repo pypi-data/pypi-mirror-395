@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ '3.10', '3.11', '3.12', '3.13', '3.14' ]
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: 'false'
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install outline
+      shell: bash
+      run: |
+        ./start_outline_server.sh
+    - name: Install dependencies
+      run: |
+        pip install poetry
+        poetry install --no-root
+    - name: Test with pytest
+      run: |
+        poetry run pytest -x --cov-report xml --cov=./
+    - name: Upload code coverage
+      uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
+      with:
+        verbose: true
+        files: coverage.xml
+        fail_ci_if_error: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
