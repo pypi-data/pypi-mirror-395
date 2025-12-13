@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "termux-dev-setup"
+version = "2.0.0"
+description = "Termux development environment setup tool (PostgreSQL, Redis, etc.)"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "dhruv13x", email = "dhruv13x@gmail.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+]
+dependencies = [
+    "rich>=13.0.0",
+    "pygments>=2.15.0",
+]
+
+[project.scripts]
+tds = "termux_dev_setup.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# All projects use src/ layout
+pythonpath = ["src"]
+
+# All tests live under tests/
+testpaths = ["tests"]
+
+# Async projects are common in your stack
+asyncio_mode = "auto"
+
+# Global pytest options
+addopts = [
+  "-v",
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+  "--tb=short",
+  "--showlocals",
+  "--import-mode=importlib",
+
+  # Time & perf
+  "--timeout=10",
+  "--durations=10",
+
+  # Coverage: target the real package
+  "--cov=src/termux_dev_setup",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=html",
+  "--cov-report=xml",
+  "--cov-fail-under=95",
+]
+
+log_cli = true
+log_cli_level = "INFO"
+
+[tool.coverage.run]
+branch = true
+source = ["src/termux_dev_setup"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = true
