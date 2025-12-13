@@ -1,0 +1,356 @@
+# CognitiveAI Python SDK
+
+[![PyPI version](https://badge.fury.io/py/cognitiveai-sdk.svg)](https://pypi.org/project/cognitiveai-sdk/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A comprehensive Python SDK for the Neural Multi-Level Reasoning (CognitiveAI) API. Provides async support, error handling, and easy integration with Python applications.
+
+## Features
+
+- 🚀 **Async First**: Built with asyncio for high-performance async operations
+- 🔄 **Auto Retry**: Intelligent retry logic with exponential backoff
+- 🛡️ **Error Handling**: Comprehensive error handling with custom exceptions
+- 📊 **Job Management**: Full support for async job monitoring and cancellation
+- 🔑 **API Key Management**: Create, list, and manage API keys programmatically
+- 📈 **Grid Search**: Efficient parameter optimization across beam/step combinations
+- 🧪 **Well Tested**: Comprehensive test suite with high coverage
+
+## Installation
+
+```bash
+pip install cognitiveai-sdk
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/cognitiveai/cognitiveai-python-sdk.git
+cd cognitiveai-python-sdk
+pip install -e .
+```
+
+## Quick Start
+
+### Basic Search Reasoning
+
+```python
+import asyncio
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig
+
+async def main():
+    # Configure the client
+    config = CognitiveAIConfig(api_key="your-api-key-here")
+    # Use local development server
+    config.base_url = "http://localhost:8000"
+
+    async with CognitiveAIClient(config) as client:
+        # Perform search reasoning
+        result = await client.search("What are the three laws of thermodynamics?")
+
+        print(f"Response: {result.response}")
+        print(f"Tokens used: {result.tokens_used}")
+        print(f"Cost: ${result.cost}")
+
+asyncio.run(main())
+```
+
+### Grid Search for Parameter Optimization
+
+```python
+import asyncio
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig, GridRequest
+
+async def optimize_parameters():
+    config = CognitiveAIConfig(api_key="your-api-key-here")
+    config.base_url = "http://localhost:8000"
+
+    async with CognitiveAIClient(config) as client:
+        # Test multiple beam/step combinations
+        request = GridRequest(
+            beams=[2, 3, 4],
+            steps=[1, 2, 3],
+            prompt="Solve this complex reasoning problem...",
+            provider="mock"  # Use mock for testing
+        )
+
+        result = await client.grid_search(request)
+
+        print(f"Best result: {result.best_result}")
+        print(f"Total cost: ${result.total_cost}")
+        print(f"Total tokens: {result.total_tokens_used}")
+
+asyncio.run(optimize_parameters())
+```
+
+### Quick Functions for Simple Use Cases
+
+```python
+import asyncio
+from cognitiveai import search, grid_search
+
+async def quick_examples():
+    # Simple search
+    result = await search(
+        prompt="Explain quantum entanglement",
+        api_key="your-api-key",
+        provider="mock",
+        beam=3,
+        steps=2
+    )
+    print(result.response)
+
+    # Simple grid search
+    result = await grid_search(
+        beams=[2, 3],
+        steps=[1, 2],
+        api_key="your-api-key",
+        prompt="What is the meaning of life?",
+        provider="mock"
+    )
+    print(result.best_result)
+
+asyncio.run(quick_examples())
+```
+
+## Advanced Usage
+
+### Custom Configuration
+
+```python
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig
+
+# Custom configuration
+config = CognitiveAIConfig(
+    api_key="your-api-key",
+    base_url="https://cognitiveai-api.fly.dev",  # Production API
+    timeout=600.0,  # 10 minutes timeout
+    max_retries=5,
+    retry_delay=2.0
+)
+
+async with CognitiveAIClient(config) as client:
+    # Use client...
+    pass
+```
+
+### Job Management
+
+```python
+import asyncio
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig
+
+async def manage_jobs():
+    config = CognitiveAIConfig(api_key="your-api-key")
+    async with CognitiveAIClient(config) as client:
+        # Start a long-running job
+        search_request = SearchRequest(
+            prompt="Complex reasoning task...",
+            beam=4,
+            steps=3,
+            provider="openai"
+        )
+
+        # This will return immediately with job_id for async jobs
+        result = await client.search(search_request)
+        job_id = result.job_id
+
+        # Monitor job progress
+        while True:
+            status = await client.get_job_status(job_id)
+            print(f"Status: {status.status}, Progress: {status.progress}")
+
+            if status.status == "completed":
+                print("Job completed!")
+                break
+            elif status.status == "failed":
+                print(f"Job failed: {status.error}")
+                break
+
+            await asyncio.sleep(5)
+
+        # Cancel a job if needed
+        # await client.cancel_job(job_id)
+
+asyncio.run(manage_jobs())
+```
+
+### API Key Management
+
+```python
+import asyncio
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig
+
+async def manage_api_keys():
+    config = CognitiveAIConfig(api_key="your-master-api-key")
+    async with CognitiveAIClient(config) as client:
+        # List existing keys
+        keys = await client.get_api_keys()
+        for key in keys:
+            print(f"Key: {key['name']} - {key['id']}")
+
+        # Create a new key
+        new_key = await client.create_api_key(
+            name="My New Key",
+            permissions=["read", "write"]
+        )
+        print(f"Created key: {new_key['key']}")
+
+        # Delete a key
+        # await client.delete_api_key(key_id)
+
+asyncio.run(manage_api_keys())
+```
+
+### Error Handling
+
+```python
+import asyncio
+from cognitiveai import CognitiveAIClient, CognitiveAIConfig, CognitiveAIError, CognitiveAIAuthenticationError, CognitiveAIRateLimitError
+
+async def handle_errors():
+    config = CognitiveAIConfig(api_key="invalid-key")
+    async with CognitiveAIClient(config) as client:
+        try:
+            result = await client.search("Test prompt")
+        except CognitiveAIAuthenticationError:
+            print("Invalid API key")
+        except CognitiveAIRateLimitError:
+            print("Rate limit exceeded, please wait")
+        except CognitiveAIError as e:
+            print(f"CognitiveAI error: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+
+asyncio.run(handle_errors())
+```
+
+## Data Classes
+
+### SearchRequest
+```python
+@dataclass
+class SearchRequest:
+    prompt: str
+    provider: str = "mock"
+    beam: int = 2
+    steps: int = 1
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    model: Optional[str] = None
+```
+
+### GridRequest
+```python
+@dataclass
+class GridRequest:
+    beams: List[int]
+    steps: List[int]
+    provider: str = "mock"
+    prompt: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    model: Optional[str] = None
+```
+
+### SearchResult
+```python
+@dataclass
+class SearchResult:
+    job_id: str
+    prompt: str
+    response: str
+    reasoning_trace: List[Dict[str, Any]]
+    provider: str
+    beam: int
+    steps: int
+    tokens_used: int
+    cost: float
+    created_at: datetime
+```
+
+### GridResult
+```python
+@dataclass
+class GridResult:
+    job_id: str
+    prompt: Optional[str]
+    results: List[Dict[str, Any]]
+    best_result: Dict[str, Any]
+    provider: str
+    beams: List[int]
+    steps: List[int]
+    total_tokens_used: int
+    total_cost: float
+    created_at: datetime
+```
+
+## Exception Hierarchy
+
+- `CognitiveAIError`: Base exception for all CognitiveAI errors
+  - `CognitiveAIAuthenticationError`: Invalid API key or authentication failure
+  - `CognitiveAIRateLimitError`: API rate limit exceeded
+  - `CognitiveAIServerError`: Server-side errors (5xx responses)
+
+## Development
+
+### Setup Development Environment
+
+```bash
+git clone https://github.com/cognitiveai/cognitiveai-python-sdk.git
+cd cognitiveai-python-sdk
+pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
+pytest
+```
+
+### Code Quality
+
+```bash
+# Format code
+black cognitiveai/
+isort cognitiveai/
+
+# Type checking
+mypy cognitiveai/
+
+# Linting
+flake8 cognitiveai/
+```
+
+### Build Documentation
+
+```bash
+cd docs
+make html
+```
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- 📖 [Documentation](https://docs.cognitiveai.ai/python-sdk)
+- 🐛 [Bug Reports](https://github.com/cognitiveai/cognitiveai-python-sdk/issues)
+- 💬 [Discussions](https://github.com/cognitiveai/cognitiveai-python-sdk/discussions)
+- 📧 [Email Support](mailto:support@cognitiveai.ai)
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
