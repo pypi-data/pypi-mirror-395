@@ -1,0 +1,48 @@
+{
+  "Comment": "Universal Agent Architecture - Hello World Graph (Prod)",
+  "StartAt": "greet",
+  "TimeoutSeconds": 300,
+  "States": {
+    "greet": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.context.query",
+          "IsPresent": true,
+          "Next": "respond"
+        }
+      ],
+      "Default": "respond"
+    },
+    "respond": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName.$": "$.dynamodb_table",
+        "Item": {
+          "execution_id": {
+            "S.$": "$.execution_id"
+          },
+          "state_key": {
+            "S.$": "States.Format('checkpoint#{}', $$.State.EnteredTime)"
+          },
+          "graph_name": {
+            "S": "main"
+          },
+          "graph_version": {
+            "S": "1.0"
+          },
+          "status": {
+            "S": "COMPLETED"
+          },
+          "context": {
+            "S.$": "States.JsonToString($.context)"
+          }
+        }
+      },
+      "ResultPath": "$.dynamodb_result",
+      "End": true
+    }
+  }
+}
+
