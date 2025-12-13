@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "geoservercloud"
+version = "0.7.2.dev1"
+description = "Lightweight Python client to interact with GeoServer Cloud REST API, GeoServer ACL and OGC services"
+authors = ["Camptocamp <info@camptocamp.com>"]
+license = "BSD-2-Clause"
+readme = "README.md"
+packages = [
+  { include = "geoservercloud" },
+  { include = "geoserver_acceptance_tests" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+requests = "2.32.5"
+OWSLib = "0.35.0"
+xmltodict = "1.0.2"
+psycopg2-binary = "^2.9.9"
+sqlalchemy = "2.0.44"
+pytest = "9.0.1"
+
+[tool.poetry.group.dev.dependencies]
+responses = "0.25.8"
+coverage = "7.12.0"
+sphinx = "<8.2.4"
+sphinx-rtd-theme = "3.0.2"
+types-requests = "2.32.4.20250913"
+types-xmltodict = "1.0.1.20250920"
+pytest-mock = "^3.14.0"
+
+[build-system]
+requires = [
+  "poetry-core>=1.0.0",
+  "poetry-dynamic-versioning[plugin]",
+  "poetry-plugin-tweak-dependencies-version",
+]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+copy-workspace = "geoservercloud.geoservercloudsync:main"
+copy-test-data = "geoserver_acceptance_tests.cli:copy_test_data"
+extract-test-data = "geoserver_acceptance_tests.cli:extract_test_data"
+
+[tool.poetry-dynamic-versioning]
+enable = false
+vcs = "git"
+pattern = "^(?P<base>\\d+(\\.\\d+)*)"
+format-jinja = """
+{%- if distance == 0 -%}
+{{serialize_pep440(base)}}
+{%- else -%}
+{{serialize_pep440(bump_version(base), dev=distance)}}
+{%- endif -%}
+"""
+fix-shallow-repository = true
+
+[tool.poetry-plugin-tweak-dependencies-version]
+default = "present"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
