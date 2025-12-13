@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: SnakeScan
+Version: 1.8.0
+Summary: IPv4 address scanner for collecting address information.Scan or get the IPv4 address from the IPv6 host
+Author: Den*Ram
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-Expression: MIT
+License-File: LICENSE
+Requires-Dist: art
+Requires-Dist: tqdm
+Requires-Dist: termcolor
+
+<!--
+This documentation was created with the assistance of the GeekBot language model and Den*Ram
+-->
+
+# 🐍 SnakeScan: A Robust Python Port Scanner
+
+A versatile and efficient Python library designed for comprehensive network port scanning.
+
+[![PyPI](https://img.shields.io/pypi/v/SnakeScan?color=blue&label=PyPI)](https://pypi.org/project/SnakeScan/)
+
+[![MIT License](https://img.shields.io/badge/License-MIT-green)](https://opensource.org/licenses/MIT)
+
+[![Python 3.7+](https://img.shields.io/badge/Python-3.7+-brightgreen)](https://www.python.org/)
+
+[![Status: Stable](https://img.shields.io/badge/Status-Stable-green)](https://img.shields.io/badge/Status-Stable-green)
+
+**SnakeScan** provides a flexible and powerful solution for network administrators, security professionals, and developers requiring reliable port scanning capabilities. From basic port verification to advanced, multi-threaded subnet analysis, SnakeScan delivers the tools necessary for effective network assessment.
+
+## ⚙️ Key Features:
+
+*   **Flexible Port Specification:** Define target ports as single values, ranges, or through pre-configured sets.
+*   **Multi-Threaded Architecture:** Accelerate scanning operations with parallel processing for rapid analysis.
+*   **IP Information Retrieval:** Obtain detailed information about target IP addresses, supporting both IPv4 and IPv6.
+*   **Real-time Port Monitoring:** Utilize the `Watcher` class for continuous monitoring of critical port statuses.
+*   **Concise Command-Line Interface & API:** Integrate SnakeScan seamlessly into workflows via CLI or programmatic access.
+*   **UDP Port Scanning:** Native support for scanning UDP ports.
+*   **JSON Port Definitions:** Load port definitions from JSON files for organized and reusable configurations.
+
+## ⬇️ Installation:
+
+Install SnakeScan using pip:
+
+bash
+pip install SnakeScan
+
+
+## ⌨️ Command Line Usage:
+
+### 💡 Attribute Reference:
+
+*   **-p**: Specify target ports for scanning (single port or range). Note: Range specifications exclude the lower bound на первом entry. Example: To scan from port 80 to 443, define the range as `79-443`. Examples: `snake -p 80,443` или `snake -p 80,3437,8080,20-30,79-443`
+*   **-u**: Enable UDP port scanning. Example: `snake -p 53 -u`
+*   **-h**: Display the complete list of available command-line attributes and their descriptions. Example: `snake -h` or `snake -help`
+*   **-sp**: Initiate a scan using a predefined set of common ports with `ProcessPoolExecutor`. Example: `snake -sp`
+*   **-v**: Display the current version of the SnakeScan library. Example: `snake -v`
+*   **-gs**: Retrieve the SSL/TLS certificate from a specified web server. Example: `snake www.google.com -gs` (Requires a valid hostname to avoid connection errors.)
+*   **-t**: Enable multi-threading for enhanced scan performance. Example: `snake -t`
+*   **-ch**: Scan a subnet to discover active IP addresses on the network. Example: `snake -ch`
+*   **-l**: Display your public IP address (requires an active internet connection). Example: `snake -l`
+*   **-i**: Show detailed information about a specific IP address (supports both IPv4 and IPv6). Example: `snake www.google.com -i`
+*   **-d**: Specify the path to a JSON file containing TCP port definitions, and optionally the path to a second JSON file containing UDP port definitions.  **Note:** When using this argument, the paths to the JSON files must be provided with each execution of the command, separated by a comma.
+
+    Example: `snake -d /path/to/tcp_ports.json,/path/to/udp_ports.json` (if you want to specify both TCP and UDP, if only TCP: `snake -d /path/to/tcp_ports.json`)
+
+    **JSON File Format:** The JSON file should be formatted as a dictionary where the keys are the port numbers (as strings) and the values are the corresponding service names or descriptions.
+
+    ```json
+    {
+        "53": "DNS",
+        "80": "HTTP",
+        "443": "HTTPS"
+    }
+    ```
+
+## 💻 Python Code Integration:
+
+### ⏱️  Watcher Class: Real-Time Port Status
+
+The `Watcher` class enables continuous monitoring of a specified port.
+
+python
+from SnakeScan import Watcher
+
+
+watcher = Watcher("localhost", 53, 2)  # Host, port, check interval (in seconds)
+watcher.start()  # Begin monitoring!
+
+
+#### `Watcher` Methods:
+
+*   `Watcher.start()` - Initiate the port monitoring process.
+*   `Watcher.stop()` - Terminate the port monitoring process.
+
+---
+
+**Latest Update:** 1.8.0 (Minor bug fixes and JSON port definition)
