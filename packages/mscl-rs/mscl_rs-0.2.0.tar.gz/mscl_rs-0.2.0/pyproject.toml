@@ -1,0 +1,74 @@
+[project]
+name = "mscl-rs"
+version = "0.2.0"
+description = "Parser for MicroStrain Communication Library (MSCL) packets in Rust."
+license = "MIT"
+readme = "README.md"
+authors = [
+    { name = "Harshil", email = "37377066+harshil21@users.noreply.github.com" }
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+"Homepage" = "https://ncsurocketry.org"
+"Source" = "https://github.com/NCSU-High-Powered-Rocketry-Club/mscl_rs"
+
+[tool.uv]
+# Rebuild package when any rust files change
+cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "**/*.rs"}]
+# Uncomment to build rust code in development mode (no optimizations, faster builds)
+# config-settings = { build-args = '--profile=dev' }
+
+[dependency-groups]
+dev = [
+    "pyserial",
+    "msgspec>=0.20.0",
+    "pytest",
+    "python-mscl; python_version <= '3.13'",
+    "maturin",
+    "ruff",
+    "pre-commit",
+    "ziglang"  # for maturin's zig support when cross-compiling
+]
+
+[build-system]
+requires = ["maturin>=1.0"]
+build-backend = "maturin"
+
+# For uploading to TestPyPI
+# [[tool.uv.index]]
+# name = "testpypi"
+# url = "https://test.pypi.org/simple/"
+# publish-url = "https://test.pypi.org/legacy/"
+# explicit = true
+
+# RUFF:
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+show-fixes = true
+exclude = ["examples"]
+
+[tool.ruff.lint]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203", "ISC001", "S311",
+    "D102", "D103", "D104", "D107", "D205", "D401", "D200", "D203", "D212", "PYI021"]
+select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET", "RSE",
+    "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "Q", "INP",
+    "W", "YTT", "DTZ", "ARG", "T20", "FURB", "D100", "D101", "D300", "D418",
+    "D419", "S", "NPY", "D"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["T20", "S101", "D100", "ARG001", "RUF012"]
