@@ -1,0 +1,39 @@
+<html>
+<head>
+{% set site = rt.settings.SITE %}
+<base href="{{site.server_url}}" target="_blank">
+</head>
+<body>
+<p>Dear {{obj.get_full_name()}},</p>
+
+<p>
+{% if obj.verification_password %}
+Somebody (probably you) has asked us to reset your password.
+{% else %}
+Welcome to the
+<a href="{{site.server_url}}">{{site.title or site.verbose_name}}</a> site.
+{% endif %}
+</p>
+
+{% if obj.verification_code %}
+<p>
+Please {{ar.action_link("about.About.verify_user",
+    text=_("click here to verify your email address"),
+    pv=dict(email=obj.email, verification_code=obj.verification_code))}}.
+Or verify using your verificatation code: <b>{{obj.verification_code}}</b> from
+the browser application.
+</p>
+{% set expiry = site.plugins.users.verification_code_expires %}
+<p>Your verification code will expire in <span><b>
+    {% if expiry / 60 > 1 %}{{expiry / 60}} hours.
+    {% else %}{{expiry}} minutes.
+    {% endif %}</b></span></p>
+{% endif %}
+
+{% if obj.verification_password %}
+<p>Thank you for staying with us.</p>
+{% else %}
+<p>Thank you for joining us.</p>
+{% endif %}
+
+</body>
