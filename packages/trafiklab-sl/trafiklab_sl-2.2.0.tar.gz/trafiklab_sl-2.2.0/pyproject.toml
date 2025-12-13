@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trafiklab-sl"
+version = "2.2.0"
+description = "Storstockholms Lokaltrafik (SL) data via Trafiklab API"
+readme = "README.md"
+requires-python = ">=3.11.0"
+license = { file = "LICENSE.txt" }
+keywords = ["SL", "Storstockholms Lokaltrafik", "Trafiklab"]
+authors = [
+    {name="Mikalai Kukhta", email="mikalai.kukhta@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "aiohttp",
+]
+
+[project.urls]
+Repository = "https://github.com/NecroKote/trafiklab-sl"
+Issues = "https://github.com/NecroKote/trafiklab-sl/issues"
+
+[project.optional-dependencies]
+dev = [
+    "wheel",
+    "build",
+    "twine",
+    "tox",
+    "isort",
+    "black",
+    "pre-commit",
+]
+test = [
+    "pytest==8.0.0",
+    "pytest-asyncio==0.23.5",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.black]
+target-version = ["py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["tsl"]
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    minversion = 4.14.0
+    envlist = py311,py312,py313
+
+    [testenv]
+    deps =
+        pytest==8.0.0
+        pytest-asyncio==0.23.5
+
+    commands = pytest -s tests --integration
+"""
