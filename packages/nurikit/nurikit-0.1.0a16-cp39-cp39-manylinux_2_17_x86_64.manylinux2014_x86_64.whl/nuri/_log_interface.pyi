@@ -1,0 +1,6 @@
+from __future__ import annotations
+__all__: list[str] = ['set_log_level']
+def _init() -> None:
+    ...
+def set_log_level(arg0: int) -> None:
+    ...
