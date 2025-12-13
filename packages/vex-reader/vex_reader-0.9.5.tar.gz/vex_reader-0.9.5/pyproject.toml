@@ -1,0 +1,84 @@
+[project]
+name = "vex-reader"
+version = "0.9.5"
+authors = [
+  { name="Vincent Danen", email="vdanen@annvix.com" },
+]
+description = "Read VEX files"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests==2.32.4",
+    "rich>=13.8.1",
+    "pytz>=2024.1"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
+    "pytest-xdist==3.8.0",
+    "coverage==7.9.2",
+    "flake8==7.3.0",
+    "black==25.1.0",
+    "build==1.2.1",
+    "twine==6.1.0",
+    "pkginfo==1.12.1.2"
+]
+
+[project.scripts]
+vex-reader = "vex.vex_reader:main"
+
+[project.urls]
+Homepage = "https://github.com/vdanen/vex-reader"
+Issues = "https://github.com/vdanen/vex-reader/issues"
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vex*"]
+exclude = ["tests*", "hooks*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["vex"]
+omit = [
+    "tests/*",
+    "*/test_*",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
