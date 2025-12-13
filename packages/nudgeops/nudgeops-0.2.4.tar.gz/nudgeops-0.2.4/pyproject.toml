@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nudgeops"
+version = "0.2.4"
+description = "Runtime semantic guardrails for AI agents. Detect loops. Nudge agents back on track."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "luv91"}
+]
+keywords = ["ai", "agents", "guardrails", "langgraph", "llm", "loop-detection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24.0"]
+
+[project.optional-dependencies]
+langgraph = ["langgraph>=0.2.0", "langchain-core>=0.2.0"]
+openai = ["openai>=1.0.0"]
+langfuse = ["langfuse>=2.0.0"]
+dev = ["pytest>=7.0.0", "pytest-asyncio>=0.21.0", "python-dotenv>=1.0.0"]
+all = ["nudgeops[langgraph,openai,langfuse,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/luv91/nudgeops"
+Documentation = "https://github.com/luv91/nudgeops#readme"
+Repository = "https://github.com/luv91/nudgeops"
+Issues = "https://github.com/luv91/nudgeops/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nudgeops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "expensive: marks tests as expensive (deselect with '-m \"not expensive\"')",
+]
