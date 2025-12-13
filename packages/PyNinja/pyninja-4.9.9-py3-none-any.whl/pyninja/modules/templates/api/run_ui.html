@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>PyNinja - Command Runner</title>
+    <meta property="og:type" content="CommandRunner">
+    <meta name="keywords" content="Python, Monitor, fastapi, JavaScript, HTML, CSS">
+    <meta name="author" content="Vignesh Rao">
+    <!-- Favicon.ico and Apple Touch Icon -->
+    <link property="og:image" rel="icon" href="https://thevickypedia.github.io/open-source/images/logo/pyninja.ico">
+    <link property="og:image" rel="apple-touch-icon"
+          href="https://thevickypedia.github.io/open-source/images/logo/pyninja.png">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        button {
+            font-size: 16px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .upload-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .download-button {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+    </style>
+
+    <style id="main-css">
+        body {
+            font-family: "Segoe UI", sans-serif;
+            overflow-x: hidden;
+        }
+
+        h2 {
+            margin-top: 40px;
+            color: #222;
+        }
+
+        .input-group {
+            position: relative;
+            margin-top: 25px;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px 12px 12px 12px;
+            border: 1px solid #ccc;
+            resize: vertical;
+            border-radius: 6px;
+            background: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-group label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            font-size: 16px;
+            color: #777;
+            pointer-events: none;
+            transition: 0.2s ease all;
+            background: white;
+            padding: 0 4px;
+        }
+
+        .input-group input:focus + label,
+        .input-group input:not(:placeholder-shown) + label,
+        .input-group textarea:focus + label,
+        .input-group textarea:not(:placeholder-shown) + label {
+            top: -10px;
+            left: 10px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .custom-button {
+            margin-top: 25px;
+            padding: 12px;
+            width: 100%;
+            background: #2a73ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .custom-button:hover {
+            background: #1d5ee8;
+        }
+
+        .main-container {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        #log-container {
+            display: none;
+            position: relative;
+            width: 80%;
+            margin: 30px auto 0 auto;
+        }
+
+        #log-output {
+            position: relative;
+            height: 300px;
+            resize: vertical;
+            overflow: auto;
+            background: #1e1e1e;
+            color: #00ff8c;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            border-radius: 6px;
+            border: 1px solid #444;
+            box-sizing: border-box;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #2a73ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+        }
+
+        #export-log {
+            width: 30%;
+            max-width: 200px;
+            padding: 10px;
+            margin: 5px auto;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: block;
+        }
+
+        #stop-streaming,
+        #clear-console {
+            width: 30%;
+            max-width: 200px;
+            padding: 10px;
+            margin: 5px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #stop-streaming {
+            background: #ff4c4c;
+            color: white;
+        }
+
+        #clear-console {
+            background: #888;
+            color: white;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .docs, .redoc, .logout {
+            position: absolute;
+            top: 7%;
+            border: none;
+            padding: 10px 14px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: transparent;
+            color: #000 !important;
+            text-decoration: none !important;
+        }
+        .docs { right: 230px; }
+        .redoc { right: 130px; }
+        .logout { right: 30px; }
+
+    </style>
+</head>
+<body translate="no">
+    <a class="docs" href="/docs"><i class="fa fa-book"></i> Docs</a>
+    <a class="redoc" href="/redoc"><i class="fa fa-file"></i> ReDoc</a>
+    <a class="logout" href="#" onclick="logOut()"><i class="fa fa-sign-out"></i> Logout</a>
+    <div class="main-container">
+        <div id="credentials-section">
+            <h2>API Credentials</h2>
+            <div class="input-group">
+                <input id="apikey" type="password" required placeholder=" " />
+                <label for="apikey">API Key (required)</label>
+            </div>
+
+            <div class="input-group">
+                <input id="apisecret" type="password" required placeholder=" " />
+                <label for="apisecret">API Secret (required)</label>
+            </div>
+
+            <div class="input-group">
+                <input id="mfa_token" type="password" placeholder=" " />
+                <label for="mfa_token">MFA Token (required)</label>
+            </div>
+
+            <button class="custom-button" id="save-creds">Save and Continue</button>
+        </div>
+
+        <div id="fileio-section" class="hidden">
+            <h2>File I/O</h2>
+            <div class="input-group">
+                <input id="path" type="text" required placeholder=" " />
+                <label for="path">Path</label>
+            </div>
+
+            <div class="input-group">
+                <!-- Hidden file input -->
+                <input type="file" id="file-input" style="display: none;" multiple />
+
+                <input type="checkbox" id="overwrite" style="width: auto;">
+                <label for="overwrite" style="position: static; font-size: 16px;">Overwrite</label>
+
+                <!-- Upload button -->
+                <button class="upload-button" id="upload-button">
+                    <i class="fa-solid fa-upload"></i> Upload
+                </button>
+
+                <!-- Download button -->
+                <button class="download-button" id="download-button">
+                    <i class="fa-solid fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+
+        <div id="command-section" class="hidden">
+            <h2>Run Command</h2>
+            <div class="input-group">
+                <textarea id="command" placeholder=" "></textarea>
+                <label for="command">Enter command</label>
+            </div>
+
+            <div class="input-group"
+                style="display: flex; align-items: center; justify-content: flex-start; position: static; margin-top: 25px;">
+                <input type="checkbox" id="shell" style="width: auto;">
+                <label for="shell" style="position: static; font-size: 16px;">Shell Exec</label>
+            </div>
+
+            <div class="input-group">
+                <input id="timeout" type="number" placeholder=" " />
+                <label for="timeout">Timeout (seconds)</label>
+            </div>
+
+            <div class="input-group">
+                <input id="stream-timeout" type="number" placeholder=" " />
+                <label for="stream-timeout">Stream Timeout (seconds)</label>
+            </div>
+
+            <button class="custom-button" id="run-command">
+                <span id="run-spinner" class="hidden spinner"></span>
+                <span id="run-text">Run</span>
+            </button>
+        </div>
+    </div>
+    <div id="log-container">
+        <div style="position: relative;">
+            <button class="copy-button" id="copy-log">Copy</button>
+            <div id="log-output"></div>
+        </div>
+    </div>
+    <div id="run-duration" style="text-align: center; margin-top: 5px; font-size: 14px; color: #888;"></div>
+    <div id="streaming-status" class="hidden" style="margin-top: 10px; text-align: center;"><span style="color: green;">●</span> <span>Streaming...</span></div>
+    <button class="custom-button; hidden" id="export-log" style="background: #4caf50;">Download Log</button>
+    <div style="text-align: center; margin-top: 10px;">
+        <button class="custom-button; hidden" id="stop-streaming">Stop Streaming</button>
+        <button class="custom-button; hidden" id="clear-console">Clear Console</button>
+    </div>
+<script>
+    var apikey;
+    var apisecret;
+    var mfa_token;
+
+    const saveButton = document.getElementById("save-creds");
+    const runButton = document.getElementById("run-command");
+    const uploadButton = document.getElementById('upload-button');
+    const downloadButton = document.getElementById('download-button');
+
+    const fileInput = document.getElementById('file-input');
+
+    const commandSection = document.getElementById("command-section");
+    const fileioSection = document.getElementById("fileio-section");
+    const credentialsSection = document.getElementById("credentials-section");
+
+    const logOutput = document.getElementById("log-output");
+    const copyButton = document.getElementById("copy-log");
+    const stopButton = document.getElementById("stop-streaming");
+    const clearButton = document.getElementById("clear-console");
+    const exportButton = document.getElementById("export-log");
+
+    let currentAbortController = null;
+    let wasManuallyStopped = false;
+
+    function showLogOutput(show) {
+        const logContainer = document.getElementById("log-container");
+        logContainer.style.display = show ? "block" : "none";
+        // Wait for next frame to ensure layout updates before showing copy button
+        requestAnimationFrame(() => {
+            copyButton.style.display = show ? "block" : "none";
+        });
+        exportButton.classList.toggle("hidden", !show);
+    }
+
+    function authErrorHandler(response) {
+        if ([401, 403].includes(response.status)) {
+            credentialsSection.style.display = "block";
+            throw new Error("Authentication failed. Please check the credentials.");
+        }
+    }
+
+    function downloadBlobHandler(blob, filename) {
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        // Set a timeout to remove stored items after 30 minutes (1,800,000 ms)
+        setTimeout(() => {
+            sessionStorage.removeItem("apikey");
+            sessionStorage.removeItem("apisecret");
+            sessionStorage.removeItem("mfa_token");
+            console.log("Session storage items removed after 30 minutes");
+        }, 30 * 60 * 1000);
+
+        apikey = sessionStorage.getItem("apikey");
+        apisecret = sessionStorage.getItem("apisecret");
+        mfa_token = sessionStorage.getItem("mfa_token");
+
+        if (apikey && apisecret && mfa_token) {
+            document.getElementById("apikey").value = apikey;
+            document.getElementById("apisecret").value = apisecret;
+            document.getElementById("mfa_token").value = mfa_token || "";
+
+            // Auto-show command section if all credentials exist
+            commandSection.classList.remove("hidden");
+            fileioSection.classList.remove("hidden");
+        }
+        // Hide download log button initially because console is not visible yet
+        exportButton.classList.add("hidden");
+    });
+
+    saveButton.addEventListener("click", () => {
+        apikey = document.getElementById("apikey").value.trim();
+        apisecret = document.getElementById("apisecret").value.trim();
+        mfa_token = document.getElementById("mfa_token").value.trim();
+
+        if (!apikey || !apisecret || !mfa_token) {
+            alert("API Key, API Secret, and MFA Token are required.");
+            return;
+        }
+
+        sessionStorage.setItem("apikey", apikey);
+        sessionStorage.setItem("apisecret", apisecret);
+        sessionStorage.setItem("mfa_token", mfa_token);
+
+        commandSection.classList.remove("hidden");
+        fileioSection.classList.remove("hidden");
+    });
+
+    runButton.addEventListener("click", async () => {
+        // First clear any previous outputs, and disable the run button
+        logOutput.textContent = "";
+        runButton.disabled = true;
+        const startTime = Date.now();
+        document.getElementById("run-duration").textContent = "";
+        document.getElementById("run-spinner").classList.remove("hidden");
+        document.getElementById("run-text").textContent = "Running...";
+
+        const command = document.getElementById("command").value.trim();
+        const shell = document.getElementById("shell").checked;
+        const timeout = parseInt(document.getElementById("timeout").value.trim(), 10);
+        const streamTimeout = parseInt(document.getElementById("stream-timeout").value.trim(), 10);
+
+        if (!command || isNaN(timeout) || isNaN(streamTimeout) || timeout <= 0 || streamTimeout <= 0) {
+            alert("Please enter command, timeout and stream timeout.");
+            runButton.disabled = false;
+            document.getElementById("run-spinner").classList.add("hidden");
+            document.getElementById("run-text").textContent = "Run";
+            return;
+        }
+
+        showLogOutput(true);
+        credentialsSection.style.display = "none";
+        stopButton.classList.remove("hidden");
+        clearButton.classList.add("hidden");
+        document.getElementById("streaming-status").classList.remove("hidden");
+
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
+        const hardTimeout = setTimeout(() => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+        }, 15000); // 15 seconds
+
+        try {
+            const response = await fetch(`${window.location.origin}{{ RUN_COMMAND_ENDPOINT }}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${apikey}`,
+                    Accept: "application/json",
+                    "API-SECRET": apisecret,
+                    "MFA-CODE": mfa_token,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    command: command,
+                    shell: shell,
+                    timeout: timeout,
+                    stream_timeout: streamTimeout,
+                    stream: true,
+                }),
+                signal,
+            });
+
+            clearTimeout(hardTimeout);
+
+            if (!response.ok) {
+                authErrorHandler(response);
+                const errorText = await response.text();
+                throw new Error(`Error: ${response.status} - ${errorText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                logOutput.textContent += chunk;
+                logOutput.scrollTop = logOutput.scrollHeight;
+            }
+
+            stopButton.classList.add("hidden");
+            clearButton.classList.remove("hidden");
+            document.getElementById("streaming-status").classList.add("hidden");
+            currentAbortController = null; // clear after normal finish
+            const endTime = Date.now();
+            const durationSec = ((endTime - startTime) / 1000).toFixed(2);
+            document.getElementById("run-duration").textContent = `Run time: ${durationSec} seconds`;
+
+        } catch (err) {
+            clearTimeout(hardTimeout);
+
+            stopButton.classList.add("hidden");
+            document.getElementById("streaming-status").classList.add("hidden");
+            const endTime = Date.now();
+            const durationSec = ((endTime - startTime) / 1000).toFixed(2);
+            document.getElementById("run-duration").textContent = `Run time: ${durationSec} seconds (interrupted)`;
+
+            if (wasManuallyStopped && err.name === 'AbortError') {
+                wasManuallyStopped = false;
+                clearButton.classList.remove("hidden");
+            } else {
+                alert(err.message);
+                showLogOutput(false);
+                clearButton.classList.add("hidden");
+            }
+
+            currentAbortController = null; // clear after abort/error
+
+        } finally {
+            runButton.disabled = false;
+            document.getElementById("run-spinner").classList.add("hidden");
+            document.getElementById("run-text").textContent = "Run";
+        }
+    });
+
+    stopButton.addEventListener("click", () => {
+        if (currentAbortController) {
+            wasManuallyStopped = true;
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+
+        stopButton.classList.add("hidden");
+        clearButton.classList.remove("hidden");
+    });
+
+    clearButton.addEventListener("click", () => {
+        logOutput.textContent = "";
+        clearButton.classList.add("hidden");
+        showLogOutput(false);
+        document.getElementById("run-duration").textContent = "";
+    });
+
+    exportButton.addEventListener("click", () => {
+        const now = new Date();
+        // Format: MMDDYYYY_HHmmUTC (e.g. 08192025_1754UTC)
+        const pad = (num) => String(num).padStart(2, "0");
+        const timestamp = pad(now.getMonth() + 1) + pad(now.getDate()) + now.getFullYear() + "_" + pad(now.getHours()) + pad(now.getMinutes()) + "UTC";
+
+        const filename = `command-log_${timestamp}.txt`;
+        const blob = new Blob([logOutput.textContent], { type: "text/plain" });
+        downloadBlobHandler(blob, filename);
+    });
+
+    copyButton.addEventListener("click", () => {
+        const text = logOutput.textContent;
+        if (!text) {
+            alert("No log output to copy.");
+            return;
+        }
+
+        // Modern method with clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopiedFeedback();
+            }).catch((err) => {
+                fallbackCopyText(text);
+            });
+        } else {
+            // Fallback for older browsers or insecure origins
+            fallbackCopyText(text);
+        }
+    });
+
+    function fallbackCopyText(text) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            const successful = document.execCommand("copy");
+            if (successful) {
+                showCopiedFeedback();
+            } else {
+                alert("Fallback: Copy failed.");
+            }
+        } catch (err) {
+            alert("Fallback: Copy not supported.");
+        }
+
+        document.body.removeChild(textarea);
+    }
+
+    function showCopiedFeedback() {
+        const originalText = copyButton.textContent;
+        copyButton.textContent = "Copied! ✅";
+        copyButton.disabled = true;
+
+        setTimeout(() => {
+            copyButton.textContent = originalText;
+            copyButton.disabled = false;
+        }, 1500);
+    }
+
+    // When upload button is clicked, trigger file input click
+    uploadButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        credentialsSection.style.display = "none";
+        fileInput.click();
+    });
+
+    downloadButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        credentialsSection.style.display = "none";
+        const filepath = document.getElementById('path').value.trim();
+        const url = `${window.location.origin}{{ FILE_DOWNLOAD_ENDPOINT }}`;
+        if (!filepath) {
+            alert('Please enter a valid file path to download.');
+            return;
+        }
+        // TODO: Alert when download has finished
+        await downloadFile(filepath, url).catch(err => {
+            alert(`Failed to download file:\n${err.message}`);
+            return;
+        });
+    });
+
+    // Handle file selection
+    fileInput.addEventListener('change', async (event) => {
+        event.preventDefault();
+        credentialsSection.style.display = "none";
+        const files = Array.from(event.target.files);
+        if (files.length === 0) {
+            uploadButton.innerHTML = '<i class="fa-solid fa-upload"></i> Upload';
+            console.log('No file selected.');
+            return;
+        }
+
+        const filesN = `${files.length} file${files.length > 1 ? 's' : ''}`;
+        const directoryPath = encodeURIComponent(document.getElementById('path').value.trim());
+        const overwrite = document.getElementById('overwrite').checked;
+        const queryParams = `directory=${directoryPath}&overwrite=${overwrite}`;
+        const url = `${window.location.origin}{{ FILE_UPLOAD_ENDPOINT }}?${queryParams}`;
+
+        if (!directoryPath) {
+            alert('Please enter a valid directory path to upload.');
+            return;
+        }
+
+        uploadButton.disabled = true;
+        uploadButton.innerHTML = `<span class="spinner"></span> Uploading ${filesN}...`;
+
+        const results = await Promise.allSettled(
+            files.map(file => uploadFile(file, url))
+        );
+
+        uploadButton.disabled = false;
+        uploadButton.innerHTML = '<i class="fa-solid fa-upload"></i> Upload';
+
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length === 0) {
+            alert(`✅ Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}.`);
+        } else {
+            const failedNames = failed.map((r, i) => files[i].name).join(', ');
+            alert(`⚠️ Some uploads failed: ${failedNames}`);
+        }
+
+        // Clear file selection
+        fileInput.value = "";
+    });
+
+    async function downloadFile(filepath, url) {
+        const normalized = filepath.replace(/\\/g, '/');
+        const filename = normalized.substring(normalized.lastIndexOf('/') + 1);
+        console.log('Downloading file:', filename);
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apikey}`,
+                Accept: "application/octet-stream",
+                "API-SECRET": apisecret,
+                "MFA-CODE": mfa_token,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ filepath: filepath }),
+        });
+
+        if (!response.ok) {
+            authErrorHandler(response);
+            const jsonResponse = await response.json();
+            const text = jsonResponse.detail || response.statusText;
+            throw new Error(`Download failed: ${text}`);
+        }
+
+        const blob = await response.blob();
+        downloadBlobHandler(blob, filename);
+    }
+
+    async function uploadFile(file, url) {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        formData.append("type", file.type);
+
+        const headers = {
+            Authorization: `Bearer ${apikey}`,
+            Accept: "application/json",
+            "API-SECRET": apisecret,
+            "MFA-CODE": mfa_token,
+        };
+
+        const response = await fetch(url, {
+            method: "PUT",
+            headers: headers,
+            body: formData,
+        });
+
+        if (!response.ok) {
+            authErrorHandler(response);
+            const jsonResponse = await response.json();
+            const text = jsonResponse.detail || response.statusText;
+            throw new Error(`Upload failed: ${text}`);
+        }
+
+        const data = await response.json();
+        console.log(data);
+    }
+
+    function goDocs() {
+        window.location.href = window.location.origin + "/docs";
+    }
+
+    function goReDoc() {
+        window.location.href = window.location.origin + "/redoc";
+    }
+
+    function logOut() {
+        sessionStorage.removeItem("apikey");
+        sessionStorage.removeItem("apisecret");
+        sessionStorage.removeItem("mfa_token");
+
+        // Reset credential input fields
+        document.getElementById("apikey").value = "";
+        document.getElementById("apisecret").value = "";
+        document.getElementById("mfa_token").value = "";
+
+        // Show credentials section again
+        document.getElementById("credentials-section").style.display = "block";
+
+        // Hide command section and related buttons
+        document.getElementById("command-section").classList.add("hidden");
+        document.getElementById("run-duration").textContent = "";
+        document.getElementById("streaming-status").classList.add("hidden");
+
+        // Hide file I/O section
+        document.getElementById("fileio-section").classList.add("hidden");
+
+        // Clear log output
+        document.getElementById("log-output").textContent = "";
+        document.getElementById("log-container").style.display = "none";
+        document.getElementById("copy-log").style.display = "none";
+        document.getElementById("export-log").classList.add("hidden");
+        document.getElementById("clear-console").classList.add("hidden");
+        document.getElementById("stop-streaming").classList.add("hidden");
+
+        // Delete MFA on server side
+        fetch(window.location.origin + "/delete-mfa", {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${apikey}`,
+                Accept: "application/json",
+                "Content-Type": "application/json",
+            },
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(`${response.status}: ${data.detail}`);
+            }
+            return { status: response.status, detail: data.detail };
+        })
+        .then(({ status, detail }) => {
+            alert(`${status}: ${detail}`);
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    }
+
+</script>
+</body>
+</html>
