@@ -1,0 +1,5 @@
+# NightSkyCam Scorer
+
+Under construction
+
+
