@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pushtunes"
+version = "2.8.0"
+description = "Push music (albums, tracks, playlists) from Subsonic, Jellyfin or plain CSV files to Spotify and YouTube Music"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [
+    {name = "Psy-Q", email = "rca@psy-q.ch"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "spotipy",
+    "py-sonic",
+    "deepdiff",
+    "thefuzz",
+    "platformdirs",
+    "ytmusicapi",
+    "orjson>=3.10.15",
+    "typer",
+    "jellyfin-apiclient-python",
+    "rich",
+    "pyyaml",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "tidalapi>=0.8.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "mypy",
+]
+
+[project.scripts]
+pushtunes = "pushtunes.cli.main:app"
+
+[project.urls]
+Homepage = "https://codeberg.org/psy-q/pushtunes"
+Repository = "https://codeberg.org/psy-q/pushtunes"
+Issues = "https://codeberg.org/psy-q/pushtunes/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pushtunes*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "libsonic.*",
+    "spotipy.*",
+    "ytmusicapi.*",
+    "thefuzz.*",
+    "jellyfin_apiclient_python.*",
+]
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.31.6",
+    "debugpy>=1.8.17",
+    "ipdb>=0.13.13",
+    "mkdocs>=1.6.1",
+    "pytest>=8.3.5",
+]
