@@ -1,0 +1,183 @@
+[project]
+name = "osc-github-devops"
+dynamic = []
+description = "Template Python project"
+dependencies = [
+    "typer>=0.15.2",
+    "jupyterlab>=4.3.6",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = [
+    "LICENSES/Apache-2.0.txt",
+]
+keywords = [
+    "GitHub",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development",
+]
+version = "0.1.44"
+
+[[project.authors]]
+name = "Matthew Watkins"
+email = "93649628+ModeSevenIndustrialSolutions@users.noreply.github.com"
+
+[project.urls]
+Homepage = "https://github.com/os-climate/osc-github-devops"
+Repository = "https://github.com/os-climate/osc-github-devops"
+Downloads = "https://github.com/os-climate/osc-github-devops/releases"
+"Bug Tracker" = "https://github.com/os-climate/osc-github-devops/issues"
+Documentation = "https://github.com/os-climate/osc-github-devops/tree/main/docs"
+"Source Code" = "https://github.com/os-climate/osc-github-devops"
+
+[project.scripts]
+osc-github-devops = "osc_github_devops.cli:run"
+
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.version]
+source = "scm"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests/",
+]
+addopts = [
+    "--cov",
+    "--cov-report=html",
+]
+
+[tool.coverage.run]
+source = [
+    "src",
+]
+omit = [
+    "tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 25
+skip_empty = true
+ignore_errors = true
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
+
+[tool.coverage.html]
+directory = "coverage_html_report"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+[tool.ruff.lint]
+extend-fixable = [
+    "W291",
+    "W293",
+]
+extend-select = [
+    "D",
+    "E",
+    "F",
+    "B",
+    "N",
+    "T10",
+]
+ignore = [
+    "E203",
+    "E501",
+    "D203",
+    "D213",
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"!src/**.py" = [
+    "D",
+]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.5",
+    "coverage>=7.7.1",
+]
+tox = [
+    "tox>=4.24.2",
+    "tox-pdm>=0.7.2",
+]
+lint = [
+    "pre-commit>=4.2.0",
+]
+docs = [
+    "sphinx>=8.2.3",
+    "sphinx-copybutton>=0.5.2",
+]
