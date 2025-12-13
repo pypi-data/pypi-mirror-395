@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html language="{{requested_language}}"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1" />
+<title>{% block title %}{{site.title or site.verbose_name}}{% endblock %}</title>
+<link rel="stylesheet" href="{{site.plugins.bootstrap5.build_lib_url('css','bootstrap.css')}}" type="text/css">
+<link rel="stylesheet" href="{{site.build_static_url('bootstrap.css')}}" type="text/css">
+<link rel="stylesheet" href="{{site.build_media_url('cache', 'local.css')}}?v={{site.kernel.lino_version}}" type="text/css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/timepicker@1.11.12/jquery.timepicker.min.css" type="text/css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@enzedonline/quill-blot-formatter2/dist/css/quill-blot-formatter2.css">
+<link rel="stylesheet" href="https://unpkg.com/primeicons/primeicons.css"/>
+<link rel="stylesheet" href="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.css"/>
+{# Do we need jquery? Isn't this an invalid URL?
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+#}
+<link rel="shortcut icon" type="image/png" href="{{ site.build_static_url('favicon2.ico') }}" />
+
+<style>
+body {
+  font-family: sans-serif;  /* disable emoji fonts */
+}
+</style>
+
+</head>
+<body data-bs-spy="scroll" data-bs-target="#toc">
+<div id="wrap" class="publisher-document">
+  <div class="container-fluid">
+
+{% block header %}
+<div class="container-fluid lino-bs-header">
+  {% if ar -%}
+    {% if isinstance(obj, rt.models.publisher.Publishable) -%}
+    {{obj.get_prev_link(ar)}} {{obj.get_next_link(ar)}} |
+    {% endif -%}
+    {% if obj and dd.is_installed('react') %}
+        {% set ar_react = obj.get_default_table().request(parent=ar, permalink_uris=True, renderer=dd.plugins.react.renderer) %}
+        {% if ar_react.obj2url(obj) %}
+        {{ tostring(ar_react.obj2html(obj, text='Edit')) }} |
+        {% endif %}
+    {% endif %}
+    {% if ar.request and ar.request.path != '/' -%}
+        <a href="{{ar.get_home_url()}}">{{_("Home")}}</a>
+    {% else -%}
+        {{_("Home")}}
+    {% endif -%}
+    {% if site.kernel.editing_front_end.url_prefix -%}
+       | <a href="/{{site.kernel.editing_front_end.url_prefix}}/">{{_("Admin")}}</a>
+    {% endif -%}
+    {% if len(site.languages) > 1 -%}
+      |
+      {% for lang in site.languages -%}
+        {% if lang.django_code == requested_language -%}
+            {{lang.django_code}}
+        {% else -%} {# URL_PARAM_USER_LANGUAGE #}
+            <a href="{{ar.get_request_url(ul=lang.django_code)}}">{{lang.django_code}}</a>
+        {% endif -%}
+      {% endfor -%}
+    {% endif -%}
+    |
+    {% set user = ar.get_user() %}
+    {% if user.is_anonymous %}
+        {% if dd.is_installed("react") %}
+          {% set About = rt.models.about.About %}
+          <a href="{{dd.plugins.react.renderer.run_action_from_publisher(About.get_url_action('sign_in'), About, ar)}}">{{_("Sign in")}}</a>
+        {% else %}
+          <a href="" data-bs-toggle="modal" data-bs-target="#signinModal">{{_("Sign in")}}</a>
+        {% endif %}
+    {% else %}
+        {{str(user)}} <a href="/logout">{{_("Sign out")}}</a>
+    {% endif %}
+    {%- if site.kernel.admin_ui -%}
+        &mdash;
+        <a href="{{site.kernel.admin_ui.build_plain_url()}}/">{{site.kernel.admin_ui.ui_label}}</a>
+    {%- endif -%}
+  {% endif -%}
+  {% if not dd.is_installed("react") %}
+  <div class="modal fade" id="signinModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel">{{_("Sign in form")}}</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form id="signinForm" action="/login" method="post">
+                <div id="signinError" class="alert alert-danger d-none" role="alert">
+                    {{_("Incorrect username or password.")}}
+                </div>
+                <div class="mb-3">
+                    <label for="signinInputUsername" class="form-label">{{_("Username")}}</label>
+                    <input type="text" name="username" class="form-control" id="signinInputUsername" aria-describedby="usernameHelp" required="true">
+  <!--                  <div id="usernameHelp" class="form-text">Enter your username.</div>-->
+                </div>
+                <div class="mb-3">
+                    <label for="signinInputPassword" class="form-label">{{_("Password")}}</label>
+                    <input type="password" name="password" class="form-control" id="signinInputPassword" required="true">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button form="signinForm" type="submit" class="btn btn-primary">{{_("Sign in")}}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+      const form = document.getElementById("signinForm");
+      form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const formData = new FormData(form);
+          fetch(form.action, {
+              method: form.method,
+              body: formData
+          }).then((resp) => {
+              if (resp.status >= 400) {
+                  const eel = document.getElementById("signinError");
+                  eel.innerText = "Some unknown error occured, please contact site administrator";
+                  eel.classList.remove("d-none")
+                  return {success: false}
+              }
+              return resp.json()
+          }).then((resp) => {
+              if (resp.success) window.location.reload()
+              else {
+                  const eel = document.getElementById("signinError");
+                  eel.classList.remove("d-none")
+              }
+          })
+      });
+  </script>
+  {% endif -%}
+</div>
+{% endblock %}
+
+{% block navbar %}
+  {% if home %}
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ar.obj2url(home)}}"><span class="pi pi-home"/></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#bs-navbar-collapsible-content" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="bs-navbar-collapsible-content">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                {% for child in home.__class__.objects.filter(parent=home).order_by('seqno') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ar.obj2url(child)}}">{{str(child)}}</a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+     </div>
+  </nav>
+  {% endif %}
+  {% if menu -%}
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container-fluid">
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              {{menu}}
+          </div>
+       </div>
+    </nav>
+  {% endif -%}
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+
+{% set ppos = ar.actor.params_panel_pos %}
+{% set sb_width = site.sidebar_width if obj is not none or ppos in ["left", "right"] else 0 %}
+
+{% if site.sidebar_width %}
+    <div class="row">
+      {% if ppos == "left" and params_form is defined %}
+        <div class="col-sm-{{site.sidebar_width}}">
+          {% block params_panel_left %}
+            {{ params_form }}
+          {% endblock %}
+        </div>
+      {% endif %}
+      <div class="col-sm-{{12-sb_width}}">
+{% endif %}
+
+<!-- main content area -->
+{% block content %}
+This page has no content.
+{% endblock %}
+
+{% if site.sidebar_width %}
+      </div>
+      <!-- sidebar, which will move to the top on a small screen -->
+      {% if obj is not none or (ar.actor.params_panel_pos == "right" and params_form is defined) %}
+      <div class="col-sm-{{site.sidebar_width}}">
+          <!-- TOC is usefull only in detail whereas in list parameters_form is usefull -->
+          {% if obj is not none %}
+            <nav id="toc" data-toggle="toc" class="sticky-top"></nav>
+          {% elif params_form is defined %}
+            {% block params_panel_right %}
+              {{ params_form }}
+            {% endblock %}
+          {% else %}
+            {###
+            {% block sidebar %}
+            <small>Nothing more to say in the sidebar.</small>
+            {% endblock %}
+            ###}
+          {% endif %}
+      </div>
+      {% endif %}
+    </div>
+{% endif %}
+
+</div>
+{% endblock %}
+
+  </div>
+  <div id="push"></div>
+</div>
+<div id="footer">
+<footer class="container-fluid">
+
+{% block footer %}
+<p style="vertical-align: middle;">
+{% if site.copyright_name %}
+&copy; {{_("Copyright")}} {{now.year}}
+{% if site.copyright_url %}
+<a href="{{site.copyright_url}}">{{site.copyright_name}}</a>
+{% else %}
+{{site.copyright_name}}
+{% endif %}
+|
+{% endif %}
+{{tostring(site.welcome_html())}}
+{% if dd.is_installed("react") and dd.is_installed("lists") and dd.is_installed("system") %}
+  {% set newsletter_list = rt.models.system.SiteConfig.get_site_config().newsletter_list %}
+  {% if newsletter_list is not none %}
+    |
+    {% set NewsletterList = rt.models.lists.NewsletterList %}
+    {% set subscribe = NewsletterList.get_url_action("subscribe") %}
+    <a href="{{dd.plugins.react.renderer.run_action_from_publisher(subscribe, NewsletterList, ar)}}">{{_("Subscribe to") + " " + newsletter_list.designation}}</a>
+  {% endif %}
+{% endif %}
+</p>
+{% endblock %}
+
+</footer>
+</div>
+
+<!-- Placed at the end of the document so the pages load faster -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.11.1/jquery-ui.js"></script>
+<script src="{{site.plugins.bootstrap5.build_lib_url('js','bootstrap.min.js')}}"></script>
+<script src="https://cdn.jsdelivr.net/npm/timepicker@1.11.12/jquery.timepicker.min.js"></script>
+<script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script>
+<script src="{{site.plugins.bootstrap5.build_lib_url('js','bootstrap_lino.js')}}"></script>
+</body></html>
