@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: cendat
+Version: 0.8.1
+Summary: A helper library for exploring and fetching data from the U.S. Census Bureau API.
+Project-URL: Homepage, https://github.com/mostlyunoriginal/cendat
+Project-URL: Bug Tracker, https://github.com/mostlyunoriginal/cendat/issues
+Author-email: "G. Lance Couzens" <lance.couzens@gmail.com>
+License-File: LICENSE
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.9
+Requires-Dist: requests
+Provides-Extra: all
+Requires-Dist: geopandas; extra == 'all'
+Requires-Dist: pandas; extra == 'all'
+Requires-Dist: polars; extra == 'all'
+Provides-Extra: geopandas
+Requires-Dist: geopandas; extra == 'geopandas'
+Provides-Extra: pandas
+Requires-Dist: pandas; extra == 'pandas'
+Provides-Extra: polars
+Requires-Dist: polars; extra == 'polars'
+Description-Content-Type: text/markdown
+
+# cendat
+
+A Python helper for the U.S. Census Bureau API.
+
+`cendat` provides a high-level, chainable interface for discovering datasets, filtering geographies and variables, and fetching data concurrently.
+
+## Installation
+
+```bash
+pip install cendat
+```
+
+### Optional Dependencies
+
+```bash
+pip install cendat[pandas]     # pandas support
+pip install cendat[polars]     # polars support
+pip install cendat[geopandas]  # geopandas support
+pip install cendat[all]        # all of the above
+```
+
+## Quick Example
+
+```python
+from cendat import CenDatHelper
+
+# Initialize with your API key
+cdh = CenDatHelper(years=[2023], key="your-api-key")
+
+# Find and select a product
+cdh.list_products(patterns=r"acs/acs5\)")
+cdh.set_products()
+
+# Select geography and variables
+cdh.set_geos(["050"])  # Counties
+cdh.set_variables(["B01001_001E"])  # Total population
+
+# Fetch data
+response = cdh.get_data(include_names=True)
+df = response.to_polars(concat=True, destring=True)
+```
+
+## Documentation
+
+📖 **Full documentation**: [mostlyunoriginal.github.io/cendat](https://mostlyunoriginal.github.io/cendat/)
+
+## Links
+
+- [GitHub Repository](https://github.com/mostlyunoriginal/cendat)
+- [Developer Blog](https://mostlyunoriginal.github.io/posts.html#category=cendat)

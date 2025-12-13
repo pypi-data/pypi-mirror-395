@@ -1,0 +1,33 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Execute notebooks
+        run: |
+          uv run jupyter nbconvert --execute --inplace docs/tutorials/*.ipynb
+
+      - name: Build and Deploy
+        # We run mkdocs through 'uv run' to ensure it uses the venv
+        run: uv run mkdocs gh-deploy --force
