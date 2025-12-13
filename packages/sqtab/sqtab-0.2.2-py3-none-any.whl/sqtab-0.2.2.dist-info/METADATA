@@ -1,0 +1,183 @@
+Metadata-Version: 2.4
+Name: sqtab
+Version: 0.2.2
+Summary: Minimalist SQLite-based CLI tool with AI assistance for working with tabular data.
+Author: Goran Janković
+License: MIT
+Keywords: sqlite,cli,csv,json,data,database,analysis,command-line
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Database
+Classifier: Topic :: Utilities
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: typer>=0.12
+Requires-Dist: rich>=13.0
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: openai>=1.3
+Requires-Dist: importlib-metadata>=6.0.0
+Dynamic: license-file
+
+# sqtab
+
+[![PyPI version](https://img.shields.io/pypi/v/sqtab.svg)](https://pypi.org/project/sqtab/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/sqtab.svg)](https://pypi.org/project/sqtab/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**sqtab** is a minimalist command-line toolkit with **AI assistance** for working with tabular data  
+(CSV / JSON) using **SQLite** as a lightweight local database layer.
+
+It is built for developers, data analysts, and engineers who want a fast and clean workflow
+without maintaining a full database runtime.
+
+sqtab provides:
+
+- CSV / JSON → SQLite import  
+- schema inspection & table listing  
+- ad-hoc SQL execution  
+- export to CSV / JSON  
+- **AI-assisted SQL generation** (`sqtab sql-ai`)  
+- **AI-assisted table analysis** (customizable tasks & rules)  
+- optional user-defined AI model via `SQTAB_AI_MODEL`
+
+---
+
+## Installation
+
+```bash
+pip install sqtab
+```
+
+Requires **Python 3.10+**.
+
+---
+
+## Quick Start
+
+### Import CSV or JSON
+
+```bash
+sqtab import data.csv users
+```
+
+### Inspect table schema
+
+```bash
+sqtab tables --schema
+```
+
+### Run SQL queries
+
+```bash
+sqtab sql "SELECT * FROM users;"
+```
+
+### Export a table
+
+```bash
+sqtab export users users.csv
+```
+
+### Reset the local SQLite database
+
+```bash
+sqtab reset
+```
+
+For all commands:
+
+```bash
+sqtab --help
+```
+
+---
+
+## AI Features
+
+sqtab integrates with OpenAI models to provide intelligent data assistance.
+You must set an API key (environment variable or `.env`):
+
+```
+OPENAI_API_KEY=your-key-here
+```
+
+You may also set a preferred model (optional):
+
+```
+SQTAB_AI_MODEL=gpt-4o-mini
+```
+
+If not provided, sqtab falls back to a safe default.
+
+---
+
+## 1. AI-Generated SQL (`sql-ai`)
+
+Convert natural-language questions into valid SQLite SQL:
+
+```bash
+sqtab sql-ai "show all users older than 30"
+```
+
+Example result:
+
+```sql
+SELECT * FROM users WHERE age > 30;
+```
+
+---
+
+## 2. AI-Assisted Table Analysis (`analyze`)
+
+Analyze structure, sample rows, patterns, anomalies, and more.
+
+### Basic usage
+
+```bash
+sqtab analyze users --ai
+```
+
+### Custom tasks & rules
+
+```bash
+sqtab analyze users --ai \
+    --task "Identify anomalies" \
+    --task "Suggest indexes" \
+    --rule "Be concise"
+```
+
+### Load from external files
+
+```bash
+sqtab analyze users --ai --tasks-file tasks.txt --rules-file rules.txt
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---------|-------------|---------|
+| `OPENAI_API_KEY` | Required for AI features | — |
+| `SQTAB_AI_MODEL` | Optional user-preferred model | `gpt-4o-mini` |
+
+---
+
+## Project Status
+
+sqtab is in active early development (**0.x** releases).  
+The core CLI is stable, but new AI features are expanding rapidly.
+
+Feedback, ideas, and contributions are welcome.
+
+GitHub repository:  
+https://github.com/gojankovic/sqtab
+
+---
+
+## License
+
+MIT License © 2025 Goran Janković
