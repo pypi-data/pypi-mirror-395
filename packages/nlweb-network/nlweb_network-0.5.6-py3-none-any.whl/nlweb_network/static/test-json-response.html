@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JSON Response Mode</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .test-controls {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .test-controls button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            background: #0066cc;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-controls button:hover {
+            background: #0052a3;
+        }
+        .test-controls select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test JSON Response Mode</h1>
+
+    <!-- Test Controls -->
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <div class="test-controls">
+            <label>
+                Response Type:
+                <select id="response-type">
+                    <option value="auto">Auto-detect</option>
+                    <option value="json">Force JSON</option>
+                    <option value="sse">Force SSE</option>
+                </select>
+            </label>
+            <button onclick="reinitializeWidget()">Reinitialize Widget</button>
+            <button onclick="testWithMockJSON()">Test with Mock JSON</button>
+            <button onclick="testWithRealServer()">Test with Real Server</button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <!-- Widget Container for Testing with Forced JSON Mode -->
+    <div class="test-section">
+        <h2>Widget Test Area</h2>
+        <p>This widget can be configured to force JSON mode or auto-detect:</p>
+        <div id="test-widget" data-nlweb-widget data-nlweb-site="all" data-nlweb-response-type="auto"></div>
+    </div>
+
+    <!-- Example JSON Response -->
+    <div class="test-section">
+        <h2>Example JSON Response Format</h2>
+        <p>This is the format that servers can return as a single JSON response:</p>
+        <pre id="example-json"></pre>
+    </div>
+
+    <!-- Mock Server Simulation -->
+    <div class="test-section">
+        <h2>Mock Server Endpoint</h2>
+        <p>For testing, we'll intercept requests and return the example JSON:</p>
+        <div id="mock-server-status" class="status info">Mock server not active</div>
+    </div>
+
+    <!-- Load the widget loader -->
+    <script src="/static/nlweb-widget-loader.js"></script>
+
+    <script>
+        // Load and display the example JSON
+        fetch('/static/example.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('example-json').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('example-json').textContent = 'Failed to load example.json';
+            });
+
+        // Widget instance
+        let widgetInstance = null;
+
+        // Reinitialize widget with different settings
+        async function reinitializeWidget() {
+            const responseType = document.getElementById('response-type').value;
+            const container = document.getElementById('test-widget');
+
+            // Clear container
+            container.innerHTML = '';
+
+            // Update data attribute
+            container.dataset.nlwebResponseType = responseType;
+
+            // Reinitialize
+            try {
+                widgetInstance = await NLWebWidget.init({
+                    containerId: 'test-widget',
+                    site: 'all',
+                    responseType: responseType,
+                    baseUrl: window.location.origin
+                });
+
+                showStatus(`Widget reinitialized with responseType: ${responseType}`, 'success');
+            } catch (error) {
+                showStatus(`Failed to reinitialize: ${error.message}`, 'error');
+            }
+        }
+
+        // Test with mock JSON response
+        function testWithMockJSON() {
+            // Override fetch to return example.json for /ask endpoint
+            const originalFetch = window.fetch;
+            window.fetch = async function(url, options) {
+                if (url.includes('/ask')) {
+                    // Return mock JSON response
+                    const exampleData = await originalFetch('/static/example.json').then(r => r.json());
+                    return {
+                        ok: true,
+                        status: 200,
+                        headers: new Headers({
+                            'content-type': 'application/json'
+                        }),
+                        json: async () => exampleData,
+                        clone: function() { return this; }
+                    };
+                }
+                return originalFetch(url, options);
+            };
+
+            document.getElementById('mock-server-status').className = 'status success';
+            document.getElementById('mock-server-status').textContent = 'Mock server active - returning JSON responses';
+            showStatus('Mock JSON server activated. Try a search!', 'success');
+        }
+
+        // Test with real server
+        function testWithRealServer() {
+            // Restore original fetch
+            window.fetch = window.originalFetch || fetch;
+
+            document.getElementById('mock-server-status').className = 'status info';
+            document.getElementById('mock-server-status').textContent = 'Mock server not active';
+            showStatus('Using real server (SSE mode expected)', 'info');
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }, 5000);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Test page loaded. Use the controls to test different response modes.');
+        });
+    </script>
+</body>
+</html>
