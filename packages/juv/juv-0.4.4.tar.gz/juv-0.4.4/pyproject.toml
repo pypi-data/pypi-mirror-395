@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "juv"
+version = "0.4.4"
+description = "A toolkit for reproducible Jupyter notebooks, powered by uv."
+readme = "README.md"
+authors = [{ name = "Trevor Manz", email = "trevor.j.manz@gmail.com" }]
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1.7",
+    "jupytext>=1.16.4",
+    "rich>=13.9.2",
+    "tomlkit>=0.13.2",
+    "whenever>=0.9.1; python_version >= '3.9'",
+    "uv>=0.7.0,<0.8.0",
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.scripts]
+juv = "juv:main"
+
+[dependency-groups]
+dev = ["inline-snapshot>=0.13.3", "pytest>=8.3.3", "ruff>=0.7.0"]
+e2e = ["pytest-playwright>=0.5.2"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "TD",     # TODOS
+    "FIX",    # Fixable issue
+    "S404",   # Allow imports of subprocess
+    "D203",   # Conflict with formatter
+    "COM812",
+    "ISC001",
+    "D213",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "D",       # No docstrings in tests
+    "S101",    # Use of assert
+    "SLF001",  # Access private member
+    "W291",    # Trailing whitespace
+    "INP001",  # Allow implicit namespace
+    "E501",    # Allow long lines (snapshots)
+    "PLC2701", # Import private member
+]
+
+[tool.rooster]
+version_tag_prefix = "v"
+major_labels = []
+minor_labels = ["breaking"]
+changelog_ignore_labels = ["internal"]
+changelog_sections.breaking = "Breaking changes"
+changelog_sections.enhancement = "Enhancements"
+changelog_sections.bug = "Bug fixes"
+changelog_sections.documentation = "Documentation"
+changelog_sections.__unknown__ = "Other changes"
+changelog_contributors = true
+
+[tool.uv]
+required-version = ">=0.7.0"
