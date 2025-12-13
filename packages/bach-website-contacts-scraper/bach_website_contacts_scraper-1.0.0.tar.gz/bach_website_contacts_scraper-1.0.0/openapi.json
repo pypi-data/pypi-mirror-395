@@ -1,0 +1,99 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Website Contacts Scraper",
+    "version": "1.0.0",
+    "description": "RapidAPI: letscrape-6bRBa3QguO5/website-contacts-scraper"
+  },
+  "servers": [
+    {
+      "url": "https://website-contacts-scraper.p.rapidapi.com"
+    }
+  ],
+  "paths": {
+    "/scrape-contacts": {
+      "get": {
+        "summary": "Scrape Contacts from Website",
+        "description": "Scrape emails, phone numbers, and social profile links from a website root domain. Supports batching of up to 20 domains in a single request.  Note that by default, the emals returned by the endpoint are not restricted to match the website domain (after the \\",
+        "operationId": "scrape_contacts_from_website",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Domain from which to scrape emails and contacts (e.g. wsgr.com). Accepts any valid url and uses its root domain as a starting point for the extraction. Support batching of up to 20 domains in a single request, separated by comma (e.g. wsgr.com,other.com). Please note that each domain in the request will consume a request credit from the quota.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "match_email_domain",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "external_matching",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/website-url-by-keyword": {
+      "post": {
+        "summary": "Get Website by Keyword",
+        "description": "Get company website URL by keyword / company name. Up to 20 keywords are supported in a single query.  This endpoint can be used in case you only have a company name and need to get the website domain before scraping emails and contacts from it.",
+        "operationId": "get_website_by_keyword",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-RapidAPI-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiAuth": []
+    }
+  ]
+}
