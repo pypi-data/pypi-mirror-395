@@ -1,0 +1,46 @@
+unit:
+# Context units
+    - ampel.lsst.ingest.LSSTMongoMuxer
+# Logical units
+    - ampel.lsst.ingest.LSSTDataPointShaper
+# Aux units
+    - ampel.lsst.alert.LSSTAlertSupplier
+    - ampel.lsst.alert.ElasticcAlertSupplier
+    - ampel.lsst.alert.load.MultiAvroAlertLoader
+    - ampel.lsst.alert.load.ElasticcTrainingsetLoader
+    - ampel.lsst.alert.load.KafkaAlertLoader
+    - ampel.lsst.alert.load.ElasticcDirAlertLoader
+    - ampel.lsst.alert.load.LSSTArchiveAlertLoader
+    - ampel.lsst.ingest.LSSTCompilerOptions
+    - ampel.lsst.view.LSSTT2Tabulator
+    - ampel.lsst.aux.LSSTDPFilter
+    - ampel.lsst.aux.LSSTFPFilter
+    - ampel.lsst.aux.LSSTObjFilter
+    - ampel.lsst.kafka.KafkaConsumer
+    - ampel.lsst.kafka.KafkaProducer
+    - ampel.lsst.t0.ReallySimpleLSSTFilter
+    - ampel.lsst.t0.SimpleLSSTFilter
+    - ampel.lsst.t1.LSSTT1Combiner
+    - ampel.lsst.t2.T2GetDiaObject
+    - ampel.lsst.t2.T2GetAlertJournal
+    - ampel.lsst.t2.T2GetAlertId
+    - ampel.lsst.t3.complement.LSSTCutoutImages
+
+alias:
+  t2:
+    '%FIRST_LSST_PHOTOPOINT':
+      filter: LSSTDPFilter
+      sort: midPointTai
+      select: first
+    '%FIRST_LSST_FP_POINT':
+      filter: LSSTFPFilter
+      sort: midPointTai
+      select: first
+    '%LSST_Obj':
+      filter: LSSTObjFilter
+      sort: diaObjectId
+      select: last
+
+template:
+  ingest_elasticc_alerts: ampel.lsst.template.ElasticcAlertConsumerTemplate
+  ingest_lsst_alerts: ampel.lsst.template.LSSTAlertConsumerTemplate

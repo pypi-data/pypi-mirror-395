@@ -1,0 +1,140 @@
+[tool.poetry]
+name = "ampel-lsst"
+version = "0.10.1a4"
+description = "Legacy Survey of Space and Time support for the Ampel system"
+authors = [
+    "Marcus Fenner <mf@physik.hu-berlinn.de>",
+    "Valery Brinnel",
+    "Jakob van Santen <jakob.van.santen@desy.de>",
+    "Jakob Nordin",
+]
+maintainers = [
+    "Marcus Fenner <mf@physik.hu-berlinn.de>"
+]
+license = "BSD-3-Clause"
+readme = "README.md"
+homepage = "https://ampelproject.github.io"
+repository = "https://github.com/AmpelProject/Ampel-LSST"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Typing :: Typed",
+]
+packages = [
+    {include = "ampel"}
+]
+exclude = [
+    "ampel/py.typed",
+]
+include = [
+    'conf/*/*.json',
+    'conf/*/*/*.json',
+    'conf/*/*.yaml',
+    'conf/*/*/*.yaml',
+    'conf/*/*.yml',
+    'conf/*/*/*.yml',
+]
+
+
+[tool.poetry.dependencies]
+python = "^3.11"
+astropy = ">=5"
+confluent-kafka = {version = "^2.6.1", optional = true, extras = ["schemaregistry"]}
+fastavro = "^1.3.2"
+ampel-ztf = {version = ">=0.10.3a0,<0.11"}
+ampel-core = {version = ">=0.10.6a7,<0.11"}
+ampel-alerts = {version = ">=0.10.3a6,<0.11"}
+
+[tool.poetry.extras]
+kafka = ["confluent-kafka"]
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.0.2"
+pytest-cov = "^7.0.0"
+pytest-mock = "^3.12.0"
+mongomock = "^4.1.2"
+# mongomock uses pkg_resources
+setuptools = {version = "*", python = ">=3.12"}
+mypy = "^1.6.1"
+pytest-timeout = "^2.2.0"
+pytest-asyncio = "^1.0.0"
+types-requests = "^2.25.9"
+before_after = "^1.0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "setuptools >= 40.6.0", "wheel"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.pytest.ini_options]
+addopts = "--showlocals -ra"
+filterwarnings = [
+    "error",
+    "ignore:pkg_resources is deprecated:DeprecationWarning",
+]
+
+[tool.mypy]
+namespace_packages = true
+packages = [
+  "ampel"
+]
+plugins = [
+  "pydantic.mypy",
+  "numpy.typing.mypy_plugin"
+]
+show_error_codes = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+  "astropy.*",
+  "bson.*",
+  "confluent_kafka.*",
+  "sncosmo.*"
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 79
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "DTZ",  # datetimez
+    "T20",  # print
+    "PT",   # pytest-style
+    "RET",  # return
+    "SLF",  # self
+    "SIM",  # simplify
+    "ARG",  # unused-arguments
+    "PL",   # pylint
+    "PERF", # perflint
+    "RUF",  # ruff
+]
+ignore = [
+    "E501",    # line too long
+    "PLR09",   # too many (arguments|branches)
+    "PLR2004", # Magic value used in comparison
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
+               # fine for AmpelUnit, actually (ruff has a special case for pydantic)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ampel"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RUF018", "SLF001"]
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
