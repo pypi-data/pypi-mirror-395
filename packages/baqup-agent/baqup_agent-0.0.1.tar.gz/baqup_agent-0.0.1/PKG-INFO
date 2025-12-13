@@ -1,0 +1,128 @@
+Metadata-Version: 2.4
+Name: baqup-agent
+Version: 0.0.1
+Summary: SDK for building baqup backup agents in Python
+Project-URL: Homepage, https://github.com/baqupio/baqup
+Project-URL: Documentation, https://github.com/baqupio/baqup/blob/main/AGENT-CONTRACT-SPEC.md
+Project-URL: Repository, https://github.com/baqupio/baqup-agent-py
+Project-URL: Issues, https://github.com/baqupio/baqup/issues
+Author-email: baqupio <hello@baqup.io>
+License: Fair Source License, Version 1.0
+        
+        Copyright (c) 2025 baqupio
+        
+        Licensor: baqupio
+        Software: baqup-schema
+        
+        Use Limitation:
+        
+        You may use this software without a commercial license if:
+        
+        (a) Your organisation, together with all affiliates, has annual gross
+            revenue of less than USD $1,000,000 AND fewer than 10 employees; or
+        
+        (b) You are a registered non-profit organisation; or
+        
+        (c) You are an educational institution; or
+        
+        (d) Your use is for personal, non-commercial purposes.
+        
+        All other use requires a commercial license obtained from the Licensor.
+        
+        ---
+        
+        For the complete license text, see:
+        https://github.com/baqupio/baqup/blob/main/LICENSE
+        
+        For licensing FAQ and commercial licensing:
+        https://github.com/baqupio/baqup/blob/main/LICENSING.md
+License-File: LICENSE
+Keywords: agent,backup,baqup,container,docker,orchestration,sdk
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Archiving :: Backup
+Classifier: Topic :: System :: Systems Administration
+Requires-Python: >=3.10
+Requires-Dist: baqup-schema>=0.0.1
+Requires-Dist: redis>=4.0.0
+Description-Content-Type: text/markdown
+
+# baqup-agent
+
+SDK for building baqup backup agents in Python.
+
+> ⚠️ **This is a placeholder package.** Full implementation coming soon.
+
+## What is baqup?
+
+[baqup](https://github.com/baqupio/baqup) is a container-native backup orchestration system. Agents are stateless containers that perform backup and restore operations on behalf of the controller.
+
+This SDK provides everything needed to build a compliant baqup agent:
+
+- **Contract types** - `ExitCode`, `AgentState`, `LogLevel`
+- **Structured logging** - JSON logs with required fields
+- **Redis communication** - Bus client with filesystem fallback
+- **Heartbeat management** - Background thread with intent signalling
+- **Staging utilities** - Atomic writes, checksums, path validation
+- **Secret handling** - Wrapper preventing accidental exposure
+
+## Installation
+
+```bash
+pip install baqup-agent
+```
+
+## Usage (Preview API)
+
+```python
+from baqup_agent import ExitCode, AgentState, LogLevel
+
+# Exit codes are already available
+print(ExitCode.SUCCESS)           # 0
+print(ExitCode.USAGE_CONFIG_ERROR) # 64
+
+# Agent states
+print(AgentState.RUNNING)         # 'running'
+
+# Secret wrapper (available now)
+from baqup_agent import Secret
+password = Secret("my-secret-password")
+print(password)          # [REDACTED]
+print(password.reveal()) # my-secret-password
+```
+
+## Contract Compliance
+
+This SDK implements the [baqup Agent Contract Specification](https://github.com/baqupio/baqup/blob/main/AGENT-CONTRACT-SPEC.md):
+
+| Section | Feature |
+|---------|---------|
+| §1 Lifecycle | State machine, signal handling |
+| §2 Config | Environment variable loading |
+| §3 Communication | Redis protocol, fallback |
+| §4 Output | Atomic completion, manifests |
+| §5 Errors | Exit code taxonomy |
+| §6 Observability | Structured logging |
+| §7 Security | Path validation, secrets |
+
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| `baqup-schema` | Schema validation |
+| `baqup-agent` | Agent SDK (this package) |
+
+## Links
+
+- [GitHub](https://github.com/baqupio/baqup)
+- [Agent Contract Spec](https://github.com/baqupio/baqup/blob/main/AGENT-CONTRACT-SPEC.md)
+
+## License
+
+Fair Source License - see [LICENSE](./LICENSE) for details.
