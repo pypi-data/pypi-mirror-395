@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: vforge
+Version: 0.1.4
+Summary: vforge virtual environment manager
+Author-email: Tommas Sessions <tsessions@wesleyan.edu>
+License: GNU General Public License v3.0
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml
+Requires-Dist: stdlib-list
+
+# PROJECT VFORGE
+vforge ("virtual environment forge") is a command line tool which creates and manages pip virtual environments. It scans your Python project folder for imported libraries, installs all missing packages, removes unused ones, and can export a requirements.txt file for environment reproducibility. This eliminates the manual effort of tracking dependencies with requirements.txt, running repeated pip install commands, and pruning package bloat. 
+
+# GETTING STARTED
+To start the fun, run ```pip install vforge``` in your terminal window.
+
+## CLI commands
+### vforge init --venv-name <myenv> --project-dir <project_dir> --target-dir <target-dir> --sync <y or n>
+- Creates venv with name *myenv* by scanning CWD (unless project-dir specified) inside of CW (unless target directory is specified).
+- Optionally calls vforge sync after environment creation to install all necessary packages after creation.
+
+### vforge sync --project-dir <project_dir>
+- scans .py and .ipynb files inside of project-dir for imports, and installs missing packages.
+- scans user config file and takes into account any explicit directions (if any)
+
+### vforge purge
+- removes packages not referenced in project directory.
+- also scans user config file and ensures all manually excluded packages are uninstalled
+
+### vforge freeze
+- writes a requirements.txt file which would duplicate the venv.
+
+### vforge help
+- prints the information above to the terminal window.
+
+
+## Config spec
+- After running vforge init venv, vforge will create a ```vforge_config.txt``` file in CWD. 
+- FILLING OUT THIS FILE IS COMPLETELY OPTIONAL, UNLESS YOU WANT FINE-GRAINED CONTROL OVER THE VENV. If it is not modified after ```vforge init```, vforge defaults to scanning and installing without constraint.
+- This purpose of this file is to allow the developer to specify mandatory requirements for the venv if they have any.
+- You should fill out this file with exactly the same syntax you would use to complete a ```requirements.txt``` file.
+- The file will include a commented section '# exclude below'. List any packages **(line separated)** you do not wish to be installed to the venv by vforge.
+- *NOTE*: This file is only for explicit venv requirements. When using vforge, it is redundant to write package names in this file where any version is acceptable. 
+
+### Acceptable syntax
+| Type                    | Example                | Meaning               |
+| ----------------------- | ---------------------- | --------------------- |
+| **Exact version**       | `pandas==2.2.1`        | Must match exactly    |
+| **Minimum version**     | `numpy>=1.24`          | Any ≥ 1.24            |
+| **Maximum version**     | `requests<=2.31`       | Any ≤ 2.31            |
+| **Range**               | `sqlalchemy>=1.3,<2.0` | Between bounds        |
+| **Inequality**          | `flask!=2.1.0`         | Anything except 2.1.0 |
+| **Compatible release**  | `pytest~=7.4`          | ≥ 7.4 and < 8.0       |
+| **Wildcard**            | `boto3==1.34.*`        | Any 1.34.x version    |
+| **No version (latest)** | `black`                | Latest available      |
+| **Conditional installation** | `importlib-metadata; python_version < "3.8"` | Installs importlib-metadata only if python version < 3.8.
+
+
+## Inclusion rules
+
+### Builtin exclusions
+Ignore modules from Python’s standard library (ex: sys, os, pathlib, etc..). Uses stdlib-list to verify.
+
+### Third party inclusions
+Includes any imports not in builtins or local modules.
+
+If any installation fails, vforge logs the failure and continues processing remaining packages.
+
+### Detects local modules
+Skip local .py files or packages under project root.
+
+### Name-to-package resolution
+Outsources this to pip by calling pip list + pip install for the required packages.
+
+### Version policy
+If the config file specifies a version, then it will be installed according to the condition. If no condition is provided, install latest.
+
+### Purge rule
+Any installed package not in detected import list is uninstalled.
+
+### Manual exclusions
+Respect '# EXCLUDE BELOW' list from config to prevent auto-installation of known exceptions.
