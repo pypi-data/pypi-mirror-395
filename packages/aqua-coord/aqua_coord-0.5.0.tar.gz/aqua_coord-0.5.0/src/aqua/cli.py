@@ -1,0 +1,3585 @@
+"""Command-line interface for Aqua."""
+
+import functools
+import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import click
+from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from aqua import __version__
+from aqua.coordinator import Coordinator
+from aqua.db import get_db, init_db
+from aqua.models import Agent, AgentStatus, AgentType, Task, TaskStatus
+from aqua.utils import (
+    format_time_ago,
+    generate_agent_name,
+    generate_short_id,
+    get_current_pid,
+    process_exists,
+    truncate,
+    utc_now,
+)
+
+
+def _utc_now_naive():
+    """Get current UTC time as naive datetime for comparisons with DB values."""
+    return utc_now().replace(tzinfo=None)
+
+
+console = Console()
+
+# Environment variable for storing agent ID (persists across commands in same shell)
+AQUA_AGENT_ID_VAR = "AQUA_AGENT_ID"
+
+# Special tag for checkpoint tasks (used by serialize command)
+CHECKPOINT_TAG = "__checkpoint__"
+
+
+def get_project_dir() -> Path:
+    """Get the project directory (containing .aqua)."""
+    # Search upward for .aqua directory
+    cwd = Path.cwd()
+    for parent in [cwd] + list(cwd.parents):
+        if (parent / ".aqua").exists():
+            return parent
+    return cwd
+
+
+def find_aqua_dir() -> Path | None:
+    """Find the .aqua directory."""
+    project = get_project_dir()
+    aqua_dir = project / ".aqua"
+    return aqua_dir if aqua_dir.exists() else None
+
+
+def require_init(func):
+    """Decorator that requires Aqua to be initialized."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if not find_aqua_dir():
+            console.print("[red]Error:[/red] Aqua not initialized. Run 'aqua init' first.")
+            sys.exit(1)
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def _get_session_id() -> str:
+    """Get a unique session identifier for this terminal/agent.
+
+    Uses multiple signals to identify a unique session:
+    1. AQUA_SESSION_ID env var (explicit override)
+    2. AQUA_AGENT_ID env var (agent already knows its ID)
+    3. Terminal TTY device (unique per terminal window)
+    4. Default "default" (single-agent mode for AI agents)
+
+    Note: We avoid PPID because each subprocess has a different parent.
+    For AI agents running commands, we use a simple "default" session
+    which means one agent per directory. Use AQUA_SESSION_ID or
+    AQUA_AGENT_ID for multi-agent in same directory.
+    """
+    # Check if we have an explicit session ID
+    session_id = os.environ.get("AQUA_SESSION_ID")
+    if session_id:
+        return session_id
+
+    # If agent ID is in env, use that as session (agent already identified)
+    agent_id = os.environ.get(AQUA_AGENT_ID_VAR)
+    if agent_id:
+        return f"agent_{agent_id}"
+
+    # Try to get TTY - unique per terminal window
+    try:
+        tty = os.ttyname(0)
+        return tty.replace("/", "_")
+    except (OSError, AttributeError):
+        pass
+
+    # For AI agents (no TTY), use "default" - one agent per directory
+    # This is the simplest model and works for most cases
+    return "default"
+
+
+def _get_agent_file() -> Path:
+    """Get the session-specific agent ID file path."""
+    aqua_dir = find_aqua_dir()
+    if not aqua_dir:
+        return None
+
+    sessions_dir = aqua_dir / "sessions"
+    sessions_dir.mkdir(exist_ok=True)
+
+    session_id = _get_session_id()
+    return sessions_dir / f"{session_id}.agent"
+
+
+def get_stored_agent_id() -> str | None:
+    """Get agent ID from environment or session file.
+
+    Priority:
+    1. AQUA_AGENT_ID environment variable (explicit override)
+    2. Session-specific file in .aqua/sessions/
+    """
+    # Check environment first (highest priority)
+    agent_id = os.environ.get(AQUA_AGENT_ID_VAR)
+    if agent_id:
+        return agent_id
+
+    # Check session-specific file
+    agent_file = _get_agent_file()
+    if agent_file and agent_file.exists():
+        return agent_file.read_text().strip()
+
+    return None
+
+
+def store_agent_id(agent_id: str) -> None:
+    """Store agent ID to session-specific file.
+
+    Also stores to default.agent for IDE compatibility - IDEs often spawn
+    fresh processes that don't inherit env vars, so they fall back to default.
+    """
+    agent_file = _get_agent_file()
+    if agent_file:
+        agent_file.write_text(agent_id)
+
+        # Also write to default.agent for IDE compatibility
+        # This ensures subsequent commands from the same IDE find the agent
+        aqua_dir = find_aqua_dir()
+        if aqua_dir:
+            default_file = aqua_dir / "sessions" / "default.agent"
+            default_file.write_text(agent_id)
+
+
+def clear_agent_id() -> None:
+    """Clear stored agent ID for this session."""
+    agent_file = _get_agent_file()
+    if agent_file and agent_file.exists():
+        agent_file.unlink()
+
+
+def is_json_mode() -> bool:
+    """Check if JSON output mode is enabled globally."""
+    return os.environ.get("AQUA_JSON", "").lower() in ("1", "true", "yes")
+
+
+def output_json(data: dict, nl: bool = False) -> None:
+    """Output data as JSON.
+
+    Args:
+        data: Dictionary to output
+        nl: If True, output as newline-delimited JSON (no indent, one line)
+    """
+    if nl:
+        click.echo(json.dumps(data, default=str))
+    else:
+        click.echo(json.dumps(data, indent=2, default=str))
+
+
+def should_output_json(as_json: bool) -> bool:
+    """Check if should output JSON (explicit flag or global mode)."""
+    return as_json or is_json_mode()
+
+
+# =============================================================================
+# Main CLI Group
+# =============================================================================
+
+@click.group()
+@click.version_option(version=__version__, prog_name="aqua")
+@click.pass_context
+def main(ctx):
+    """Aqua - Autonomous QUorum of Agents
+
+    Coordinate multiple CLI AI agents on a shared codebase.
+    """
+    ctx.ensure_object(dict)
+
+
+# =============================================================================
+# Init Command
+# =============================================================================
+
+@main.command()
+@click.option("--force", is_flag=True, help="Reinitialize even if already initialized")
+def init(force: bool):
+    """Initialize Aqua in the current directory."""
+    project_dir = Path.cwd()
+    aqua_dir = project_dir / ".aqua"
+
+    if aqua_dir.exists() and not force:
+        console.print("[yellow]Aqua already initialized.[/yellow] Use --force to reinitialize.")
+        return
+
+    try:
+        db = init_db(project_dir)
+        db.close()
+        console.print(f"[green]✓[/green] Initialized Aqua in {aqua_dir}")
+        console.print("\n[bold]Next steps:[/bold]")
+        console.print("  1. aqua setup --all         [dim]# Add agent instructions to MD files[/dim]")
+        console.print("  2. Start your AI agent and ask it to plan using Aqua")
+        console.print("  3. The agent will add tasks and guide you to spawn more agents")
+        console.print()
+        console.print("[dim]Or manually:[/dim]")
+        console.print("  aqua add 'Task description' -p 5")
+        console.print("  aqua spawn 2")
+        console.print("  aqua status")
+    except Exception as e:
+        console.print(f"[red]Error initializing Aqua:[/red] {e}")
+        sys.exit(1)
+
+
+# =============================================================================
+# Status Command
+# =============================================================================
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def status(as_json: bool):
+    """Show current Aqua status."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agents = db.get_all_agents()
+        active_agents = [a for a in agents if a.status == AgentStatus.ACTIVE]
+        leader = db.get_leader()
+        task_counts = db.get_task_counts()
+        events = db.get_events(limit=5)
+
+        if as_json:
+            output_json({
+                "leader": leader.to_dict() if leader else None,
+                "agents": [a.to_dict() for a in active_agents],
+                "task_counts": task_counts,
+                "recent_events": [e.to_dict() for e in events],
+            })
+            return
+
+        # Header
+        console.print()
+        console.print(Panel.fit(
+            f"[bold]Aqua Status[/bold] - {project_dir.name}",
+            border_style="blue"
+        ))
+
+        # Leader info
+        if leader:
+            leader_agent = db.get_agent(leader.agent_id)
+            leader_name = leader_agent.name if leader_agent else leader.agent_id
+
+            # Check leader status based on agent liveness, not just lease
+            if leader_agent:
+                # Agent exists - check if alive based on heartbeat
+                from datetime import timedelta
+
+                from aqua.coordinator import AGENT_DEAD_THRESHOLD_SECONDS
+                heartbeat_age = _utc_now_naive() - leader_agent.last_heartbeat_at
+                is_alive = heartbeat_age < timedelta(seconds=AGENT_DEAD_THRESHOLD_SECONDS)
+                if is_alive:
+                    status_str = f"[green]active[/green], term {leader.term}"
+                else:
+                    status_str = f"[red]dead[/red] (no heartbeat for {format_time_ago(leader_agent.last_heartbeat_at)})"
+            else:
+                # Agent was deleted but leader record remains
+                status_str = "[yellow]unknown[/yellow] (agent not found)"
+
+            console.print(f"\n[bold]Leader:[/bold] {leader_name} ({status_str})")
+        else:
+            console.print("\n[bold]Leader:[/bold] [dim]None[/dim]")
+
+        # Agents table
+        console.print(f"\n[bold]Agents ({len(active_agents)} active):[/bold]")
+        if active_agents:
+            table = Table(box=box.SIMPLE)
+            table.add_column("Name", style="cyan")
+            table.add_column("Type")
+            table.add_column("Status")
+            table.add_column("Task")
+            table.add_column("Heartbeat")
+
+            for agent in active_agents:
+                is_leader = leader and leader.agent_id == agent.id
+                name = f"[bold]{agent.name}[/bold] ★" if is_leader else agent.name
+                task_str = agent.current_task_id[:8] if agent.current_task_id else "-"
+                hb_str = format_time_ago(agent.last_heartbeat_at)
+
+                table.add_row(
+                    name,
+                    agent.agent_type.value,
+                    "working" if agent.current_task_id else "idle",
+                    task_str,
+                    hb_str,
+                )
+
+            console.print(table)
+        else:
+            console.print("[dim]  No active agents. Run 'aqua join' to register.[/dim]")
+
+        # Task counts
+        console.print("\n[bold]Tasks:[/bold]")
+        pending = task_counts.get("pending", 0)
+        claimed = task_counts.get("claimed", 0)
+        done = task_counts.get("done", 0)
+        failed = task_counts.get("failed", 0)
+        console.print(
+            f"  [yellow]PENDING: {pending}[/yellow]  │  "
+            f"[blue]CLAIMED: {claimed}[/blue]  │  "
+            f"[green]DONE: {done}[/green]  │  "
+            f"[red]FAILED: {failed}[/red]"
+        )
+
+        # Recent activity
+        if events:
+            console.print("\n[bold]Recent Activity:[/bold]")
+            for event in events[:5]:
+                time_str = format_time_ago(event.timestamp)
+                console.print(f"  [dim]{time_str}[/dim] {event.event_type}", end="")
+                if event.agent_id:
+                    agent = db.get_agent(event.agent_id)
+                    agent_name = agent.name if agent else event.agent_id[:8]
+                    console.print(f" by [cyan]{agent_name}[/cyan]", end="")
+                console.print()
+
+        console.print()
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Task Commands
+# =============================================================================
+
+@main.command()
+@click.argument("title")
+@click.option("-d", "--description", help="Task description")
+@click.option("-p", "--priority", type=int, default=5, help="Priority 1-10 (default: 5)")
+@click.option("-t", "--tag", multiple=True, help="Add tag (can be repeated)")
+@click.option("--context", help="Additional context")
+@click.option("--depends-on", multiple=True, help="Task ID this depends on (can be repeated)")
+@click.option("--after", help="Task title this depends on (fuzzy match)")
+@click.option("--checkpoint", is_flag=True, help="Add a checkpoint task after this one")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def add(title: str, description: str, priority: int, tag: tuple, context: str,
+        depends_on: tuple, after: str, checkpoint: bool, as_json: bool):
+    """Add a new task.
+
+    Examples:
+        aqua add "Build API" -p 8
+        aqua add "Write tests" --depends-on abc123
+        aqua add "Write docs" --after "Build API"
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+
+        # Resolve dependencies
+        dep_ids = list(depends_on)
+
+        # Handle --after (title match)
+        if after:
+            tasks = db.get_all_tasks()
+            for t in tasks:
+                if after.lower() in t.title.lower():
+                    dep_ids.append(t.id)
+                    break
+            else:
+                console.print(f"[yellow]Warning:[/yellow] No task found matching '{after}'")
+
+        # Generate task ID early so we can check for cycles
+        task_id = generate_short_id()
+
+        # Check for circular dependencies
+        if dep_ids:
+            cycle = db.would_create_cycle(task_id, dep_ids)
+            if cycle:
+                cycle_str = " -> ".join(cycle)
+                if as_json:
+                    output_json({"error": "circular_dependency", "cycle": cycle})
+                else:
+                    console.print("[red]Error:[/red] Circular dependency detected!")
+                    console.print(f"  [dim]Cycle: {cycle_str}[/dim]")
+                sys.exit(1)
+
+        task = Task(
+            id=task_id,
+            title=title,
+            description=description,
+            priority=max(1, min(10, priority)),
+            tags=list(tag),
+            context=context,
+            created_by=agent_id,
+            depends_on=dep_ids,
+        )
+
+        db.create_task(task)
+
+        checkpoint_task = None
+        if checkpoint:
+            # Create checkpoint task that depends on this one
+            checkpoint_task = Task(
+                id=generate_short_id(),
+                title="[Checkpoint] Clear and continue",
+                tags=[CHECKPOINT_TAG],
+                depends_on=[task.id],
+                priority=task.priority,  # Same priority as parent task
+                created_by=agent_id,
+            )
+            db.create_task(checkpoint_task)
+
+        if as_json:
+            result = task.to_dict()
+            if checkpoint_task:
+                result["checkpoint"] = checkpoint_task.to_dict()
+            output_json(result)
+        else:
+            console.print(f"[green]✓[/green] Created task [cyan]{task.id}[/cyan]: {title}")
+            if dep_ids:
+                console.print(f"  [dim]Depends on: {', '.join(dep_ids)}[/dim]")
+            if checkpoint_task:
+                console.print(f"[green]✓[/green] Created checkpoint [yellow]{checkpoint_task.id}[/yellow] after task")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.option("--every", default=1, type=int, help="Insert checkpoint every N tasks (default: 1)")
+@click.option("--dry-run", is_flag=True, help="Show what would be created without doing it")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def serialize(every: int, dry_run: bool, as_json: bool):
+    """Serialize pending tasks into a linear sequence with checkpoints.
+
+    Performs topological sort on existing tasks (respecting dependencies),
+    then creates a fully linear chain with checkpoint tasks inserted.
+    This ensures tasks run sequentially with compaction opportunities.
+
+    Examples:
+        aqua serialize                  # Insert checkpoint after every task
+        aqua serialize --every 2        # Checkpoint every 2 tasks
+        aqua serialize --dry-run        # Preview without making changes
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        # Get all pending tasks
+        pending_tasks = db.get_all_tasks(status=TaskStatus.PENDING)
+
+        if not pending_tasks:
+            if as_json:
+                output_json({"status": "no_tasks", "message": "No pending tasks to serialize"})
+            else:
+                console.print("[yellow]No pending tasks to serialize.[/yellow]")
+            return
+
+        # Topologically sort them
+        try:
+            sorted_tasks = db.topological_sort_tasks([t.id for t in pending_tasks])
+        except ValueError as e:
+            if as_json:
+                output_json({"error": "cycle_detected", "message": str(e)})
+            else:
+                console.print(f"[red]Error:[/red] {e}")
+            sys.exit(1)
+
+        if not sorted_tasks:
+            if as_json:
+                output_json({"status": "no_tasks", "message": "No tasks after sorting"})
+            else:
+                console.print("[yellow]No tasks after sorting.[/yellow]")
+            return
+
+        # Build the serialized sequence
+        sequence = []  # List of (task_or_checkpoint, is_checkpoint)
+        checkpoints_to_create = []
+        tasks_to_update = []
+
+        prev_id = None  # ID of previous item (task or checkpoint)
+        task_count_since_checkpoint = 0
+
+        for i, task in enumerate(sorted_tasks):
+            # Update this task to depend on the previous item (if any)
+            new_depends_on = [prev_id] if prev_id else []
+
+            if task.depends_on != new_depends_on:
+                tasks_to_update.append((task.id, new_depends_on))
+
+            sequence.append({"type": "task", "id": task.id, "title": task.title})
+            prev_id = task.id
+            task_count_since_checkpoint += 1
+
+            # Insert checkpoint after every N tasks (but not after the last one)
+            if task_count_since_checkpoint >= every and i < len(sorted_tasks) - 1:
+                checkpoint_id = generate_short_id()
+                checkpoint_title = "[Checkpoint] Clear and continue"
+                checkpoints_to_create.append({
+                    "id": checkpoint_id,
+                    "title": checkpoint_title,
+                    "depends_on": [prev_id],
+                })
+                sequence.append({"type": "checkpoint", "id": checkpoint_id, "title": checkpoint_title})
+                prev_id = checkpoint_id
+                task_count_since_checkpoint = 0
+
+        # Dry run mode: just show what would happen
+        if dry_run:
+            result = {
+                "dry_run": True,
+                "sequence": sequence,
+                "tasks_to_update": len(tasks_to_update),
+                "checkpoints_to_create": len(checkpoints_to_create),
+            }
+            if as_json:
+                output_json(result)
+            else:
+                console.print("[bold]Dry run - would create this sequence:[/bold]\n")
+                for i, item in enumerate(sequence, 1):
+                    if item["type"] == "checkpoint":
+                        console.print(f"  {i}. [yellow]⏸ {item['title']}[/yellow]")
+                    else:
+                        console.print(f"  {i}. {item['title']} [dim]({item['id']})[/dim]")
+                console.print(f"\n[dim]Would update {len(tasks_to_update)} task dependencies[/dim]")
+                console.print(f"[dim]Would create {len(checkpoints_to_create)} checkpoint tasks[/dim]")
+            return
+
+        # Actually make the changes
+        # 1. Update task dependencies
+        for task_id, new_deps in tasks_to_update:
+            now = _utc_now_naive().isoformat()
+            db.conn.execute(
+                "UPDATE tasks SET depends_on = ?, updated_at = ? WHERE id = ?",
+                (json.dumps(new_deps), now, task_id)
+            )
+
+        # 2. Create checkpoint tasks
+        for cp in checkpoints_to_create:
+            checkpoint_task = Task(
+                id=cp["id"],
+                title=cp["title"],
+                tags=[CHECKPOINT_TAG],
+                depends_on=cp["depends_on"],
+                priority=5,  # Default priority for checkpoints
+            )
+            db.create_task(checkpoint_task)
+
+        # Output result
+        result = {
+            "status": "serialized",
+            "sequence": sequence,
+            "tasks_updated": len(tasks_to_update),
+            "checkpoints_created": len(checkpoints_to_create),
+        }
+
+        if as_json:
+            output_json(result)
+        else:
+            console.print("[green]✓[/green] Serialized tasks into linear sequence:\n")
+            for i, item in enumerate(sequence, 1):
+                if item["type"] == "checkpoint":
+                    console.print(f"  {i}. [yellow]⏸ {item['title']}[/yellow] [dim]({item['id']})[/dim]")
+                else:
+                    console.print(f"  {i}. {item['title']} [dim]({item['id']})[/dim]")
+            console.print(f"\n[dim]Updated {len(tasks_to_update)} task dependencies[/dim]")
+            console.print(f"[dim]Created {len(checkpoints_to_create)} checkpoint tasks[/dim]")
+
+    finally:
+        db.close()
+
+
+@main.command("list")
+@click.option("-s", "--status", "status_filter", help="Filter by status")
+@click.option("-t", "--tag", help="Filter by tag")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def list_tasks(status_filter: str, tag: str, as_json: bool):
+    """List tasks."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        status = TaskStatus(status_filter) if status_filter else None
+        tasks = db.get_all_tasks(status=status, tag=tag)
+
+        if as_json:
+            output_json([t.to_dict() for t in tasks])
+            return
+
+        if not tasks:
+            console.print("[dim]No tasks found.[/dim]")
+            return
+
+        table = Table(box=box.SIMPLE)
+        table.add_column("ID", style="cyan")
+        table.add_column("Pri")
+        table.add_column("Status")
+        table.add_column("Title")
+        table.add_column("Claimed By")
+        table.add_column("Tags")
+
+        for task in tasks:
+            status_color = {
+                "pending": "yellow",
+                "claimed": "blue",
+                "done": "green",
+                "failed": "red",
+                "abandoned": "magenta",
+            }.get(task.status.value, "white")
+
+            claimed_by = ""
+            if task.claimed_by:
+                agent = db.get_agent(task.claimed_by)
+                claimed_by = agent.name if agent else task.claimed_by[:8]
+
+            table.add_row(
+                task.id[:8],
+                str(task.priority),
+                f"[{status_color}]{task.status.value}[/{status_color}]",
+                truncate(task.title, 40),
+                claimed_by,
+                ", ".join(task.tags) if task.tags else "",
+            )
+
+        console.print(table)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("task_id", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def show(task_id: str, as_json: bool):
+    """Show task details."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        if not task_id:
+            # Show current task
+            agent_id = get_stored_agent_id()
+            if agent_id:
+                agent = db.get_agent(agent_id)
+                if agent and agent.current_task_id:
+                    task_id = agent.current_task_id
+
+        if not task_id:
+            console.print("[red]Error:[/red] No task specified and no current task.")
+            sys.exit(1)
+
+        task = db.get_task(task_id)
+        if not task:
+            console.print(f"[red]Error:[/red] Task {task_id} not found.")
+            sys.exit(1)
+
+        if as_json:
+            output_json(task.to_dict())
+            return
+
+        console.print(Panel.fit(f"[bold]Task {task.id}[/bold]", border_style="blue"))
+        console.print(f"[bold]Title:[/bold] {task.title}")
+        console.print(f"[bold]Status:[/bold] {task.status.value}")
+        console.print(f"[bold]Priority:[/bold] {task.priority}")
+
+        if task.description:
+            console.print(f"[bold]Description:[/bold] {task.description}")
+        if task.tags:
+            console.print(f"[bold]Tags:[/bold] {', '.join(task.tags)}")
+        if task.context:
+            console.print(f"[bold]Context:[/bold] {task.context}")
+        if task.claimed_by:
+            agent = db.get_agent(task.claimed_by)
+            name = agent.name if agent else task.claimed_by
+            console.print(f"[bold]Claimed by:[/bold] {name}")
+        if task.result:
+            console.print(f"[bold]Result:[/bold] {task.result}")
+        if task.error:
+            console.print(f"[bold]Error:[/bold] {task.error}")
+
+        console.print(f"[bold]Created:[/bold] {format_time_ago(task.created_at)}")
+        if task.completed_at:
+            console.print(f"[bold]Completed:[/bold] {format_time_ago(task.completed_at)}")
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Agent Commands
+# =============================================================================
+
+@main.command()
+@click.option("-n", "--name", help="Agent name (auto-generated if not provided)")
+@click.option("-t", "--type", "agent_type", default="generic",
+              type=click.Choice(["claude", "codex", "gemini", "generic"]),
+              help="Agent type")
+@click.option("-r", "--role", help="Agent role (e.g., frontend, backend, reviewer)")
+@click.option("-c", "--cap", multiple=True, help="Capability (can be repeated)")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def join(name: str, agent_type: str, role: str, cap: tuple, as_json: bool):
+    """Register as an agent in the quorum."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        # Read role from env if not provided (set by spawn command)
+        role = role or os.environ.get("AQUA_AGENT_ROLE")
+
+        # Generate unique name if not provided
+        if not name:
+            # Keep generating until we find a unique name
+            for _ in range(100):  # Avoid infinite loop
+                candidate = generate_agent_name()
+                if not db.get_agent_by_name(candidate):
+                    name = candidate
+                    break
+            else:
+                # Fallback: add random suffix
+                name = f"{generate_agent_name()}-{generate_short_id()[:4]}"
+
+        # CRITICAL: Set session ID to agent name BEFORE checking existing
+        # This ensures each agent gets its own session file, preventing
+        # multiple agents from sharing the same "default" session
+        current_session = _get_session_id()
+        if current_session == "default":
+            # Running without TTY (typical for AI agents) - use agent name as session
+            os.environ["AQUA_SESSION_ID"] = name
+
+        # Check if already joined (now using the correct session file)
+        existing_id = get_stored_agent_id()
+        if existing_id:
+            existing = db.get_agent(existing_id)
+            if existing and existing.status == AgentStatus.ACTIVE:
+                if as_json:
+                    output_json(existing.to_dict())
+                else:
+                    console.print(f"[yellow]Already joined as {existing.name}[/yellow]")
+                return
+
+        # Check name uniqueness (for user-provided names)
+        if db.get_agent_by_name(name):
+            console.print(f"[red]Error:[/red] Agent name '{name}' already taken.")
+            sys.exit(1)
+
+        agent = Agent(
+            id=generate_short_id(),
+            name=name,
+            agent_type=AgentType(agent_type),
+            pid=get_current_pid(),
+            capabilities=list(cap),
+            role=role,
+        )
+
+        db.create_agent(agent)
+        store_agent_id(agent.id)
+
+        # Try to become leader
+        is_leader, term = db.try_become_leader(agent.id)
+
+        if as_json:
+            data = agent.to_dict()
+            data["is_leader"] = is_leader
+            data["term"] = term
+            output_json(data)
+        else:
+            leader_str = " [bold yellow](leader)[/bold yellow]" if is_leader else ""
+            role_str = f" [magenta]{role}[/magenta]" if role else ""
+            console.print(f"[green]✓[/green] Joined as [cyan]{name}[/cyan]{role_str}{leader_str}")
+            console.print(f"  Agent ID: {agent.id}")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.option("--force", is_flag=True, help="Force leave even if holding tasks")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def leave(force: bool, as_json: bool):
+    """Leave the quorum."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            if as_json:
+                output_json({"status": "not_joined"})
+            else:
+                console.print("[yellow]Not currently joined.[/yellow]")
+            return
+
+        agent = db.get_agent(agent_id)
+        if not agent:
+            clear_agent_id()
+            if as_json:
+                output_json({"status": "not_found", "cleared": True})
+            else:
+                console.print("[yellow]Agent not found, cleared local state.[/yellow]")
+            return
+
+        # Check for active tasks
+        if agent.current_task_id and not force:
+            if as_json:
+                output_json({"error": "has_active_task", "task_id": agent.current_task_id})
+            else:
+                console.print(f"[red]Error:[/red] You have an active task ({agent.current_task_id}).")
+                console.print("Complete it first or use --force to abandon it.")
+            sys.exit(1)
+
+        # Abandon any active tasks
+        if agent.current_task_id:
+            db.abandon_task(agent.current_task_id, reason=f"Agent {agent.name} left")
+
+        db.delete_agent(agent_id)
+        clear_agent_id()
+
+        if as_json:
+            output_json({"status": "left", "name": agent.name, "id": agent.id})
+        else:
+            console.print(f"[green]✓[/green] Left the quorum (was {agent.name})")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("task_id", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def claim(task_id: str, as_json: bool):
+    """Claim a task."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        agent = db.get_agent(agent_id)
+        if not agent:
+            console.print("[red]Error:[/red] Agent not found. Run 'aqua join' first.")
+            clear_agent_id()
+            sys.exit(1)
+
+        # Update heartbeat
+        db.update_heartbeat(agent_id)
+
+        # Run recovery to reclaim orphaned tasks from dead agents
+        coordinator = Coordinator(db)
+        recovery = coordinator.run_recovery()
+        if recovery["dead_agents"] or recovery["stale_tasks"]:
+            if not should_output_json(as_json):
+                if recovery["dead_agents"]:
+                    console.print(f"[dim]Recovered {len(recovery['dead_agents'])} dead agent(s)[/dim]")
+                if recovery["stale_tasks"]:
+                    console.print(f"[dim]Recovered {recovery['stale_tasks']} stale task(s)[/dim]")
+
+        # Check if already has a task
+        if agent.current_task_id:
+            task = db.get_task(agent.current_task_id)
+            if task and task.status == TaskStatus.CLAIMED:
+                if as_json:
+                    output_json(task.to_dict())
+                else:
+                    console.print(f"[yellow]Already working on task {task.id}:[/yellow] {task.title}")
+                return
+
+        if task_id:
+            task = coordinator.claim_specific_task(agent_id, task_id)
+            is_role_match = True  # Specific task claim = user's choice
+        else:
+            # Use role-aware claiming if agent has a role
+            task, is_role_match = coordinator.claim_next_task_for_role(agent_id)
+
+        if not task:
+            # Check if all work is done or just nothing available right now
+            task_counts = db.get_task_counts()
+            pending = task_counts.get("pending", 0)
+            claimed = task_counts.get("claimed", 0)
+            done_count = task_counts.get("done", 0)
+            failed = task_counts.get("failed", 0)
+            total = pending + claimed + done_count + failed
+
+            if as_json:
+                if pending == 0 and claimed == 0 and total > 0:
+                    output_json({
+                        "status": "all_done",
+                        "message": "All tasks are complete! Nothing left to do.",
+                        "task_counts": task_counts
+                    })
+                else:
+                    output_json({
+                        "status": "none_available",
+                        "message": "No tasks available to claim right now.",
+                        "task_counts": task_counts
+                    })
+            else:
+                if pending == 0 and claimed == 0 and total > 0:
+                    console.print()
+                    console.print(Panel.fit(
+                        f"[bold green]All tasks complete![/bold green]\n\n"
+                        f"Done: {done_count}" + (f", Failed: {failed}" if failed else "") + "\n\n"
+                        "Nothing left to do. You can:\n"
+                        "  • Run 'aqua leave' to leave the quorum\n"
+                        "  • Wait for the leader to add more tasks\n"
+                        "  • Run 'aqua status' to see the summary",
+                        border_style="green"
+                    ))
+                elif total == 0:
+                    console.print("[yellow]No tasks in the queue yet.[/yellow]")
+                    console.print("[dim]Waiting for tasks to be added...[/dim]")
+                else:
+                    console.print("[yellow]No tasks available to claim right now.[/yellow]")
+                    console.print(f"[dim]({claimed} task(s) being worked on by other agents)[/dim]")
+            return
+
+        # Check if this is a checkpoint task
+        is_checkpoint = CHECKPOINT_TAG in (task.tags or [])
+
+        if as_json:
+            result = task.to_dict()
+            result["is_role_match"] = is_role_match
+            result["is_checkpoint"] = is_checkpoint
+            output_json(result)
+        else:
+            # Show info if task doesn't match agent's role
+            if not is_role_match and agent.role:
+                console.print(f"[yellow]Note:[/yellow] No {agent.role} tasks available.")
+
+            if is_checkpoint:
+                # Show special checkpoint instructions
+                console.print(Panel(
+                    "[bold]Checkpoint Reached[/bold]\n\n"
+                    "This is a context checkpoint. Run:\n"
+                    "  aqua done\n\n"
+                    "Then exit this session. Aqua will respawn\n"
+                    "a fresh agent with full context restored.",
+                    title="[yellow]⏸ Checkpoint[/yellow]",
+                    border_style="yellow"
+                ))
+            else:
+                console.print(f"[green]✓[/green] Claimed task [cyan]{task.id}[/cyan]: {task.title}")
+                if task.description:
+                    console.print(f"  [dim]{task.description}[/dim]")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("task_id", required=False)
+@click.option("-s", "--summary", help="Completion summary")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def done(task_id: str, summary: str, as_json: bool):
+    """Mark a task as complete."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        coordinator = Coordinator(db)
+        if coordinator.complete_task(agent_id, task_id, summary):
+            if as_json:
+                output_json({"success": True, "task_id": task_id})
+            else:
+                console.print("[green]✓[/green] Task completed!")
+        else:
+            if as_json:
+                output_json({"error": "Failed to complete task"})
+            else:
+                console.print("[red]Error:[/red] Failed to complete task.")
+                console.print("Make sure you have claimed this task.")
+            sys.exit(1)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("task_id", required=False)
+@click.option("-r", "--reason", required=True, help="Failure reason")
+@click.option("--all", "fail_all", is_flag=True, help="Fail all pending and claimed tasks")
+@click.option("-y", "--yes", is_flag=True, help="Skip confirmation prompt")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def fail(task_id: str, reason: str, fail_all: bool, yes: bool, as_json: bool):
+    """Mark a task as failed."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        coordinator = Coordinator(db)
+
+        if fail_all:
+            # Get all pending and claimed tasks
+            pending_tasks = db.get_all_tasks(status=TaskStatus.PENDING)
+            claimed_tasks = db.get_all_tasks(status=TaskStatus.CLAIMED)
+            all_tasks = pending_tasks + claimed_tasks
+
+            if not all_tasks:
+                if as_json:
+                    output_json({"success": True, "failed_count": 0})
+                else:
+                    console.print("[yellow]No pending or claimed tasks to fail.[/yellow]")
+                return
+
+            if not yes and not as_json:
+                console.print(f"[yellow]This will fail {len(all_tasks)} task(s):[/yellow]")
+                for t in all_tasks[:10]:
+                    console.print(f"  • {t.id[:8]}... {t.title}")
+                if len(all_tasks) > 10:
+                    console.print(f"  ... and {len(all_tasks) - 10} more")
+                console.print()
+                if not click.confirm("Are you sure you want to fail all these tasks?", default=False):
+                    console.print("[yellow]Aborted.[/yellow]")
+                    sys.exit(0)
+
+            failed_count = 0
+            for t in all_tasks:
+                if db.fail_task(t.id, agent_id, reason):
+                    failed_count += 1
+
+            if as_json:
+                output_json({"success": True, "failed_count": failed_count})
+            else:
+                console.print(f"[yellow]Marked {failed_count} task(s) as failed.[/yellow]")
+            return
+
+        if coordinator.fail_task(agent_id, task_id, reason):
+            if as_json:
+                output_json({"success": True, "task_id": task_id})
+            else:
+                console.print("[yellow]Task marked as failed.[/yellow]")
+        else:
+            if as_json:
+                output_json({"error": "Failed to mark task as failed"})
+            else:
+                console.print("[red]Error:[/red] Failed to update task.")
+            sys.exit(1)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("message")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def progress(message: str, as_json: bool):
+    """Report progress on current task.
+
+    This saves your progress both to the task AND to your agent state,
+    so it can be restored after context compaction via 'aqua refresh'.
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            if as_json:
+                output_json({"error": "not_joined"})
+            else:
+                console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        agent = db.get_agent(agent_id)
+        if not agent or not agent.current_task_id:
+            if as_json:
+                output_json({"error": "no_current_task"})
+            else:
+                console.print("[red]Error:[/red] No current task.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+        db.update_task_progress(agent.current_task_id, message)
+
+        # Also save to agent's last_progress for refresh recovery
+        db.conn.execute(
+            "UPDATE agents SET last_progress = ? WHERE id = ?",
+            (message, agent_id)
+        )
+
+        if as_json:
+            output_json({"status": "updated", "task_id": agent.current_task_id, "message": message})
+        else:
+            console.print("[green]✓[/green] Progress updated.")
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Refresh Command - Restore agent context after compaction
+# =============================================================================
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def refresh(as_json: bool):
+    """Restore your identity and context after compaction.
+
+    Run this FIRST at the start of every session or after context
+    compaction. It tells you who you are and what you were doing.
+    """
+    # Check if Aqua is initialized - don't use @require_init so we can give a helpful message
+    if not find_aqua_dir():
+        if as_json:
+            output_json({
+                "status": "not_aqua",
+                "message": "This directory is not part of an Aqua pool. No multi-agent coordination here.",
+                "aqua_enabled": False
+            })
+        else:
+            console.print("[dim]This directory is not part of an Aqua multi-agent pool.[/dim]")
+            console.print("[dim]No coordination needed - you can work independently.[/dim]")
+        return
+
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+
+        if not agent_id:
+            # Not joined yet
+            if as_json:
+                output_json({
+                    "status": "not_joined",
+                    "aqua_enabled": True,
+                    "message": "Aqua is active but you haven't joined. Run 'aqua join --name <your-name>' to participate.",
+                    "next_action": "aqua join --name <name>"
+                })
+            else:
+                console.print("[yellow]Aqua is active in this directory but you haven't joined.[/yellow]")
+                console.print()
+                console.print("To join the team, run:")
+                console.print("  aqua join --name <your-name>")
+                console.print()
+                console.print("Then run 'aqua refresh' again to see your status.")
+            return
+
+        agent = db.get_agent(agent_id)
+        if not agent or agent.status != AgentStatus.ACTIVE:
+            clear_agent_id()
+            if as_json:
+                output_json({
+                    "status": "stale_session",
+                    "message": "Your previous session is no longer valid. Run 'aqua join' to rejoin.",
+                    "next_action": "aqua join --name <name>"
+                })
+            else:
+                console.print("[yellow]Your previous session is no longer valid.[/yellow]")
+                console.print("Run 'aqua join --name <your-name>' to rejoin.")
+            return
+
+        # Update heartbeat
+        db.update_heartbeat(agent_id)
+
+        # Get leader info
+        leader = db.get_leader()
+        is_leader = leader and leader.agent_id == agent_id and not leader.is_expired()
+
+        # Note: Leadership status comes from the Leader table, not the role field.
+        # The role field is for user-defined roles (frontend, backend, etc.)
+        # We can't detect "leadership changed" without extra state tracking,
+        # so we just show current leadership status.
+
+        # Get leader name if someone else is leading
+        other_leader_name = None
+        if leader and leader.agent_id != agent_id and not leader.is_expired():
+            other_leader_agent = db.get_agent(leader.agent_id)
+            other_leader_name = other_leader_agent.name if other_leader_agent else leader.agent_id[:8]
+
+        # Get current task if any
+        current_task = None
+        if agent.current_task_id:
+            current_task = db.get_task(agent.current_task_id)
+
+        # Get unread messages count
+        unread_messages = db.get_messages(to_agent=agent_id, unread_only=True)
+
+        # Get task counts
+        task_counts = db.get_task_counts()
+
+        if as_json:
+            result = {
+                "status": "active",
+                "agent": {
+                    "id": agent.id,
+                    "name": agent.name,
+                    "type": agent.agent_type.value,
+                    "role": agent.role,
+                },
+                "is_leader": is_leader,
+                "current_leader": other_leader_name,
+                "current_task": current_task.to_dict() if current_task else None,
+                "last_progress": agent.last_progress,
+                "unread_messages": len(unread_messages),
+                "task_counts": task_counts,
+                "next_action": "aqua claim" if not current_task else "continue working on your task",
+            }
+
+            # Add checkpoint context if current task is a checkpoint
+            if current_task and CHECKPOINT_TAG in (current_task.tags or []):
+                result["is_checkpoint"] = True
+                result["next_action"] = "aqua done (then aqua claim)"
+
+                # Include previous task summary
+                if current_task.depends_on:
+                    prev_task = db.get_task(current_task.depends_on[0])
+                    if prev_task:
+                        result["previous_task"] = {
+                            "id": prev_task.id,
+                            "title": prev_task.title,
+                            "summary": prev_task.result,
+                        }
+
+                # Include upcoming tasks
+                upcoming = db.get_upcoming_tasks(current_task.id, limit=5)
+                if upcoming:
+                    result["upcoming_tasks"] = [
+                        {"id": t.id, "title": t.title} for t in upcoming
+                    ]
+
+            output_json(result)
+            return
+
+        # Human-readable output
+        console.print()
+
+        # Build agent title with role and leader status
+        title_parts = [f"[bold cyan]You are: {agent.name}[/bold cyan]"]
+        if agent.role:
+            title_parts.append(f"[magenta]({agent.role})[/magenta]")
+        if is_leader:
+            title_parts.append("[yellow]★ LEADER[/yellow]")
+
+        console.print(Panel.fit(
+            " ".join(title_parts),
+            border_style="green"
+        ))
+
+        console.print(f"[dim]Agent ID: {agent.id}[/dim]")
+        if other_leader_name:
+            console.print(f"[dim]Current leader: {other_leader_name}[/dim]")
+        console.print()
+
+        # Current task
+        if current_task:
+            is_checkpoint = CHECKPOINT_TAG in (current_task.tags or [])
+
+            if is_checkpoint:
+                # Special checkpoint context display
+                console.print("[bold yellow]Current Task: Checkpoint[/bold yellow]")
+                console.print()
+
+                # Show previous task's summary
+                if current_task.depends_on:
+                    prev_task = db.get_task(current_task.depends_on[0])
+                    if prev_task:
+                        console.print("[bold]Previous Task Completed:[/bold]")
+                        console.print(f"  \"{prev_task.title}\"")
+                        if prev_task.result:
+                            console.print(f"  [dim]Summary: {prev_task.result}[/dim]")
+                        else:
+                            console.print("  [dim]Summary: (no summary provided)[/dim]")
+                        console.print()
+
+                # Show upcoming tasks
+                upcoming = db.get_upcoming_tasks(current_task.id, limit=5)
+                if upcoming:
+                    console.print("[bold]Coming Up Next:[/bold]")
+                    for i, task in enumerate(upcoming, 1):
+                        console.print(f"  {i}. {task.title}")
+                    console.print()
+
+                console.print("  → Mark done with: aqua done")
+                console.print("  → Then: aqua claim")
+            else:
+                console.print("[bold]Current Task:[/bold]")
+                console.print(f"  [cyan]{current_task.id[:8]}[/cyan]: {current_task.title}")
+                if current_task.description:
+                    console.print(f"  [dim]{current_task.description}[/dim]")
+                if agent.last_progress:
+                    console.print(f"  [bold]Last progress:[/bold] {agent.last_progress}")
+                console.print()
+                console.print("  → Continue working on this task")
+                console.print("  → When done: aqua done --summary \"what you did\"")
+        else:
+            console.print("[bold]Current Task:[/bold] None")
+            console.print()
+            console.print("  → Run 'aqua claim' to get a task")
+
+        console.print()
+
+        # Messages
+        if unread_messages:
+            console.print(f"[bold yellow]📬 {len(unread_messages)} unread message(s)[/bold yellow]")
+            console.print("  → Run 'aqua inbox --unread' to read them")
+            console.print()
+
+        # Quick status
+        pending = task_counts.get("pending", 0)
+        claimed = task_counts.get("claimed", 0)
+        done = task_counts.get("done", 0)
+        console.print(f"[dim]Tasks: {pending} pending, {claimed} in progress, {done} done[/dim]")
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Message Commands
+# =============================================================================
+
+@main.command()
+@click.argument("message")
+@click.option("--to", "to_agent", help="Recipient (agent name, @all, @leader)")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def msg(message: str, to_agent: str, as_json: bool):
+    """Send a message."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        # Resolve recipient
+        recipient = None
+        if to_agent:
+            if to_agent == "@all":
+                recipient = None  # Broadcast
+            elif to_agent == "@leader":
+                leader = db.get_leader()
+                if leader:
+                    recipient = leader.agent_id
+                else:
+                    console.print("[red]Error:[/red] No leader elected.")
+                    sys.exit(1)
+            else:
+                # Look up by name
+                target = db.get_agent_by_name(to_agent)
+                if target:
+                    recipient = target.id
+                else:
+                    console.print(f"[red]Error:[/red] Agent '{to_agent}' not found.")
+                    sys.exit(1)
+
+        msg_obj = db.create_message(agent_id, message, recipient)
+
+        if as_json:
+            output_json(msg_obj.to_dict())
+        else:
+            target_str = to_agent if to_agent else "all"
+            console.print(f"[green]✓[/green] Message sent to {target_str}")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.option("--unread", is_flag=True, help="Only show unread messages")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def inbox(unread: bool, as_json: bool):
+    """Read messages."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        messages = db.get_messages(to_agent=agent_id, unread_only=unread)
+
+        if as_json:
+            output_json([m.to_dict() for m in messages])
+            return
+
+        if not messages:
+            console.print("[dim]No messages.[/dim]")
+            return
+
+        # Mark as read
+        message_ids = [m.id for m in messages if m.read_at is None]
+        if message_ids:
+            db.mark_messages_read(agent_id, message_ids)
+
+        for msg in messages:
+            from_agent = db.get_agent(msg.from_agent)
+            from_name = from_agent.name if from_agent else msg.from_agent[:8]
+            time_str = format_time_ago(msg.created_at)
+            to_str = f" → {msg.to_agent}" if msg.to_agent else " (broadcast)"
+
+            console.print(f"[dim]{time_str}[/dim] [cyan]{from_name}[/cyan]{to_str}:")
+            console.print(f"  {msg.content}")
+            console.print()
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("question")
+@click.option("--to", "to_agent", required=True, help="Recipient agent name")
+@click.option("--timeout", default=300, help="Timeout in seconds (default: 300)")
+@click.option("--poll", default=2, help="Poll interval in seconds (default: 2)")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def ask(question: str, to_agent: str, timeout: int, poll: int, as_json: bool):
+    """Ask a question and wait for a reply.
+
+    Sends a question to another agent and blocks until they reply
+    using 'aqua reply'. Useful for synchronous coordination.
+
+    Examples:
+        aqua ask "Should I use Redis or SQLite?" --to worker-2
+        aqua ask "Ready to merge?" --to @leader --timeout 60
+    """
+    import time
+
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        agent = db.get_agent(agent_id)
+        if not agent:
+            console.print("[red]Error:[/red] Agent not found.")
+            sys.exit(1)
+
+        # Resolve recipient
+        recipient_id = None
+        if to_agent == "@leader":
+            leader = db.get_leader()
+            if leader:
+                recipient_id = leader.agent_id
+            else:
+                console.print("[red]Error:[/red] No leader elected.")
+                sys.exit(1)
+        else:
+            recipient = db.get_agent_by_name(to_agent)
+            if recipient:
+                recipient_id = recipient.id
+            else:
+                console.print(f"[red]Error:[/red] Agent '{to_agent}' not found.")
+                sys.exit(1)
+
+        # Send the question
+        msg = db.create_message(
+            from_agent=agent_id,
+            content=question,
+            to_agent=recipient_id,
+            message_type="question",
+        )
+
+        if not as_json:
+            console.print(f"[dim]Question sent (id: {msg.id}). Waiting for reply...[/dim]")
+
+        # Poll for reply
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            replies = db.get_replies(msg.id)
+            if replies:
+                reply = replies[0]  # Take first reply
+                if as_json:
+                    output_json({
+                        "question_id": msg.id,
+                        "reply_id": reply.id,
+                        "from": reply.from_agent,
+                        "content": reply.content,
+                    })
+                else:
+                    from_agent = db.get_agent(reply.from_agent)
+                    from_name = from_agent.name if from_agent else reply.from_agent[:8]
+                    console.print(f"\n[green]Reply from {from_name}:[/green]")
+                    console.print(f"  {reply.content}")
+                return
+
+            time.sleep(poll)
+
+        # Timeout
+        if as_json:
+            output_json({"error": "timeout", "question_id": msg.id})
+        else:
+            console.print(f"\n[yellow]Timeout:[/yellow] No reply received after {timeout}s")
+        sys.exit(1)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("message_id", type=int)
+@click.argument("response")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def reply(message_id: int, response: str, as_json: bool):
+    """Reply to a question from another agent.
+
+    Use this to respond to questions sent via 'aqua ask'.
+
+    Examples:
+        aqua reply 42 "Use SQLite, it's simpler"
+        aqua inbox --unread  # See pending questions first
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        # Get the original message
+        original = db.get_message(message_id)
+        if not original:
+            console.print(f"[red]Error:[/red] Message {message_id} not found.")
+            sys.exit(1)
+
+        if original.message_type != "question":
+            console.print(f"[yellow]Warning:[/yellow] Message {message_id} is not a question.")
+
+        # Send the reply
+        reply_msg = db.create_message(
+            from_agent=agent_id,
+            content=response,
+            to_agent=original.from_agent,
+            message_type="answer",
+            reply_to=message_id,
+        )
+
+        if as_json:
+            output_json(reply_msg.to_dict())
+        else:
+            from_agent = db.get_agent(original.from_agent)
+            from_name = from_agent.name if from_agent else original.from_agent[:8]
+            console.print(f"[green]✓[/green] Replied to {from_name}'s question (msg {message_id})")
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# File Lock Commands
+# =============================================================================
+
+@main.command()
+@click.argument("file_path")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def lock(file_path: str, as_json: bool):
+    """Lock a file to prevent other agents from editing it.
+
+    Example:
+        aqua lock src/handlers.py
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        # Normalize path
+        file_path = str(Path(file_path).resolve())
+
+        # Check if already locked
+        existing = db.get_file_lock(file_path)
+        if existing:
+            locker = db.get_agent(existing["agent_id"])
+            locker_name = locker.name if locker else existing["agent_id"][:8]
+
+            if existing["agent_id"] == agent_id:
+                if as_json:
+                    output_json({"success": True, "message": "You already have this file locked"})
+                else:
+                    console.print("[yellow]You already have this file locked.[/yellow]")
+            else:
+                if as_json:
+                    output_json({"success": False, "locked_by": locker_name})
+                else:
+                    console.print(f"[red]Error:[/red] File locked by [cyan]{locker_name}[/cyan]")
+                    sys.exit(1)
+            return
+
+        if db.lock_file(file_path, agent_id):
+            if as_json:
+                output_json({"success": True, "file": file_path})
+            else:
+                console.print(f"[green]✓[/green] Locked [cyan]{file_path}[/cyan]")
+        else:
+            if as_json:
+                output_json({"success": False, "error": "Failed to lock"})
+            else:
+                console.print("[red]Error:[/red] Failed to lock file.")
+                sys.exit(1)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("file_path")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def unlock(file_path: str, as_json: bool):
+    """Unlock a file you previously locked.
+
+    Example:
+        aqua unlock src/handlers.py
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = get_stored_agent_id()
+        if not agent_id:
+            console.print("[red]Error:[/red] Not joined. Run 'aqua join' first.")
+            sys.exit(1)
+
+        db.update_heartbeat(agent_id)
+
+        # Normalize path
+        file_path = str(Path(file_path).resolve())
+
+        if db.unlock_file(file_path, agent_id):
+            if as_json:
+                output_json({"success": True, "file": file_path})
+            else:
+                console.print(f"[green]✓[/green] Unlocked [cyan]{file_path}[/cyan]")
+        else:
+            # Check if someone else has it locked
+            existing = db.get_file_lock(file_path)
+            if existing:
+                locker = db.get_agent(existing["agent_id"])
+                locker_name = locker.name if locker else existing["agent_id"][:8]
+                if as_json:
+                    output_json({"success": False, "error": f"Locked by {locker_name}"})
+                else:
+                    console.print(f"[red]Error:[/red] File locked by [cyan]{locker_name}[/cyan], not you.")
+            else:
+                if as_json:
+                    output_json({"success": False, "error": "File not locked"})
+                else:
+                    console.print("[yellow]File is not locked.[/yellow]")
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def locks(as_json: bool):
+    """List all file locks."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        all_locks = db.get_all_locks()
+
+        if as_json:
+            output_json(all_locks)
+            return
+
+        if not all_locks:
+            console.print("[dim]No files currently locked.[/dim]")
+            return
+
+        table = Table(box=box.SIMPLE)
+        table.add_column("File", style="cyan")
+        table.add_column("Locked By", style="yellow")
+        table.add_column("Since", style="dim")
+
+        for lock_info in all_locks:
+            agent = db.get_agent(lock_info["agent_id"])
+            agent_name = agent.name if agent else lock_info["agent_id"][:8]
+            locked_at = datetime.fromisoformat(lock_info["locked_at"])
+            time_ago = format_time_ago(locked_at)
+            table.add_row(lock_info["file_path"], agent_name, time_ago)
+
+        console.print(table)
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Watch Command
+# =============================================================================
+
+@main.command()
+@click.option("-r", "--refresh", default=2, help="Refresh interval in seconds")
+@require_init
+def watch(refresh: int):
+    """Live dashboard (Ctrl+C to exit)."""
+    import time
+
+    from rich.live import Live
+
+    project_dir = get_project_dir()
+
+    def generate_dashboard() -> Table:
+        db = get_db(project_dir)
+        try:
+            # Run recovery on each refresh to detect dead agents
+            coordinator = Coordinator(db)
+            coordinator.run_recovery()
+
+            agents = db.get_all_agents(status=AgentStatus.ACTIVE)
+            leader = db.get_leader()
+            tasks = db.get_all_tasks()
+            task_counts = db.get_task_counts()
+
+            # Create main table
+            table = Table(title=f"Aqua Watch - {project_dir.name}", box=box.ROUNDED)
+
+            # Agents section
+            table.add_column("Agents", style="cyan")
+            table.add_column("Tasks", style="yellow")
+
+            agents_text = ""
+            for agent in agents:
+                is_leader = leader and leader.agent_id == agent.id
+                marker = "★ " if is_leader else "  "
+                status = "working" if agent.current_task_id else "idle"
+                hb = format_time_ago(agent.last_heartbeat_at)
+                agents_text += f"{marker}{agent.name} [{status}] ({hb})\n"
+
+            if not agents_text:
+                agents_text = "(no agents)"
+
+            # Tasks section
+            pending_tasks = [t for t in tasks if t.status == TaskStatus.PENDING][:5]
+            tasks_text = f"Pending: {task_counts.get('pending', 0)} | "
+            tasks_text += f"Claimed: {task_counts.get('claimed', 0)} | "
+            tasks_text += f"Done: {task_counts.get('done', 0)}\n\n"
+
+            for task in pending_tasks:
+                tasks_text += f"• {truncate(task.title, 35)} (p{task.priority})\n"
+
+            table.add_row(agents_text.strip(), tasks_text.strip())
+
+            return table
+        finally:
+            db.close()
+
+    try:
+        with Live(generate_dashboard(), refresh_per_second=1/refresh) as live:
+            while True:
+                time.sleep(refresh)
+                live.update(generate_dashboard())
+    except KeyboardInterrupt:
+        console.print("\n[dim]Watch stopped.[/dim]")
+
+
+# =============================================================================
+# Doctor Command
+# =============================================================================
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@click.option("--fix", is_flag=True, help="Attempt to fix issues (recover dead agents, stale tasks)")
+@require_init
+def doctor(as_json: bool, fix: bool):
+    """Run health checks and optionally fix issues."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    checks = {}
+    issues = []
+
+    if not as_json:
+        console.print("\n[bold]Aqua Health Check[/bold]")
+        console.print("─" * 40)
+
+    try:
+        # Database check
+        try:
+            db.conn.execute("SELECT 1")
+            checks["database"] = "ok"
+            if not as_json:
+                console.print("[green]✓[/green] Database accessible")
+        except Exception as e:
+            checks["database"] = f"error: {e}"
+            if not as_json:
+                console.print(f"[red]✗[/red] Database error: {e}")
+            issues.append("database")
+
+        # Schema check
+        try:
+            db.conn.execute("SELECT * FROM schema_version")
+            checks["schema"] = "ok"
+            if not as_json:
+                console.print("[green]✓[/green] Schema initialized")
+        except Exception:
+            checks["schema"] = "not_initialized"
+            if not as_json:
+                console.print("[red]✗[/red] Schema not initialized")
+            issues.append("schema")
+
+        # Leader check - based on agent heartbeat liveness
+        from datetime import timedelta
+
+        from aqua.coordinator import AGENT_DEAD_THRESHOLD_SECONDS
+
+        leader = db.get_leader()
+        if leader:
+            leader_agent = db.get_agent(leader.agent_id)
+            if leader_agent:
+                # Check leader agent's heartbeat
+                heartbeat_age = _utc_now_naive() - leader_agent.last_heartbeat_at
+                is_alive = heartbeat_age < timedelta(seconds=AGENT_DEAD_THRESHOLD_SECONDS)
+                if is_alive:
+                    checks["leader"] = "ok"
+                    if not as_json:
+                        console.print(f"[green]✓[/green] Leader elected ({leader_agent.name})")
+                else:
+                    checks["leader"] = "dead"
+                    if not as_json:
+                        console.print(f"[yellow]![/yellow] Leader ({leader_agent.name}) has no recent heartbeat")
+                    issues.append("leader_dead")
+            else:
+                checks["leader"] = "orphaned"
+                if not as_json:
+                    console.print("[yellow]![/yellow] Leader agent not found (orphaned record)")
+                issues.append("leader_orphaned")
+        else:
+            checks["leader"] = "none"
+            if not as_json:
+                console.print("[yellow]![/yellow] No leader elected")
+
+        # Agent heartbeat check
+        agents = db.get_all_agents(status=AgentStatus.ACTIVE)
+        stale_agents = []
+        threshold = _utc_now_naive() - timedelta(seconds=60)
+
+        for agent in agents:
+            if agent.last_heartbeat_at < threshold:
+                stale_agents.append(agent.name)
+
+        if stale_agents:
+            checks["agents"] = {"status": "stale", "stale_agents": stale_agents}
+            if not as_json:
+                console.print(f"[yellow]![/yellow] Stale agents: {', '.join(stale_agents)}")
+            issues.append("stale_agents")
+        elif agents:
+            checks["agents"] = {"status": "ok", "count": len(agents)}
+            if not as_json:
+                console.print("[green]✓[/green] All agents have recent heartbeats")
+        else:
+            checks["agents"] = {"status": "none", "count": 0}
+            if not as_json:
+                console.print("[dim]-[/dim] No active agents")
+
+        # Stuck tasks check
+        tasks = db.get_all_tasks(status=TaskStatus.CLAIMED)
+        stuck_tasks = []
+        claim_threshold = _utc_now_naive() - timedelta(minutes=30)
+
+        for task in tasks:
+            if task.claimed_at and task.claimed_at < claim_threshold:
+                stuck_tasks.append(task.id[:8])
+
+        if stuck_tasks:
+            checks["tasks"] = {"status": "stuck", "stuck_tasks": stuck_tasks}
+            if not as_json:
+                console.print(f"[yellow]![/yellow] Possibly stuck tasks: {', '.join(stuck_tasks)}")
+            issues.append("stuck_tasks")
+        else:
+            checks["tasks"] = {"status": "ok"}
+            if not as_json:
+                console.print("[green]✓[/green] No stuck tasks")
+
+        # Run fix if requested
+        if fix and issues:
+            if not as_json:
+                console.print()
+                console.print("[bold]Running recovery...[/bold]")
+
+            coordinator = Coordinator(db)
+            recovery = coordinator.run_recovery()
+
+            checks["recovery"] = {
+                "dead_agents_recovered": len(recovery["dead_agents"]),
+                "stale_tasks_recovered": recovery["stale_tasks"],
+                "tasks_requeued": recovery["requeued_tasks"],
+            }
+
+            if not as_json:
+                if recovery["dead_agents"]:
+                    console.print(f"[green]✓[/green] Recovered {len(recovery['dead_agents'])} dead agent(s)")
+                if recovery["stale_tasks"]:
+                    console.print(f"[green]✓[/green] Recovered {recovery['stale_tasks']} stale task(s)")
+                if recovery["requeued_tasks"]:
+                    console.print(f"[green]✓[/green] Requeued {recovery['requeued_tasks']} task(s)")
+                if not any([recovery["dead_agents"], recovery["stale_tasks"], recovery["requeued_tasks"]]):
+                    console.print("[dim]No automatic fixes needed[/dim]")
+
+        # Summary
+        if as_json:
+            output_json({
+                "healthy": len(issues) == 0,
+                "issues": issues,
+                "checks": checks,
+            })
+        else:
+            console.print()
+            if issues:
+                console.print(f"[yellow]Overall: {len(issues)} issue(s) found[/yellow]")
+            else:
+                console.print("[green]Overall: HEALTHY[/green]")
+            console.print()
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Recover Command
+# =============================================================================
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def recover(as_json: bool):
+    """Recover dead agents and orphaned tasks.
+
+    This command detects agents that have stopped heartbeating and:
+    - Marks them as dead
+    - Releases their claimed tasks back to PENDING
+    - Requeues any abandoned tasks
+
+    Recovery also runs automatically when:
+    - Any agent calls 'aqua claim'
+    - The 'aqua watch' dashboard is running
+    - You run 'aqua doctor --fix'
+    """
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    try:
+        coordinator = Coordinator(db)
+        recovery = coordinator.run_recovery()
+
+        result = {
+            "dead_agents_recovered": recovery["dead_agents"],
+            "stale_tasks_recovered": recovery["stale_tasks"],
+            "tasks_requeued": recovery["requeued_tasks"],
+        }
+
+        if as_json:
+            output_json(result)
+        else:
+            if recovery["dead_agents"]:
+                console.print(f"[green]✓[/green] Recovered {len(recovery['dead_agents'])} dead agent(s):")
+                for agent_id in recovery["dead_agents"]:
+                    console.print(f"    • {agent_id[:8]}")
+            else:
+                console.print("[dim]No dead agents found[/dim]")
+
+            if recovery["stale_tasks"]:
+                console.print(f"[green]✓[/green] Recovered {recovery['stale_tasks']} stale task(s)")
+
+            if recovery["requeued_tasks"]:
+                console.print(f"[green]✓[/green] Requeued {recovery['requeued_tasks']} abandoned task(s)")
+
+            if not any([recovery["dead_agents"], recovery["stale_tasks"], recovery["requeued_tasks"]]):
+                console.print("[green]✓[/green] System is healthy - no recovery needed")
+
+    finally:
+        db.close()
+
+
+# =============================================================================
+# Log Command
+# =============================================================================
+
+@main.command()
+@click.option("--agent", help="Filter by agent name")
+@click.option("--task", "task_id", help="Filter by task ID")
+@click.option("-n", "--limit", default=20, help="Number of events to show")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def log(agent: str, task_id: str, limit: int, as_json: bool):
+    """View event log."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+
+    try:
+        agent_id = None
+        if agent:
+            agent_obj = db.get_agent_by_name(agent)
+            if agent_obj:
+                agent_id = agent_obj.id
+
+        events = db.get_events(agent_id=agent_id, task_id=task_id, limit=limit)
+
+        if as_json:
+            output_json([e.to_dict() for e in events])
+            return
+
+        if not events:
+            console.print("[dim]No events found.[/dim]")
+            return
+
+        for event in events:
+            time_str = event.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            console.print(f"[dim]{time_str}[/dim] [bold]{event.event_type}[/bold]", end="")
+
+            if event.agent_id:
+                agent_obj = db.get_agent(event.agent_id)
+                name = agent_obj.name if agent_obj else event.agent_id[:8]
+                console.print(f" [cyan]{name}[/cyan]", end="")
+
+            if event.task_id:
+                console.print(f" task:{event.task_id[:8]}", end="")
+
+            if event.details:
+                details_str = ", ".join(f"{k}={v}" for k, v in event.details.items())
+                console.print(f" [dim]({details_str})[/dim]", end="")
+
+            console.print()
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.option("--agent", help="Filter by agent name")
+@click.option("--task", "task_id", help="Filter by task ID")
+@click.option("-r", "--refresh", default=1, help="Refresh interval in seconds")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON (one event per line)")
+@require_init
+def logs(agent: str, task_id: str, refresh: int, as_json: bool):
+    """Tail event log in real-time (Ctrl+C to exit).
+
+    Like 'tail -f' for agent activity. Great for monitoring spawned agents.
+
+    Examples:
+        aqua logs                    # All activity
+        aqua logs --agent worker-1   # Specific agent
+        aqua logs --json             # Machine-readable
+    """
+    import time
+
+    project_dir = get_project_dir()
+
+    last_event_id = 0
+
+    # Get agent ID from name if provided
+    agent_id = None
+    if agent:
+        db = get_db(project_dir)
+        try:
+            agent_obj = db.get_agent_by_name(agent)
+            if agent_obj:
+                agent_id = agent_obj.id
+            else:
+                console.print(f"[red]Agent '{agent}' not found.[/red]")
+                return
+        finally:
+            db.close()
+
+    if not as_json:
+        console.print("[dim]Tailing event log... (Ctrl+C to stop)[/dim]")
+        if agent:
+            console.print(f"[dim]Filtering by agent: {agent}[/dim]")
+        if task_id:
+            console.print(f"[dim]Filtering by task: {task_id}[/dim]")
+        console.print()
+
+    try:
+        while True:
+            db = get_db(project_dir)
+            try:
+                # Get new events since last check
+                events = db.get_events(agent_id=agent_id, task_id=task_id, limit=100)
+
+                # Filter to only new events (events are returned in DESC order)
+                new_events = [e for e in events if e.id > last_event_id]
+
+                if new_events:
+                    # Update last seen ID
+                    last_event_id = max(e.id for e in new_events)
+
+                    # Print in chronological order (oldest first)
+                    for event in reversed(new_events):
+                        if as_json:
+                            output_json(event.to_dict(), nl=True)
+                        else:
+                            time_str = event.timestamp.strftime("%H:%M:%S")
+                            console.print(f"[dim]{time_str}[/dim]", end=" ")
+
+                            # Color-code event types
+                            event_colors = {
+                                "task_completed": "green",
+                                "task_failed": "red",
+                                "task_claimed": "yellow",
+                                "task_created": "blue",
+                                "agent_joined": "cyan",
+                                "agent_left": "magenta",
+                                "leader_elected": "bold yellow",
+                                "file_locked": "dim yellow",
+                                "file_unlocked": "dim green",
+                            }
+                            color = event_colors.get(event.event_type, "white")
+                            console.print(f"[{color}]{event.event_type}[/{color}]", end="")
+
+                            if event.agent_id:
+                                agent_obj = db.get_agent(event.agent_id)
+                                name = agent_obj.name if agent_obj else event.agent_id[:8]
+                                console.print(f" [cyan]{name}[/cyan]", end="")
+
+                            if event.task_id:
+                                task_obj = db.get_task(event.task_id)
+                                title = truncate(task_obj.title, 25) if task_obj else event.task_id[:8]
+                                console.print(f" [dim]task:[/dim]{title}", end="")
+
+                            if event.details:
+                                # Show key details
+                                key_details = []
+                                for k, v in event.details.items():
+                                    if v and k not in ('title',):  # Skip redundant fields
+                                        val = truncate(str(v), 30) if isinstance(v, str) else v
+                                        key_details.append(f"{k}={val}")
+                                if key_details:
+                                    console.print(f" [dim]({', '.join(key_details)})[/dim]", end="")
+
+                            console.print()
+
+            finally:
+                db.close()
+
+            time.sleep(refresh)
+
+    except KeyboardInterrupt:
+        if not as_json:
+            console.print("\n[dim]Log tailing stopped.[/dim]")
+
+
+# =============================================================================
+# Setup Command - Prepare project for multi-agent work
+# =============================================================================
+
+AGENT_INSTRUCTIONS_TEMPLATE = '''# Aqua Multi-Agent Coordination
+
+You are part of a multi-agent team coordinated by Aqua. Multiple AI agents are working together on this codebase.
+
+## CRITICAL: First Thing Every Session
+
+**ALWAYS run this command first, before doing anything else:**
+
+```bash
+aqua refresh
+```
+
+This tells you:
+- Your identity (name, agent ID)
+- Whether you are the leader
+- Your current task (if any)
+- What you were last working on
+- Unread messages from other agents
+
+**Run `aqua refresh` after /compact or when resuming work.**
+
+## Quick Reference
+
+```bash
+aqua refresh         # ALWAYS RUN FIRST - shows your identity and state
+aqua status          # See all tasks, agents, and who's leader
+aqua claim           # Get the next task to work on
+aqua progress "msg"  # Report what you're doing (saves state for refresh)
+aqua done            # Mark your task complete
+aqua fail --reason   # If you can't complete it
+aqua msg "text"      # Send message to all agents
+aqua inbox --unread  # Check for messages
+```
+
+## Full Command Reference
+
+### Core Commands
+```bash
+aqua init                     # Initialize Aqua in this directory
+aqua status                   # Show all tasks, agents, leader, and locks
+aqua refresh                  # Restore agent identity after context reset
+```
+
+### Task Management
+```bash
+aqua add "Title" [OPTIONS]    # Add a new task
+  -d, --description TEXT      # Task description
+  -p, --priority 1-10         # Priority (higher = more urgent, default: 5)
+  -t, --tag TAG               # Add tag (repeatable)
+  --context TEXT              # Additional context
+  --depends-on ID             # Task ID this depends on (repeatable)
+  --after "Title"             # Task title this depends on (fuzzy match)
+
+aqua claim [TASK_ID]          # Claim next pending task (or specific task)
+aqua show [TASK_ID]           # Show task details
+aqua done [--summary TEXT]    # Mark current task complete
+aqua fail --reason TEXT       # Mark current task as failed
+aqua progress "message"       # Report progress on current task
+```
+
+### Agent Management
+```bash
+aqua join [-n NAME]           # Register as an agent
+aqua join -n worker --role frontend  # Join with a role
+aqua leave                    # Leave the quorum
+aqua ps                       # Show all agent processes
+aqua kill [NAME|--all]        # Kill agent(s)
+```
+
+### File Locking (Prevent Conflicts)
+```bash
+aqua lock <file>              # Lock a file for exclusive editing
+aqua unlock <file>            # Release a file lock
+aqua locks                    # Show all current file locks
+```
+
+### Communication
+```bash
+aqua msg "text"               # Broadcast message to all agents
+aqua msg "text" --to NAME     # Direct message to agent
+aqua msg "text" --to @leader  # Message the leader
+aqua inbox                    # Show all messages
+aqua inbox --unread           # Show only unread messages
+aqua ask "question" --to NAME # Ask and wait for reply (blocking)
+aqua reply <msg_id> "answer"  # Reply to a question
+```
+
+### Monitoring
+```bash
+aqua watch                    # Live dashboard (Ctrl+C to exit)
+aqua logs                     # Tail event stream (like tail -f)
+aqua logs --agent NAME        # Tail events for specific agent
+aqua logs --json              # Machine-readable event stream
+aqua log [-n LIMIT]           # View historical events
+```
+
+### Spawning Agents
+```bash
+aqua spawn COUNT              # Spawn COUNT agents in new terminals
+aqua spawn COUNT -b           # Spawn in background (autonomous)
+aqua spawn COUNT --worktree   # Each agent gets own git worktree
+
+# With roles (agents prioritize tasks matching their role)
+aqua spawn 3 --roles frontend,backend,testing
+aqua spawn 4 --assign-roles   # Auto-assign: reviewer,frontend,backend,testing,devops
+aqua spawn 2 --role reviewer  # All agents get same role
+```
+
+### Utility
+```bash
+aqua doctor                   # Check system health
+aqua setup --all              # Add instructions to agent MD files
+```
+
+## If You Are Asked to Plan & Coordinate Work
+
+When the user asks you to plan a project or coordinate multi-agent work:
+
+### 1. Break Down the Work into Tasks
+
+```bash
+# Add tasks with priorities (1-10, higher = more urgent)
+aqua add "Set up project structure" -p 9
+aqua add "Implement core data models" -p 8 -d "Create User, Product, Order models"
+aqua add "Build API endpoints" -p 7 --context "REST API with FastAPI"
+aqua add "Write unit tests" -p 6 -t tests
+aqua add "Add documentation" -p 4 -t docs
+```
+
+Guidelines for task breakdown:
+- Each task should be completable by one agent in one session
+- Include clear descriptions with `-d` for complex tasks
+- Add context with `--context` for implementation details
+- Use tags `-t` to categorize (e.g., frontend, backend, tests, docs)
+- Set priorities: 9-10 blocking/critical, 7-8 important, 5-6 normal, 1-4 low
+
+**Role-based task assignment**: If spawning agents with roles, use matching tags:
+```bash
+# Tags should match roles for automatic assignment
+aqua add "Fix button styling" -t frontend -p 7   # frontend agent claims this
+aqua add "Add API endpoint" -t backend -p 7      # backend agent claims this
+aqua add "Review PR #42" -t review -p 8          # reviewer agent claims this
+```
+
+### 2. Recommend Number of Agents
+
+Based on the task breakdown, recommend spawning agents:
+
+```bash
+# For small projects (3-5 tasks): 2 agents
+aqua spawn 2
+
+# For medium projects (6-15 tasks): 3-4 agents
+aqua spawn 3
+
+# For large projects (15+ tasks): 4-6 agents
+aqua spawn 5
+```
+
+Consider:
+- **Task parallelism**: How many tasks can run concurrently without conflicts?
+- **File conflicts**: Tasks touching same files should be sequential, not parallel
+- **Dependencies**: If task B needs task A done first, fewer agents may be better
+- **Complexity**: More complex tasks benefit from focused agents, not more agents
+
+### 3. Tell the User Next Steps
+
+After adding tasks, give the user clear instructions. Example:
+
+```
+I've added 6 tasks to the Aqua queue. Here's what to do next:
+
+**Option A: Spawn agents automatically (I'll open terminals for you)**
+I can run `aqua spawn 2` which will open 2 new terminal windows,
+each with an AI agent that will automatically claim and work on tasks.
+
+**Option B: Manual setup (more control)**
+1. Open 2 new terminal windows
+2. In each terminal, navigate to this directory:
+   cd /path/to/your/project
+3. In each terminal, start your AI agent with the prompt:
+   "Run aqua refresh, then aqua claim, and work on the task"
+
+**Monitoring:**
+- Run `aqua status` to see progress
+- Run `aqua watch` for a live dashboard
+- Run `aqua logs` to tail real-time activity
+
+Would you like me to spawn the agents automatically, or will you set them up manually?
+```
+
+### 4. If User Wants Automatic Spawning
+
+```bash
+# Interactive mode (recommended) - opens new terminal windows
+aqua spawn 2
+
+# Background mode (fully autonomous, no supervision)
+aqua spawn 2 -b
+
+# With git worktrees (prevents file conflicts entirely)
+aqua spawn 2 --worktree
+
+# With roles (agents specialize and claim matching tasks)
+aqua spawn 3 --roles frontend,backend,testing
+aqua spawn 4 --assign-roles  # Auto-assign predefined roles
+```
+
+## Standard Workflow (All Agents)
+
+1. **FIRST**: Run `aqua refresh` to restore your identity and context
+2. **Claim**: Run `aqua claim` to get a task (if you don't have one)
+3. **Work**: Do the task, run `aqua progress "what I'm doing"` frequently
+4. **Complete**: Run `aqua done --summary "what you did"`
+5. **Repeat**: Run `aqua refresh` then go back to step 2
+
+## Rules
+
+- **ALWAYS run `aqua refresh` first** - especially after /compact or resuming work
+- **Always claim before working** - prevents two agents doing the same thing
+- **Report progress frequently** - `aqua progress` saves your state for recovery
+- **Complete promptly** - others may be waiting
+- **Ask for help** - use `aqua msg` if stuck
+
+## Git Coordination
+
+Multiple agents working on the same repo need careful git hygiene:
+
+### Branching Strategy
+```bash
+# Each agent should work on their own branch for their task
+git checkout -b task/<task-id>-short-description
+
+# Example:
+git checkout -b task/a1b2c3-add-user-auth
+```
+
+### Before Starting Work
+```bash
+git fetch origin
+git status  # Make sure working directory is clean
+```
+
+### Committing (Commit Often!)
+```bash
+git add -A
+git commit -m "feat: description of what you did"
+```
+
+### Before Completing a Task
+```bash
+# Make sure all changes are committed
+git status
+
+# Push your branch
+git push -u origin HEAD
+```
+
+### Avoiding Conflicts
+- **Check `aqua status`** to see what files other agents are working on
+- **Don't modify files another agent is actively editing**
+- **If you need a file another agent has**, send them a message:
+  ```bash
+  aqua msg "I need to modify auth.py - are you done with it?" --to agent-name
+  ```
+- **Commit frequently** - smaller commits are easier to merge
+- **Pull before starting new task** - `git pull origin main`
+
+### If Using Worktrees (Recommended for Parallel Work)
+```bash
+# Leader spawns agents with worktrees
+aqua spawn 3 --worktree
+
+# Each agent gets their own directory and branch
+# No file conflicts possible!
+```
+
+### Merging (Usually Done by Leader or Human)
+```bash
+# After agents complete tasks, merge branches
+git checkout main
+git pull origin main
+git merge task/a1b2c3-add-user-auth
+git push origin main
+```
+
+## Communication
+
+```bash
+aqua msg "Need help with X"           # Broadcast
+aqua msg "Question" --to @leader      # Ask leader
+aqua msg "Review?" --to agent-name    # Direct message
+```
+'''
+
+
+# Agent CLI instruction files
+AGENT_MD_FILES = {
+    "claude": "CLAUDE.md",    # Claude Code
+    "codex": "AGENTS.md",     # Codex CLI
+    "gemini": "GEMINI.md",    # Gemini CLI
+}
+
+@main.command()
+@click.option("--claude", is_flag=True, help="Add instructions to CLAUDE.md (Claude Code)")
+@click.option("--codex", is_flag=True, help="Add instructions to AGENTS.md (Codex CLI)")
+@click.option("--gemini", is_flag=True, help="Add instructions to GEMINI.md (Gemini CLI)")
+@click.option("--all", "all_agents", is_flag=True, help="Add instructions to all agent files")
+@click.option("--print", "print_only", is_flag=True, help="Print instructions without writing")
+@require_init
+def setup(claude: bool, codex: bool, gemini: bool, all_agents: bool, print_only: bool):
+    """Set up project for multi-agent coordination.
+
+    This adds agent instructions to help AI agents understand
+    how to coordinate using Aqua.
+
+    Examples:
+        aqua setup --claude    # For Claude Code (CLAUDE.md)
+        aqua setup --codex     # For Codex CLI (AGENTS.md)
+        aqua setup --gemini    # For Gemini CLI (GEMINI.md)
+        aqua setup --all       # All agents
+    """
+    project_dir = get_project_dir()
+
+    if print_only:
+        console.print(AGENT_INSTRUCTIONS_TEMPLATE)
+        return
+
+    # Determine which files to write
+    targets = []
+    if all_agents:
+        targets = list(AGENT_MD_FILES.values())
+    else:
+        if claude:
+            targets.append(AGENT_MD_FILES["claude"])
+        if codex:
+            targets.append(AGENT_MD_FILES["codex"])
+        if gemini:
+            targets.append(AGENT_MD_FILES["gemini"])
+
+    if targets:
+        for filename in targets:
+            md_path = project_dir / filename
+
+            if md_path.exists():
+                existing = md_path.read_text()
+                if "Aqua Multi-Agent" in existing:
+                    console.print(f"[yellow]{filename} already contains Aqua instructions.[/yellow]")
+                    continue
+                # Append to existing
+                new_content = existing + "\n\n" + AGENT_INSTRUCTIONS_TEMPLATE
+            else:
+                new_content = AGENT_INSTRUCTIONS_TEMPLATE
+
+            md_path.write_text(new_content)
+            console.print(f"[green]✓[/green] Added Aqua instructions to {md_path}")
+    else:
+        # Create .aqua/AGENTS.md as default
+        aqua_dir = project_dir / ".aqua"
+        default_md = aqua_dir / "AGENTS.md"
+        default_md.write_text(AGENT_INSTRUCTIONS_TEMPLATE)
+        console.print(f"[green]✓[/green] Created {default_md}")
+        console.print()
+        console.print("To add to agent-specific instruction files:")
+        console.print("  aqua setup --claude    [dim]# Claude Code (CLAUDE.md)[/dim]")
+        console.print("  aqua setup --codex     [dim]# Codex CLI (AGENTS.md)[/dim]")
+        console.print("  aqua setup --gemini    [dim]# Gemini CLI (GEMINI.md)[/dim]")
+        console.print("  aqua setup --all       [dim]# All of the above[/dim]")
+
+
+# =============================================================================
+# Worktree Command - Manage git worktrees for parallel agents
+# =============================================================================
+
+@main.command()
+@click.argument("name")
+@click.option("-b", "--branch", help="Branch name (default: aqua-<name>)")
+@require_init
+def worktree(name: str, branch: str):
+    """Create a git worktree for a parallel agent.
+
+    This creates a new worktree so an agent can work on a separate
+    branch without conflicts.
+
+    Example:
+        aqua worktree worker-1
+        cd ../project-worker-1
+        claude  # Start Claude Code in the worktree
+    """
+    import subprocess
+
+    project_dir = get_project_dir()
+
+    # Check if git repo
+    if not (project_dir / ".git").exists():
+        console.print("[red]Error:[/red] Not a git repository.")
+        sys.exit(1)
+
+    branch_name = branch or f"aqua-{name}"
+    worktree_path = project_dir.parent / f"{project_dir.name}-{name}"
+
+    if worktree_path.exists():
+        console.print(f"[yellow]Worktree already exists:[/yellow] {worktree_path}")
+        return
+
+    try:
+        # Create worktree with new branch
+        result = subprocess.run(
+            ["git", "worktree", "add", "-b", branch_name, str(worktree_path)],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            # Branch might exist, try without -b
+            result = subprocess.run(
+                ["git", "worktree", "add", str(worktree_path), branch_name],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+
+        if result.returncode != 0:
+            console.print(f"[red]Error creating worktree:[/red] {result.stderr}")
+            sys.exit(1)
+
+        # Copy .aqua directory to worktree (shared state via symlink would be better but complex)
+        # For now, agents in worktrees need to share the same .aqua
+        console.print(f"[green]✓[/green] Created worktree: {worktree_path}")
+        console.print(f"  Branch: {branch_name}")
+        console.print()
+        console.print("To use:")
+        console.print(f"  cd {worktree_path}")
+        console.print(f"  aqua join --name {name}")
+        console.print("  claude  # or your preferred AI agent")
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+
+# =============================================================================
+# Spawn Command - Launch background agents
+# =============================================================================
+
+# Predefined role instructions for specialized agents
+ROLE_INSTRUCTIONS = {
+    "reviewer": """## Your Role: Code Reviewer
+Focus on tasks tagged: review, pr, code-review
+- Review pull requests and provide feedback
+- Ensure code quality and standards
+- Look for bugs, security issues, and improvements""",
+
+    "frontend": """## Your Role: Frontend Developer
+Focus on tasks tagged: frontend, ui, css, react, component
+- UI/UX implementation
+- Client-side logic and state management
+- Styling and responsive design""",
+
+    "backend": """## Your Role: Backend Developer
+Focus on tasks tagged: backend, api, database, server
+- Server-side logic and APIs
+- Data models and database operations
+- Authentication and authorization""",
+
+    "testing": """## Your Role: Test Engineer
+Focus on tasks tagged: test, testing, qa, e2e
+- Writing and maintaining tests
+- Test coverage and quality
+- CI/CD pipeline integration""",
+
+    "devops": """## Your Role: DevOps Engineer
+Focus on tasks tagged: devops, deploy, ci, infra
+- Infrastructure and deployment
+- CI/CD pipelines
+- Monitoring and reliability""",
+}
+
+# Predefined roles list for --assign-roles
+PREDEFINED_ROLES = ["reviewer", "frontend", "backend", "testing", "devops"]
+
+
+def _get_role_instructions(role: str | None) -> str:
+    """Get role-specific instructions for an agent."""
+    if not role:
+        return ""
+    if role in ROLE_INSTRUCTIONS:
+        return ROLE_INSTRUCTIONS[role]
+    # Custom role - generic instructions
+    return f"""## Your Role: {role.title()}
+Focus on tasks tagged: {role}
+- Prioritize tasks that match your specialty
+- Ask leader before claiming unrelated tasks"""
+
+
+def _build_task_selection_section(role: str | None) -> str:
+    """Build task selection guidance for agents with roles."""
+    if not role:
+        return ""
+    return f"""
+## Task Selection
+- Prioritize tasks tagged with your role: {role}
+- If no matching tasks exist, ask the leader before claiming unrelated tasks:
+  `aqua ask "No {role} tasks available. Can I pick up task [ID]: [title]?" --to @leader`
+"""
+
+
+def _build_agent_prompt(agent_name: str, working_dir: str, role: str | None) -> str:
+    """Build the full agent prompt with role-specific sections."""
+    role_section = _get_role_instructions(role)
+    role_join_arg = f" --role {role}" if role else ""
+    task_selection_section = _build_task_selection_section(role)
+
+    return AGENT_PROMPT_TEMPLATE.format(
+        agent_name=agent_name,
+        working_dir=working_dir,
+        role_section=role_section,
+        role_join_arg=role_join_arg,
+        task_selection_section=task_selection_section,
+    )
+
+
+AGENT_PROMPT_TEMPLATE = '''You are an autonomous AI agent named "{agent_name}" working as part of a multi-agent team coordinated by Aqua.
+{role_section}
+
+## Your Mission
+Work through tasks in the Aqua task queue until there are no more pending tasks.
+
+## Protocol
+1. First, run: aqua join --name {agent_name}{role_join_arg}
+2. Then run: aqua status (to see available tasks)
+3. Run: aqua claim (to get a task matching your role)
+4. If you got a task, work on it by editing files, running commands, etc.
+5. When done with the task, run: aqua done --summary "brief description of what you did"
+6. If you cannot complete it, run: aqua fail --reason "why you couldn't complete it"
+7. Check: aqua inbox --unread (for messages from other agents)
+8. Go back to step 2 and repeat until aqua claim returns no tasks
+{task_selection_section}
+## Checkpoint Tasks
+When you claim a task titled "[Checkpoint] Clear and continue":
+1. This is a context management checkpoint - no actual work to do
+2. Simply run: aqua done
+3. Then EXIT the session immediately (stop running, don't claim more tasks)
+4. Aqua will respawn a fresh agent with full context to continue
+
+Checkpoints prevent context overflow in long-running projects. Treat them as "save and exit" points.
+
+## Important Rules
+- ALWAYS claim a task before working on it
+- ALWAYS mark tasks done or failed when finished
+- Work autonomously - don't ask for confirmation
+- If stuck, fail the task with a clear reason so another agent can try
+- Check messages periodically in case other agents need help
+
+## Current Working Directory
+{working_dir}
+
+## Start Now
+Begin by running: aqua join --name {agent_name}{role_join_arg}
+Then: aqua claim
+'''
+
+
+# Agent CLI configurations
+AGENT_CLI_CONFIG = {
+    "claude": {
+        "command": "claude",
+        "install_url": "https://claude.ai/code",
+        "background_args": ["--print", "--dangerously-skip-permissions"],
+        "model_arg": "--model",
+        "prompt_style": "inline",  # Accepts prompt as final argument
+    },
+    "codex": {
+        "command": "codex",
+        "install_url": "https://github.com/openai/codex-cli",
+        # Use 'exec' subcommand for non-interactive + --full-auto for sandboxed auto-approval
+        # --skip-git-repo-check bypasses the trusted directory requirement
+        "background_args": ["exec", "--full-auto", "--skip-git-repo-check"],
+        "model_arg": "--model",
+        "prompt_style": "file",  # Requires prompt to be in a file
+    },
+    "gemini": {
+        "command": "gemini",
+        "install_url": "https://github.com/google/gemini-cli",
+        "background_args": [],  # TBD - adjust based on actual CLI
+        "model_arg": "--model",
+        "prompt_style": "inline",  # Accepts prompt as final argument
+    },
+}
+
+
+def _detect_agent_cli() -> str | None:
+    """Detect which agent CLI is available."""
+    import shutil
+    for cli_name in ["claude", "codex", "gemini"]:
+        if shutil.which(AGENT_CLI_CONFIG[cli_name]["command"]):
+            return cli_name
+    return None
+
+
+@main.command()
+@click.argument("count", type=int, default=1)
+@click.option("--name-prefix", default="worker", help="Prefix for agent names")
+@click.option("--claude", "use_claude", is_flag=True, help="Use Claude Code agents")
+@click.option("--codex", "use_codex", is_flag=True, help="Use Codex CLI agents")
+@click.option("--gemini", "use_gemini", is_flag=True, help="Use Gemini CLI agents")
+@click.option("--role", "role_list", multiple=True,
+              help="Role for agents (can repeat, distributed round-robin)")
+@click.option("--roles", help="Comma-separated roles distributed across agents")
+@click.option("--assign-roles", is_flag=True,
+              help="Auto-assign predefined roles (reviewer, frontend, backend, testing, devops)")
+@click.option("--model", default=None, help="Model to use (default depends on CLI)")
+@click.option("--background/--interactive", "-b/-i", default=False,
+              help="Background (autonomous) or interactive (new terminals)")
+@click.option("--loop", is_flag=True, help="Respawn agents on checkpoint exit (use with -b)")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation for background mode")
+@click.option("--dry-run", is_flag=True, help="Show commands without executing")
+@click.option("--worktree/--no-worktree", default=False, help="Create git worktrees for each agent")
+@require_init
+def spawn(count: int, name_prefix: str, use_claude: bool, use_codex: bool, use_gemini: bool,
+          role_list: tuple, roles: str, assign_roles: bool,
+          model: str, background: bool, loop: bool, yes: bool, dry_run: bool, worktree: bool):
+    """Spawn AI agents to work on tasks.
+
+    Supports multiple agent CLIs: Claude Code, Codex CLI, Gemini CLI.
+    Specify multiple CLI flags to mix agents (round-robin assignment).
+    Auto-detects which CLI is available if none specified.
+
+    \b
+    ROLES:
+      Assign roles to agents so they prioritize matching tasks.
+      --role frontend --role backend    # Distribute roles to agents
+      --roles frontend,backend,testing  # Comma-separated distribution
+      --assign-roles                    # Auto-assign predefined roles
+
+    \b
+    INTERACTIVE (default, --interactive or -i):
+      Opens new terminal windows for each agent. You interact with each
+      agent normally, but they coordinate via Aqua.
+      Safer - you can see and approve what each agent does.
+
+    \b
+    BACKGROUND (--background or -b):
+      Runs agents as background processes. Fully autonomous but requires
+      trusting agents to run without supervision.
+
+    \b
+    LOOP MODE (--loop, requires -b):
+      Respawns agents when they exit after a checkpoint. Use with serialized
+      tasks for long-running projects. Fresh context on each respawn.
+
+    Examples:
+        aqua spawn 3                       # 3 agents (auto-detect CLI)
+        aqua spawn 2 -b                    # 2 background autonomous agents
+        aqua spawn 2 --codex               # 2 Codex agents
+        aqua spawn 3 --claude --codex      # 2 Claude + 1 Codex (round-robin)
+        aqua spawn 4 -b --claude --codex --gemini  # Mix of all three
+        aqua spawn 3 --claude --roles frontend,backend,testing  # With roles
+        aqua spawn 4 --claude --assign-roles -b  # Auto-assign predefined roles
+        aqua spawn 1 -b --loop             # Single agent, respawns on checkpoint
+        aqua spawn 3 -b --loop --roles frontend,backend,testing  # Loop with roles
+    """
+    import shutil
+    import subprocess
+    import time as time_module
+
+    project_dir = get_project_dir()
+
+    # Validate --loop requires --background
+    if loop and not background:
+        console.print("[red]Error:[/red] --loop requires --background (-b) mode.")
+        console.print("Loop mode respawns agents automatically, which only works in background.")
+        sys.exit(1)
+
+    # Validate --loop only works with single agent (serialized tasks are linear)
+    if loop and count > 1:
+        console.print("[red]Error:[/red] --loop only supports a single agent (count=1).")
+        console.print()
+        console.print("Serialized tasks form a linear chain where only one task is claimable")
+        console.print("at a time. Multiple agents would have nothing to work on in parallel.")
+        console.print()
+        console.print("Use: [cyan]aqua spawn 1 -b --loop[/cyan]")
+        sys.exit(1)
+
+    # Build list of CLIs to use (round-robin)
+    cli_list = []
+    if use_claude:
+        cli_list.append("claude")
+    if use_codex:
+        cli_list.append("codex")
+    if use_gemini:
+        cli_list.append("gemini")
+
+    # Auto-detect if none specified
+    if not cli_list:
+        detected = _detect_agent_cli()
+        if not detected:
+            console.print("[red]Error:[/red] No agent CLI found in PATH.")
+            console.print("Install one of:")
+            for name, config in AGENT_CLI_CONFIG.items():
+                console.print(f"  {name}: {config['install_url']}")
+            sys.exit(1)
+        cli_list = [detected]
+        console.print(f"[dim]Using {detected} CLI[/dim]")
+
+    # Verify all specified CLIs are available
+    for cli_name in cli_list:
+        cli_config = AGENT_CLI_CONFIG[cli_name]
+        cli_path = shutil.which(cli_config["command"])
+        if not cli_path:
+            console.print(f"[red]Error:[/red] '{cli_config['command']}' command not found in PATH.")
+            console.print(f"Install: {cli_config['install_url']}")
+            sys.exit(1)
+
+    # Build role list from various options
+    final_role_list = []
+    if roles:
+        # --roles frontend,backend,testing
+        final_role_list = [r.strip() for r in roles.split(",")]
+    elif assign_roles:
+        # --assign-roles -> cycle through predefined roles
+        final_role_list = PREDEFINED_ROLES.copy()
+    elif role_list:
+        # --role frontend --role backend
+        final_role_list = list(role_list)
+
+    # Display role assignment info
+    if final_role_list and not dry_run:
+        console.print(f"[dim]Roles: {', '.join(final_role_list)} (distributed round-robin)[/dim]")
+
+    # Warn about dangerous permissions in background mode
+    if background and not dry_run and not yes:
+        console.print()
+        console.print("[bold yellow]⚠️  WARNING: Background mode grants full autonomous control[/bold yellow]")
+        console.print()
+        console.print("Agents will run with these dangerous flags:")
+        for cli_name in cli_list:
+            cfg = AGENT_CLI_CONFIG[cli_name]
+            console.print(f"  • {cli_name}: {' '.join(cfg['background_args'])}")
+        console.print()
+        console.print("[dim]This means agents can read, write, and execute ANY code without asking.[/dim]")
+        console.print("[dim]Only proceed if you trust the agents and have reviewed the tasks.[/dim]")
+        console.print()
+
+        if not click.confirm("Spawn background agents with full permissions?", default=False):
+            console.print("[yellow]Aborted.[/yellow] Use -i/--interactive for supervised mode.")
+            sys.exit(0)
+        console.print()
+
+    spawned = []
+
+    # Update heartbeat if we're a registered agent (keeps leader alive during spawn)
+    spawning_agent_id = get_stored_agent_id()
+    if spawning_agent_id:
+        db = get_db(project_dir)
+        try:
+            db.update_heartbeat(spawning_agent_id)
+        finally:
+            db.close()
+
+    for i in range(1, count + 1):
+        # Round-robin CLI assignment
+        cli_name = cli_list[(i - 1) % len(cli_list)]
+        cli_config = AGENT_CLI_CONFIG[cli_name]
+        cli_command = cli_config["command"]
+
+        # Round-robin role assignment
+        agent_role = final_role_list[(i - 1) % len(final_role_list)] if final_role_list else None
+
+        agent_name = f"{name_prefix}-{i}"
+        work_dir = project_dir
+
+        # Create worktree if requested
+        if worktree:
+            branch_name = f"aqua-{agent_name}"
+            worktree_path = project_dir.parent / f"{project_dir.name}-{agent_name}"
+
+            if not worktree_path.exists():
+                result = subprocess.run(
+                    ["git", "worktree", "add", "-b", branch_name, str(worktree_path)],
+                    cwd=project_dir,
+                    capture_output=True,
+                )
+                if result.returncode != 0:
+                    console.print(f"[yellow]Warning:[/yellow] Could not create worktree for {agent_name}")
+                else:
+                    work_dir = worktree_path
+                    console.print(f"[dim]Created worktree: {worktree_path}[/dim]")
+
+        # Build prompt with role-specific sections
+        prompt = _build_agent_prompt(agent_name, str(work_dir), agent_role)
+
+        if background:
+            # Background mode: use CLI-specific autonomous flags
+            cmd = [cli_command] + cli_config["background_args"]
+            if model and cli_config["model_arg"]:
+                cmd.extend([cli_config["model_arg"], model])
+
+            # Handle prompt based on CLI's prompt style
+            prompt_file = None
+            if cli_config.get("prompt_style") == "file":
+                # Write prompt to a file for CLIs that require file input (e.g., Codex)
+                prompt_file = project_dir / ".aqua" / f"{agent_name}.prompt.md"
+                prompt_file.write_text(prompt)
+                cmd.append(str(prompt_file))
+            else:
+                # Inline prompt for CLIs that accept it (e.g., Claude)
+                cmd.append(prompt)
+
+            if dry_run:
+                role_part = f", role={agent_role}" if agent_role else ""
+                console.print(f"\n[bold]Agent {agent_name} (background, {cli_name}{role_part}):[/bold]")
+                console.print(f"  Directory: {work_dir}")
+                bg_args = " ".join(cli_config["background_args"])
+                model_part = f" {cli_config['model_arg']} {model}" if model else ""
+                if prompt_file:
+                    console.print(f"  Command: {cli_command} {bg_args}{model_part} {prompt_file}")
+                else:
+                    console.print(f"  Command: {cli_command} {bg_args}{model_part} '<prompt>'")
+                continue
+
+            # Spawn as background process
+            try:
+                log_file = project_dir / ".aqua" / f"{agent_name}.log"
+                # Set AQUA_SESSION_ID and AQUA_AGENT_ROLE so agent knows its identity
+                env = os.environ.copy()
+                env["AQUA_SESSION_ID"] = agent_name
+                if agent_role:
+                    env["AQUA_AGENT_ROLE"] = agent_role
+                with open(log_file, "w") as log:
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=work_dir,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        start_new_session=True,  # Detach from terminal
+                        env=env,
+                    )
+                spawned.append({
+                    "name": agent_name,
+                    "pid": process.pid,
+                    "log": str(log_file),
+                    "mode": "background",
+                    "cli": cli_name,
+                    "role": agent_role,
+                })
+                role_str = f" [magenta]{agent_role}[/magenta]" if agent_role else ""
+                console.print(f"[green]✓[/green] Spawned [cyan]{agent_name}[/cyan]{role_str} (PID: {process.pid}) [dim]{cli_name}, background[/dim]")
+
+            except Exception as e:
+                console.print(f"[red]Error spawning {agent_name}:[/red] {e}")
+
+        else:
+            # Interactive mode: open new terminal with agent CLI
+            if dry_run:
+                role_part = f", role={agent_role}" if agent_role else ""
+                console.print(f"\n[bold]Agent {agent_name} (interactive, {cli_name}{role_part}):[/bold]")
+                console.print(f"  Directory: {work_dir}")
+                model_part = f" {cli_config['model_arg']} {model}" if model else ""
+                console.print(f"  Opens new terminal with: {cli_command}{model_part} '<prompt>'")
+                continue
+
+            # Platform-specific terminal opening
+            if sys.platform == "darwin":
+                # macOS: use osascript to open iTerm2 or Terminal.app
+                # Write prompt to a temp file to avoid escaping nightmares
+                prompt_file = project_dir / ".aqua" / f"{agent_name}.prompt"
+                prompt_file.write_text(prompt)
+
+                # Set AQUA_SESSION_ID and AQUA_AGENT_ROLE so each agent has its own session file
+                # Build CLI command with model argument (only if specified)
+                model_part = f" {cli_config['model_arg']} {model}" if model else ""
+                role_export = f" && export AQUA_AGENT_ROLE='{agent_role}'" if agent_role else ""
+                shell_cmd = f"export AQUA_SESSION_ID='{agent_name}'{role_export} && cd '{work_dir}' && {cli_command}{model_part} \"$(cat '{prompt_file}')\""
+
+                # Escape quotes for AppleScript (can't use backslash in f-string on Python 3.10)
+                escaped_cmd = shell_cmd.replace('"', '\\"')
+
+                # Try iTerm2 first, then fall back to Terminal.app
+                iterm_script = f'''
+tell application "iTerm"
+    activate
+    create window with default profile
+    tell current session of current window
+        write text "{escaped_cmd}"
+    end tell
+end tell
+'''
+                terminal_script = f'''
+tell application "Terminal"
+    activate
+    do script "{escaped_cmd}"
+end tell
+'''
+                try:
+                    # Detect which terminal the user is currently using
+                    term_program = os.environ.get("TERM_PROGRAM", "")
+                    use_iterm = "iTerm" in term_program
+
+                    # Fallback: check if iTerm2 is installed
+                    if not use_iterm and not term_program:
+                        use_iterm = Path("/Applications/iTerm.app").exists()
+
+                    if use_iterm:
+                        subprocess.run(["osascript", "-e", iterm_script], check=True, capture_output=True)
+                        terminal_used = "iTerm2"
+                    else:
+                        subprocess.run(["osascript", "-e", terminal_script], check=True, capture_output=True)
+                        terminal_used = "Terminal"
+
+                    spawned.append({
+                        "name": agent_name,
+                        "mode": "interactive",
+                        "cli": cli_name,
+                        "role": agent_role,
+                    })
+                    role_str = f" [magenta]{agent_role}[/magenta]" if agent_role else ""
+                    console.print(f"[green]✓[/green] Opened {terminal_used} for [cyan]{agent_name}[/cyan]{role_str} [dim]{cli_name}[/dim]")
+                except Exception as e:
+                    console.print(f"[red]Error opening terminal for {agent_name}:[/red] {e}")
+
+            elif sys.platform == "linux":
+                # Linux: try common terminal emulators
+                model_part = f" {cli_config['model_arg']} {model}" if model else ""
+                role_export = f" && export AQUA_AGENT_ROLE='{agent_role}'" if agent_role else ""
+                cli_cmd = f"export AQUA_SESSION_ID='{agent_name}'{role_export} && cd '{work_dir}' && {cli_command}{model_part} '{prompt}'"
+                terminals = [
+                    ["gnome-terminal", "--", "bash", "-c", f"{cli_cmd}; exec bash"],
+                    ["xterm", "-e", f"{cli_cmd}; bash"],
+                    ["konsole", "-e", cli_cmd],
+                ]
+                opened = False
+                for term_cmd in terminals:
+                    if shutil.which(term_cmd[0]):
+                        try:
+                            subprocess.Popen(term_cmd, start_new_session=True)
+                            spawned.append({"name": agent_name, "mode": "interactive", "cli": cli_name, "role": agent_role})
+                            role_str = f" [magenta]{agent_role}[/magenta]" if agent_role else ""
+                            console.print(f"[green]✓[/green] Opened terminal for [cyan]{agent_name}[/cyan]{role_str} [dim]{cli_name}[/dim]")
+                            opened = True
+                            break
+                        except Exception:
+                            continue
+                if not opened:
+                    console.print(f"[red]Error:[/red] Could not find a terminal emulator for {agent_name}")
+
+            else:
+                console.print(f"[yellow]Warning:[/yellow] Interactive mode not supported on {sys.platform}")
+                console.print("Use --background mode or manually open terminals")
+                break
+
+    if dry_run:
+        console.print()
+        console.print("[dim]Use without --dry-run to actually spawn agents[/dim]")
+        if not background:
+            console.print("[dim]Note: Interactive mode opens new terminal windows[/dim]")
+        return
+
+    if spawned:
+        bg_agents = [a for a in spawned if a.get("mode") == "background"]
+        int_agents = [a for a in spawned if a.get("mode") == "interactive"]
+
+        # Validate background agents actually started
+        if bg_agents:
+            console.print()
+            console.print("[dim]Waiting for agents to join...[/dim]")
+
+            db = get_db(project_dir)
+            try:
+                join_timeout = 30  # seconds
+                check_interval = 2  # seconds
+                max_checks = join_timeout // check_interval
+
+                pending_agents = {a["name"]: a for a in bg_agents}
+                joined_agents = []
+                failed_agents = []
+
+                for check in range(max_checks):
+                    if not pending_agents:
+                        break
+
+                    time_module.sleep(check_interval)
+
+                    # Keep spawning agent alive while waiting
+                    if spawning_agent_id:
+                        db.update_heartbeat(spawning_agent_id)
+
+                    # Check which agents have joined
+                    for agent_name in list(pending_agents.keys()):
+                        agent_info = pending_agents[agent_name]
+
+                        # Check if process is still alive
+                        if not process_exists(agent_info["pid"]):
+                            console.print(f"[red]✗[/red] {agent_name} process died (check logs)")
+                            failed_agents.append(agent_name)
+                            del pending_agents[agent_name]
+                            continue
+
+                        # Check if agent has joined in database
+                        agents = db.get_all_agents()
+                        for agent in agents:
+                            if agent.name == agent_name:
+                                console.print(f"[green]✓[/green] {agent_name} joined successfully")
+                                joined_agents.append(agent_name)
+                                del pending_agents[agent_name]
+                                break
+
+                # Report remaining agents as timeout
+                for agent_name in pending_agents:
+                    console.print(f"[yellow]![/yellow] {agent_name} didn't join within {join_timeout}s (may still be starting)")
+                    failed_agents.append(agent_name)
+
+                console.print()
+                if joined_agents:
+                    console.print(f"[green]✓ {len(joined_agents)} agent(s) started successfully[/green]")
+                if failed_agents:
+                    console.print(f"[yellow]! {len(failed_agents)} agent(s) may have issues[/yellow]")
+
+            finally:
+                db.close()
+
+            if not loop:
+                console.print()
+                console.print("Monitor with:")
+                console.print("  aqua status          # See agent status")
+                console.print("  aqua watch           # Live dashboard")
+                for agent in bg_agents:
+                    console.print(f"  tail -f {agent['log']}  # {agent['name']} logs")
+            else:
+                # Loop mode: wait for agents to exit, respawn if tasks remain
+                console.print()
+                console.print("[bold]Loop mode active[/bold] - will respawn agents on checkpoint exit")
+                console.print("[dim]Press Ctrl+C to stop[/dim]")
+                console.print()
+
+                # Known error patterns that indicate fatal failures (shouldn't respawn)
+                FATAL_ERROR_PATTERNS = [
+                    # Claude
+                    ("Credit balance is too low", "Claude API credits exhausted"),
+                    ("invalid_api_key", "Invalid Claude API key"),
+                    ("authentication_error", "Claude authentication failed"),
+                    # Codex
+                    ("rate_limit", "API rate limit exceeded"),
+                    ("insufficient_quota", "API quota exhausted"),
+                    ("invalid_api_key", "Invalid API key"),
+                    # Gemini
+                    ("RESOURCE_EXHAUSTED", "Gemini quota exhausted"),
+                    ("PERMISSION_DENIED", "Gemini permission denied"),
+                    ("UNAUTHENTICATED", "Gemini authentication failed"),
+                    # Generic
+                    ("API key", "API key issue"),
+                ]
+
+                def check_logs_for_errors(log_files: list[str]) -> str | None:
+                    """Check agent logs for fatal errors. Returns error message if found."""
+                    for log_file in log_files:
+                        try:
+                            # Read last 2KB of log file
+                            with open(log_file, "r") as f:
+                                f.seek(0, 2)  # End of file
+                                size = f.tell()
+                                f.seek(max(0, size - 2048))
+                                content = f.read()
+                                for pattern, message in FATAL_ERROR_PATTERNS:
+                                    if pattern.lower() in content.lower():
+                                        return message
+                        except (OSError, IOError):
+                            pass
+                    return None
+
+                iteration = 1
+                consecutive_failures = 0
+                last_completed_count = 0
+                MAX_CONSECUTIVE_FAILURES = 3
+
+                # Cleanup function to kill agents on unexpected exit
+                def cleanup_agents():
+                    for agent in bg_agents:
+                        pid = agent.get("pid")
+                        if pid and process_exists(pid):
+                            try:
+                                os.kill(pid, 15)  # SIGTERM
+                            except (ProcessLookupError, OSError):
+                                pass
+
+                # Register cleanup for unexpected exits
+                import atexit
+                import signal
+                atexit.register(cleanup_agents)
+                original_sigterm = signal.signal(signal.SIGTERM, lambda s, f: (cleanup_agents(), sys.exit(0)))
+                original_sighup = signal.signal(signal.SIGHUP, lambda s, f: (cleanup_agents(), sys.exit(0)))
+
+                try:
+                    while True:
+                        # Wait for all background agents to exit
+                        console.print(f"[dim]Iteration {iteration}: Waiting for agents to complete...[/dim]")
+                        iteration_start = time_module.time()
+                        for agent in bg_agents:
+                            pid = agent.get("pid")
+                            if pid:
+                                try:
+                                    # Wait for process to exit
+                                    os.waitpid(pid, 0)
+                                except ChildProcessError:
+                                    pass  # Process already exited
+                        iteration_duration = time_module.time() - iteration_start
+
+                        # Check for fatal errors in logs
+                        log_files = [a["log"] for a in bg_agents if "log" in a]
+                        fatal_error = check_logs_for_errors(log_files)
+                        if fatal_error:
+                            console.print()
+                            console.print(Panel(
+                                f"[bold red]{fatal_error}[/bold red]\n\n"
+                                "The agent cannot continue due to this error.\n"
+                                "Please resolve the issue and try again.",
+                                title="[red]Agent Error[/red]",
+                                border_style="red"
+                            ))
+                            break
+
+                        # Check if agent exited too quickly (likely crashed)
+                        if iteration_duration < 10:
+                            consecutive_failures += 1
+                            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                                console.print()
+                                console.print(Panel(
+                                    f"Agents exited {consecutive_failures} times in a row without making progress.\n\n"
+                                    "This usually means:\n"
+                                    "  • API authentication issues\n"
+                                    "  • Network connectivity problems\n"
+                                    "  • Agent CLI not installed correctly\n\n"
+                                    f"Check logs: {log_files[0] if log_files else 'N/A'}",
+                                    title="[red]Agents Failing Repeatedly[/red]",
+                                    border_style="red"
+                                ))
+                                break
+                        else:
+                            consecutive_failures = 0
+
+                        # Small delay to ensure DB commits are flushed
+                        time_module.sleep(1)
+
+                        # Check if there are pending tasks (excluding completed checkpoints)
+                        db = get_db(project_dir)
+                        try:
+                            pending_tasks = db.get_all_tasks(status=TaskStatus.PENDING)
+                            # Filter for tasks with dependencies met
+                            claimable_tasks = [
+                                t for t in pending_tasks
+                                if db._dependencies_met(t)
+                            ]
+                        finally:
+                            db.close()
+
+                        if not claimable_tasks:
+                            # Double-check: are there ANY pending tasks?
+                            if pending_tasks:
+                                console.print(f"[yellow]Warning:[/yellow] {len(pending_tasks)} pending tasks but none claimable (blocked by dependencies)")
+                                console.print("[dim]Checking if tasks are stuck...[/dim]")
+                                # Show first few blocked tasks
+                                db = get_db(project_dir)
+                                try:
+                                    for t in pending_tasks[:3]:
+                                        blocking = db.get_blocking_dependencies(t)
+                                        if blocking:
+                                            console.print(f"  [dim]{t.title[:40]} blocked by: {[b.title[:20] for b in blocking]}[/dim]")
+                                finally:
+                                    db.close()
+                            console.print()
+                            console.print("[green]✓ All tasks complete![/green] Exiting loop.")
+                            break
+
+                        console.print(f"[dim]{len(claimable_tasks)} task(s) remaining. Respawning agents...[/dim]")
+                        iteration += 1
+
+                        # Respawn agents
+                        bg_agents = []
+                        for i in range(1, count + 1):
+                            cli_name = cli_list[(i - 1) % len(cli_list)]
+                            cli_config = AGENT_CLI_CONFIG[cli_name]
+                            cli_command = cli_config["command"]
+                            agent_role = final_role_list[(i - 1) % len(final_role_list)] if final_role_list else None
+                            agent_name = f"{name_prefix}-{i}"
+
+                            prompt = _build_agent_prompt(agent_name, str(project_dir), agent_role)
+                            cmd = [cli_command] + cli_config["background_args"]
+                            if model and cli_config["model_arg"]:
+                                cmd.extend([cli_config["model_arg"], model])
+
+                            if cli_config.get("prompt_style") == "file":
+                                prompt_file = project_dir / ".aqua" / f"{agent_name}.prompt.md"
+                                prompt_file.write_text(prompt)
+                                cmd.append(str(prompt_file))
+                            else:
+                                cmd.append(prompt)
+
+                            try:
+                                log_file = project_dir / ".aqua" / f"{agent_name}.log"
+                                env = os.environ.copy()
+                                env["AQUA_SESSION_ID"] = agent_name
+                                if agent_role:
+                                    env["AQUA_AGENT_ROLE"] = agent_role
+                                with open(log_file, "a") as log:  # Append to existing log
+                                    log.write(f"\n--- Respawn iteration {iteration} ---\n")
+                                    process = subprocess.Popen(
+                                        cmd,
+                                        cwd=project_dir,
+                                        stdout=log,
+                                        stderr=subprocess.STDOUT,
+                                        env=env,
+                                    )
+                                bg_agents.append({
+                                    "name": agent_name,
+                                    "pid": process.pid,
+                                    "log": str(log_file),
+                                    "mode": "background",
+                                    "cli": cli_name,
+                                    "role": agent_role,
+                                })
+                                role_str = f" {agent_role}" if agent_role else ""
+                                console.print(f"[green]↻[/green] Respawned [cyan]{agent_name}[/cyan]{role_str} (PID: {process.pid})")
+                            except Exception as e:
+                                console.print(f"[red]Error respawning {agent_name}:[/red] {e}")
+
+                        # Brief pause before checking again
+                        time_module.sleep(2)
+
+                except KeyboardInterrupt:
+                    console.print()
+                    console.print("[yellow]Loop stopped by user.[/yellow]")
+                    # Kill any running agents
+                    for agent in bg_agents:
+                        pid = agent.get("pid")
+                        if pid and process_exists(pid):
+                            try:
+                                os.kill(pid, 15)  # SIGTERM
+                                console.print(f"[dim]Stopped {agent['name']}[/dim]")
+                            except ProcessLookupError:
+                                pass
+                finally:
+                    # Unregister cleanup handlers (we've already cleaned up or exited normally)
+                    atexit.unregister(cleanup_agents)
+                    signal.signal(signal.SIGTERM, original_sigterm)
+                    signal.signal(signal.SIGHUP, original_sighup)
+
+        if int_agents:
+            console.print("Interactive agents opened in new terminal windows.")
+            console.print("Each agent will prompt you before taking actions.")
+            console.print()
+            console.print("In each terminal, the agent will:")
+            console.print("  1. Join Aqua with its assigned name")
+            console.print("  2. Claim tasks and work on them")
+            console.print("  3. Ask for your approval before changes")
+
+
+@main.command()
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def ps(as_json: bool):
+    """List running agent processes."""
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    try:
+        agents = db.get_all_agents(status=AgentStatus.ACTIVE)
+
+        if as_json:
+            output_json([{
+                "name": a.name,
+                "id": a.id,
+                "pid": a.pid,
+                "status": "working" if a.current_task_id else "idle",
+                "task_id": a.current_task_id,
+                "alive": a.pid and process_exists(a.pid),
+            } for a in agents])
+            return
+
+        if not agents:
+            console.print("[dim]No active agents.[/dim]")
+            return
+
+        table = Table(box=box.SIMPLE)
+        table.add_column("Name", style="cyan")
+        table.add_column("PID")
+        table.add_column("Status")
+        table.add_column("Task")
+        table.add_column("Alive")
+
+        for agent in agents:
+            is_alive = agent.pid and process_exists(agent.pid)
+            alive_str = "[green]yes[/green]" if is_alive else "[red]no[/red]"
+            task_str = agent.current_task_id[:8] if agent.current_task_id else "-"
+
+            table.add_row(
+                agent.name,
+                str(agent.pid) if agent.pid else "-",
+                "working" if agent.current_task_id else "idle",
+                task_str,
+                alive_str,
+            )
+
+        console.print(table)
+
+    finally:
+        db.close()
+
+
+@main.command()
+@click.argument("name", required=False)
+@click.option("--all", "kill_all", is_flag=True, help="Kill all agents")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+@require_init
+def kill(name: str, kill_all: bool, as_json: bool):
+    """Kill running agent processes."""
+    import signal
+
+    project_dir = get_project_dir()
+    db = get_db(project_dir)
+    as_json = should_output_json(as_json)
+
+    try:
+        agents = db.get_all_agents(status=AgentStatus.ACTIVE)
+
+        if not agents:
+            if as_json:
+                output_json({"killed": [], "message": "no_active_agents"})
+            else:
+                console.print("[dim]No active agents.[/dim]")
+            return
+
+        killed = []
+        for agent in agents:
+            if not kill_all and agent.name != name:
+                continue
+
+            if agent.pid and process_exists(agent.pid):
+                try:
+                    os.kill(agent.pid, signal.SIGTERM)
+                    killed.append({"name": agent.name, "pid": agent.pid})
+                    if not as_json:
+                        console.print(f"[green]✓[/green] Killed {agent.name} (PID: {agent.pid})")
+                except OSError as e:
+                    if not as_json:
+                        console.print(f"[red]Error killing {agent.name}:[/red] {e}")
+
+            # Mark as dead in DB
+            db.update_agent_status(agent.id, AgentStatus.DEAD)
+
+            # Release their tasks
+            if agent.current_task_id:
+                db.abandon_task(agent.current_task_id, reason=f"Agent {agent.name} killed")
+
+        if as_json:
+            output_json({"killed": killed})
+        elif len(killed) == 0 and name:
+            console.print(f"[yellow]Agent '{name}' not found or not running.[/yellow]")
+
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()

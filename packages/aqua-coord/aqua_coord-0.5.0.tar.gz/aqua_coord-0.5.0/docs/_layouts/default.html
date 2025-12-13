@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en-US' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {% seo %}
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+    <style>
+      .wrapper {
+        display: flex;
+        gap: 3rem;
+        max-width: 1012px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+      .sidebar {
+        width: 200px;
+        flex-shrink: 0;
+      }
+      .sidebar .site-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+      }
+      .sidebar .site-title a {
+        color: #333;
+        text-decoration: none;
+      }
+      .sidebar .site-description {
+        font-size: 0.875rem;
+        color: #666;
+        margin-bottom: 1rem;
+      }
+      .sidebar .github-link {
+        font-size: 0.875rem;
+        margin-bottom: 1.5rem;
+        display: block;
+      }
+      .sidebar nav {
+        border-top: 1px solid #eaecef;
+        padding-top: 1rem;
+      }
+      .sidebar nav h4 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin: 0 0 0.75rem 0;
+      }
+      .sidebar nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .sidebar nav li {
+        margin-bottom: 0.75rem;
+      }
+      .sidebar nav li a {
+        font-size: 0.8125rem;
+        color: #0366d6;
+        text-decoration: none;
+      }
+      .sidebar nav li a:hover {
+        text-decoration: underline;
+      }
+      .sidebar nav li.active a {
+        font-weight: 600;
+        color: #24292e;
+      }
+      .sidebar nav .date {
+        display: block;
+        font-size: 0.75rem;
+        color: #6a737d;
+      }
+      .main-content {
+        flex: 1;
+        min-width: 0;
+      }
+      @media (max-width: 700px) {
+        .wrapper {
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+        .sidebar {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <aside class="sidebar">
+        <div class="site-title">
+          <a href="{{ '/' | relative_url }}">{{ site.title | default: site.github.repository_name }}</a>
+        </div>
+
+        {% if site.description or site.github.project_tagline %}
+        <p class="site-description">{{ site.description | default: site.github.project_tagline }}</p>
+        {% endif %}
+
+        <a class="github-link" href="https://github.com/vignesh07/aqua">View on GitHub →</a>
+
+        {% if site.posts.size > 0 %}
+        <nav>
+          <h4>Posts</h4>
+          <ul>
+            {% for post in site.posts %}
+            <li{% if page.url == post.url %} class="active"{% endif %}>
+              <a href="{{ post.url | prepend: site.baseurl }}">{{ post.title | split: ':' | first | truncate: 35 }}</a>
+              <span class="date">{{ post.date | date: "%b %d, %Y" }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </nav>
+        {% endif %}
+      </aside>
+
+      <main class="main-content markdown-body">
+        {{ content }}
+      </main>
+    </div>
+  </body>
+</html>
