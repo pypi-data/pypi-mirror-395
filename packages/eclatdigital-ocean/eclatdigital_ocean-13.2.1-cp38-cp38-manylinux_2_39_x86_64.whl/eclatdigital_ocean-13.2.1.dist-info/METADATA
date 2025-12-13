@@ -1,0 +1,129 @@
+Metadata-Version: 2.1
+Name: eclatdigital-ocean
+Version: 13.2.1
+Summary: Python bindings of Ocean™ illumination engine
+Home-page: https://eclat-digital.com/software
+Author: Eclat-Digital Research
+Author-email: pypi@eclat-digital.com
+License: Other/Proprietary License
+Platform: linux-x86_64
+Classifier: License :: Other/Proprietary License
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Multimedia :: Graphics :: 3D Rendering
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Microsoft :: Windows :: Windows 10
+Classifier: Operating System :: Microsoft :: Windows :: Windows 11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: numpy
+Provides-Extra: tuto-deps
+Requires-Dist: progressbar; extra == "tuto-deps"
+Requires-Dist: trimesh; extra == "tuto-deps"
+Requires-Dist: pyrender; extra == "tuto-deps"
+Requires-Dist: scipy; extra == "tuto-deps"
+Requires-Dist: opencv-python; extra == "tuto-deps"
+Requires-Dist: scikit-image; extra == "tuto-deps"
+Provides-Extra: utils
+Requires-Dist: progressbar; extra == "utils"
+Requires-Dist: trimesh; extra == "utils"
+Requires-Dist: pyrender; extra == "utils"
+
+![ocean_banner](https://eclat-digital.com/wp-content/uploads/2025/07/ocean_banner.png)
+
+# Ocean™ – Physically accurate material & appearance simulation
+
+## Introduction
+
+Ocean™ is a high-end simulation and rendering engine that delivers physically accurate renderings of complex materials—such as glass, coatings, and plastics—under real-world lighting and environmental conditions. It combines spectral measurements, advanced optical simulation, and CAD integration to help engineers, designers, and researchers evaluate appearance and performance before physical prototyping.
+With the Ocean Python bindings, users can automate simulations, batch process material combinations, customize visualization workflows, and integrate Ocean’s predictive capabilities into their own tools or pipelines.
+
+## Installation
+
+**Supported platforms**
+
+ - Linux x86_64 with glibc >= 2.39
+ - Windows 10/11 x86_64
+
+**Python versions supported**
+
+ - 3.8 to 3.13
+
+Install using pip :
+
+```sh
+pip install eclatdigital-ocean
+```
+
+## Getting started
+
+This code snippet renders a cornellbox scene and dumps result as a png file.
+
+```python
+import time
+from ocean import abyss, examples
+
+# License and initialization
+abyss.Licensing().setDemoMode() # use demo mode (watermarks will be present)
+abyss.Licensing().check()
+
+abyss.init()
+
+# Main message handling
+def onmessage(msg, type):
+    print(msg)
+
+abyss.onMessage(onmessage)
+
+# Create a renderer
+renderer = abyss.Renderer()
+
+# stop rendering when samples per pixel reach 50
+time_cond = 0 # 0: unlimited
+spp_cond = 25
+
+renderer.setHaltCondition(time_cond, spp_cond, abyss.Renderer.halt_cond.stops)
+
+# add a local renderer node (computation is performed on the machine running this script)
+# using 4 threads
+renderer.setParameter("num_threads", 4)
+renderer.addLocalNode()
+
+# Call back triggered when computation ends.
+finished=False
+def onfinish(raw: abyss.Raw):
+    raw.writeAuto("cornellbox.png") # Write results to the drive
+    global finished
+    finished = True
+    
+renderer.onFinish(onfinish)
+
+# Start the renderer
+# WARNING! This is an asynchronous function
+renderer.start(examples["cornellbox"])
+
+# Wait for the rendering to finish
+while not finished:
+    time.sleep(3)
+
+```
+
+## Documentation
+
+ * Ocean API (C, C++, Python) documentation https://docs.eclat-digital.com/ocean2025-docs/api/
+ * General documentation about Ocean software https://docs.eclat-digital.com/ocean2025-docs/
+
+## License
+
+Eclat-Digital Recherche Company (Eclat-Digital) hereby gives you a non-exclusive license to use the software Ocean Light Simulator (the Software).
+For evaluation, the license is granted, provided that produced image watermarks stay visible and the Eclat-Digital Recherche and Ocean trademarks are credited in any public use of the results.
+For registered release and unrestricted use of the software and its produced output, you have to purchase a license. More information can be found by contacting Eclat-Digital at info@eclat-digital.com
+More informations on LICENSE.md file of this wheel package metadata.
