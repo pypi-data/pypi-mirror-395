@@ -1,0 +1,60 @@
+# gitviz
+
+## Features
+- Analyze git logs for commits, merges, branches, contributions
+- Interactive Plotly dashboards (Streamlit)
+- Export to HTML, CSV, JSON
+- Theming, filtering, heatmaps, and more
+
+## CLI Usage
+Install dependencies (recommended in a virtual environment):
+
+```powershell
+pip install -r requirements.txt
+python -m pip install .
+```
+
+Run the CLI to generate a dashboard:
+
+```powershell
+gitviz C:\path\to\repo --output dashboard.html --theme plotly_dark --export-csv activity.csv --export-json activity.json
+```
+
+Quickly launch an interactive Streamlit dashboard:
+
+```powershell
+gitviz C:\path\to\repo --serve
+```
+### using in python code
+
+you can also call the dashboard generator directly from python:
+```python
+from gitviz import run_dashboard_analysis
+run_dashboard_analysis(
+        repo_path: '/path/to/repo', 
+        output: str = 'dashboard.html', 
+        theme:str='plotly', 
+        app_name:str="Application Dashboard", 
+        title:str="Git Activity Dashboard", 
+        export_csv:str="activity.csv", 
+        export_json:str="activity.json", 
+        export_data:list=['json', 'csv'],)
+```
+Notes:
+- If `--output` is provided, a static interactive HTML file (Plotly) will be generated.
+- Use `--serve` to open a live Streamlit dashboard.
+- The CLI supports a typo alias `--expart-csv` for `--export-csv` to match historical usage.
+
+Additional CLI filters and GIF export:
+
+```powershell
+# Filter by author and search messages, restrict by dates
+gitviz C:\path\to\repo --author Alice --search "fix" --since 2023-01-01 --until 2023-12-31 --output filtered.html
+
+# Export a GIF of activity over time
+gitviz C:\path\to\repo --export-gif C:\temp\activity.gif
+```
+
+Streamlit UI additions:
+- Use the inputs on the page to filter by author, message text, date ranges, and branch.
+- Use "Create Activity GIF" to generate a GIF and preview it inline.
