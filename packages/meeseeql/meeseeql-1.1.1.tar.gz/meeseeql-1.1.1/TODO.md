@@ -1,0 +1,11 @@
+## integration tests:
+- docker compose setup?
+- test postgres and mysql
+- have a sample schema, maybe similar to chinook?
+- test:
+  - config change / reload flow:
+    - adding a DB
+    - removing a DB
+    - changing DB port
+  - search
+  - table_summary

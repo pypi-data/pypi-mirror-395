@@ -1,0 +1,39 @@
+databases:
+  example_db: # the identifier used in all MCP tool calls
+    type: postgresql # supported: postgresql, mysql, sqlite, sqlserver, snowflake
+    
+    description: "Example database showing all configuration options" # Human readable description useful for the LLM
+    
+    # Either use connection_string of individual connection parameters
+    connection_string: "postgresql://app_user:secure_password@db.example.com:5432/myapp_db"
+    host: db.example.com
+    port: 5432
+    database: myapp_db
+    username: app_user
+    account: my_account # For Snowflake
+    password: secure_password # Omit to fetch the credentials from the password manager
+    
+    # Password management via 'pass' tool (alternative to password field)
+    password_store_key: "company/databases/example_db"  # Custom pass key, defaults to: databases/example_db
+    
+    # Database-specific parameters
+    extra_params:
+      sslmode: require
+      application_name: "mcp-sql-server"
+    
+    # Schema filtering (choose one)
+    include_schemas: ["public", "analytics", "reports"]  # Only these schemas
+    exclude_schemas: ["temp", "staging", "logs"]         # All except these schemas
+    
+    # Table filtering (choose one) 
+    allowed_tables: ["users", "orders", "products", "analytics_summary"]  # Only these tables
+    disallowed_tables: ["sensitive_data", "audit_logs", "temp_tables"]    # All except these tables
+
+# Global MCP server settings
+settings:
+  max_query_timeout: 30     # Maximum time in seconds for any single query
+  max_rows_per_query: 1000  # Maximum rows returned per query, this is a hard limit on top of any LLM-configurable pagination 
+  
+  # Optional: restrict which tools are available (omit to enable all tools)
+  # Note: show_database_config is always available
+  available_tools: ["execute_query", "table_summary", "search", "test_connection", "reload_config"]
