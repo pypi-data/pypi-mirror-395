@@ -1,0 +1,192 @@
+[project]
+name = "rics"
+version = "6.1.0"
+description = "My personal Python toolbox."
+authors = [
+    { name = "Richard Sundqvist", email = "richard.sundqvist@live.se" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["rics"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Typing :: Typed",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.11"
+
+dependencies = [
+    # No hard dependencies!
+]
+
+[project.optional-dependencies]
+cli = [
+    "click      >= 8.1.0",
+    "pandas     >= 2.0.3",
+    "requests   >= 2.30.0", # repos
+    "ipykernel  >= 6.29.3", # kernel
+]
+plotting = [
+    "matplotlib",
+    "seaborn"
+]
+
+[project.urls]
+homepage = "https://github.com/rsundqvist/rics"
+repository = "https://github.com/rsundqvist/rics"
+documentation = "https://rics"
+"Bug Tracker" = "https://github.com/rsundqvist/rics/issues"
+"Changelog" = "https://github.com/rsundqvist/rics/blob/master/CHANGELOG.md"
+
+[project.scripts]
+mtimeit = "rics.performance.cli:main"  # TODO(6.0.0): Remove old entrypoint.
+rics = "rics.cli:main"
+
+[project.entry-points."rics.cli"]
+repos = "rics._cli_repos:main"
+timeit = "rics.performance.cli:main"
+kernel = "rics.jupyter.cli:main"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
+[tool.poetry.group.manual-extras.dependencies]
+# Extras that must be available for docs + tests go here. Doc/test-only deps go in their respective groups.
+
+[tool.poetry.group.docs]
+[tool.poetry.group.docs.dependencies]
+# duplicate object warnings for sphinx>=4
+# description: https://github.com/astropy/astropy/issues/11723
+# https://github.com/astropy/astropy/pull/12270
+sphinx = "~8.1.3" # 8.2 breaks xdoc refs in README.md; maybe https://github.com/sphinx-doc/sphinx/issues/13932?
+pydata-sphinx-theme = "~0.16.1"
+myst-parser = "~4.0.1"
+nbsphinx = "~0.9.7"
+ipython = "~9.6.0"
+
+[tool.poetry.group.notebooks]
+optional = true
+[tool.poetry.group.notebooks.dependencies]
+jupyterlab = "~4.4.10"
+ipywidgets = "*"
+jupyterlab-execute-time = "*"
+tqdm = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "~8.4.2"
+xdoctest = "~1.3.0"
+coverage = "~7.13.0"
+pytest-cov = "~7.0.0"
+
+responses = "~0.25.8"  # 0.25.7: Added support for python 3.13
+uv = "~0.9.16"
+
+[tool.poetry.group.devops.dependencies]
+invoke = "~2.2.1"
+mypy = "~1.19.0"
+ruff = "~0.14.8"
+
+safety = "~3.6.2"
+codespell = "~2.4.1"
+bump2version = "==1.0.1"
+
+[tool.ruff]
+line-length = 120
+fix = true
+unsafe-fixes = false
+output-format = "grouped"
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80
+line-ending = "lf"
+
+[tool.ruff.lint]
+exclude = ["notebooks/*"]
+select = [
+    "ANN",
+    "S",
+    "I",
+    "B",
+    "D",
+    "F",
+    "W",
+    "E",
+    "SLOT",
+    "SIM",
+    "TID",
+    "TD",
+    "TCH",
+    "ARG",
+    "PTH",
+    "NPY",
+    "PD",
+    "N",
+    "PERF",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "UP",
+    "FURB",
+    "RUF",
+    "TRY",
+]
+ignore = [
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in `__init__`
+    "ANN401",
+    "TID252", # Prefer absolute imports over relative imports from parent modules
+    "TRY003",
+    "PLC0415", # `import` should be at the top-level of a file
+    "PLR0913", #
+    "SIM108", # Use ternary operator - coverage issue, see https://github.com/nedbat/coveragepy/issues/509
+    "TD003", # Missing issue link
+    "TC006", # Add quotes to type expression in `typing.cast()`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "D",
+    "S101", # Allow 'assert' keyword
+    "ANN",
+    "PLR2004", # Allow magic values
+    "S",
+]
+"examples/*" = [
+    "D205", # Clashes with sphinx_gallery (generated examples)
+    "B007",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
+
+[tool.pytest]
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore:FigureCanvasAgg is non-interactive:UserWarning",
+]
+log_file_level = 10
+log_file = "pytest.log"
+norecursedirs = [
+    "**/cli_modules/*",
+]
+
+[build-system]
+requires = ["poetry-core>=1.0.8"]
+build-backend = "poetry.core.masonry.api"
