@@ -1,0 +1,110 @@
+Metadata-Version: 2.4
+Name: chatutils
+Version: 0.1.0
+Summary: Utility methods to manipulate LLM inputs and outputs
+Author: Kyo Takano
+License: MIT License
+        
+        Copyright (c) 2025 kyo
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Source, https://github.com/kyo-takano/chatutils
+Keywords: LLM,code,agent,io
+Classifier: Development Status :: 3 - Alpha
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3 :: Only
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: rich
+Dynamic: license-file
+
+# `chatutils`
+
+`chatutils` is a Python library for text processing, rich display, and LLM helpers.
+
+## Installation
+
+```bash
+pip install -U chatutils
+```
+
+## Example
+
+```python
+"""
+Example script demonstrating `chatutils` in a realistic LLM workflow.
+"""
+
+import os
+import chatutils
+import openai
+
+# We use Groq as an example LLM provider,
+# as they provide their latest agent under the same name
+model_name = "groq/compound"
+client = openai.OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
+
+# 2. The Payload: Construct role-based messages cleanly
+messages = [
+    chatutils.system("You are the state-of-the-art AI."),
+    chatutils.user(
+        """
+
+        Write a minimal Python function to beep upon unexpected error,
+        with an example usage in `if __name__ == "__main__"` clause.
+        """
+    ),  # This gets automatically formatted internally
+]
+
+# Display **exactly** what we are sending to the LLM.
+# You see the indented prompt is properly formatted
+chatutils.print_chat_messages(messages)
+
+# Fire the request (assuming success because we are optimists)
+response = client.chat.completions.create(model=model_name, messages=messages)
+content = chatutils.get_completion(response)  # obtain response.choices[0].message.content
+
+chatutils.print_panel(content, title="Response", border_style="green")
+
+# Save the context & completion
+messages.append(chatutils.assistant(content))
+cache_filepath = (
+    ".llm_cache/messages--"
+    f"{model_name.replace('/', '_')}.{chatutils.hash_messages(messages)}"
+    ".jsonl"
+)
+chatutils.save_messages(messages, cache_filepath)
+
+code = chatutils.parse(content, index=-1)  # Parse the last code block
+chatutils.write(code, "beep.py")
+```
+
+The same code is available in [./example.py](https://github.com/kyo-takano/chatutils.dev/blob/main/example.py):
