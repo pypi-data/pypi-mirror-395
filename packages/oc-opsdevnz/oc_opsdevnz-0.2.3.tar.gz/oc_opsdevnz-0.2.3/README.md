@@ -1,0 +1,113 @@
+# oc_opsdevnz
+
+OpenCollective client and CLI for OpsDev.nz. Resolves tokens from 1Password via `op-opsdevnz`. Use `--staging`/`--test` to target the staging.opencollective.com API.
+
+## Features
+
+- httpx GraphQL client with retries/backoff and redacted error messages.
+- Environment guardrails: prod by default; `for_staging()` or `--staging/--test` required for staging.
+- Token resolution via `OC_SECRET_REF`/`OC_TOKEN` using `op-opsdevnz`.
+- CLI helpers for whoami, host organization upserts, collective creation/apply-to-host flows, and project creation from YAML/JSON.
+
+## Install
+
+```
+pip install oc-opsdevnz op-opsdevnz
+# or editable while hacking in this repo
+pip install -e modules/oc_opsdevnz[dev]
+```
+
+## CLI
+
+```
+export OC_SECRET_REF="op://startmeup.nz/api.opencollective.com/credential"  # or set OC_TOKEN
+
+# Fetch an account/collective by slug
+oc-opsdevnz whoami opsdevnz
+
+# Show installed version
+oc-opsdevnz version
+
+# Create/update host orgs from YAML
+oc-opsdevnz hosts --file hosts.yaml
+
+# Create/update collectives and optionally apply to a host
+oc-opsdevnz collectives --file collectives.yaml
+
+# Create/update projects under a parent collective
+oc-opsdevnz projects --file projects.yaml
+```
+
+Use `--file` or `--config` to point at any filename you prefer; defaults above are just examples. Use `--staging`/`--test` to hit staging, or `--api-url` to override explicitly. `--prod` remains accepted for explicitness but is the default.
+
+### Example YAML shapes
+
+`hosts.yaml` (real staging values):
+
+```yaml
+- name: StartMeUp.NZ
+  slug: startmeup-nz
+  description: Fiscal sponsor for OpsDev.NZ and NZ startups (staging)
+  website: https://startmeup.nz
+  currency: nzd
+  tags: [fiscal-host, newzealand, aotearoa]
+```
+
+`collectives.yaml` (example):
+
+```yaml
+- name: Example Collective
+  slug: example-collective
+  description: Example collective for testing.
+  tags: [example, staging]
+  host_slug: startmeup-nz
+  apply_to_host: true
+  host_apply_message: Please host this example collective on staging.
+```
+
+`projects.yaml` (example):
+
+```yaml
+- name: Example Project
+  slug: example-project
+  parent_slug: example-collective
+  description: Pilot project under the example collective.
+  tags: [example, project]
+```
+
+## Python API
+
+```python
+from oc_opsdevnz import OpenCollectiveClient
+
+client = OpenCollectiveClient.for_staging()
+data = client.graphql("query { account(slug:\"example-collective\") { id slug name } }")
+
+prod_client = OpenCollectiveClient.for_prod()  # default choice for CLI
+```
+
+Helpers for YAML-driven workflows:
+
+```python
+from oc_opsdevnz import load_items, upsert_collective, upsert_host, upsert_project
+from pathlib import Path
+
+client = OpenCollectiveClient.for_staging()
+for host in load_items(Path("hosts.yaml")):
+    upsert_host(client, host)
+for project in load_items(Path("projects.yaml")):
+    upsert_project(client, project)
+```
+
+## Development
+
+```
+cd modules/oc_opsdevnz
+python -m venv .venv && source .venv/bin/activate
+pip install -e .[dev]
+pytest
+```
+
+## License
+
+Apache-2.0 © OpsDev.nz
