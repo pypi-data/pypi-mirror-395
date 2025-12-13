@@ -1,0 +1,57 @@
+Metadata-Version: 2.3
+Name: gaussianprocessderivatives
+Version: 0.1.68
+Summary: Uses Gaussian processes to smooth data and estimate first- and second-order derivatives
+License: MIT
+Keywords: gaussian process,derivative
+Author: Peter Swain
+Requires-Python: >=3.8,<3.12
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering
+Requires-Dist: matplotlib (>=3.3.0)
+Requires-Dist: numpy (>=1.16.0)
+Requires-Dist: scipy (>=1.7.3)
+Description-Content-Type: text/plain
+
+A Python package for smoothing data and estimating first- and second-order derivatives and their errors.
+
+Covariance functions can either be linear, squared exponential, neural network-like, or squared exponential with a linear trend.
+
+An example workflow to smooth data (x, y), where the columns of y are replicates, is
+
+>>> import gaussian process as gp
+>>> g= gp.maternGP({0: (-4, 4), 1: (-4, 4), 2: (-4, -2)}, x, y)
+
+The dictionary sets bounds on the hyperparameters, so that 0: (-4, 4) means that the bounds on the first hyperparameter are 1e-4 and 1e4.
+
+>>> g.info()
+
+explains what each hyperparameter does.
+
+Once g is instantiated,
+
+>>> g.findhyperparameters()
+>>> g.results()
+>>> g.predict(x, derivs= 2)
+
+optimises the hyperparameters and determines a smoothed version of the data and estimates the derivatives.
+
+The results can be visualised by
+
+>>> import matplotlib.pylab as plt
+>>> plt.figure()
+>>> plt.subplot(2,1,1)
+>>> g.sketch('.')
+>>> plt.subplot(2,1,2)
+>>> g.sketch('.', derivs= 1)
+>>> plt.show()
+
+and are available as g.f and g.fvar (smoothed data and error), g.df and g.dfvar (estimate of dy/dx), and g.ddf and g.ddfvar (estimate of d2y/dx2).
+
