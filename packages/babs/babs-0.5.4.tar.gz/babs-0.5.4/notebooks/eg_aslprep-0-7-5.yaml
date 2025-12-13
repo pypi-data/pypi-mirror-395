@@ -1,0 +1,82 @@
+# This is an example config yaml file for:
+#   BIDS App:         ASLPrep ("aslprep")
+#   BIDS App version: 0.7.5
+#   Task:             regular use
+#   Which system:     Slurm
+
+# WARNING!!!
+#   This is only an example, which may not necessarily fit your purpose,
+#   or be an optimized solution for your case,
+#   or be compatible to the BIDS App version you're using.
+#   Therefore, please change and tailor it for your case before use it!!!
+
+# Define the input datasets
+input_datasets:
+    BIDS:
+        required_files:
+            - "perf/*_asl.nii*"
+            - "anat/*_T1w.nii*"
+        is_zipped: false
+        origin_url: "/path/to/BIDS"
+        path_in_babs: inputs/data/BIDS
+
+# Arguments in `singularity run`:
+bids_app_args:
+    $SUBJECT_SELECTION_FLAG: "--participant-label"
+    -w: "$BABS_TMPDIR" # this is a placeholder recognized by BABS.
+    --n_cpus: "1"
+    --omp-nthreads: "1"
+    --stop-on-first-crash: ""
+    --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to FreeSurfer license file
+    --skip-bids-validation: ""
+    --output-spaces: "MNI152NLin6Asym:res-2"
+    -v: "-v"
+    --level: "full"
+    --scorescrub: ""
+    --basil: ""
+    --fs-no-reconall: ""
+
+# Output foldername(s) to be zipped, and the BIDS App version to be included in the zip filename(s):
+#   As ASLPrep will use BIDS output layout, we need to ask BABS to create a folder 'aslprep' to wrap all derivatives:
+all_results_in_one_zip: true
+zip_foldernames:
+    aslprep: "0-7-5" # folder 'aslprep' will be zipped into 'sub-xx_(ses-yy_)aslprep-0-7-5.zip'
+
+# How much cluster resources it needs:
+cluster_resources:
+    interpreting_shell: "/bin/bash"
+    hard_memory_limit: 60G
+    temporary_disk_space: 200G
+    hard_runtime_limit: "7:00:00"
+    customized_text: |
+        #SBATCH -p all
+        #SBATCH --nodes=1
+        #SBATCH --ntasks=1
+        #SBATCH --cpus-per-task=1
+        #SBATCH --mem=12G
+        #SBATCH --propagate=NONE
+
+# Arguments that are passed directly to singularity/apptainer:
+singularity_args:
+    - --containall
+    - --writable-tmpfs
+
+# Necessary commands to be run first:
+#   [FIX ME] change or add commands for setting up the virtual environment, for loading necessary modules, etc
+script_preamble: |
+    source "${CONDA_PREFIX}"/bin/activate babs # you may need to change this to work with your environment manager.
+    source xxxx    # [FIX ME or DELETE ME] source any necessary program
+    module load xxxx # [FIX ME or DELETE ME] source any necessary program
+
+# Where to run the jobs:
+job_compute_space: "path/to/temporary_compute_space" # [FIX ME] replace "/path/to/temporary_compute_space" with yours
+
+# Alert messages that might be found in log files of failed jobs:
+#   These messages may be helpful for debugging errors in failed jobs.
+alert_log_messages:
+    stdout:
+        - "Excessive topologic defect encountered"
+        - "Cannot allocate memory"
+        - "mris_curvature_stats: Could not open file"
+        - "Numerical result out of range"
+        - "ASLPrep failed"

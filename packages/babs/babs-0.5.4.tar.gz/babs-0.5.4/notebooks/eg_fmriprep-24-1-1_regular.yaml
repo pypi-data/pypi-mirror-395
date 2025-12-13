@@ -1,0 +1,78 @@
+# This is an example config yaml file for:
+#   BIDS App:         fMRIPrep ("fmriprep")
+#   BIDS App version: 24.1.1
+#   Task:             regular use
+#   Which system:     SGE or Slurm
+
+# WARNING!!!
+#   This is only an example, which may not necessarily fit your purpose,
+#   or be an optimized solution for your case,
+#   or be compatible to the BIDS App version you're using.
+#   Therefore, please change and tailor it for your case before use it!!!
+
+# Define the input datasets
+input_datasets:
+    BIDS:
+        required_files:
+            - "func/*_bold.nii*"
+            - "anat/*_T1w.nii*"
+        is_zipped: false
+        origin_url: "/path/to/BIDS"
+        path_in_babs: inputs/data/BIDS
+# Arguments in `singularity run`:
+bids_app_args:
+    $SUBJECT_SELECTION_FLAG: "--participant-label"
+    -w: "$BABS_TMPDIR"
+    --stop-on-first-crash: ""
+    --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to FreeSurfer license file
+    --output-spaces: "func T1w MNI152NLin6Asym:res-2"
+    --force-bbr: ""
+    --skip-bids-validation: ""
+    -vv: ""
+    --cifti-output: "91k"
+    --n_cpus: "4"
+    --mem-mb: "30000"
+
+# Arguments that are passed directly to singularity/apptainer:
+singularity_args:
+    - --containall
+    - --writable-tmpfs
+
+# Output foldername(s) to be zipped, and the BIDS App version to be included in the zip filename(s):
+#   This fMRIPrep version (24.1.1) generates two folders, 'fmriprep' and 'freesurfer'.
+zip_foldernames:
+    fmriprep_func: "24-1-1" # folder 'fmriprep_func' will be zipped into 'sub-xx_(ses-yy_)fmriprep_func-24-1-1.zip'
+    freesurfer: "24-1-1" # folder 'freesurfer' will be zipped into 'sub-xx_(ses-yy_)freesurfer-24-1-1.zip'
+
+# How much cluster resources it needs:
+cluster_resources:
+    interpreting_shell: "/bin/bash"
+    hard_runtime_limit: "7:00:00"
+    temporary_disk_space: 200G
+    customized_text: |
+        #SBATCH -p all
+        #SBATCH --nodes=1
+        #SBATCH --ntasks=1
+        #SBATCH --cpus-per-task=4
+        #SBATCH --mem=30G
+        #SBATCH --propagate=NONE
+
+# Necessary commands to be run first:
+#   [FIX ME] change or add commands for setting up the virtual environment, for loading necessary modules, etc
+script_preamble: |
+    source "${CONDA_PREFIX}"/bin/activate babs # you may need to change this to work with your environment manager.
+    source xxxx    # [FIX ME or DELETE ME] source any necessary program
+    module load xxxx # [FIX ME or DELETE ME] source any necessary program
+
+# Where to run the jobs:
+job_compute_space: "path/to/temporary_compute_space" # [FIX ME] replace "/path/to/temporary_compute_space" with yours
+
+# Alert messages that might be found in log files of failed jobs:
+#   These messages may be helpful for debugging errors in failed jobs.
+alert_log_messages:
+    stdout:
+        - "Excessive topologic defect encountered"
+        - "Cannot allocate memory"
+        - "mris_curvature_stats: Could not open file"
+        - "Numerical result out of range"
+        - "fMRIPrep failed"

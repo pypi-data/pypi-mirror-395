@@ -1,0 +1,118 @@
+#!{{ interpreting_shell }}
+{% for scheduler_directive in scheduler_directives %}
+{{ scheduler_directive }}
+{% endfor %}
+
+# shellcheck disable=SC1091
+{{ script_preamble }}
+
+# Fail whenever something is fishy, use -x to get verbose logfiles:
+set -e -u -x
+
+# Inputs of the bash script:
+dssource="$1"	# i.e., `input_ria`
+pushgitremote="$2"	# i.e., `output_ria`
+SUBJECT_CSV="$3"
+
+subject_row=$(head -n $(({{varname_taskid}} + 1)) "${SUBJECT_CSV}" | tail -n 1)
+subid=$(echo "$subject_row" | python -c "import sys, re; pattern = r'sub-[a-zA-Z0-9]+(?=,|$)'; matches = re.findall(pattern, sys.stdin.read()); print(matches[0] if len(matches) == 1 else 'ERROR')")
+{% if processing_level == 'session' %}
+sesid=$(echo "$subject_row" | python -c "import sys, re; pattern = r'ses-[a-zA-Z0-9]+(?=,|$)'; matches = re.findall(pattern, sys.stdin.read()); print(matches[0] if len(matches) == 1 else 'ERROR')")
+{% endif %}
+
+# Change to a temporary directory
+cd "{{ job_scratch_directory }}"
+
+# Setup: ---------------------------------------------------------------
+# set up the branch:
+echo '# Branch name (also used as temporary directory):'
+{% if processing_level == 'session' %}
+BRANCH="job-${%raw%}{{%endraw%}{{varname_jobid}}{%raw%}}{%endraw%}-${%raw%}{{%endraw%}{{varname_taskid}}{%raw%}}{%endraw%}-${subid}-${sesid}"
+{% else %}
+BRANCH="job-${%raw%}{{%endraw%}{{varname_jobid}}{%raw%}}{%endraw%}-${%raw%}{{%endraw%}{{varname_taskid}}{%raw%}}{%endraw%}-${subid}"
+{% endif %}
+
+mkdir "${BRANCH}"
+cd "${BRANCH}"
+
+# datalad clone the input ria:
+echo '# Clone the data from input RIA:'
+datalad clone "${dssource}" ds
+cd ds
+
+# set up the result deposition:
+echo '# Register output RIA as remote for result deposition:'
+git remote add outputstore "${pushgitremote}"
+
+# set up a new branch:
+echo "# Create a new branch for this job's results:"
+git checkout -b "${BRANCH}"
+
+# Start of the application-specific code: ------------------------------
+
+# pull down input data (but don't retrieve the data content) and remove other sub's data:
+echo "# Pull down the input subject (or dataset) but don't retrieve data contents:"
+{% for input_dataset in input_datasets %}
+{% if not input_dataset['is_zipped'] %}
+datalad get -n "{{ input_dataset['path_in_babs'] }}/${subid}"
+(cd {{ input_dataset['path_in_babs'] }} && find . -type d -name 'sub*' | grep -v "$subid" | xargs rm -rf)
+{% if processing_level == 'session' %}
+(cd {{ input_dataset['path_in_babs'] }}/"${subid}" && find . -type d -name 'ses*' | grep -v "$sesid" | xargs rm -rf)
+{% endif %}
+{% else %}
+datalad get -n "{{ input_dataset['path_in_babs'] }}"
+(cd {{ input_dataset['path_in_babs'] }} && find . -type f -name 'sub*.zip' | grep -v "$subid" | xargs rm -f)
+{% endif %}
+{% endfor %}
+
+{{ zip_locator_text }}
+
+# datalad run:
+datalad run \
+	-i "{{ run_script_relpath if run_script_relpath else 'code/' + container_name + '_zip.sh' }}" \
+{% for input_dataset in input_datasets %}
+{% if not input_dataset['is_zipped'] %}
+	-i "{{ input_dataset['unzipped_path_containing_subject_dirs'] }}/${subid}{% if processing_level == 'session' %}/${sesid}{% endif %}" \
+	-i "{{ input_dataset['unzipped_path_containing_subject_dirs'] }}/*json" \
+{% else %}
+	-i "${%raw%}{{%endraw%}{{ input_dataset['name'].upper() }}_ZIP{%raw%}}{%endraw%}" \
+{% endif %}
+{% endfor %}
+{% if container_images %}
+{% for image_path in container_images %}
+	-i "{{ image_path }}" \
+{% endfor %}
+{% elif not run_script_relpath %}
+	-i "containers/.datalad/environments/{{container_name}}/image" \
+{% endif %}
+{% if datalad_expand_inputs %}
+	--expand inputs \
+{% endif %}
+	--explicit \
+{% if zip_foldernames is not none %}
+{% for key, value in zip_foldernames.items() %}
+	-o "${subid}{% if processing_level == 'session' %}_${sesid}{% endif %}_{{ key }}-{{ value }}.zip" \
+{% endfor %}
+{% endif %}
+	-m "{{ datalad_run_message if datalad_run_message is defined else container_name }} ${subid}{% if processing_level == 'session' %} ${sesid}{% endif %}" \
+    "bash ./{{ run_script_relpath if run_script_relpath else 'code/' + container_name + '_zip.sh' }} ${subid} {% if processing_level == 'session' %} ${sesid}{% endif %}{% for input_dataset in input_datasets %}{% if input_dataset['is_zipped'] %} ${%raw%}{{%endraw%}{{ input_dataset['name'].upper() }}_ZIP{%raw%}}{%endraw%}{%endif%}{%endfor%}"
+
+# Finish up:
+# push result file content to output RIA storage:
+echo '# Push result file content to output RIA storage:'
+datalad push --to output-storage
+
+# push the output branch:
+echo '# Push the branch with provenance records:'
+flock "${DSLOCKFILE}" git push outputstore
+
+# Delete:
+datalad drop -r . --reckless availability --reckless modification
+
+git annex dead here
+
+# cd out of $BRANCH:
+cd ../..
+rm -rf "${BRANCH}"
+
+echo SUCCESS
