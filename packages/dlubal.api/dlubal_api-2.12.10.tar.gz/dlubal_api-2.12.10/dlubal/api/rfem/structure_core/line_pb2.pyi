@@ -1,0 +1,592 @@
+from dlubal.api.common import common_pb2 as _common_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class Line(_message.Message):
+    __slots__ = ("no", "definition_nodes", "type", "length", "position", "position_short", "comment", "arc_first_node", "arc_second_node", "arc_control_point_object", "arc_control_point", "arc_control_point_x", "arc_control_point_y", "arc_control_point_z", "arc_center", "arc_center_x", "arc_center_y", "arc_center_z", "arc_radius", "arc_height", "arc_alpha", "arc_alpha_adjustment_target", "circle_center", "circle_center_coordinate_1", "circle_center_coordinate_2", "circle_center_coordinate_3", "circle_normal", "circle_normal_coordinate_1", "circle_normal_coordinate_2", "circle_normal_coordinate_3", "circle_rotation", "circle_node", "circle_node_coordinate_1", "circle_node_coordinate_2", "circle_node_coordinate_3", "circle_radius", "elliptical_arc_first_node", "elliptical_arc_second_node", "elliptical_arc_alpha", "elliptical_arc_beta", "elliptical_arc_normal", "elliptical_arc_normal_x", "elliptical_arc_normal_y", "elliptical_arc_normal_z", "elliptical_arc_major_radius", "elliptical_arc_minor_radius", "elliptical_arc_center", "elliptical_arc_center_x", "elliptical_arc_center_y", "elliptical_arc_center_z", "elliptical_arc_focus_1", "elliptical_arc_focus_1_x", "elliptical_arc_focus_1_y", "elliptical_arc_focus_1_z", "elliptical_arc_focus_2", "elliptical_arc_focus_2_x", "elliptical_arc_focus_2_y", "elliptical_arc_focus_2_z", "elliptical_arc_first_control_point_object", "elliptical_arc_first_control_point", "elliptical_arc_first_control_point_x", "elliptical_arc_first_control_point_y", "elliptical_arc_first_control_point_z", "elliptical_arc_second_control_point_object", "elliptical_arc_second_control_point", "elliptical_arc_second_control_point_x", "elliptical_arc_second_control_point_y", "elliptical_arc_second_control_point_z", "elliptical_arc_perimeter_control_point_object", "elliptical_arc_perimeter_control_point", "elliptical_arc_perimeter_control_point_x", "elliptical_arc_perimeter_control_point_y", "elliptical_arc_perimeter_control_point_z", "ellipse_first_node", "ellipse_second_node", "ellipse_control_point_object", "ellipse_control_point", "ellipse_control_point_x", "ellipse_control_point_y", "ellipse_control_point_z", "parabola_first_node", "parabola_second_node", "parabola_control_point_object", "parabola_control_point", "parabola_control_point_x", "parabola_control_point_y", "parabola_control_point_z", "parabola_focus_directrix_distance", "parabola_alpha", "parabola_focus", "parabola_focus_x", "parabola_focus_y", "parabola_focus_z", "nurbs_order", "nurbs_control_points_by_components", "nurbs_control_points", "nurbs_knots", "rotation_specification_type", "rotation_angle", "rotation_help_node", "rotation_plane", "is_rotated", "parent_layer", "is_locked_by_parent_layer", "is_generated", "generating_object_info", "member", "support", "mesh_refinement", "line_weld_assignment", "has_line_welds", "nodes_on_line_assignment", "rotation_surface", "rotation_surface_plane_type", "is_cut_line", "cut_via_section_cut_type", "cut_via_section_definition_type", "cut_via_section_assigned_to_surfaces", "cut_via_section_node1", "cut_via_section_coordinates1", "cut_via_section_coordinates1_x", "cut_via_section_coordinates1_y", "cut_via_section_coordinates1_z", "cut_via_section_node2", "cut_via_section_coordinates2", "cut_via_section_coordinates2_x", "cut_via_section_coordinates2_y", "cut_via_section_coordinates2_z", "cut_via_section_node3", "cut_via_section_coordinates3", "cut_via_section_coordinates3_x", "cut_via_section_coordinates3_y", "cut_via_section_coordinates3_z", "cut_via_section_component", "cut_via_two_lines_first_line", "cut_via_two_lines_second_line", "cut_via_two_lines_first_point_distance_from_start_is_defined_as_relative", "cut_via_two_lines_first_point_distance_from_start_relative", "cut_via_two_lines_first_point_distance_from_start_absolute", "cut_via_two_lines_first_point_distance_from_end_relative", "cut_via_two_lines_first_point_distance_from_end_absolute", "cut_via_two_lines_second_point_distance_is_defined_as_relative", "cut_via_two_lines_second_point_distance_from_start_relative", "cut_via_two_lines_second_point_distance_from_start_absolute", "cut_via_two_lines_second_point_distance_from_end_relative", "cut_via_two_lines_second_point_distance_from_end_absolute", "line_releases_assignment", "cut_line_multi_cut_enabled", "cut_line_generating_type", "cut_line_generating_offset_distance", "cut_line_generating_tolerance_absolute", "cut_line_generating_tolerance_relative", "cut_line_generating_tolerance_is_defined_as_relative", "cut_line_generating_preserve_same_angle", "cut_line_generating_rotated_type", "cut_line_generating_guide_line", "cut_line_generating_rotation_line", "cut_line_generating_rotation_node1", "cut_line_generating_coordinates1", "cut_line_generating_coordinates1_x", "cut_line_generating_coordinates1_y", "cut_line_generating_coordinates1_z", "cut_line_generating_rotation_node2", "cut_line_generating_coordinates2", "cut_line_generating_coordinates2_x", "cut_line_generating_coordinates2_y", "cut_line_generating_coordinates2_z", "cut_line_generating_coordinate_system", "cut_line_generating_definition_axes", "line_link", "design_properties_via_line", "design_properties_via_parent_line_set", "line_timber_design_uls_configuration", "id_for_export_import", "metadata_for_export_import")
+    class Type(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        TYPE_UNKNOWN: _ClassVar[Line.Type]
+        TYPE_ARC: _ClassVar[Line.Type]
+        TYPE_CIRCLE: _ClassVar[Line.Type]
+        TYPE_CUT_VIA_SECTION: _ClassVar[Line.Type]
+        TYPE_CUT_VIA_TWO_LINES: _ClassVar[Line.Type]
+        TYPE_ELLIPSE: _ClassVar[Line.Type]
+        TYPE_ELLIPTICAL_ARC: _ClassVar[Line.Type]
+        TYPE_NURBS: _ClassVar[Line.Type]
+        TYPE_PARABOLA: _ClassVar[Line.Type]
+        TYPE_POLYLINE: _ClassVar[Line.Type]
+        TYPE_SPLINE: _ClassVar[Line.Type]
+    TYPE_UNKNOWN: Line.Type
+    TYPE_ARC: Line.Type
+    TYPE_CIRCLE: Line.Type
+    TYPE_CUT_VIA_SECTION: Line.Type
+    TYPE_CUT_VIA_TWO_LINES: Line.Type
+    TYPE_ELLIPSE: Line.Type
+    TYPE_ELLIPTICAL_ARC: Line.Type
+    TYPE_NURBS: Line.Type
+    TYPE_PARABOLA: Line.Type
+    TYPE_POLYLINE: Line.Type
+    TYPE_SPLINE: Line.Type
+    class ArcAlphaAdjustmentTarget(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        ARC_ALPHA_ADJUSTMENT_TARGET_BEGINNING_OF_ARC: _ClassVar[Line.ArcAlphaAdjustmentTarget]
+        ARC_ALPHA_ADJUSTMENT_TARGET_ARC_CONTROL_POINT: _ClassVar[Line.ArcAlphaAdjustmentTarget]
+        ARC_ALPHA_ADJUSTMENT_TARGET_END_OF_ARC: _ClassVar[Line.ArcAlphaAdjustmentTarget]
+    ARC_ALPHA_ADJUSTMENT_TARGET_BEGINNING_OF_ARC: Line.ArcAlphaAdjustmentTarget
+    ARC_ALPHA_ADJUSTMENT_TARGET_ARC_CONTROL_POINT: Line.ArcAlphaAdjustmentTarget
+    ARC_ALPHA_ADJUSTMENT_TARGET_END_OF_ARC: Line.ArcAlphaAdjustmentTarget
+    class RotationSpecificationType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        ROTATION_SPECIFICATION_TYPE_BY_ANGLE: _ClassVar[Line.RotationSpecificationType]
+        ROTATION_SPECIFICATION_TYPE_GLASS_COMPOSITION_MODEL: _ClassVar[Line.RotationSpecificationType]
+        ROTATION_SPECIFICATION_TYPE_INSIDE: _ClassVar[Line.RotationSpecificationType]
+        ROTATION_SPECIFICATION_TYPE_SURFACE: _ClassVar[Line.RotationSpecificationType]
+        ROTATION_SPECIFICATION_TYPE_TO_NODE: _ClassVar[Line.RotationSpecificationType]
+    ROTATION_SPECIFICATION_TYPE_BY_ANGLE: Line.RotationSpecificationType
+    ROTATION_SPECIFICATION_TYPE_GLASS_COMPOSITION_MODEL: Line.RotationSpecificationType
+    ROTATION_SPECIFICATION_TYPE_INSIDE: Line.RotationSpecificationType
+    ROTATION_SPECIFICATION_TYPE_SURFACE: Line.RotationSpecificationType
+    ROTATION_SPECIFICATION_TYPE_TO_NODE: Line.RotationSpecificationType
+    class RotationPlane(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        ROTATION_PLANE_XY: _ClassVar[Line.RotationPlane]
+        ROTATION_PLANE_XZ: _ClassVar[Line.RotationPlane]
+    ROTATION_PLANE_XY: Line.RotationPlane
+    ROTATION_PLANE_XZ: Line.RotationPlane
+    class RotationSurfacePlaneType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        ROTATION_SURFACE_PLANE_TYPE_ROTATION_PLANE_XY: _ClassVar[Line.RotationSurfacePlaneType]
+        ROTATION_SURFACE_PLANE_TYPE_ROTATION_PLANE_XZ: _ClassVar[Line.RotationSurfacePlaneType]
+    ROTATION_SURFACE_PLANE_TYPE_ROTATION_PLANE_XY: Line.RotationSurfacePlaneType
+    ROTATION_SURFACE_PLANE_TYPE_ROTATION_PLANE_XZ: Line.RotationSurfacePlaneType
+    class CutViaSectionCutType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        CUT_VIA_SECTION_CUT_TYPE_CUT_GEODESIC: _ClassVar[Line.CutViaSectionCutType]
+        CUT_VIA_SECTION_CUT_TYPE_CUT_SECTION: _ClassVar[Line.CutViaSectionCutType]
+    CUT_VIA_SECTION_CUT_TYPE_CUT_GEODESIC: Line.CutViaSectionCutType
+    CUT_VIA_SECTION_CUT_TYPE_CUT_SECTION: Line.CutViaSectionCutType
+    class CutViaSectionDefinitionType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        CUT_VIA_SECTION_DEFINITION_TYPE_BY_POINT: _ClassVar[Line.CutViaSectionDefinitionType]
+        CUT_VIA_SECTION_DEFINITION_TYPE_BY_VECTOR: _ClassVar[Line.CutViaSectionDefinitionType]
+    CUT_VIA_SECTION_DEFINITION_TYPE_BY_POINT: Line.CutViaSectionDefinitionType
+    CUT_VIA_SECTION_DEFINITION_TYPE_BY_VECTOR: Line.CutViaSectionDefinitionType
+    class CutLineGeneratingType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        CUT_LINE_GENERATING_TYPE_PARALLEL: _ClassVar[Line.CutLineGeneratingType]
+        CUT_LINE_GENERATING_TYPE_ACCORDING_GUIDELINE: _ClassVar[Line.CutLineGeneratingType]
+        CUT_LINE_GENERATING_TYPE_ROTATED: _ClassVar[Line.CutLineGeneratingType]
+    CUT_LINE_GENERATING_TYPE_PARALLEL: Line.CutLineGeneratingType
+    CUT_LINE_GENERATING_TYPE_ACCORDING_GUIDELINE: Line.CutLineGeneratingType
+    CUT_LINE_GENERATING_TYPE_ROTATED: Line.CutLineGeneratingType
+    class CutLineGeneratingRotatedType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        CUT_LINE_GENERATING_ROTATED_TYPE_TWO_NODES: _ClassVar[Line.CutLineGeneratingRotatedType]
+        CUT_LINE_GENERATING_ROTATED_TYPE_LINE: _ClassVar[Line.CutLineGeneratingRotatedType]
+        CUT_LINE_GENERATING_ROTATED_TYPE_NODE_AND_AXIS: _ClassVar[Line.CutLineGeneratingRotatedType]
+    CUT_LINE_GENERATING_ROTATED_TYPE_TWO_NODES: Line.CutLineGeneratingRotatedType
+    CUT_LINE_GENERATING_ROTATED_TYPE_LINE: Line.CutLineGeneratingRotatedType
+    CUT_LINE_GENERATING_ROTATED_TYPE_NODE_AND_AXIS: Line.CutLineGeneratingRotatedType
+    class CutLineGeneratingDefinitionAxes(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        CUT_LINE_GENERATING_DEFINITION_AXES_U: _ClassVar[Line.CutLineGeneratingDefinitionAxes]
+        CUT_LINE_GENERATING_DEFINITION_AXES_V: _ClassVar[Line.CutLineGeneratingDefinitionAxes]
+        CUT_LINE_GENERATING_DEFINITION_AXES_W: _ClassVar[Line.CutLineGeneratingDefinitionAxes]
+        CUT_LINE_GENERATING_DEFINITION_AXES_Y: _ClassVar[Line.CutLineGeneratingDefinitionAxes]
+        CUT_LINE_GENERATING_DEFINITION_AXES_Z: _ClassVar[Line.CutLineGeneratingDefinitionAxes]
+    CUT_LINE_GENERATING_DEFINITION_AXES_U: Line.CutLineGeneratingDefinitionAxes
+    CUT_LINE_GENERATING_DEFINITION_AXES_V: Line.CutLineGeneratingDefinitionAxes
+    CUT_LINE_GENERATING_DEFINITION_AXES_W: Line.CutLineGeneratingDefinitionAxes
+    CUT_LINE_GENERATING_DEFINITION_AXES_Y: Line.CutLineGeneratingDefinitionAxes
+    CUT_LINE_GENERATING_DEFINITION_AXES_Z: Line.CutLineGeneratingDefinitionAxes
+    class NurbsControlPointsByComponentsTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.NurbsControlPointsByComponentsRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.NurbsControlPointsByComponentsRow, _Mapping]]] = ...) -> None: ...
+    class NurbsControlPointsByComponentsRow(_message.Message):
+        __slots__ = ("no", "description", "global_coordinate_x", "global_coordinate_y", "global_coordinate_z", "weight")
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        GLOBAL_COORDINATE_X_FIELD_NUMBER: _ClassVar[int]
+        GLOBAL_COORDINATE_Y_FIELD_NUMBER: _ClassVar[int]
+        GLOBAL_COORDINATE_Z_FIELD_NUMBER: _ClassVar[int]
+        WEIGHT_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        global_coordinate_x: float
+        global_coordinate_y: float
+        global_coordinate_z: float
+        weight: float
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., global_coordinate_x: _Optional[float] = ..., global_coordinate_y: _Optional[float] = ..., global_coordinate_z: _Optional[float] = ..., weight: _Optional[float] = ...) -> None: ...
+    class NurbsControlPointsTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.NurbsControlPointsRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.NurbsControlPointsRow, _Mapping]]] = ...) -> None: ...
+    class NurbsControlPointsRow(_message.Message):
+        __slots__ = ("no", "description", "control_point", "global_coordinates", "coordinates", "weight")
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+        GLOBAL_COORDINATES_FIELD_NUMBER: _ClassVar[int]
+        COORDINATES_FIELD_NUMBER: _ClassVar[int]
+        WEIGHT_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        control_point: int
+        global_coordinates: _common_pb2.Vector3d
+        coordinates: _common_pb2.Vector3d
+        weight: float
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., control_point: _Optional[int] = ..., global_coordinates: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., coordinates: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., weight: _Optional[float] = ...) -> None: ...
+    class NurbsKnotsTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.NurbsKnotsRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.NurbsKnotsRow, _Mapping]]] = ...) -> None: ...
+    class NurbsKnotsRow(_message.Message):
+        __slots__ = ("no", "description", "knot_value")
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        KNOT_VALUE_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        knot_value: float
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., knot_value: _Optional[float] = ...) -> None: ...
+    class LineWeldAssignmentTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.LineWeldAssignmentRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.LineWeldAssignmentRow, _Mapping]]] = ...) -> None: ...
+    class LineWeldAssignmentRow(_message.Message):
+        __slots__ = ("no", "description", "weld", "surface1", "surface2", "surface3")
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        WELD_FIELD_NUMBER: _ClassVar[int]
+        SURFACE1_FIELD_NUMBER: _ClassVar[int]
+        SURFACE2_FIELD_NUMBER: _ClassVar[int]
+        SURFACE3_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        weld: int
+        surface1: int
+        surface2: int
+        surface3: int
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., weld: _Optional[int] = ..., surface1: _Optional[int] = ..., surface2: _Optional[int] = ..., surface3: _Optional[int] = ...) -> None: ...
+    class NodesOnLineAssignmentTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.NodesOnLineAssignmentRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.NodesOnLineAssignmentRow, _Mapping]]] = ...) -> None: ...
+    class NodesOnLineAssignmentRow(_message.Message):
+        __slots__ = ("no", "description", "node", "reference", "fromStart", "fromEnd")
+        class Reference(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+            __slots__ = ()
+            REFERENCE_L: _ClassVar[Line.NodesOnLineAssignmentRow.Reference]
+            REFERENCE_XY: _ClassVar[Line.NodesOnLineAssignmentRow.Reference]
+            REFERENCE_XZ: _ClassVar[Line.NodesOnLineAssignmentRow.Reference]
+            REFERENCE_YZ: _ClassVar[Line.NodesOnLineAssignmentRow.Reference]
+        REFERENCE_L: Line.NodesOnLineAssignmentRow.Reference
+        REFERENCE_XY: Line.NodesOnLineAssignmentRow.Reference
+        REFERENCE_XZ: Line.NodesOnLineAssignmentRow.Reference
+        REFERENCE_YZ: Line.NodesOnLineAssignmentRow.Reference
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        NODE_FIELD_NUMBER: _ClassVar[int]
+        REFERENCE_FIELD_NUMBER: _ClassVar[int]
+        FROMSTART_FIELD_NUMBER: _ClassVar[int]
+        FROMEND_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        node: int
+        reference: Line.NodesOnLineAssignmentRow.Reference
+        fromStart: float
+        fromEnd: float
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., node: _Optional[int] = ..., reference: _Optional[_Union[Line.NodesOnLineAssignmentRow.Reference, str]] = ..., fromStart: _Optional[float] = ..., fromEnd: _Optional[float] = ...) -> None: ...
+    class LineReleasesAssignmentTable(_message.Message):
+        __slots__ = ("rows",)
+        ROWS_FIELD_NUMBER: _ClassVar[int]
+        rows: _containers.RepeatedCompositeFieldContainer[Line.LineReleasesAssignmentRow]
+        def __init__(self, rows: _Optional[_Iterable[_Union[Line.LineReleasesAssignmentRow, _Mapping]]] = ...) -> None: ...
+    class LineReleasesAssignmentRow(_message.Message):
+        __slots__ = ("no", "description", "assigned_object_no", "active", "release_no", "release_location", "released_objects", "generated_objects")
+        class ReleaseLocation(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+            __slots__ = ()
+            RELEASE_LOCATION_ORIGIN: _ClassVar[Line.LineReleasesAssignmentRow.ReleaseLocation]
+            RELEASE_LOCATION_RELEASED: _ClassVar[Line.LineReleasesAssignmentRow.ReleaseLocation]
+        RELEASE_LOCATION_ORIGIN: Line.LineReleasesAssignmentRow.ReleaseLocation
+        RELEASE_LOCATION_RELEASED: Line.LineReleasesAssignmentRow.ReleaseLocation
+        NO_FIELD_NUMBER: _ClassVar[int]
+        DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+        ASSIGNED_OBJECT_NO_FIELD_NUMBER: _ClassVar[int]
+        ACTIVE_FIELD_NUMBER: _ClassVar[int]
+        RELEASE_NO_FIELD_NUMBER: _ClassVar[int]
+        RELEASE_LOCATION_FIELD_NUMBER: _ClassVar[int]
+        RELEASED_OBJECTS_FIELD_NUMBER: _ClassVar[int]
+        GENERATED_OBJECTS_FIELD_NUMBER: _ClassVar[int]
+        no: int
+        description: str
+        assigned_object_no: int
+        active: bool
+        release_no: int
+        release_location: Line.LineReleasesAssignmentRow.ReleaseLocation
+        released_objects: str
+        generated_objects: str
+        def __init__(self, no: _Optional[int] = ..., description: _Optional[str] = ..., assigned_object_no: _Optional[int] = ..., active: bool = ..., release_no: _Optional[int] = ..., release_location: _Optional[_Union[Line.LineReleasesAssignmentRow.ReleaseLocation, str]] = ..., released_objects: _Optional[str] = ..., generated_objects: _Optional[str] = ...) -> None: ...
+    NO_FIELD_NUMBER: _ClassVar[int]
+    DEFINITION_NODES_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    LENGTH_FIELD_NUMBER: _ClassVar[int]
+    POSITION_FIELD_NUMBER: _ClassVar[int]
+    POSITION_SHORT_FIELD_NUMBER: _ClassVar[int]
+    COMMENT_FIELD_NUMBER: _ClassVar[int]
+    ARC_FIRST_NODE_FIELD_NUMBER: _ClassVar[int]
+    ARC_SECOND_NODE_FIELD_NUMBER: _ClassVar[int]
+    ARC_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    ARC_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    ARC_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    ARC_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    ARC_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    ARC_CENTER_FIELD_NUMBER: _ClassVar[int]
+    ARC_CENTER_X_FIELD_NUMBER: _ClassVar[int]
+    ARC_CENTER_Y_FIELD_NUMBER: _ClassVar[int]
+    ARC_CENTER_Z_FIELD_NUMBER: _ClassVar[int]
+    ARC_RADIUS_FIELD_NUMBER: _ClassVar[int]
+    ARC_HEIGHT_FIELD_NUMBER: _ClassVar[int]
+    ARC_ALPHA_FIELD_NUMBER: _ClassVar[int]
+    ARC_ALPHA_ADJUSTMENT_TARGET_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_CENTER_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_CENTER_COORDINATE_1_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_CENTER_COORDINATE_2_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_CENTER_COORDINATE_3_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NORMAL_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NORMAL_COORDINATE_1_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NORMAL_COORDINATE_2_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NORMAL_COORDINATE_3_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_ROTATION_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NODE_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NODE_COORDINATE_1_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NODE_COORDINATE_2_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_NODE_COORDINATE_3_FIELD_NUMBER: _ClassVar[int]
+    CIRCLE_RADIUS_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_NODE_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_NODE_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_ALPHA_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_BETA_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_NORMAL_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_NORMAL_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_NORMAL_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_NORMAL_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_MAJOR_RADIUS_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_MINOR_RADIUS_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_CENTER_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_CENTER_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_CENTER_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_CENTER_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_1_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_1_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_1_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_1_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_2_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_2_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_2_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FOCUS_2_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_FIRST_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_SECOND_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_PERIMETER_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_PERIMETER_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_PERIMETER_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_PERIMETER_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPTICAL_ARC_PERIMETER_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_FIRST_NODE_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_SECOND_NODE_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    ELLIPSE_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FIRST_NODE_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_SECOND_NODE_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_CONTROL_POINT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_CONTROL_POINT_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_CONTROL_POINT_X_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_CONTROL_POINT_Y_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_CONTROL_POINT_Z_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FOCUS_DIRECTRIX_DISTANCE_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_ALPHA_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FOCUS_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FOCUS_X_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FOCUS_Y_FIELD_NUMBER: _ClassVar[int]
+    PARABOLA_FOCUS_Z_FIELD_NUMBER: _ClassVar[int]
+    NURBS_ORDER_FIELD_NUMBER: _ClassVar[int]
+    NURBS_CONTROL_POINTS_BY_COMPONENTS_FIELD_NUMBER: _ClassVar[int]
+    NURBS_CONTROL_POINTS_FIELD_NUMBER: _ClassVar[int]
+    NURBS_KNOTS_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_SPECIFICATION_TYPE_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_ANGLE_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_HELP_NODE_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_PLANE_FIELD_NUMBER: _ClassVar[int]
+    IS_ROTATED_FIELD_NUMBER: _ClassVar[int]
+    PARENT_LAYER_FIELD_NUMBER: _ClassVar[int]
+    IS_LOCKED_BY_PARENT_LAYER_FIELD_NUMBER: _ClassVar[int]
+    IS_GENERATED_FIELD_NUMBER: _ClassVar[int]
+    GENERATING_OBJECT_INFO_FIELD_NUMBER: _ClassVar[int]
+    MEMBER_FIELD_NUMBER: _ClassVar[int]
+    SUPPORT_FIELD_NUMBER: _ClassVar[int]
+    MESH_REFINEMENT_FIELD_NUMBER: _ClassVar[int]
+    LINE_WELD_ASSIGNMENT_FIELD_NUMBER: _ClassVar[int]
+    HAS_LINE_WELDS_FIELD_NUMBER: _ClassVar[int]
+    NODES_ON_LINE_ASSIGNMENT_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_SURFACE_FIELD_NUMBER: _ClassVar[int]
+    ROTATION_SURFACE_PLANE_TYPE_FIELD_NUMBER: _ClassVar[int]
+    IS_CUT_LINE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_CUT_TYPE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_DEFINITION_TYPE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_ASSIGNED_TO_SURFACES_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_NODE1_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES1_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES1_X_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES1_Y_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES1_Z_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_NODE2_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES2_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES2_X_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES2_Y_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES2_Z_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_NODE3_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES3_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES3_X_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES3_Y_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COORDINATES3_Z_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_SECTION_COMPONENT_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_LINE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_LINE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_POINT_DISTANCE_FROM_START_IS_DEFINED_AS_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_POINT_DISTANCE_FROM_START_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_POINT_DISTANCE_FROM_START_ABSOLUTE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_POINT_DISTANCE_FROM_END_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_FIRST_POINT_DISTANCE_FROM_END_ABSOLUTE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_POINT_DISTANCE_IS_DEFINED_AS_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_POINT_DISTANCE_FROM_START_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_POINT_DISTANCE_FROM_START_ABSOLUTE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_POINT_DISTANCE_FROM_END_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_VIA_TWO_LINES_SECOND_POINT_DISTANCE_FROM_END_ABSOLUTE_FIELD_NUMBER: _ClassVar[int]
+    LINE_RELEASES_ASSIGNMENT_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_MULTI_CUT_ENABLED_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_TYPE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_OFFSET_DISTANCE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_TOLERANCE_ABSOLUTE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_TOLERANCE_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_TOLERANCE_IS_DEFINED_AS_RELATIVE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_PRESERVE_SAME_ANGLE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_ROTATED_TYPE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_GUIDE_LINE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_ROTATION_LINE_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_ROTATION_NODE1_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES1_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES1_X_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES1_Y_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES1_Z_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_ROTATION_NODE2_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES2_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES2_X_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES2_Y_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATES2_Z_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_COORDINATE_SYSTEM_FIELD_NUMBER: _ClassVar[int]
+    CUT_LINE_GENERATING_DEFINITION_AXES_FIELD_NUMBER: _ClassVar[int]
+    LINE_LINK_FIELD_NUMBER: _ClassVar[int]
+    DESIGN_PROPERTIES_VIA_LINE_FIELD_NUMBER: _ClassVar[int]
+    DESIGN_PROPERTIES_VIA_PARENT_LINE_SET_FIELD_NUMBER: _ClassVar[int]
+    LINE_TIMBER_DESIGN_ULS_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
+    ID_FOR_EXPORT_IMPORT_FIELD_NUMBER: _ClassVar[int]
+    METADATA_FOR_EXPORT_IMPORT_FIELD_NUMBER: _ClassVar[int]
+    no: int
+    definition_nodes: _containers.RepeatedScalarFieldContainer[int]
+    type: Line.Type
+    length: float
+    position: str
+    position_short: str
+    comment: str
+    arc_first_node: int
+    arc_second_node: int
+    arc_control_point_object: int
+    arc_control_point: _common_pb2.Vector3d
+    arc_control_point_x: float
+    arc_control_point_y: float
+    arc_control_point_z: float
+    arc_center: _common_pb2.Vector3d
+    arc_center_x: float
+    arc_center_y: float
+    arc_center_z: float
+    arc_radius: float
+    arc_height: float
+    arc_alpha: float
+    arc_alpha_adjustment_target: Line.ArcAlphaAdjustmentTarget
+    circle_center: _common_pb2.Vector3d
+    circle_center_coordinate_1: float
+    circle_center_coordinate_2: float
+    circle_center_coordinate_3: float
+    circle_normal: _common_pb2.Vector3d
+    circle_normal_coordinate_1: float
+    circle_normal_coordinate_2: float
+    circle_normal_coordinate_3: float
+    circle_rotation: float
+    circle_node: _common_pb2.Vector3d
+    circle_node_coordinate_1: float
+    circle_node_coordinate_2: float
+    circle_node_coordinate_3: float
+    circle_radius: float
+    elliptical_arc_first_node: int
+    elliptical_arc_second_node: int
+    elliptical_arc_alpha: float
+    elliptical_arc_beta: float
+    elliptical_arc_normal: _common_pb2.Vector3d
+    elliptical_arc_normal_x: float
+    elliptical_arc_normal_y: float
+    elliptical_arc_normal_z: float
+    elliptical_arc_major_radius: float
+    elliptical_arc_minor_radius: float
+    elliptical_arc_center: _common_pb2.Vector3d
+    elliptical_arc_center_x: float
+    elliptical_arc_center_y: float
+    elliptical_arc_center_z: float
+    elliptical_arc_focus_1: _common_pb2.Vector3d
+    elliptical_arc_focus_1_x: float
+    elliptical_arc_focus_1_y: float
+    elliptical_arc_focus_1_z: float
+    elliptical_arc_focus_2: _common_pb2.Vector3d
+    elliptical_arc_focus_2_x: float
+    elliptical_arc_focus_2_y: float
+    elliptical_arc_focus_2_z: float
+    elliptical_arc_first_control_point_object: int
+    elliptical_arc_first_control_point: _common_pb2.Vector3d
+    elliptical_arc_first_control_point_x: float
+    elliptical_arc_first_control_point_y: float
+    elliptical_arc_first_control_point_z: float
+    elliptical_arc_second_control_point_object: int
+    elliptical_arc_second_control_point: _common_pb2.Vector3d
+    elliptical_arc_second_control_point_x: float
+    elliptical_arc_second_control_point_y: float
+    elliptical_arc_second_control_point_z: float
+    elliptical_arc_perimeter_control_point_object: int
+    elliptical_arc_perimeter_control_point: _common_pb2.Vector3d
+    elliptical_arc_perimeter_control_point_x: float
+    elliptical_arc_perimeter_control_point_y: float
+    elliptical_arc_perimeter_control_point_z: float
+    ellipse_first_node: int
+    ellipse_second_node: int
+    ellipse_control_point_object: int
+    ellipse_control_point: _common_pb2.Vector3d
+    ellipse_control_point_x: float
+    ellipse_control_point_y: float
+    ellipse_control_point_z: float
+    parabola_first_node: int
+    parabola_second_node: int
+    parabola_control_point_object: int
+    parabola_control_point: _common_pb2.Vector3d
+    parabola_control_point_x: float
+    parabola_control_point_y: float
+    parabola_control_point_z: float
+    parabola_focus_directrix_distance: float
+    parabola_alpha: float
+    parabola_focus: _common_pb2.Vector3d
+    parabola_focus_x: float
+    parabola_focus_y: float
+    parabola_focus_z: float
+    nurbs_order: int
+    nurbs_control_points_by_components: Line.NurbsControlPointsByComponentsTable
+    nurbs_control_points: Line.NurbsControlPointsTable
+    nurbs_knots: Line.NurbsKnotsTable
+    rotation_specification_type: Line.RotationSpecificationType
+    rotation_angle: float
+    rotation_help_node: int
+    rotation_plane: Line.RotationPlane
+    is_rotated: bool
+    parent_layer: int
+    is_locked_by_parent_layer: bool
+    is_generated: bool
+    generating_object_info: str
+    member: int
+    support: int
+    mesh_refinement: int
+    line_weld_assignment: Line.LineWeldAssignmentTable
+    has_line_welds: bool
+    nodes_on_line_assignment: Line.NodesOnLineAssignmentTable
+    rotation_surface: int
+    rotation_surface_plane_type: Line.RotationSurfacePlaneType
+    is_cut_line: bool
+    cut_via_section_cut_type: Line.CutViaSectionCutType
+    cut_via_section_definition_type: Line.CutViaSectionDefinitionType
+    cut_via_section_assigned_to_surfaces: _containers.RepeatedScalarFieldContainer[int]
+    cut_via_section_node1: int
+    cut_via_section_coordinates1: _common_pb2.Vector3d
+    cut_via_section_coordinates1_x: float
+    cut_via_section_coordinates1_y: float
+    cut_via_section_coordinates1_z: float
+    cut_via_section_node2: int
+    cut_via_section_coordinates2: _common_pb2.Vector3d
+    cut_via_section_coordinates2_x: float
+    cut_via_section_coordinates2_y: float
+    cut_via_section_coordinates2_z: float
+    cut_via_section_node3: int
+    cut_via_section_coordinates3: _common_pb2.Vector3d
+    cut_via_section_coordinates3_x: float
+    cut_via_section_coordinates3_y: float
+    cut_via_section_coordinates3_z: float
+    cut_via_section_component: int
+    cut_via_two_lines_first_line: int
+    cut_via_two_lines_second_line: int
+    cut_via_two_lines_first_point_distance_from_start_is_defined_as_relative: bool
+    cut_via_two_lines_first_point_distance_from_start_relative: float
+    cut_via_two_lines_first_point_distance_from_start_absolute: float
+    cut_via_two_lines_first_point_distance_from_end_relative: float
+    cut_via_two_lines_first_point_distance_from_end_absolute: float
+    cut_via_two_lines_second_point_distance_is_defined_as_relative: bool
+    cut_via_two_lines_second_point_distance_from_start_relative: float
+    cut_via_two_lines_second_point_distance_from_start_absolute: float
+    cut_via_two_lines_second_point_distance_from_end_relative: float
+    cut_via_two_lines_second_point_distance_from_end_absolute: float
+    line_releases_assignment: Line.LineReleasesAssignmentTable
+    cut_line_multi_cut_enabled: bool
+    cut_line_generating_type: Line.CutLineGeneratingType
+    cut_line_generating_offset_distance: float
+    cut_line_generating_tolerance_absolute: float
+    cut_line_generating_tolerance_relative: float
+    cut_line_generating_tolerance_is_defined_as_relative: bool
+    cut_line_generating_preserve_same_angle: bool
+    cut_line_generating_rotated_type: Line.CutLineGeneratingRotatedType
+    cut_line_generating_guide_line: int
+    cut_line_generating_rotation_line: int
+    cut_line_generating_rotation_node1: int
+    cut_line_generating_coordinates1: _common_pb2.Vector3d
+    cut_line_generating_coordinates1_x: float
+    cut_line_generating_coordinates1_y: float
+    cut_line_generating_coordinates1_z: float
+    cut_line_generating_rotation_node2: int
+    cut_line_generating_coordinates2: _common_pb2.Vector3d
+    cut_line_generating_coordinates2_x: float
+    cut_line_generating_coordinates2_y: float
+    cut_line_generating_coordinates2_z: float
+    cut_line_generating_coordinate_system: int
+    cut_line_generating_definition_axes: Line.CutLineGeneratingDefinitionAxes
+    line_link: int
+    design_properties_via_line: bool
+    design_properties_via_parent_line_set: bool
+    line_timber_design_uls_configuration: int
+    id_for_export_import: str
+    metadata_for_export_import: str
+    def __init__(self, no: _Optional[int] = ..., definition_nodes: _Optional[_Iterable[int]] = ..., type: _Optional[_Union[Line.Type, str]] = ..., length: _Optional[float] = ..., position: _Optional[str] = ..., position_short: _Optional[str] = ..., comment: _Optional[str] = ..., arc_first_node: _Optional[int] = ..., arc_second_node: _Optional[int] = ..., arc_control_point_object: _Optional[int] = ..., arc_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., arc_control_point_x: _Optional[float] = ..., arc_control_point_y: _Optional[float] = ..., arc_control_point_z: _Optional[float] = ..., arc_center: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., arc_center_x: _Optional[float] = ..., arc_center_y: _Optional[float] = ..., arc_center_z: _Optional[float] = ..., arc_radius: _Optional[float] = ..., arc_height: _Optional[float] = ..., arc_alpha: _Optional[float] = ..., arc_alpha_adjustment_target: _Optional[_Union[Line.ArcAlphaAdjustmentTarget, str]] = ..., circle_center: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., circle_center_coordinate_1: _Optional[float] = ..., circle_center_coordinate_2: _Optional[float] = ..., circle_center_coordinate_3: _Optional[float] = ..., circle_normal: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., circle_normal_coordinate_1: _Optional[float] = ..., circle_normal_coordinate_2: _Optional[float] = ..., circle_normal_coordinate_3: _Optional[float] = ..., circle_rotation: _Optional[float] = ..., circle_node: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., circle_node_coordinate_1: _Optional[float] = ..., circle_node_coordinate_2: _Optional[float] = ..., circle_node_coordinate_3: _Optional[float] = ..., circle_radius: _Optional[float] = ..., elliptical_arc_first_node: _Optional[int] = ..., elliptical_arc_second_node: _Optional[int] = ..., elliptical_arc_alpha: _Optional[float] = ..., elliptical_arc_beta: _Optional[float] = ..., elliptical_arc_normal: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_normal_x: _Optional[float] = ..., elliptical_arc_normal_y: _Optional[float] = ..., elliptical_arc_normal_z: _Optional[float] = ..., elliptical_arc_major_radius: _Optional[float] = ..., elliptical_arc_minor_radius: _Optional[float] = ..., elliptical_arc_center: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_center_x: _Optional[float] = ..., elliptical_arc_center_y: _Optional[float] = ..., elliptical_arc_center_z: _Optional[float] = ..., elliptical_arc_focus_1: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_focus_1_x: _Optional[float] = ..., elliptical_arc_focus_1_y: _Optional[float] = ..., elliptical_arc_focus_1_z: _Optional[float] = ..., elliptical_arc_focus_2: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_focus_2_x: _Optional[float] = ..., elliptical_arc_focus_2_y: _Optional[float] = ..., elliptical_arc_focus_2_z: _Optional[float] = ..., elliptical_arc_first_control_point_object: _Optional[int] = ..., elliptical_arc_first_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_first_control_point_x: _Optional[float] = ..., elliptical_arc_first_control_point_y: _Optional[float] = ..., elliptical_arc_first_control_point_z: _Optional[float] = ..., elliptical_arc_second_control_point_object: _Optional[int] = ..., elliptical_arc_second_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_second_control_point_x: _Optional[float] = ..., elliptical_arc_second_control_point_y: _Optional[float] = ..., elliptical_arc_second_control_point_z: _Optional[float] = ..., elliptical_arc_perimeter_control_point_object: _Optional[int] = ..., elliptical_arc_perimeter_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., elliptical_arc_perimeter_control_point_x: _Optional[float] = ..., elliptical_arc_perimeter_control_point_y: _Optional[float] = ..., elliptical_arc_perimeter_control_point_z: _Optional[float] = ..., ellipse_first_node: _Optional[int] = ..., ellipse_second_node: _Optional[int] = ..., ellipse_control_point_object: _Optional[int] = ..., ellipse_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., ellipse_control_point_x: _Optional[float] = ..., ellipse_control_point_y: _Optional[float] = ..., ellipse_control_point_z: _Optional[float] = ..., parabola_first_node: _Optional[int] = ..., parabola_second_node: _Optional[int] = ..., parabola_control_point_object: _Optional[int] = ..., parabola_control_point: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., parabola_control_point_x: _Optional[float] = ..., parabola_control_point_y: _Optional[float] = ..., parabola_control_point_z: _Optional[float] = ..., parabola_focus_directrix_distance: _Optional[float] = ..., parabola_alpha: _Optional[float] = ..., parabola_focus: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., parabola_focus_x: _Optional[float] = ..., parabola_focus_y: _Optional[float] = ..., parabola_focus_z: _Optional[float] = ..., nurbs_order: _Optional[int] = ..., nurbs_control_points_by_components: _Optional[_Union[Line.NurbsControlPointsByComponentsTable, _Mapping]] = ..., nurbs_control_points: _Optional[_Union[Line.NurbsControlPointsTable, _Mapping]] = ..., nurbs_knots: _Optional[_Union[Line.NurbsKnotsTable, _Mapping]] = ..., rotation_specification_type: _Optional[_Union[Line.RotationSpecificationType, str]] = ..., rotation_angle: _Optional[float] = ..., rotation_help_node: _Optional[int] = ..., rotation_plane: _Optional[_Union[Line.RotationPlane, str]] = ..., is_rotated: bool = ..., parent_layer: _Optional[int] = ..., is_locked_by_parent_layer: bool = ..., is_generated: bool = ..., generating_object_info: _Optional[str] = ..., member: _Optional[int] = ..., support: _Optional[int] = ..., mesh_refinement: _Optional[int] = ..., line_weld_assignment: _Optional[_Union[Line.LineWeldAssignmentTable, _Mapping]] = ..., has_line_welds: bool = ..., nodes_on_line_assignment: _Optional[_Union[Line.NodesOnLineAssignmentTable, _Mapping]] = ..., rotation_surface: _Optional[int] = ..., rotation_surface_plane_type: _Optional[_Union[Line.RotationSurfacePlaneType, str]] = ..., is_cut_line: bool = ..., cut_via_section_cut_type: _Optional[_Union[Line.CutViaSectionCutType, str]] = ..., cut_via_section_definition_type: _Optional[_Union[Line.CutViaSectionDefinitionType, str]] = ..., cut_via_section_assigned_to_surfaces: _Optional[_Iterable[int]] = ..., cut_via_section_node1: _Optional[int] = ..., cut_via_section_coordinates1: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., cut_via_section_coordinates1_x: _Optional[float] = ..., cut_via_section_coordinates1_y: _Optional[float] = ..., cut_via_section_coordinates1_z: _Optional[float] = ..., cut_via_section_node2: _Optional[int] = ..., cut_via_section_coordinates2: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., cut_via_section_coordinates2_x: _Optional[float] = ..., cut_via_section_coordinates2_y: _Optional[float] = ..., cut_via_section_coordinates2_z: _Optional[float] = ..., cut_via_section_node3: _Optional[int] = ..., cut_via_section_coordinates3: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., cut_via_section_coordinates3_x: _Optional[float] = ..., cut_via_section_coordinates3_y: _Optional[float] = ..., cut_via_section_coordinates3_z: _Optional[float] = ..., cut_via_section_component: _Optional[int] = ..., cut_via_two_lines_first_line: _Optional[int] = ..., cut_via_two_lines_second_line: _Optional[int] = ..., cut_via_two_lines_first_point_distance_from_start_is_defined_as_relative: bool = ..., cut_via_two_lines_first_point_distance_from_start_relative: _Optional[float] = ..., cut_via_two_lines_first_point_distance_from_start_absolute: _Optional[float] = ..., cut_via_two_lines_first_point_distance_from_end_relative: _Optional[float] = ..., cut_via_two_lines_first_point_distance_from_end_absolute: _Optional[float] = ..., cut_via_two_lines_second_point_distance_is_defined_as_relative: bool = ..., cut_via_two_lines_second_point_distance_from_start_relative: _Optional[float] = ..., cut_via_two_lines_second_point_distance_from_start_absolute: _Optional[float] = ..., cut_via_two_lines_second_point_distance_from_end_relative: _Optional[float] = ..., cut_via_two_lines_second_point_distance_from_end_absolute: _Optional[float] = ..., line_releases_assignment: _Optional[_Union[Line.LineReleasesAssignmentTable, _Mapping]] = ..., cut_line_multi_cut_enabled: bool = ..., cut_line_generating_type: _Optional[_Union[Line.CutLineGeneratingType, str]] = ..., cut_line_generating_offset_distance: _Optional[float] = ..., cut_line_generating_tolerance_absolute: _Optional[float] = ..., cut_line_generating_tolerance_relative: _Optional[float] = ..., cut_line_generating_tolerance_is_defined_as_relative: bool = ..., cut_line_generating_preserve_same_angle: bool = ..., cut_line_generating_rotated_type: _Optional[_Union[Line.CutLineGeneratingRotatedType, str]] = ..., cut_line_generating_guide_line: _Optional[int] = ..., cut_line_generating_rotation_line: _Optional[int] = ..., cut_line_generating_rotation_node1: _Optional[int] = ..., cut_line_generating_coordinates1: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., cut_line_generating_coordinates1_x: _Optional[float] = ..., cut_line_generating_coordinates1_y: _Optional[float] = ..., cut_line_generating_coordinates1_z: _Optional[float] = ..., cut_line_generating_rotation_node2: _Optional[int] = ..., cut_line_generating_coordinates2: _Optional[_Union[_common_pb2.Vector3d, _Mapping]] = ..., cut_line_generating_coordinates2_x: _Optional[float] = ..., cut_line_generating_coordinates2_y: _Optional[float] = ..., cut_line_generating_coordinates2_z: _Optional[float] = ..., cut_line_generating_coordinate_system: _Optional[int] = ..., cut_line_generating_definition_axes: _Optional[_Union[Line.CutLineGeneratingDefinitionAxes, str]] = ..., line_link: _Optional[int] = ..., design_properties_via_line: bool = ..., design_properties_via_parent_line_set: bool = ..., line_timber_design_uls_configuration: _Optional[int] = ..., id_for_export_import: _Optional[str] = ..., metadata_for_export_import: _Optional[str] = ...) -> None: ...

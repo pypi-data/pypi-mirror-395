@@ -1,0 +1,150 @@
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class GlobalParameter(_message.Message):
+    __slots__ = ("no", "user_defined_name_enabled", "name", "attribute_always_editable", "symbol", "unit_group", "definition_type", "value", "unit", "formula", "min", "max", "increment", "steps", "from_rsection_model_name", "comment", "id_for_export_import", "metadata_for_export_import")
+    class UnitGroup(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        UNIT_GROUP_EG_MODULE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_ANGLE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_DENSITY: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_DIMENSIONLESS: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_FRICTION_COEFFICIENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_GEOGRAPHIC_COORDINATES: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_ANGLE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_DEFORMATION: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_FACTOR: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_QUANTITY_INTEGER: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_SPECIFIC_WEIGHT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_MATERIAL_THICKNESS: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_POISSONS_RATIO: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_RELATIVE_LENGTH: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_ANGLE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_AREA: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_BIMOMENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_DIMENSION: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_EFFECTIVE_AREA: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_EFFECTIVE_SECOND_MOMENT_OF_AREA: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_FORCE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_LIMIT_FOR_REINFORCEMENT_PLACEMENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_MOMENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_MOMENT_OF_INERTIA: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_QUANTITY: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_SECTION_FACTOR: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_SECTION_MODULUS: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_STATICAL_MOMENT_OF_AREA: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_SURFACE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_TEMPERATURE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_TENSION_FIELD_COEFFICIENT_1: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_TENSION_FIELD_COEFFICIENT_2: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_UNIT_STRESSES: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_UNIT_WARPING_FUNCTION: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_VOLUME: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_WARPING_CONSTANT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_WARPING_ORDINATE: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_WARPING_STATICAL_MOMENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_SECTION_WEIGHT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_STRAIN: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_STRESSES: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_THERMAL_EXPANSION_COEFFICIENT: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_THICKNESS: _ClassVar[GlobalParameter.UnitGroup]
+        UNIT_GROUP_WEIGHT_AND_KNOT: _ClassVar[GlobalParameter.UnitGroup]
+    UNIT_GROUP_EG_MODULE: GlobalParameter.UnitGroup
+    UNIT_GROUP_ANGLE: GlobalParameter.UnitGroup
+    UNIT_GROUP_DENSITY: GlobalParameter.UnitGroup
+    UNIT_GROUP_DIMENSIONLESS: GlobalParameter.UnitGroup
+    UNIT_GROUP_FRICTION_COEFFICIENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_GEOGRAPHIC_COORDINATES: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_ANGLE: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_DEFORMATION: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_FACTOR: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_QUANTITY_INTEGER: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_SPECIFIC_WEIGHT: GlobalParameter.UnitGroup
+    UNIT_GROUP_MATERIAL_THICKNESS: GlobalParameter.UnitGroup
+    UNIT_GROUP_POISSONS_RATIO: GlobalParameter.UnitGroup
+    UNIT_GROUP_RELATIVE_LENGTH: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_ANGLE: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_AREA: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_BIMOMENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_DIMENSION: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_EFFECTIVE_AREA: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_EFFECTIVE_SECOND_MOMENT_OF_AREA: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_FORCE: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_LIMIT_FOR_REINFORCEMENT_PLACEMENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_MOMENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_MOMENT_OF_INERTIA: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_QUANTITY: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_SECTION_FACTOR: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_SECTION_MODULUS: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_STATICAL_MOMENT_OF_AREA: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_SURFACE: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_TEMPERATURE: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_TENSION_FIELD_COEFFICIENT_1: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_TENSION_FIELD_COEFFICIENT_2: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_UNIT_STRESSES: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_UNIT_WARPING_FUNCTION: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_VOLUME: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_WARPING_CONSTANT: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_WARPING_ORDINATE: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_WARPING_STATICAL_MOMENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_SECTION_WEIGHT: GlobalParameter.UnitGroup
+    UNIT_GROUP_STRAIN: GlobalParameter.UnitGroup
+    UNIT_GROUP_STRESSES: GlobalParameter.UnitGroup
+    UNIT_GROUP_THERMAL_EXPANSION_COEFFICIENT: GlobalParameter.UnitGroup
+    UNIT_GROUP_THICKNESS: GlobalParameter.UnitGroup
+    UNIT_GROUP_WEIGHT_AND_KNOT: GlobalParameter.UnitGroup
+    class DefinitionType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        DEFINITION_TYPE_VALUE: _ClassVar[GlobalParameter.DefinitionType]
+        DEFINITION_TYPE_FORMULA: _ClassVar[GlobalParameter.DefinitionType]
+        DEFINITION_TYPE_OPTIMIZATION: _ClassVar[GlobalParameter.DefinitionType]
+        DEFINITION_TYPE_OPTIMIZATION_ASCENDING: _ClassVar[GlobalParameter.DefinitionType]
+        DEFINITION_TYPE_OPTIMIZATION_DESCENDING: _ClassVar[GlobalParameter.DefinitionType]
+        DEFINITION_TYPE_OPTIMIZATION_FORMULA: _ClassVar[GlobalParameter.DefinitionType]
+    DEFINITION_TYPE_VALUE: GlobalParameter.DefinitionType
+    DEFINITION_TYPE_FORMULA: GlobalParameter.DefinitionType
+    DEFINITION_TYPE_OPTIMIZATION: GlobalParameter.DefinitionType
+    DEFINITION_TYPE_OPTIMIZATION_ASCENDING: GlobalParameter.DefinitionType
+    DEFINITION_TYPE_OPTIMIZATION_DESCENDING: GlobalParameter.DefinitionType
+    DEFINITION_TYPE_OPTIMIZATION_FORMULA: GlobalParameter.DefinitionType
+    NO_FIELD_NUMBER: _ClassVar[int]
+    USER_DEFINED_NAME_ENABLED_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ATTRIBUTE_ALWAYS_EDITABLE_FIELD_NUMBER: _ClassVar[int]
+    SYMBOL_FIELD_NUMBER: _ClassVar[int]
+    UNIT_GROUP_FIELD_NUMBER: _ClassVar[int]
+    DEFINITION_TYPE_FIELD_NUMBER: _ClassVar[int]
+    VALUE_FIELD_NUMBER: _ClassVar[int]
+    UNIT_FIELD_NUMBER: _ClassVar[int]
+    FORMULA_FIELD_NUMBER: _ClassVar[int]
+    MIN_FIELD_NUMBER: _ClassVar[int]
+    MAX_FIELD_NUMBER: _ClassVar[int]
+    INCREMENT_FIELD_NUMBER: _ClassVar[int]
+    STEPS_FIELD_NUMBER: _ClassVar[int]
+    FROM_RSECTION_MODEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    COMMENT_FIELD_NUMBER: _ClassVar[int]
+    ID_FOR_EXPORT_IMPORT_FIELD_NUMBER: _ClassVar[int]
+    METADATA_FOR_EXPORT_IMPORT_FIELD_NUMBER: _ClassVar[int]
+    no: int
+    user_defined_name_enabled: bool
+    name: str
+    attribute_always_editable: str
+    symbol: str
+    unit_group: GlobalParameter.UnitGroup
+    definition_type: GlobalParameter.DefinitionType
+    value: float
+    unit: str
+    formula: str
+    min: float
+    max: float
+    increment: float
+    steps: int
+    from_rsection_model_name: str
+    comment: str
+    id_for_export_import: str
+    metadata_for_export_import: str
+    def __init__(self, no: _Optional[int] = ..., user_defined_name_enabled: bool = ..., name: _Optional[str] = ..., attribute_always_editable: _Optional[str] = ..., symbol: _Optional[str] = ..., unit_group: _Optional[_Union[GlobalParameter.UnitGroup, str]] = ..., definition_type: _Optional[_Union[GlobalParameter.DefinitionType, str]] = ..., value: _Optional[float] = ..., unit: _Optional[str] = ..., formula: _Optional[str] = ..., min: _Optional[float] = ..., max: _Optional[float] = ..., increment: _Optional[float] = ..., steps: _Optional[int] = ..., from_rsection_model_name: _Optional[str] = ..., comment: _Optional[str] = ..., id_for_export_import: _Optional[str] = ..., metadata_for_export_import: _Optional[str] = ...) -> None: ...
