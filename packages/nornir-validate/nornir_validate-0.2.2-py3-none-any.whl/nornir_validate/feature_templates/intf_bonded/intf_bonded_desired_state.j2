@@ -1,0 +1,68 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set port_channel_cmd = "show etherchannel summary" %}
+{% elif 'nxos' in os_type |string %}
+{% set port_channel_cmd = "show port-channel summary" %}
+{% set vpc_cmd = "show vpc | json" %}
+{% elif 'asa' in os_type |string %}
+{% set port_channel_cmd = "show port-channel summary" %}
+{% elif 'wlc' in os_type |string %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### PORT_CHANNEL: {cmd: {po_name: {protocol: type, status: code, members: {intf_name: {mbr_status: code}}}}} ### #}
+{% if sub_feat == 'port_channel' and port_channel_cmd is defined %}
+    port_channel:
+      {{ port_channel_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+{% for each_po_name, each_po_info in input_vars.items() %}
+        {{ each_po_name }}:
+          status: U
+          protocol: {{ each_po_info.protocol.upper() }}
+          members:
+            _mode: strict
+{% for each_member in each_po_info.members %}
+            {{ each_member }}:
+              mbr_status: P
+{% endfor %}{% endfor %}{% endif %}
+{# ### VPC: {role: x, peer-status: peer-ok, keepalive-status: peer-alive, vlan-consistency: consistent, peer-consistency: SUCCESS, type2-consistency: SUCCESS,
+    #       peer-link-port-state": 1, peer-link-vlans": x,y,z, vpcs: {vpc-id: {po: x, port-state: 1, consistency-status: SUCCESS, vlans: x,y,z} ### #}
+{% elif sub_feat == 'vpc' and vpc_cmd is defined %}
+    vpc:
+      {{ vpc_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        role: {{ input_vars.role }}
+        peer_status: peer-ok
+        keepalive_status: peer-alive
+        vlan_consistency: consistent
+        peer_consistency: SUCCESS
+        type2_consistency: SUCCESS
+        peerlink_port_state: 1
+        peerlink_vlans: 
+          _mode: strict
+          list: {{ input_vars.peerlink_vlans }}
+        vpcs:
+{% for each_vpc_id, each_vpc_info in input_vars.vpcs.items() %}
+          {{ each_vpc_id }}:
+            po: {{ each_vpc_info.po }}
+            port_state: 1
+            consistency_status: SUCCESS
+            vlans: 
+              _mode: strict
+              list: {{ each_vpc_info.vlans }}
+{% endfor %}{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}
