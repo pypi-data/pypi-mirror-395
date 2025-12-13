@@ -1,0 +1,2486 @@
+{% extends "base.html" %}
+
+{% block title %}All Clusters - AtlasUI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h1><i class="bi bi-hdd-rack"></i> All Clusters</h1>
+            <div>
+                <button class="btn btn-success btn-sm me-2" id="createClusterBtn">
+                    <i class="bi bi-plus-circle"></i> Create Cluster
+                </button>
+                <button class="btn btn-outline-success btn-sm" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading clusters...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="errorMessage" class="alert alert-danger d-none" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span id="errorText"></span>
+        </div>
+
+        <!-- Clusters table -->
+        <div id="clustersTable" class="d-none">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>
+                                Project
+                                <div class="btn-group" style="margin-left: 5px; display: inline-block;">
+                                    <button class="btn btn-sm btn-link p-0" type="button" id="projectFilterBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Filter projects" style="color: inherit;">
+                                        <i class="bi bi-funnel" id="projectFilterIcon"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" id="projectFilterDropdown" style="max-height: 400px; overflow-y: auto; min-width: 250px;">
+                                        <li class="px-3 py-2 border-bottom">
+                                            <div class="d-flex justify-content-between">
+                                                <button class="btn btn-sm btn-link p-0" onclick="selectAllProjects()">Select All</button>
+                                                <button class="btn btn-sm btn-link p-0" onclick="clearAllProjects()">Clear All</button>
+                                            </div>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 py-1">
+                                            <input type="text" class="form-control form-control-sm" id="projectSearchBox" placeholder="Search projects...">
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <div id="projectFilterList" style="max-height: 300px; overflow-y: auto;">
+                                            <!-- Project checkboxes will be inserted here -->
+                                        </div>
+                                    </ul>
+                                </div>
+                            </th>
+                            <th>Status</th>
+                            <th>Type</th>
+                            <th>MongoDB</th>
+                            <th>Provider</th>
+                            <th>Region</th>
+                            <th>Instance</th>
+                            <th>Users</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clustersContainer">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loginModalLabel">
+                    <i class="bi bi-key"></i> Login to Cluster
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="loginError" class="alert alert-danger d-none"></div>
+                <div id="loginSuccess" class="alert alert-success d-none"></div>
+
+                <form id="loginForm">
+                    <input type="hidden" id="clusterConnectionString" />
+                    <input type="hidden" id="clusterName" />
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" required autocomplete="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required autocomplete="current-password">
+                    </div>
+                </form>
+
+                <!-- Databases list (shown after successful login) -->
+                <div id="databasesList" class="d-none mt-3">
+                    <h6>Databases:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Collections</th>
+                                    <th>Indexes</th>
+                                    <th>Size</th>
+                                </tr>
+                            </thead>
+                            <tbody id="databasesTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="loginBtn">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel">
+                    <i class="bi bi-person-plus"></i> Add Database User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addUserError" class="alert alert-danger d-none"></div>
+                <div id="addUserSuccess" class="alert alert-success d-none"></div>
+
+                <form id="addUserForm">
+                    <input type="hidden" id="addUserProjectId" />
+
+                    <div class="mb-3">
+                        <label for="newUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newUsername" required>
+                        <div class="form-text">Database username for authentication</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                        <div class="form-text">Must be at least 8 characters</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userRole" class="form-label">Role <span class="text-danger">*</span></label>
+                        <select class="form-select" id="userRole" required>
+                            <option value="">Select a role...</option>
+                            <option value="readWrite">Read and Write (readWrite)</option>
+                            <option value="read">Read Only (read)</option>
+                            <option value="dbAdmin">Database Admin (dbAdmin)</option>
+                            <option value="atlasAdmin">Atlas Admin (atlasAdmin)</option>
+                        </select>
+                        <div class="form-text">User permissions on the database</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="targetDatabase" class="form-label">Target Database</label>
+                        <input type="text" class="form-control" id="targetDatabase" value="admin">
+                        <div class="form-text">Database where the role applies (default: admin)</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addUserBtn">
+                    <i class="bi bi-person-plus"></i> Add User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Panel (Offcanvas) -->
+<div class="offcanvas offcanvas-end offcanvas-wide" tabindex="-1" id="detailsPanel" aria-labelledby="detailsPanelLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="detailsPanelLabel">
+            <i class="bi bi-info-circle"></i> Cluster Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="detailsContent">
+            <p class="text-muted">Click on a cluster name to view its details</p>
+        </div>
+    </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">
+                    <i class="bi bi-box-arrow-right"></i> Confirm Logout
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You will be logged out from cluster:</p>
+                <p class="text-center"><strong id="logoutClusterName"></strong></p>
+                <p class="text-muted small">Your session will be closed and you will need to login again to access this cluster's databases.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmLogoutBtn">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Cluster Modal -->
+<div class="modal fade" id="createClusterModal" tabindex="-1" aria-labelledby="createClusterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createClusterModalLabel">
+                    <i class="bi bi-plus-circle"></i> Create New Cluster
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="createClusterError" class="alert alert-danger d-none"></div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    The cluster creation will be queued and processed in the background. You can track its progress in the Operations panel at the bottom of the screen.
+                </div>
+
+                <form id="createClusterForm">
+                    <div class="mb-3">
+                        <label for="createClusterProjectId" class="form-label">Project <span class="text-danger">*</span></label>
+                        <select class="form-select" id="createClusterProjectId" required>
+                            <option value="">Select project...</option>
+                        </select>
+                        <div class="form-text">Select the project where this cluster will be created</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="clusterNameInput" class="form-label">Cluster Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="clusterNameInput" required
+                               placeholder="e.g., my-cluster">
+                        <div class="form-text">Must be unique within the project. Lowercase alphanumeric and hyphens only.</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="providerName" class="form-label">Cloud Provider <span class="text-danger">*</span></label>
+                                <select class="form-select" id="providerName" required>
+                                    <option value="">Select provider...</option>
+                                    <option value="AWS">Amazon Web Services (AWS)</option>
+                                    <option value="GCP">Google Cloud Platform (GCP)</option>
+                                    <option value="AZURE">Microsoft Azure</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="regionName" class="form-label">Region <span class="text-danger">*</span></label>
+                                <select class="form-select" id="regionName" required disabled>
+                                    <option value="">Select region...</option>
+                                </select>
+                                <div class="form-text">Region availability depends on provider</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="instanceSize" class="form-label">Instance Size <span class="text-danger">*</span></label>
+                                <select class="form-select" id="instanceSize" required>
+                                    <option value="">Select size...</option>
+                                    <optgroup label="Free Tier">
+                                        <option value="M0">M0 - Free (512MB storage, shared CPU)</option>
+                                    </optgroup>
+                                    <optgroup label="Flex (Shared Tier)">
+                                        <option value="FLEX">Flex - Pay-per-use (auto-scaling shared infrastructure)</option>
+                                    </optgroup>
+                                    <optgroup label="Dedicated Clusters">
+                                        <option value="M10">M10 - 2GB RAM</option>
+                                        <option value="M20">M20 - 4GB RAM</option>
+                                        <option value="M30">M30 - 8GB RAM</option>
+                                        <option value="M40">M40 - 16GB RAM</option>
+                                        <option value="M50">M50 - 32GB RAM</option>
+                                        <option value="M60">M60 - 64GB RAM</option>
+                                        <option value="M80">M80 - 128GB RAM</option>
+                                        <option value="M140">M140 - 192GB RAM</option>
+                                        <option value="M200">M200 - 256GB RAM</option>
+                                        <option value="M300">M300 - 384GB RAM</option>
+                                    </optgroup>
+                                </select>
+                                <div class="form-text">M0 is free tier. Flex auto-scales on shared infrastructure. M10+ are dedicated clusters with fixed resources.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="mongoDBVersion" class="form-label">MongoDB Version</label>
+                                <select class="form-select" id="mongoDBVersion">
+                                    <option value="">Latest version</option>
+                                    <option value="8.0">8.0</option>
+                                    <option value="7.0">7.0</option>
+                                    <option value="6.0">6.0</option>
+                                    <option value="5.0">5.0</option>
+                                </select>
+                                <div class="form-text">Leave blank for latest stable version</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="clusterType" class="form-label">Cluster Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="clusterType" required>
+                            <option value="REPLICASET">Replica Set (Recommended)</option>
+                            <option value="SHARDED">Sharded Cluster</option>
+                        </select>
+                        <div class="form-text">Replica Set is recommended for most use cases</div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="enableBackup">
+                        <label class="form-check-label" for="enableBackup">
+                            Enable Cloud Backup (Recommended)
+                        </label>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> Creating a cluster may take several minutes. M0 (Free Tier) clusters have usage limitations.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="submitCreateClusterBtn">
+                    <i class="bi bi-plus-circle"></i> Create Cluster
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Cluster Confirmation Modal -->
+<div class="modal fade" id="deleteClusterModal" tabindex="-1" aria-labelledby="deleteClusterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteClusterModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Cluster Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Warning:</strong> This action cannot be undone!
+                </div>
+                <p>You are about to permanently delete the cluster:</p>
+                <p class="text-center"><strong id="deleteClusterName"></strong></p>
+                <p class="text-danger"><strong>All data in this cluster will be lost permanently.</strong></p>
+                <p class="text-muted small">Please ensure you have backups of any important data before proceeding.</p>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    The deletion will be queued and processed in the background. You can track its progress in the Operations panel at the bottom of the screen.
+                </div>
+
+                <div class="mb-3 mt-3">
+                    <label for="confirmClusterName" class="form-label">
+                        Type the cluster name to confirm deletion:
+                    </label>
+                    <input type="text" class="form-control" id="confirmClusterName"
+                           placeholder="Enter cluster name">
+                </div>
+
+                <div id="deleteClusterError" class="alert alert-danger d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteClusterBtn" disabled>
+                    <i class="bi bi-trash"></i> Delete Cluster
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    h1 {
+        font-size: 1.25rem;
+    }
+
+    .offcanvas-wide {
+        width: 600px !important;
+        max-width: 90vw;
+    }
+
+    .cluster-name-link {
+        cursor: pointer;
+        color: #00684a;
+        text-decoration: none;
+    }
+
+    .cluster-name-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Cluster creation animations */
+    .cluster-creation-animation {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .pulse-icon {
+        animation: pulse 2s ease-in-out infinite;
+        display: inline-block;
+    }
+
+    .spinning-gear {
+        animation: spin 2s linear infinite;
+        display: inline-block;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    /* Pause/Resume button styles */
+    .pause-countdown {
+        font-size: 0.75rem;
+        min-width: 120px;
+        text-align: center;
+    }
+
+    .pause-countdown .countdown-time {
+        font-family: monospace;
+        font-weight: bold;
+    }
+
+    .pause-countdown .countdown-label {
+        font-size: 0.65rem;
+        display: block;
+        margin-top: 2px;
+    }
+
+    /* Project filter dropdown styles */
+    #clustersTable .table-responsive {
+        overflow: visible !important;
+    }
+
+    /* Ensure the button group container is positioned relatively */
+    #clustersTable .btn-group {
+        position: relative;
+    }
+
+    #projectFilterDropdown {
+        padding: 0;
+        z-index: 1050 !important;
+        position: absolute !important;
+    }
+
+    #projectFilterDropdown .dropdown-item {
+        padding: 0.25rem 0;
+    }
+
+    #projectFilterDropdown .dropdown-item label {
+        width: 100%;
+        padding: 0.25rem 1rem;
+        margin: 0;
+    }
+
+    #projectFilterDropdown .dropdown-item label:hover {
+        background-color: #f8f9fa;
+    }
+
+    #projectFilterIcon.bi-funnel-fill {
+        color: #0d6efd !important;
+    }
+</style>
+
+<script>
+let clusters = [];
+let allClusters = []; // Store unfiltered list
+let selectedProjects = new Set(); // Track selected projects for filtering
+let allProjectNames = []; // All unique project names
+// Track clusters currently being deleted (key: "projectId:clusterName")
+const deletingClusters = new Set();
+
+// Global function to mark cluster as being deleted
+window.markClusterDeleting = function(projectId, clusterName) {
+    const key = `${projectId}:${clusterName}`;
+    deletingClusters.add(key);
+    console.log(`Marked cluster as deleting: ${key}`);
+};
+
+// Global function to unmark cluster as being deleted
+window.unmarkClusterDeleting = function(projectId, clusterName) {
+    const key = `${projectId}:${clusterName}`;
+    deletingClusters.delete(key);
+    console.log(`Unmarked cluster as deleting: ${key}`);
+};
+
+// Global function to check if cluster is being deleted
+window.isClusterDeleting = function(projectId, clusterName) {
+    const key = `${projectId}:${clusterName}`;
+    return deletingClusters.has(key);
+};
+
+// Build project filter dropdown with checkboxes
+// Get URL parameter by name
+function getUrlParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+function buildProjectFilterDropdown() {
+    // Get unique project names
+    const projectNames = new Set();
+    allClusters.forEach(cluster => {
+        if (cluster.projectName) {
+            projectNames.add(cluster.projectName);
+        }
+    });
+
+    allProjectNames = Array.from(projectNames).sort();
+
+    // Initialize selectedProjects with all projects
+    selectedProjects = new Set(allProjectNames);
+
+    renderProjectFilterList(allProjectNames);
+}
+
+// Apply project filter from URL parameter if present
+function applyUrlProjectFilter() {
+    const projectFromUrl = getUrlParameter('project');
+    if (projectFromUrl && allProjectNames.includes(projectFromUrl)) {
+        // Clear all selections and select only the specified project
+        selectedProjects.clear();
+        selectedProjects.add(projectFromUrl);
+
+        // Re-render the filter list to update checkboxes
+        renderProjectFilterList(allProjectNames);
+
+        // Apply the filter to show only this project's clusters
+        applyProjectFilter();
+
+        console.log(`Applied URL filter for project: ${projectFromUrl}`);
+    }
+}
+
+function renderProjectFilterList(projectsToShow) {
+    const listContainer = document.getElementById('projectFilterList');
+    listContainer.innerHTML = '';
+
+    projectsToShow.forEach(projectName => {
+        const item = document.createElement('li');
+        item.className = 'dropdown-item';
+
+        const label = document.createElement('label');
+        label.className = 'd-flex align-items-center';
+        label.style.cursor = 'pointer';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input me-2';
+        checkbox.value = projectName;
+        checkbox.checked = selectedProjects.has(projectName);
+        checkbox.onchange = function() {
+            toggleProjectFilter(projectName, this.checked);
+        };
+
+        const text = document.createElement('span');
+        text.textContent = projectName;
+
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        item.appendChild(label);
+        listContainer.appendChild(item);
+    });
+}
+
+function toggleProjectFilter(projectName, checked) {
+    if (checked) {
+        selectedProjects.add(projectName);
+    } else {
+        selectedProjects.delete(projectName);
+    }
+    applyProjectFilter();
+}
+
+function applyProjectFilter() {
+    if (selectedProjects.size === 0 || selectedProjects.size === allProjectNames.length) {
+        // No filter or all selected
+        clusters = [...allClusters];
+    } else {
+        // Filter by selected projects
+        clusters = allClusters.filter(cluster =>
+            selectedProjects.has(cluster.projectName)
+        );
+    }
+
+    renderClusters();
+    updateFilterIcon();
+}
+
+function updateFilterIcon() {
+    const icon = document.getElementById('projectFilterIcon');
+    if (selectedProjects.size < allProjectNames.length && selectedProjects.size > 0) {
+        icon.className = 'bi bi-funnel-fill text-primary';
+    } else {
+        icon.className = 'bi bi-funnel';
+    }
+}
+
+// Global functions for Select All / Clear All buttons
+window.selectAllProjects = function() {
+    selectedProjects = new Set(allProjectNames);
+    renderProjectFilterList(allProjectNames);
+    applyProjectFilter();
+};
+
+window.clearAllProjects = function() {
+    selectedProjects.clear();
+    renderProjectFilterList(allProjectNames);
+    applyProjectFilter();
+};
+
+// Helper function to render a single cluster row
+function renderClusterRow(cluster) {
+    const row = document.createElement('tr');
+    row.dataset.projectId = cluster.projectId;
+    row.dataset.clusterName = cluster.name;
+
+    const isDeleting = window.isClusterDeleting(cluster.projectId, cluster.name);
+    const isPaused = cluster.paused === true;
+    let displayStatus = isDeleting ? 'DELETING' : (cluster.stateName || 'UNKNOWN');
+    const statusClass = getStatusBadgeClass(displayStatus);
+    const users = cluster.users || [];
+    const pauseResumeBtn = getPauseResumeButton(cluster);
+
+    row.innerHTML = `
+        <td>
+            <a href="javascript:void(0)" class="cluster-name-link" onclick="showClusterDetails('${cluster.id || cluster.name}')">
+                <strong>${cluster.name}</strong>
+            </a>
+        </td>
+        <td>
+            <i class="bi bi-folder"></i> ${cluster.projectName || 'Unknown'}
+        </td>
+        <td>
+            <span class="badge ${statusClass}">${displayStatus}</span>
+            ${isPaused && !isDeleting ? '<span class="badge bg-warning text-dark ms-1">PAUSED</span>' : ''}
+        </td>
+        <td>
+            <a href="/clusters/${encodeURIComponent(cluster.name)}/databases" class="text-decoration-none">
+                ${cluster.clusterType || 'N/A'}
+            </a>
+        </td>
+        <td>${cluster.mongoDBVersion || 'N/A'}</td>
+        <td>${cluster.providerSettings?.providerName || 'N/A'}</td>
+        <td>${cluster.providerSettings?.regionName || 'N/A'}</td>
+        <td>${cluster.providerSettings?.instanceSizeName || 'N/A'}</td>
+        <td>
+            <a href="javascript:void(0)" class="text-decoration-none" onclick="showClusterDetails('${cluster.id || cluster.name}')">
+                <span class="badge bg-secondary">${users.length}</span>
+            </a>
+        </td>
+        <td>
+            ${pauseResumeBtn}
+            <button class="btn btn-sm btn-outline-primary cluster-login-btn me-1"
+                    data-cluster="${cluster.name}"
+                    onclick="handleClusterAction('${cluster.name}')">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    onclick="showDeleteClusterConfirmation('${cluster.name}', '${cluster.projectId}', '${cluster.providerSettings?.providerName || ''}', '${cluster.providerSettings?.instanceSizeName || ''}')">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </td>
+    `;
+    return row;
+}
+
+// Global function to remove a cluster row from the table
+window.removeClusterRow = function(projectId, clusterName) {
+    const container = document.getElementById('clustersContainer');
+    const row = container.querySelector(`tr[data-project-id="${projectId}"][data-cluster-name="${clusterName}"]`);
+    if (row) {
+        row.remove();
+        // Also remove from the clusters array
+        const index = clusters.findIndex(c => c.projectId === projectId && c.name === clusterName);
+        if (index !== -1) {
+            clusters.splice(index, 1);
+        }
+        // Update count
+        document.getElementById('clusterCount').textContent = clusters.length;
+        console.log(`Removed cluster row: ${clusterName} in project ${projectId}`);
+
+        // Show empty message if no clusters left
+        if (clusters.length === 0) {
+            container.innerHTML = '<tr><td colspan="10" class="text-center"><div class="alert alert-info mb-0">No clusters found</div></td></tr>';
+        }
+        return true;
+    }
+    return false;
+};
+
+// Global function to update a cluster row's status
+window.updateClusterRowStatus = function(projectId, clusterName, newStatus) {
+    const container = document.getElementById('clustersContainer');
+    const row = container.querySelector(`tr[data-project-id="${projectId}"][data-cluster-name="${clusterName}"]`);
+    if (row) {
+        const statusBadge = row.querySelector('td:nth-child(4) .badge');
+        if (statusBadge) {
+            statusBadge.className = `badge ${getStatusBadgeClass(newStatus)}`;
+            statusBadge.textContent = newStatus;
+        }
+        // Update in clusters array too
+        const cluster = clusters.find(c => c.projectId === projectId && c.name === clusterName);
+        if (cluster) {
+            cluster.stateName = newStatus;
+        }
+        console.log(`Updated cluster status: ${clusterName} -> ${newStatus}`);
+        return true;
+    }
+    return false;
+};
+
+// Global function to add or update a cluster in the table
+window.addOrUpdateClusterRow = function(cluster) {
+    const container = document.getElementById('clustersContainer');
+
+    // Check if row already exists
+    const existingRow = container.querySelector(`tr[data-project-id="${cluster.projectId}"][data-cluster-name="${cluster.name}"]`);
+
+    // Create new row
+    const newRow = renderClusterRow(cluster);
+
+    if (existingRow) {
+        // Update existing row
+        existingRow.replaceWith(newRow);
+        // Update in clusters array
+        const index = clusters.findIndex(c => c.projectId === cluster.projectId && c.name === cluster.name);
+        if (index !== -1) {
+            clusters[index] = cluster;
+        }
+        console.log(`Updated cluster row: ${cluster.name}`);
+    } else {
+        // Add new row at the beginning
+        // First check if we have the "no clusters" message
+        const noClusterMsg = container.querySelector('td[colspan="10"]');
+        if (noClusterMsg) {
+            container.innerHTML = '';
+        }
+        container.insertBefore(newRow, container.firstChild);
+        clusters.unshift(cluster);
+        console.log(`Added new cluster row: ${cluster.name}`);
+    }
+
+    // Update count
+    document.getElementById('clusterCount').textContent = clusters.length;
+};
+
+// Global function to get org/project names from existing clusters
+window.getClusterContext = function(projectId) {
+    const existingCluster = clusters.find(c => c.projectId === projectId);
+    if (existingCluster) {
+        return {
+            orgName: existingCluster.orgName || 'Unknown',
+            projectName: existingCluster.projectName || 'Unknown'
+        };
+    }
+    return { orgName: 'Unknown', projectName: 'Unknown' };
+};
+
+// ===== Pause/Resume Functionality =====
+
+// Track cooldown timers (key: "projectId:clusterName", value: cooldownEndsAt timestamp)
+const COOLDOWN_STORAGE_KEY = 'atlasui_pause_cooldowns';
+
+// Get cooldowns from localStorage
+function getCooldowns() {
+    try {
+        const stored = localStorage.getItem(COOLDOWN_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// Save cooldowns to localStorage
+function saveCooldowns(cooldowns) {
+    try {
+        localStorage.setItem(COOLDOWN_STORAGE_KEY, JSON.stringify(cooldowns));
+    } catch (e) {
+        console.error('Failed to save cooldowns:', e);
+    }
+}
+
+// Set cooldown for a cluster (60 minutes after resume)
+function setCooldown(projectId, clusterName, cooldownEndsAt) {
+    const key = `${projectId}:${clusterName}`;
+    const cooldowns = getCooldowns();
+    cooldowns[key] = cooldownEndsAt;
+    saveCooldowns(cooldowns);
+}
+
+// Get remaining cooldown time in seconds (0 if no cooldown or expired)
+function getRemainingCooldown(projectId, clusterName) {
+    const key = `${projectId}:${clusterName}`;
+    const cooldowns = getCooldowns();
+    const cooldownEndsAt = cooldowns[key];
+    if (!cooldownEndsAt) return 0;
+
+    const remaining = Math.ceil((cooldownEndsAt - Date.now() / 1000));
+    if (remaining <= 0) {
+        // Clean up expired cooldown
+        delete cooldowns[key];
+        saveCooldowns(cooldowns);
+        return 0;
+    }
+    return remaining;
+}
+
+// Check if a cluster can be paused (not M0/Free/Flex)
+function canBePaused(cluster) {
+    // Get instance size from providerSettings (old format) or replicationSpecs (new API format)
+    let instanceSize = cluster.providerSettings?.instanceSizeName || '';
+
+    // For M10+ clusters in new API format, instance size is in replicationSpecs
+    if (!instanceSize && cluster.replicationSpecs?.length > 0) {
+        const regionConfig = cluster.replicationSpecs[0]?.regionConfigs?.[0];
+        instanceSize = regionConfig?.electableSpecs?.instanceSize || '';
+    }
+
+    // M0 and Flex clusters cannot be paused
+    if (instanceSize === 'M0' || instanceSize === 'FLEX') {
+        return false;
+    }
+
+    // Check for TENANT provider (M0 uses TENANT)
+    const provider = cluster.providerSettings?.providerName || '';
+    if (provider === 'TENANT') {
+        return false;
+    }
+
+    // Also check regionConfigs for TENANT provider
+    if (cluster.replicationSpecs?.length > 0) {
+        const regionConfig = cluster.replicationSpecs[0]?.regionConfigs?.[0];
+        if (regionConfig?.providerName === 'TENANT') {
+            return false;
+        }
+    }
+
+    // Flex clusters have providerName = "FLEX"
+    if (provider === 'FLEX') {
+        return false;
+    }
+
+    // Only clusters with instance size (M10+) can be paused
+    // For dedicated clusters without providerSettings, they can be paused if clusterType is REPLICASET or SHARDED
+    if (instanceSize !== '' && instanceSize !== 'N/A') {
+        return true;
+    }
+
+    // Also allow pausing if this is a dedicated cluster (no TENANT provider, has replicationSpecs)
+    if (cluster.replicationSpecs?.length > 0 && cluster.clusterType) {
+        return true;
+    }
+
+    return false;
+}
+
+// Format seconds into MM:SS
+function formatCountdown(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Active countdown intervals (key: "projectId:clusterName")
+const countdownIntervals = {};
+
+// Start countdown timer for a cluster
+function startCountdown(projectId, clusterName) {
+    const key = `${projectId}:${clusterName}`;
+
+    // Clear existing interval if any
+    if (countdownIntervals[key]) {
+        clearInterval(countdownIntervals[key]);
+    }
+
+    const updateCountdown = () => {
+        const remaining = getRemainingCooldown(projectId, clusterName);
+        const btn = document.querySelector(`button[data-pause-cluster="${clusterName}"][data-pause-project="${projectId}"]`);
+
+        if (!btn) {
+            clearInterval(countdownIntervals[key]);
+            delete countdownIntervals[key];
+            return;
+        }
+
+        if (remaining <= 0) {
+            // Cooldown expired, show pause button
+            btn.outerHTML = `
+                <button class="btn btn-sm btn-outline-warning"
+                        data-pause-cluster="${clusterName}"
+                        data-pause-project="${projectId}"
+                        onclick="pauseCluster('${projectId}', '${clusterName}')">
+                    <i class="bi bi-pause-circle"></i> Pause
+                </button>`;
+            clearInterval(countdownIntervals[key]);
+            delete countdownIntervals[key];
+        } else {
+            // Update countdown display with label
+            btn.innerHTML = `<i class="bi bi-hourglass-split"></i> <span class="countdown-time">${formatCountdown(remaining)}</span><span class="countdown-label">Until next pause</span>`;
+        }
+    };
+
+    // Update immediately and then every second
+    updateCountdown();
+    countdownIntervals[key] = setInterval(updateCountdown, 1000);
+}
+
+// Generate pause/resume button HTML for a cluster
+function getPauseResumeButton(cluster) {
+    if (!canBePaused(cluster)) {
+        return ''; // No button for M0/Flex clusters
+    }
+
+    const projectId = cluster.projectId;
+    const clusterName = cluster.name;
+    const isPaused = cluster.paused === true;
+    const cooldownRemaining = getRemainingCooldown(projectId, clusterName);
+
+    if (isPaused) {
+        // Show resume button
+        return `
+            <button class="btn btn-sm btn-outline-success"
+                    data-pause-cluster="${clusterName}"
+                    data-pause-project="${projectId}"
+                    onclick="resumeCluster('${projectId}', '${clusterName}')">
+                <i class="bi bi-play-circle"></i> Resume
+            </button>`;
+    } else if (cooldownRemaining > 0) {
+        // Show countdown timer with label
+        return `
+            <button class="btn btn-sm btn-outline-secondary pause-countdown" disabled
+                    data-pause-cluster="${clusterName}"
+                    data-pause-project="${projectId}">
+                <i class="bi bi-hourglass-split"></i> <span class="countdown-time">${formatCountdown(cooldownRemaining)}</span><span class="countdown-label">Until next pause</span>
+            </button>`;
+    } else {
+        // Show pause button
+        return `
+            <button class="btn btn-sm btn-outline-warning"
+                    data-pause-cluster="${clusterName}"
+                    data-pause-project="${projectId}"
+                    onclick="pauseCluster('${projectId}', '${clusterName}')">
+                <i class="bi bi-pause-circle"></i> Pause
+            </button>`;
+    }
+}
+
+// Poll for cluster status until it matches expected state
+// Default: 120 attempts × 5 seconds = 10 minutes max
+async function pollClusterStatus(projectId, clusterName, expectedPaused, maxAttempts = 120, intervalMs = 5000) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            const response = await fetch(`/api/clusters/${projectId}/${clusterName}`);
+            if (response.ok) {
+                const data = await response.json();
+                const isPaused = data.paused === true;
+                const stateName = data.stateName || '';
+
+                console.log(`Poll ${attempt + 1}: paused=${isPaused}, stateName=${stateName}`);
+
+                if (expectedPaused && isPaused) {
+                    // Waiting for PAUSED state
+                    return { success: true, cluster: data };
+                } else if (!expectedPaused && !isPaused && stateName === 'IDLE') {
+                    // Waiting for IDLE state (after resume)
+                    return { success: true, cluster: data };
+                }
+            }
+        } catch (err) {
+            console.warn(`Poll attempt ${attempt + 1} failed:`, err);
+        }
+
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+
+    return { success: false, error: 'Timeout waiting for cluster status change' };
+}
+
+// Pause a cluster
+async function pauseCluster(projectId, clusterName) {
+    const btn = document.querySelector(`button[data-pause-cluster="${clusterName}"][data-pause-project="${projectId}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Pausing...';
+    }
+
+    try {
+        const response = await fetch(`/api/clusters/${projectId}/${clusterName}/pause`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log(`Pause request sent for cluster ${clusterName}, waiting for PAUSED state...`);
+
+            // Update status badge to show transition
+            window.updateClusterRowStatus(projectId, clusterName, 'PAUSING');
+
+            // Poll for PAUSED state
+            const pollResult = await pollClusterStatus(projectId, clusterName, true);
+
+            if (pollResult.success) {
+                console.log(`Cluster ${clusterName} is now PAUSED`);
+                // Update the button to show Resume
+                if (btn) {
+                    btn.outerHTML = `
+                        <button class="btn btn-sm btn-outline-success"
+                                data-pause-cluster="${clusterName}"
+                                data-pause-project="${projectId}"
+                                onclick="resumeCluster('${projectId}', '${clusterName}')">
+                            <i class="bi bi-play-circle"></i> Resume
+                        </button>`;
+                }
+                // Update cluster status badge
+                window.updateClusterRowStatus(projectId, clusterName, 'PAUSED');
+            } else {
+                console.warn('Timeout waiting for PAUSED state, but pause was initiated');
+                // Still update the button since the operation was accepted
+                if (btn) {
+                    btn.outerHTML = `
+                        <button class="btn btn-sm btn-outline-success"
+                                data-pause-cluster="${clusterName}"
+                                data-pause-project="${projectId}"
+                                onclick="resumeCluster('${projectId}', '${clusterName}')">
+                            <i class="bi bi-play-circle"></i> Resume
+                        </button>`;
+                }
+                window.updateClusterRowStatus(projectId, clusterName, 'PAUSED');
+            }
+        } else {
+            console.error('Failed to pause cluster:', data.detail);
+            alert(`Failed to pause cluster: ${data.detail || 'Unknown error'}`);
+            // Restore button
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-pause-circle"></i> Pause';
+            }
+        }
+    } catch (err) {
+        console.error('Error pausing cluster:', err);
+        alert(`Error pausing cluster: ${err.message}`);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-pause-circle"></i> Pause';
+        }
+    }
+}
+
+// Resume a cluster
+async function resumeCluster(projectId, clusterName) {
+    const btn = document.querySelector(`button[data-pause-cluster="${clusterName}"][data-pause-project="${projectId}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Resuming...';
+    }
+
+    try {
+        const response = await fetch(`/api/clusters/${projectId}/${clusterName}/resume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log(`Resume request sent for cluster ${clusterName}, waiting for IDLE state...`);
+
+            // Update status badge to show transition
+            window.updateClusterRowStatus(projectId, clusterName, 'RESUMING');
+
+            // Poll for IDLE state (not paused and stateName === 'IDLE')
+            const pollResult = await pollClusterStatus(projectId, clusterName, false);
+
+            // Set cooldown timer (60 minutes) - start from when we initiated the resume
+            const cooldownEndsAt = data.cooldown_ends_at || (Date.now() / 1000 + 3600);
+            setCooldown(projectId, clusterName, cooldownEndsAt);
+
+            if (pollResult.success) {
+                console.log(`Cluster ${clusterName} is now IDLE`);
+                // Update the button to show countdown
+                if (btn) {
+                    const remaining = Math.ceil(cooldownEndsAt - Date.now() / 1000);
+                    btn.outerHTML = `
+                        <button class="btn btn-sm btn-outline-secondary pause-countdown" disabled
+                                data-pause-cluster="${clusterName}"
+                                data-pause-project="${projectId}">
+                            <i class="bi bi-hourglass-split"></i> <span class="countdown-time">${formatCountdown(remaining)}</span><span class="countdown-label">Until next pause</span>
+                        </button>`;
+                }
+                // Start countdown timer
+                startCountdown(projectId, clusterName);
+                // Update cluster status badge
+                window.updateClusterRowStatus(projectId, clusterName, 'IDLE');
+            } else {
+                console.warn('Timeout waiting for IDLE state, but resume was initiated');
+                // Still update the button since the operation was accepted
+                if (btn) {
+                    const remaining = Math.ceil(cooldownEndsAt - Date.now() / 1000);
+                    btn.outerHTML = `
+                        <button class="btn btn-sm btn-outline-secondary pause-countdown" disabled
+                                data-pause-cluster="${clusterName}"
+                                data-pause-project="${projectId}">
+                            <i class="bi bi-hourglass-split"></i> <span class="countdown-time">${formatCountdown(remaining)}</span><span class="countdown-label">Until next pause</span>
+                        </button>`;
+                }
+                startCountdown(projectId, clusterName);
+                window.updateClusterRowStatus(projectId, clusterName, 'IDLE');
+            }
+        } else {
+            console.error('Failed to resume cluster:', data.detail);
+            alert(`Failed to resume cluster: ${data.detail || 'Unknown error'}`);
+            // Restore button
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-circle"></i> Resume';
+            }
+        }
+    } catch (err) {
+        console.error('Error resuming cluster:', err);
+        alert(`Error resuming cluster: ${err.message}`);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-circle"></i> Resume';
+        }
+    }
+}
+
+// Initialize countdown timers for clusters with active cooldowns
+function initCountdownTimers() {
+    const cooldowns = getCooldowns();
+    const now = Date.now() / 1000;
+
+    Object.keys(cooldowns).forEach(key => {
+        const [projectId, clusterName] = key.split(':');
+        if (cooldowns[key] > now) {
+            // Start countdown for this cluster
+            startCountdown(projectId, clusterName);
+        }
+    });
+}
+
+// Global function to fetch a single cluster and add/update it in the table
+window.fetchAndUpdateCluster = async function(projectId, clusterName, isFlexCluster = false) {
+    try {
+        console.log(`Fetching cluster: ${clusterName} from project ${projectId}`);
+
+        // Fetch cluster details
+        let clusterData = null;
+        if (isFlexCluster) {
+            const response = await fetch(`/api/clusters/${projectId}/flex/list`);
+            if (response.ok) {
+                const data = await response.json();
+                clusterData = (data.results || []).find(c => c.name === clusterName);
+            }
+        } else {
+            const response = await fetch(`/api/clusters/${projectId}`);
+            if (response.ok) {
+                const data = await response.json();
+                clusterData = (data.results || []).find(c => c.name === clusterName);
+            }
+        }
+
+        if (!clusterData) {
+            console.warn(`Cluster ${clusterName} not found in API response`);
+            return false;
+        }
+
+        // We need to get the org and project names too
+        // Try to find them from existing clusters or fetch
+        let orgName = 'Unknown';
+        let projectName = 'Unknown';
+
+        // Check existing clusters for org/project names
+        const existingCluster = clusters.find(c => c.projectId === projectId);
+        if (existingCluster) {
+            orgName = existingCluster.orgName;
+            projectName = existingCluster.projectName;
+        } else {
+            // Need to fetch project info
+            try {
+                const orgsResponse = await fetch('/api/organizations/');
+                if (orgsResponse.ok) {
+                    const orgsData = await orgsResponse.json();
+                    for (const org of (orgsData.results || [])) {
+                        const projResponse = await fetch(`/api/organizations/${org.id}/projects`);
+                        if (projResponse.ok) {
+                            const projData = await projResponse.json();
+                            const project = (projData.results || []).find(p => p.id === projectId);
+                            if (project) {
+                                orgName = org.name;
+                                projectName = project.name;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to fetch org/project names:', err);
+            }
+        }
+
+        // Build complete cluster object
+        const cluster = {
+            ...clusterData,
+            projectId: projectId,
+            orgName: orgName,
+            projectName: projectName,
+            users: [] // Users would need separate fetch
+        };
+
+        // Add or update the row
+        window.addOrUpdateClusterRow(cluster);
+        return true;
+
+    } catch (err) {
+        console.error(`Failed to fetch cluster ${clusterName}:`, err);
+        return false;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadClusters();
+    document.getElementById('refreshBtn').addEventListener('click', loadClusters);
+
+    // Project search box within dropdown
+    const projectSearchBox = document.getElementById('projectSearchBox');
+    projectSearchBox.addEventListener('input', (e) => {
+        const searchText = e.target.value.toLowerCase();
+        if (searchText === '') {
+            renderProjectFilterList(allProjectNames);
+        } else {
+            const filteredProjects = allProjectNames.filter(name =>
+                name.toLowerCase().includes(searchText)
+            );
+            renderProjectFilterList(filteredProjects);
+        }
+    });
+
+    // Expose loadClusters to window for manual refresh (targeted updates are used for SSE events)
+    window.loadClusters = loadClusters;
+
+    // Listen for operation completions to auto-refresh cluster list
+    let pollAttempts = 0;
+    const maxPollAttempts = 10;
+    const pollInterval = setInterval(() => {
+        pollAttempts++;
+        console.log(`[All Clusters] Polling for operationQueueUI (attempt ${pollAttempts}/${maxPollAttempts})`);
+
+        if (window.operationQueueUI && window.operationQueueUI.manager) {
+            clearInterval(pollInterval);
+            console.log('[All Clusters] operationQueueUI found, registering listener');
+
+            window.operationQueueUI.manager.addListener((event, operation) => {
+                console.log('[All Clusters] SSE event received:', event, 'type:', operation.type);
+
+                // Reload clusters list when:
+                // - create_cluster completes (new cluster added)
+                // - delete_cluster completes (cluster removed - including cascading deletes from project deletion)
+                if (event === 'completed' &&
+                    (operation.type === 'create_cluster' ||
+                     operation.type === 'delete_cluster' ||
+                     operation.type === 'create_flex_cluster' ||
+                     operation.type === 'delete_flex_cluster')) {
+                    console.log(`[All Clusters] ${operation.type} completed, reloading clusters list`);
+                    loadClusters();
+                }
+            });
+
+            console.log('[All Clusters] Event listener registered successfully');
+        } else if (pollAttempts >= maxPollAttempts) {
+            clearInterval(pollInterval);
+            console.error('[All Clusters] Failed to find operationQueueUI after', maxPollAttempts, 'attempts');
+        }
+    }, 500);
+});
+
+async function loadClusters() {
+    const loading = document.getElementById('loadingIndicator');
+    const error = document.getElementById('errorMessage');
+    const table = document.getElementById('clustersTable');
+
+    loading.classList.remove('d-none');
+    error.classList.add('d-none');
+    table.classList.add('d-none');
+
+    const startTime = performance.now();
+    console.log('[TIMING] Starting cluster load...');
+
+    try {
+        // Fetch all organizations
+        const orgStart = performance.now();
+        const orgsResponse = await fetch('/api/organizations/?itemsPerPage=500');
+        if (!orgsResponse.ok) throw new Error('Failed to fetch organizations');
+        const orgsData = await orgsResponse.json();
+        console.log(`[TIMING] Organizations fetched in ${(performance.now() - orgStart).toFixed(0)}ms`);
+
+        // Fetch all projects in parallel
+        const projectPromises = (orgsData.results || []).map(async (org) => {
+            const projectsResponse = await fetch(`/api/organizations/${org.id}/projects?itemsPerPage=500`);
+            if (!projectsResponse.ok) return [];
+            const projectsData = await projectsResponse.json();
+            return (projectsData.results || []).map(project => ({
+                ...project,
+                orgName: org.name,
+                orgId: org.id
+            }));
+        });
+
+        const projectArrays = await Promise.all(projectPromises);
+        const allProjects = projectArrays.flat();
+        console.log(`[TIMING] All projects fetched in ${(performance.now() - startTime).toFixed(0)}ms (${allProjects.length} projects)`);
+
+        // Fetch clusters and users for all projects in parallel
+        const clusterStart = performance.now();
+        const clusterPromises = allProjects.map(async (project) => {
+            // Fetch regular clusters, Flex clusters, and users in parallel for this project
+            const [regularClusters, flexClusters, projectUsers] = await Promise.all([
+                // Regular clusters
+                fetch(`/api/clusters/${project.id}?itemsPerPage=500`)
+                    .then(r => r.ok ? r.json() : { results: [] })
+                    .then(data => data.results || [])
+                    .catch(() => []),
+
+                // Flex clusters
+                fetch(`/api/clusters/${project.id}/flex/list?itemsPerPage=500`)
+                    .then(r => r.ok ? r.json() : { results: [] })
+                    .then(data => data.results || [])
+                    .catch(() => []),
+
+                // Users
+                fetch(`/api/users/${project.id}`)
+                    .then(r => r.ok ? r.json() : { results: [] })
+                    .then(data => data.results || [])
+                    .catch(() => [])
+            ]);
+
+            // Combine and annotate clusters
+            const projectClusters = [...regularClusters, ...flexClusters];
+            return projectClusters.map(cluster => ({
+                ...cluster,
+                orgName: project.orgName,
+                orgId: project.orgId,
+                projectName: project.name,
+                projectId: project.id,
+                users: projectUsers
+            }));
+        });
+
+        const clusterArrays = await Promise.all(clusterPromises);
+        allClusters = clusterArrays.flat();
+        clusters = [...allClusters]; // Start with all clusters
+        console.log(`[TIMING] All clusters fetched in ${(performance.now() - clusterStart).toFixed(0)}ms (${clusters.length} clusters)`);
+        console.log(`[TIMING] TOTAL load time: ${(performance.now() - startTime).toFixed(0)}ms`);
+
+        renderClusters();
+        loading.classList.add('d-none');
+        table.classList.remove('d-none');
+
+        // Build project filter dropdown
+        if (allClusters.length > 0) {
+            buildProjectFilterDropdown();
+            // Apply URL-based project filter if present
+            applyUrlProjectFilter();
+        }
+
+    } catch (err) {
+        console.error('Error loading clusters:', err);
+        loading.classList.add('d-none');
+        error.classList.remove('d-none');
+        document.getElementById('errorText').textContent = err.message;
+    }
+}
+
+function renderClusters() {
+    const container = document.getElementById('clustersContainer');
+    container.innerHTML = '';
+
+    if (clusters.length === 0) {
+        container.innerHTML = '<tr><td colspan="11" class="text-center"><div class="alert alert-info mb-0">No clusters found</div></td></tr>';
+        return;
+    }
+
+    clusters.forEach(cluster => {
+        const row = document.createElement('tr');
+        // Add data attributes for targeted updates
+        row.dataset.projectId = cluster.projectId;
+        row.dataset.clusterName = cluster.name;
+        // Override status if cluster is being deleted or paused
+        const isDeleting = window.isClusterDeleting(cluster.projectId, cluster.name);
+        const isPaused = cluster.paused === true;
+        let displayStatus = isDeleting ? 'DELETING' : (cluster.stateName || 'UNKNOWN');
+        const statusClass = getStatusBadgeClass(displayStatus);
+        const users = cluster.users || [];
+        const pauseResumeBtn = getPauseResumeButton(cluster);
+
+        row.innerHTML = `
+            <td>
+                <a href="javascript:void(0)" class="cluster-name-link" onclick="showClusterDetails('${cluster.id || cluster.name}')">
+                    <strong>${cluster.name}</strong>
+                </a>
+            </td>
+            <td>
+                <i class="bi bi-folder"></i> ${cluster.projectName}
+            </td>
+            <td>
+                <span class="badge ${statusClass}">${displayStatus}</span>
+                ${isPaused && !isDeleting ? '<span class="badge bg-warning text-dark ms-1">PAUSED</span>' : ''}
+            </td>
+            <td>
+                <a href="/clusters/${encodeURIComponent(cluster.name)}/databases" class="text-decoration-none">
+                    ${cluster.clusterType || 'N/A'}
+                </a>
+            </td>
+            <td>${cluster.mongoDBVersion || 'N/A'}</td>
+            <td>${cluster.providerSettings?.providerName || 'N/A'}</td>
+            <td>${cluster.providerSettings?.regionName || 'N/A'}</td>
+            <td>${cluster.providerSettings?.instanceSizeName || 'N/A'}</td>
+            <td>
+                <a href="javascript:void(0)" class="text-decoration-none" onclick="showClusterDetails('${cluster.id || cluster.name}')">
+                    <span class="badge bg-secondary">${users.length}</span>
+                </a>
+            </td>
+            <td>
+                ${pauseResumeBtn}
+                <button class="btn btn-sm btn-outline-primary cluster-login-btn me-1"
+                        data-cluster="${cluster.name}"
+                        onclick="handleClusterAction('${cluster.name}')">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="showDeleteClusterConfirmation('${cluster.name}', '${cluster.projectId}', '${cluster.providerSettings?.providerName || ''}', '${cluster.providerSettings?.instanceSizeName || ''}')">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </td>
+        `;
+        container.appendChild(row);
+    });
+
+    // Initialize countdown timers for any clusters with active cooldowns
+    initCountdownTimers();
+}
+
+function formatConnectionString(connectionString) {
+    // Insert username:password@ placeholder after the protocol (mongodb:// or mongodb+srv://)
+    if (!connectionString) return connectionString;
+
+    // Match mongodb:// or mongodb+srv://
+    const match = connectionString.match(/^(mongodb(?:\+srv)?:\/\/)(.*)/);
+    if (match) {
+        return `${match[1]}<strong>username:password@</strong>${match[2]}`;
+    }
+    return connectionString;
+}
+
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'IDLE':
+            return 'bg-success';
+        case 'CREATING':
+        case 'UPDATING':
+        case 'REPAIRING':
+        case 'PAUSING':
+        case 'RESUMING':
+            return 'bg-warning';
+        case 'PAUSED':
+            return 'bg-info';
+        case 'DELETING':
+        case 'DELETED':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+async function showClusterDetails(clusterId) {
+    // Find cluster in the clusters array
+    const cluster = clusters.find(c => (c.id === clusterId || c.name === clusterId));
+    if (!cluster) return;
+
+    const detailsContent = document.getElementById('detailsContent');
+
+    // Show loading state
+    detailsContent.innerHTML = `
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading cluster details...</p>
+        </div>
+    `;
+
+    // Open the offcanvas immediately
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('detailsPanel'));
+    offcanvas.show();
+
+    try {
+        // Fetch additional data in parallel
+        const [alertsData, snapshotsData, advancedConfigData, usersData] = await Promise.all([
+            fetch(`/api/alerts/${cluster.projectId}`).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] })),
+            fetch(`/api/backups/${cluster.projectId}/${cluster.name}/snapshots`).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] })),
+            fetch(`/api/clusters/${cluster.projectId}/${cluster.name}/advanced-configuration`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+            fetch(`/api/users/${cluster.projectId}`).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
+        ]);
+
+        const alerts = (alertsData.results || []).filter(alert => alert.clusterName === cluster.name);
+        const snapshots = snapshotsData.results || [];
+        const advancedConfig = advancedConfigData;
+        const users = usersData.results || [];
+        const statusClass = getStatusBadgeClass(cluster.stateName);
+
+    // Build comprehensive details HTML
+    let html = `
+        <h5 class="mb-3">
+            <i class="bi bi-hdd-rack"></i> ${cluster.name}
+        </h5>
+
+        <div class="mb-3">
+            <span class="badge ${statusClass}">${cluster.stateName || 'UNKNOWN'}</span>
+            ${cluster.paused ? '<span class="badge bg-warning text-dark ms-1">PAUSED</span>' : ''}
+            ${alerts.length > 0 ? `<span class="badge bg-danger ms-1">${alerts.length} Alert${alerts.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+
+        <div class="mb-3">
+            <h6 class="text-muted">Basic Information</h6>
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th width="40%">Name</th><td>${cluster.name}</td></tr>
+                    ${cluster.id ? `<tr><th>ID</th><td><code class="small">${cluster.id}</code></td></tr>` : ''}
+                    ${cluster.groupId ? `<tr><th>Group ID</th><td><code class="small">${cluster.groupId}</code></td></tr>` : ''}
+                    <tr><th>Status</th><td><span class="badge ${statusClass}">${cluster.stateName || 'UNKNOWN'}</span></td></tr>
+                    <tr><th>Cluster Type</th><td>${cluster.clusterType || 'N/A'}</td></tr>
+                    <tr><th>MongoDB Version</th><td>${cluster.mongoDBVersion || 'N/A'}</td></tr>
+                    ${cluster.mongoDBMajorVersion ? `<tr><th>Major Version</th><td>${cluster.mongoDBMajorVersion}</td></tr>` : ''}
+                    ${cluster.createDate ? `<tr><th>Created</th><td>${new Date(cluster.createDate).toLocaleString()}</td></tr>` : ''}
+                    ${cluster.replicationFactor ? `<tr><th>Replication Factor</th><td>${cluster.replicationFactor}</td></tr>` : ''}
+                    ${cluster.numShards ? `<tr><th>Number of Shards</th><td>${cluster.numShards}</td></tr>` : ''}
+                    ${cluster.diskSizeGB ? `<tr><th>Disk Size</th><td>${cluster.diskSizeGB} GB</td></tr>` : ''}
+                    ${cluster.paused !== undefined ? `<tr><th>Paused</th><td><span class="badge ${cluster.paused ? 'bg-warning' : 'bg-success'}">${cluster.paused ? 'Yes' : 'No'}</span></td></tr>` : ''}
+                    ${cluster.backupEnabled !== undefined ? `<tr><th>Backup Enabled</th><td><span class="badge ${cluster.backupEnabled ? 'bg-success' : 'bg-secondary'}">${cluster.backupEnabled ? 'Yes' : 'No'}</span></td></tr>` : ''}
+                    ${cluster.providerBackupEnabled !== undefined ? `<tr><th>Provider Backup</th><td><span class="badge ${cluster.providerBackupEnabled ? 'bg-success' : 'bg-secondary'}">${cluster.providerBackupEnabled ? 'Yes' : 'No'}</span></td></tr>` : ''}
+                    ${cluster.pitEnabled !== undefined ? `<tr><th>Point-in-Time Restore</th><td><span class="badge ${cluster.pitEnabled ? 'bg-success' : 'bg-secondary'}">${cluster.pitEnabled ? 'Enabled' : 'Disabled'}</span></td></tr>` : ''}
+                    ${snapshots.length > 0 ? `<tr><th>Snapshots</th><td><span class="badge bg-info">${snapshots.length}</span></td></tr>` : ''}
+                    ${cluster.encryptionAtRestProvider ? `<tr><th>Encryption Provider</th><td>${cluster.encryptionAtRestProvider}</td></tr>` : ''}
+                    ${cluster.versionReleaseSystem ? `<tr><th>Version Release System</th><td>${cluster.versionReleaseSystem}</td></tr>` : ''}
+                    ${cluster.rootCertType ? `<tr><th>Root Cert Type</th><td>${cluster.rootCertType}</td></tr>` : ''}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Provider settings
+    if (cluster.providerSettings) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Provider Settings</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        ${cluster.providerSettings.providerName ? `<tr><th width="40%">Provider</th><td>${cluster.providerSettings.providerName}</td></tr>` : ''}
+                        ${cluster.providerSettings.regionName ? `<tr><th>Region</th><td>${cluster.providerSettings.regionName}</td></tr>` : ''}
+                        ${cluster.providerSettings.instanceSizeName ? `<tr><th>Instance Size</th><td>${cluster.providerSettings.instanceSizeName}</td></tr>` : ''}
+                        ${cluster.providerSettings.backingProviderName ? `<tr><th>Backing Provider</th><td>${cluster.providerSettings.backingProviderName}</td></tr>` : ''}
+                        ${cluster.providerSettings.diskIOPS ? `<tr><th>Disk IOPS</th><td>${cluster.providerSettings.diskIOPS}</td></tr>` : ''}
+                        ${cluster.providerSettings.encryptEBSVolume !== undefined ? `<tr><th>Encrypted EBS</th><td><span class="badge ${cluster.providerSettings.encryptEBSVolume ? 'bg-success' : 'bg-secondary'}">${cluster.providerSettings.encryptEBSVolume ? 'Yes' : 'No'}</span></td></tr>` : ''}
+                        ${cluster.providerSettings.volumeType ? `<tr><th>Volume Type</th><td>${cluster.providerSettings.volumeType}</td></tr>` : ''}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Bi-Connector
+    if (cluster.biConnector) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">BI Connector</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        ${cluster.biConnector.enabled !== undefined ? `<tr><th>Enabled</th><td>${cluster.biConnector.enabled ? 'Yes' : 'No'}</td></tr>` : ''}
+                        ${cluster.biConnector.readPreference ? `<tr><th>Read Preference</th><td>${cluster.biConnector.readPreference}</td></tr>` : ''}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Labels/Tags
+    if (cluster.labels && cluster.labels.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Labels</h6>
+                ${cluster.labels.map(label =>
+                    `<span class="badge bg-secondary me-1">${label.key}: ${label.value}</span>`
+                ).join('')}
+            </div>
+        `;
+    }
+
+    if (cluster.tags && cluster.tags.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Tags</h6>
+                ${cluster.tags.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    // Connection strings
+    if (cluster.connectionStrings) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Connection Strings</h6>
+                <div class="small">
+        `;
+
+        if (cluster.connectionStrings.standardSrv) {
+            html += `
+                <div class="mb-2">
+                    <strong>Standard SRV:</strong><br>
+                    <code class="small text-break">${formatConnectionString(cluster.connectionStrings.standardSrv)}</code>
+                </div>
+            `;
+        }
+
+        if (cluster.connectionStrings.standard) {
+            html += `
+                <div class="mb-2">
+                    <strong>Standard:</strong><br>
+                    <code class="small text-break">${formatConnectionString(cluster.connectionStrings.standard)}</code>
+                </div>
+            `;
+        }
+
+        html += `</div></div>`;
+    }
+
+    // Database users
+    if (users.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Database Users (${users.length})</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Database</th>
+                                <th>Roles</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${users.map(user => `
+                                <tr>
+                                    <td><strong>${user.username}</strong></td>
+                                    <td><code class="small">${user.databaseName || 'admin'}</code></td>
+                                    <td>
+                                        ${user.roles && user.roles.length > 0 ?
+                                            user.roles.map(role => `<span class="badge bg-secondary me-1">${role.roleName}</span>`).join('') :
+                                            '<span class="text-muted">No roles</span>'
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-muted">Database Users</h6>
+                <p class="small text-muted">No database users in this project</p>
+            </div>
+        `;
+    }
+
+        detailsContent.innerHTML = html;
+
+    } catch (err) {
+        console.error('Error loading cluster details:', err);
+        detailsContent.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                Failed to load cluster details: ${err.message}
+            </div>
+        `;
+    }
+}
+
+function showLoginModal(connectionString, clusterName) {
+    // Reset the form and hide messages
+    document.getElementById('loginForm').reset();
+    document.getElementById('loginError').classList.add('d-none');
+    document.getElementById('loginSuccess').classList.add('d-none');
+    document.getElementById('databasesList').classList.add('d-none');
+
+    // Set the connection string and cluster name
+    document.getElementById('clusterConnectionString').value = connectionString;
+    document.getElementById('clusterName').value = clusterName;
+
+    // Update modal title
+    document.getElementById('loginModalLabel').innerHTML = `<i class="bi bi-key"></i> Login to ${clusterName}`;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+    modal.show();
+}
+
+async function loginToCluster() {
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+    const databasesList = document.getElementById('databasesList');
+
+    const connectionString = document.getElementById('clusterConnectionString').value;
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+        loginError.textContent = 'Please enter username and password';
+        loginError.classList.remove('d-none');
+        return;
+    }
+
+    // Hide previous messages
+    loginError.classList.add('d-none');
+    loginSuccess.classList.add('d-none');
+    databasesList.classList.add('d-none');
+
+    // Show loading state
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Connecting...';
+
+    try {
+        const response = await fetch('/api/clusters/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                connection_string: connectionString,
+                username: username,
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Show success message
+            loginSuccess.textContent = `Successfully connected! Found ${data.total} database(s)`;
+            loginSuccess.classList.remove('d-none');
+
+            // Populate databases table
+            const tbody = document.getElementById('databasesTableBody');
+            tbody.innerHTML = '';
+
+            data.databases.forEach(db => {
+                const row = document.createElement('tr');
+                if (db.error) {
+                    row.innerHTML = `
+                        <td>${db.name}</td>
+                        <td colspan="3" class="text-danger small">${db.error}</td>
+                    `;
+                } else {
+                    row.innerHTML = `
+                        <td><strong>${db.name}</strong></td>
+                        <td>${db.collections || 0}</td>
+                        <td>${db.indexes || 0}</td>
+                        <td>${formatBytes(db.sizeOnDisk || 0)}</td>
+                    `;
+                }
+                tbody.appendChild(row);
+            });
+
+            // Show databases list
+            databasesList.classList.remove('d-none');
+
+        } else {
+            loginError.textContent = data.detail || 'Failed to connect to cluster';
+            loginError.classList.remove('d-none');
+        }
+
+    } catch (err) {
+        console.error('Login error:', err);
+        loginError.textContent = 'Failed to connect to cluster: ' + err.message;
+        loginError.classList.remove('d-none');
+    } finally {
+        // Reset button state
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Login';
+    }
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function showAddUserModal(projectId, projectName) {
+    // Reset the form and hide messages
+    document.getElementById('addUserForm').reset();
+    document.getElementById('addUserError').classList.add('d-none');
+    document.getElementById('addUserSuccess').classList.add('d-none');
+
+    // Set the project ID
+    document.getElementById('addUserProjectId').value = projectId;
+
+    // Update modal title
+    document.getElementById('addUserModalLabel').innerHTML =
+        `<i class="bi bi-person-plus"></i> Add Database User to ${projectName}`;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('addUserModal'));
+    modal.show();
+}
+
+async function addDatabaseUser() {
+    const addUserBtn = document.getElementById('addUserBtn');
+    const addUserError = document.getElementById('addUserError');
+    const addUserSuccess = document.getElementById('addUserSuccess');
+
+    const projectId = document.getElementById('addUserProjectId').value;
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const roleName = document.getElementById('userRole').value;
+    const databaseName = document.getElementById('targetDatabase').value;
+
+    if (!username || !password || !roleName) {
+        addUserError.textContent = 'Please fill in all required fields';
+        addUserError.classList.remove('d-none');
+        return;
+    }
+
+    // Hide previous messages
+    addUserError.classList.add('d-none');
+    addUserSuccess.classList.add('d-none');
+
+    // Show loading state
+    addUserBtn.disabled = true;
+    addUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Adding...';
+
+    try {
+        const response = await fetch(`/api/users/${projectId}/database-users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                databaseName: databaseName,
+                roles: [
+                    {
+                        roleName: roleName,
+                        databaseName: databaseName
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Show success message
+            addUserSuccess.textContent = `User "${username}" added successfully!`;
+            addUserSuccess.classList.remove('d-none');
+
+            // Reload clusters after a short delay to show updated users
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+                loadClusters();
+            }, 1500);
+
+        } else {
+            addUserError.textContent = data.detail || 'Failed to add user';
+            addUserError.classList.remove('d-none');
+        }
+
+    } catch (err) {
+        console.error('Add user error:', err);
+        addUserError.textContent = 'Failed to add user: ' + err.message;
+        addUserError.classList.remove('d-none');
+    } finally {
+        // Reset button state
+        addUserBtn.disabled = false;
+        addUserBtn.innerHTML = '<i class="bi bi-person-plus"></i> Add User';
+    }
+}
+
+// Handle cluster login/logout button action
+let currentLogoutCluster = null;
+
+function handleClusterAction(clusterName) {
+    const button = document.querySelector(`button[data-cluster="${clusterName}"]`);
+    const isLoggedIn = button.classList.contains('btn-outline-danger');
+
+    if (isLoggedIn) {
+        // Show logout confirmation
+        showLogoutConfirmation(clusterName);
+    } else {
+        // Navigate to databases page for login
+        window.location.href = `/clusters/${encodeURIComponent(clusterName)}/databases`;
+    }
+}
+
+function showLogoutConfirmation(clusterName) {
+    currentLogoutCluster = clusterName;
+    document.getElementById('logoutClusterName').textContent = clusterName;
+
+    const logoutModal = new bootstrap.Modal(document.getElementById('logoutModal'));
+    logoutModal.show();
+}
+
+async function performLogout() {
+    if (!currentLogoutCluster) return;
+
+    const button = document.querySelector(`button[data-cluster="${currentLogoutCluster}"]`);
+
+    try {
+        // Call logout API
+        const response = await fetch('/api/clusters/session/logout', {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            // Update button to login state
+            button.classList.remove('btn-outline-danger');
+            button.classList.add('btn-outline-primary');
+            button.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Login';
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('logoutModal')).hide();
+
+            // Show success message
+            console.log(`Logged out from ${currentLogoutCluster}`);
+        } else {
+            console.error('Logout failed');
+        }
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+
+    currentLogoutCluster = null;
+}
+
+async function checkSessionStatus() {
+    try {
+        const response = await fetch('/api/clusters/session/status');
+        const data = await response.json();
+
+        if (data.active && data.cluster_name) {
+            // Update the button for the logged-in cluster
+            const button = document.querySelector(`button[data-cluster="${data.cluster_name}"]`);
+            if (button) {
+                button.classList.remove('btn-outline-primary');
+                button.classList.add('btn-outline-danger');
+                button.innerHTML = '<i class="bi bi-box-arrow-right"></i> Logout';
+            }
+        }
+    } catch (err) {
+        console.log('No active session or error checking session');
+    }
+}
+
+// Region data by cloud provider
+const regionsByProvider = {
+    'AWS': [
+        { value: 'US_EAST_1', label: 'US East (N. Virginia)' },
+        { value: 'US_EAST_2', label: 'US East (Ohio)' },
+        { value: 'US_WEST_1', label: 'US West (N. California)' },
+        { value: 'US_WEST_2', label: 'US West (Oregon)' },
+        { value: 'CA_CENTRAL_1', label: 'Canada (Central)' },
+        { value: 'EU_WEST_1', label: 'EU (Ireland)' },
+        { value: 'EU_WEST_2', label: 'EU (London)' },
+        { value: 'EU_CENTRAL_1', label: 'EU (Frankfurt)' },
+        { value: 'EU_NORTH_1', label: 'EU (Stockholm)' },
+        { value: 'AP_SOUTH_1', label: 'Asia Pacific (Mumbai)' },
+        { value: 'AP_SOUTHEAST_1', label: 'Asia Pacific (Singapore)' },
+        { value: 'AP_SOUTHEAST_2', label: 'Asia Pacific (Sydney)' },
+        { value: 'AP_NORTHEAST_1', label: 'Asia Pacific (Tokyo)' },
+        { value: 'SA_EAST_1', label: 'South America (São Paulo)' }
+    ],
+    'GCP': [
+        { value: 'CENTRAL_US', label: 'Iowa (us-central1)' },
+        { value: 'EASTERN_US', label: 'South Carolina (us-east4)' },
+        { value: 'WESTERN_US', label: 'Oregon (us-west1)' },
+        { value: 'WESTERN_EUROPE', label: 'Belgium (europe-west1)' },
+        { value: 'EASTERN_ASIA_PACIFIC', label: 'Taiwan (asia-east1)' },
+        { value: 'NORTHEASTERN_ASIA_PACIFIC', label: 'Tokyo (asia-northeast1)' },
+        { value: 'SOUTHEASTERN_ASIA_PACIFIC', label: 'Singapore (asia-southeast1)' },
+        { value: 'AUSTRALIA_SOUTHEAST_1', label: 'Sydney (australia-southeast1)' }
+    ],
+    'AZURE': [
+        { value: 'EAST_US_2', label: 'East US 2 (Virginia)' },
+        { value: 'WEST_US_2', label: 'West US 2 (Washington)' },
+        { value: 'CENTRAL_US', label: 'Central US (Iowa)' },
+        { value: 'NORTH_EUROPE', label: 'North Europe (Ireland)' },
+        { value: 'WEST_EUROPE', label: 'West Europe (Netherlands)' },
+        { value: 'EAST_ASIA', label: 'East Asia (Hong Kong)' },
+        { value: 'SOUTHEAST_ASIA', label: 'Southeast Asia (Singapore)' },
+        { value: 'AUSTRALIA_EAST', label: 'Australia East (Sydney)' },
+        { value: 'UK_SOUTH', label: 'UK South (London)' }
+    ]
+};
+
+function updateRegionOptions(provider) {
+    const regionSelect = document.getElementById('regionName');
+    regionSelect.innerHTML = '<option value="">Select region...</option>';
+    const regions = regionsByProvider[provider] || [];
+    regions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region.value;
+        option.textContent = region.label;
+        regionSelect.appendChild(option);
+    });
+    regionSelect.disabled = !provider;
+}
+
+// Create Cluster functionality
+async function showCreateClusterModal() {
+    // Load all projects for the dropdown
+    const projectSelect = document.getElementById('createClusterProjectId');
+    projectSelect.innerHTML = '<option value="">Loading projects...</option>';
+
+    try {
+        // Fetch all organizations
+        const orgsResponse = await fetch('/api/organizations/?itemsPerPage=500');
+        if (!orgsResponse.ok) throw new Error('Failed to fetch organizations');
+        const orgsData = await orgsResponse.json();
+
+        // Fetch all projects for each organization
+        const allProjects = [];
+        for (let org of orgsData.results || []) {
+            const projectsResponse = await fetch(`/api/organizations/${org.id}/projects?itemsPerPage=500`);
+            if (projectsResponse.ok) {
+                const projectsData = await projectsResponse.json();
+                (projectsData.results || []).forEach(project => {
+                    allProjects.push({
+                        id: project.id,
+                        name: project.name,
+                        orgName: org.name
+                    });
+                });
+            }
+        }
+
+        // Populate project dropdown
+        projectSelect.innerHTML = '<option value="">Select project...</option>';
+        allProjects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = `${project.name} (${project.orgName})`;
+            projectSelect.appendChild(option);
+        });
+
+    } catch (err) {
+        console.error('Error loading projects:', err);
+        projectSelect.innerHTML = '<option value="">Error loading projects</option>';
+    }
+
+    // Reset form and messages
+    document.getElementById('createClusterForm').reset();
+    document.getElementById('createClusterError').classList.add('d-none');
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('createClusterModal'));
+    modal.show();
+}
+
+async function createCluster() {
+    const errorDiv = document.getElementById('createClusterError');
+
+    // Get form values
+    const projectId = document.getElementById('createClusterProjectId').value;
+    const clusterName = document.getElementById('clusterNameInput').value.trim();
+    const providerName = document.getElementById('providerName').value;
+    const regionName = document.getElementById('regionName').value;
+    const instanceSize = document.getElementById('instanceSize').value;
+    const mongoDBVersion = document.getElementById('mongoDBVersion').value;
+    const clusterType = document.getElementById('clusterType').value;
+    const enableBackup = document.getElementById('enableBackup').checked;
+
+    // Validate
+    if (!projectId || !clusterName || !providerName || !regionName || !instanceSize || !clusterType) {
+        errorDiv.textContent = 'Please fill in all required fields';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    // Build cluster configuration based on instance type
+    let clusterConfig;
+
+    if (instanceSize === 'FLEX') {
+        // Flex cluster configuration (replaces Serverless)
+        // Note: Flex clusters don't use clusterType field
+        clusterConfig = {
+            name: clusterName,
+            providerSettings: {
+                providerName: "FLEX",  // FLEX provider for new Flex clusters
+                backingProviderName: providerName,  // AWS, GCP, or AZURE
+                regionName: regionName
+            }
+        };
+    } else if (instanceSize === 'M0') {
+        // M0 (free tier) uses replicationSpecs format in Atlas API v2
+        clusterConfig = {
+            name: clusterName,
+            clusterType: "REPLICASET",
+            replicationSpecs: [
+                {
+                    regionConfigs: [
+                        {
+                            providerName: "TENANT",
+                            backingProviderName: providerName,
+                            regionName: regionName,
+                            priority: 7,
+                            electableSpecs: {
+                                instanceSize: "M0"
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        if (mongoDBVersion) {
+            clusterConfig.mongoDBMajorVersion = mongoDBVersion;
+        }
+    } else {
+        // M10+ dedicated clusters use replicationSpecs
+        clusterConfig = {
+            name: clusterName,
+            clusterType: clusterType,
+            replicationSpecs: [
+                {
+                    regionConfigs: [
+                        {
+                            providerName: providerName,
+                            regionName: regionName,
+                            priority: 7,
+                            electableSpecs: {
+                                instanceSize: instanceSize,
+                                nodeCount: 3  // Standard 3-node replica set
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        if (enableBackup) {
+            clusterConfig.providerBackupEnabled = true;
+        }
+    }
+
+    if (mongoDBVersion && instanceSize !== 'FLEX') {
+        clusterConfig.mongoDBMajorVersion = mongoDBVersion;
+    }
+
+    // Close the modal immediately and clean up backdrop
+    const createModalEl = document.getElementById('createClusterModal');
+    const createModalInstance = bootstrap.Modal.getInstance(createModalEl) || bootstrap.Modal.getOrCreateInstance(createModalEl);
+    createModalInstance.hide();
+    // Clean up any stale backdrops
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+
+    try {
+        console.log('Creating cluster with config:', JSON.stringify(clusterConfig, null, 2));
+
+        // Use different endpoint for Flex clusters (as of January 2025)
+        const endpoint = instanceSize === 'FLEX'
+            ? `/api/clusters/${projectId}/flex`
+            : `/api/clusters/${projectId}`;
+
+        console.log('Using endpoint:', endpoint);
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(clusterConfig)
+        });
+
+        if (!response.ok) {
+            let errorMessage = `Failed to create cluster (${response.status})`;
+            try {
+                const errorData = await response.json();
+                console.error('Cluster creation error:', errorData);
+                if (errorData.detail) {
+                    errorMessage = errorData.detail;
+                } else if (errorData.error) {
+                    errorMessage = errorData.error;
+                } else if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                console.error('Error parsing error response:', e);
+            }
+
+            // Show error in UI
+            errorDiv.textContent = errorMessage;
+            errorDiv.classList.remove('d-none');
+            // Reopen the modal to show the error
+            bootstrap.Modal.getInstance(document.getElementById('createClusterModal')).show();
+            return;
+        }
+
+        const result = await response.json();
+        console.log('Cluster creation queued:', result);
+
+        // Operation is now queued in backend, SSE stream will show progress
+        // Optionally show a brief notification
+        console.log(`Operation ${result.operation_id} queued: ${result.message}`);
+
+    } catch (err) {
+        console.error('Error creating cluster:', err);
+        errorDiv.textContent = err.message || 'Failed to create cluster';
+        errorDiv.classList.remove('d-none');
+        // Reopen the modal to show the error
+        bootstrap.Modal.getInstance(document.getElementById('createClusterModal')).show();
+    }
+}
+
+// Delete Cluster functionality
+let deleteClusterData = { name: '', projectId: '', providerName: '', instanceSizeName: '' };
+
+function showDeleteClusterConfirmation(clusterName, projectId, providerName, instanceSizeName) {
+    deleteClusterData = {
+        name: clusterName,
+        projectId: projectId,
+        providerName: providerName || '',
+        instanceSizeName: instanceSizeName || ''
+    };
+
+    console.log('Showing delete confirmation for cluster:', deleteClusterData);
+
+    document.getElementById('deleteClusterName').textContent = clusterName;
+    document.getElementById('confirmClusterName').value = '';
+    document.getElementById('deleteClusterError').classList.add('d-none');
+    document.getElementById('confirmDeleteClusterBtn').disabled = true;
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteClusterModal'));
+    modal.show();
+}
+
+async function deleteCluster() {
+    const errorDiv = document.getElementById('deleteClusterError');
+    const confirmInput = document.getElementById('confirmClusterName');
+
+    if (confirmInput.value !== deleteClusterData.name) {
+        errorDiv.textContent = 'Cluster name does not match. Please type the exact cluster name.';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+
+    // Hide error
+    errorDiv.classList.add('d-none');
+
+    // Close the modal immediately and clean up backdrop
+    const deleteModalEl = document.getElementById('deleteClusterModal');
+    const deleteModalInstance = bootstrap.Modal.getInstance(deleteModalEl) || bootstrap.Modal.getOrCreateInstance(deleteModalEl);
+    deleteModalInstance.hide();
+    // Clean up any stale backdrops
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+
+    try {
+        console.log('Deleting cluster:', deleteClusterData);
+
+        const response = await fetch(`/api/clusters/${deleteClusterData.projectId}/${deleteClusterData.name}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.detail || `Failed to delete cluster (${response.status})`;
+
+            // Show error in UI
+            errorDiv.textContent = errorMessage;
+            errorDiv.classList.remove('d-none');
+            // Reopen the modal to show the error
+            bootstrap.Modal.getInstance(document.getElementById('deleteClusterModal')).show();
+            return;
+        }
+
+        const result = await response.json();
+        console.log('Cluster deletion queued:', result);
+
+        // Operation is now queued in backend, SSE stream will show progress
+        console.log(`Operation ${result.operation_id} queued: ${result.message}`);
+
+    } catch (err) {
+        console.error('Error deleting cluster:', err);
+        errorDiv.textContent = err.message || 'Failed to delete cluster';
+        errorDiv.classList.remove('d-none');
+        // Reopen the modal to show the error
+        bootstrap.Modal.getInstance(document.getElementById('deleteClusterModal')).show();
+    }
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('loginBtn').addEventListener('click', loginToCluster);
+    document.getElementById('addUserBtn').addEventListener('click', addDatabaseUser);
+    document.getElementById('confirmLogoutBtn').addEventListener('click', performLogout);
+    document.getElementById('createClusterBtn').addEventListener('click', showCreateClusterModal);
+    document.getElementById('submitCreateClusterBtn').addEventListener('click', createCluster);
+    document.getElementById('confirmDeleteClusterBtn').addEventListener('click', deleteCluster);
+
+    // Check session status on page load
+    checkSessionStatus();
+
+    // Allow Enter key to submit login
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loginToCluster();
+    });
+
+    // Allow Enter key to submit add user
+    document.getElementById('addUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addDatabaseUser();
+    });
+
+    // Allow Enter key to submit create cluster
+    document.getElementById('createClusterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        createCluster();
+    });
+
+    // Provider change event for region updates
+    const providerSelect = document.getElementById('providerName');
+    if (providerSelect) {
+        providerSelect.addEventListener('change', function() {
+            updateRegionOptions(this.value);
+        });
+    }
+
+    // Cluster name confirmation for deletion
+    const confirmInput = document.getElementById('confirmClusterName');
+    const deleteBtn = document.getElementById('confirmDeleteClusterBtn');
+    if (confirmInput) {
+        confirmInput.addEventListener('input', function() {
+            if (this.value === deleteClusterData.name) {
+                deleteBtn.disabled = false;
+            } else {
+                deleteBtn.disabled = true;
+            }
+        });
+    }
+
+    // Reset modals when closed
+    const createClusterModal = document.getElementById('createClusterModal');
+    createClusterModal.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('createClusterForm').reset();
+        document.getElementById('createClusterForm').style.display = 'block';
+        document.getElementById('createClusterError').classList.add('d-none');
+        document.getElementById('regionName').disabled = true;
+    });
+
+    // Load preferences when create cluster modal is shown
+    createClusterModal.addEventListener('show.bs.modal', async function () {
+        try {
+            const response = await fetch('/api/setup/info');
+            const data = await response.json();
+
+            const providerSelect = document.getElementById('providerName');
+            const regionSelect = document.getElementById('regionName');
+
+            // Set preferred provider if available
+            if (data.preferred_cloud_provider) {
+                providerSelect.value = data.preferred_cloud_provider;
+
+                // Trigger change event to populate regions
+                providerSelect.dispatchEvent(new Event('change'));
+
+                // Wait a moment for regions to populate, then set preferred region
+                if (data.preferred_region) {
+                    setTimeout(() => {
+                        regionSelect.value = data.preferred_region;
+                    }, 100);
+                }
+            }
+        } catch (err) {
+            console.log('Could not load preferences:', err);
+        }
+    });
+
+    const deleteClusterModal = document.getElementById('deleteClusterModal');
+    deleteClusterModal.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('confirmClusterName').value = '';
+        document.getElementById('deleteClusterError').classList.add('d-none');
+        document.getElementById('confirmDeleteClusterBtn').disabled = true;
+        deleteClusterData = { name: '', projectId: '', providerName: '', instanceSizeName: '' };
+    });
+});
+</script>
+{% endblock %}

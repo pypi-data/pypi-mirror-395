@@ -1,0 +1,773 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Wizard - AtlasUI{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Steps -->
+            <div class="mb-4">
+                <ul class="nav nav-pills nav-justified" id="setupSteps">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="step1-tab">
+                            <i class="bi bi-info-circle"></i> Welcome
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step2-tab">
+                            <i class="bi bi-key"></i> Auth Method
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step3-tab">
+                            <i class="bi bi-shield-lock"></i> Credentials
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="step4-tab">
+                            <i class="bi bi-check-circle"></i> Complete
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Step 1: Welcome -->
+            <div class="card setup-step" id="step1" style="display: block;">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-rocket"></i> Welcome to AtlasUI</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Let's get you set up!</h5>
+                    <p>This wizard will guide you through configuring AtlasUI to connect to your MongoDB Atlas account.</p>
+
+                    <!-- Load from File Option -->
+                    <div class="card mb-4 border-success">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-file-earmark-code"></i> Quick Setup: Load from File
+                        </div>
+                        <div class="card-body">
+                            <p class="small mb-2">Have a credentials file? Browse to select or enter the path.</p>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="credentialsFilePath"
+                                       placeholder="/path/to/credentials.json or click Browse">
+                                <input type="file" class="d-none" id="credentialsFileInput"
+                                       accept=".json,.env,.txt" onchange="handleFileSelect(event)">
+                                <button class="btn btn-outline-success" type="button" onclick="document.getElementById('credentialsFileInput').click()">
+                                    <i class="bi bi-folder2-open"></i> Browse
+                                </button>
+                                <button class="btn btn-success" type="button" onclick="loadCredentialsFromFile()">
+                                    <span class="spinner-border spinner-border-sm d-none" id="loadFileSpinner"></span>
+                                    <i class="bi bi-upload" id="loadFileIcon"></i> Load
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Supports JSON or .env files with API keys (public_key/private_key) or service account credentials (client_id/client_secret).
+                            </div>
+                            <div id="loadFileResult" class="mt-2" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill"></i> <strong>Or set up manually. You'll need:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>A MongoDB Atlas account (<a href="https://cloud.mongodb.com" target="_blank">cloud.mongodb.com</a>)</li>
+                            <li>API credentials (we'll show you how to get them)</li>
+                            <li>About 5 minutes</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-primary btn-lg" onclick="goToStep(2)">
+                            Manual Setup <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Choose Auth Method -->
+            <div class="card setup-step" id="step2" style="display: none;">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-key"></i> Choose Authentication Method</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">How would you like to authenticate with MongoDB Atlas?</p>
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle-fill"></i> <strong>Both methods provide the same capabilities</strong> - full access to one organization including all projects and clusters. Service Accounts offer a more modern and secure OAuth 2.0 approach.
+                    </div>
+
+                    <!-- API Key Option -->
+                    <div class="card mb-3 border-primary" id="apiKeyOption" style="cursor: pointer;"
+                         onclick="selectAuthMethod('api_key')">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title">
+                                        <input type="radio" name="authMethod" value="api_key" checked>
+                                        API Keys
+                                        <span class="badge bg-secondary ms-2">Traditional</span>
+                                    </h5>
+                                    <p class="card-text">
+                                        <strong>Same capabilities as Service Accounts</strong><br>
+                                        Traditional digest authentication - simpler setup.
+                                    </p>
+                                    <ul class="small text-muted mb-0">
+                                        <li>Simplest setup process</li>
+                                        <li>Organization-level access</li>
+                                        <li>All projects and clusters within org</li>
+                                        <li>Digest authentication (HTTP Basic)</li>
+                                    </ul>
+                                </div>
+                                <i class="bi bi-check-circle-fill text-success fs-2" id="apiKeyCheck"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Account Option -->
+                    <div class="card border-success" id="serviceAccountOption" style="cursor: pointer;"
+                         onclick="selectAuthMethod('service_account')">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title">
+                                        <input type="radio" name="authMethod" value="service_account">
+                                        Service Account
+                                        <span class="badge bg-success ms-2">More Secure</span>
+                                    </h5>
+                                    <p class="card-text">
+                                        <strong>Same capabilities as API Keys</strong><br>
+                                        Modern OAuth 2.0 authentication - more secure approach.
+                                    </p>
+                                    <ul class="small text-muted mb-0">
+                                        <li>Modern OAuth 2.0 / JWT-based</li>
+                                        <li>Organization-level access</li>
+                                        <li>All projects and clusters within org</li>
+                                        <li>Token-based authentication (more secure)</li>
+                                    </ul>
+                                </div>
+                                <i class="bi bi-circle text-muted fs-2" id="serviceAccountCheck" style="display: none;"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-secondary" onclick="goToStep(1)">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </button>
+                        <button class="btn btn-primary" onclick="confirmAuthMethod()">
+                            Continue <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Enter Credentials (API Key) -->
+            <div class="card setup-step" id="step3-api-key" style="display: none;">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-shield-lock"></i> Enter API Keys</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle-fill"></i> How to get your API Keys:</h6>
+                        <p class="small mb-2">
+                            <strong>Direct Link:</strong>
+                            <a href="https://cloud.mongodb.com/v2#/org/YOUR_ORG_ID/access/apiKeys" target="_blank" class="alert-link">
+                                https://cloud.mongodb.com/v2#/org/&lt;Organization ID&gt;/access/apiKeys
+                            </a>
+                            <br>
+                            <em class="text-muted">Replace &lt;Organization ID&gt; with your organization's ID</em>
+                        </p>
+                        <ol class="small mb-0">
+                            <li>Go to your organization's API Keys page using the link above</li>
+                            <li>Click <strong>Create API Key</strong></li>
+                            <li>Set permissions: <strong>Organization Owner</strong></li>
+                            <li>Copy the <strong>Public Key</strong> and <strong>Private Key</strong></li>
+                            <li>Add your IP address to the API Key whitelist</li>
+                        </ol>
+                    </div>
+
+                    <form id="apiKeyForm" onsubmit="submitAPIKey(event)">
+                        <div class="mb-3">
+                            <label for="publicKey" class="form-label">Public Key</label>
+                            <input type="text" class="form-control" id="publicKey"
+                                   placeholder="Enter your Atlas API Public Key" required>
+                            <div class="form-text">The public key from your Atlas API Key</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="privateKey" class="form-label">Private Key</label>
+                            <input type="password" class="form-control" id="privateKey"
+                                   placeholder="Enter your Atlas API Private Key" required>
+                            <div class="form-text">The private key (shown only once when created)</div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="showPrivateKey"
+                                       onchange="togglePrivateKeyVisibility()">
+                                <label class="form-check-label" for="showPrivateKey">
+                                    Show private key
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="apiKeyError" class="alert alert-danger" style="display: none;"></div>
+                        <div id="apiKeySuccess" class="alert alert-success" style="display: none;"></div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-secondary" onclick="goToStep(2)">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="apiKeySubmitBtn">
+                                <span class="spinner-border spinner-border-sm" style="display: none;" id="apiKeySpinner"></span>
+                                Test & Save <i class="bi bi-check"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Step 3: Enter Credentials (Service Account) -->
+            <div class="card setup-step" id="step3-service-account" style="display: none;">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="bi bi-shield-lock"></i> Enter Service Account Credentials</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill"></i> <strong>Note:</strong> Both API Keys and Service Accounts are organization-scoped and can access resources within ONE organization at a time. To manage multiple organizations, configure separate credentials for each organization.
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle-fill"></i> How to get service account credentials:</h6>
+                        <p class="small mb-2">
+                            <strong>Direct Link:</strong>
+                            <a href="https://cloud.mongodb.com/v2#/org/YOUR_ORG_ID/access/serviceAccounts" target="_blank" class="alert-link">
+                                https://cloud.mongodb.com/v2#/org/&lt;Organization ID&gt;/access/serviceAccounts
+                            </a>
+                            <br>
+                            <em class="text-muted">Replace &lt;Organization ID&gt; with your organization's ID</em>
+                        </p>
+                        <ol class="small mb-0">
+                            <li>Go to your organization's Service Accounts page using the link above</li>
+                            <li>Click <strong>Create Service Account</strong></li>
+                            <li>Assign <strong>organization-level roles</strong> (e.g., Organization Owner) for full access</li>
+                            <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                        </ol>
+                    </div>
+
+                    <form id="serviceAccountForm" onsubmit="submitServiceAccount(event)">
+                        <div class="mb-3">
+                            <label for="clientId" class="form-label">Client ID</label>
+                            <input type="text" class="form-control" id="clientId"
+                                   placeholder="Enter Client ID" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="clientSecret" class="form-label">Client Secret</label>
+                            <input type="password" class="form-control" id="clientSecret"
+                                   placeholder="Enter Client Secret" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="projectId" class="form-label">Project ID</label>
+                            <input type="text" class="form-control" id="projectId"
+                                   placeholder="Enter Project ID" required>
+                            <div class="form-text">The Atlas project ID this service account has access to</div>
+                        </div>
+
+                        <div id="serviceAccountError" class="alert alert-danger" style="display: none;"></div>
+                        <div id="serviceAccountSuccess" class="alert alert-success" style="display: none;"></div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-secondary" onclick="goToStep(2)">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-warning" id="serviceAccountSubmitBtn">
+                                <span class="spinner-border spinner-border-sm" style="display: none;" id="serviceAccountSpinner"></span>
+                                Test & Save <i class="bi bi-check"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Step 4: Complete -->
+            <div class="card setup-step" id="step4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="bi bi-check-circle"></i> Setup Complete!</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+
+                    <h4 class="mb-3">Your AtlasUI is configured!</h4>
+                    <p class="lead" id="setupCompleteMessage">You're all set to start managing your MongoDB Atlas resources.</p>
+
+                    <div id="organizationsList" class="mt-4" style="display: none;">
+                        <h6>Your Organizations:</h6>
+                        <div class="list-group" id="orgsListGroup"></div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="/organizations" class="btn btn-success btn-lg">
+                            <i class="bi bi-diagram-3"></i> Go to Organizations
+                        </a>
+                        <a href="/projects" class="btn btn-outline-primary">
+                            <i class="bi bi-folder"></i> View Projects
+                        </a>
+                        <a href="/clusters" class="btn btn-outline-primary">
+                            <i class="bi bi-hdd-rack"></i> View Clusters
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.setup-step {
+    min-height: 400px;
+}
+
+.nav-pills .nav-link {
+    color: #6c757d;
+    pointer-events: none;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+}
+
+.nav-pills .nav-link.completed {
+    background-color: #198754;
+    color: white;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+</style>
+
+<script>
+let selectedAuthMethod = 'api_key';
+let currentStep = 1;
+let loadedFileContents = null;  // Store file contents when selected via browser
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const resultDiv = document.getElementById('loadFileResult');
+    document.getElementById('credentialsFilePath').value = file.name;
+
+    // Read file contents
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        loadedFileContents = e.target.result;
+        resultDiv.innerHTML = `<div class="alert alert-info py-2 mb-0"><i class="bi bi-check"></i> File loaded: ${file.name}. Click "Load" to configure.</div>`;
+        resultDiv.style.display = 'block';
+    };
+    reader.onerror = function() {
+        resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> Error reading file</div>`;
+        resultDiv.style.display = 'block';
+        loadedFileContents = null;
+    };
+    reader.readAsText(file);
+}
+
+function parseCredentialsFromContent(content) {
+    // Try to parse as JSON first
+    try {
+        const data = JSON.parse(content);
+
+        // Check for service account credentials
+        if (data.client_id && data.client_secret) {
+            return {
+                success: true,
+                auth_method: 'service_account',
+                message: 'Found service account credentials',
+                credentials_found: {
+                    client_id: data.client_id,
+                    client_secret: data.client_secret,
+                    project_id: data.project_id || ''
+                }
+            };
+        }
+
+        // Check for API keys (various formats)
+        const publicKey = data.public_key || data.publicKey || data.ATLAS_PUBLIC_KEY;
+        const privateKey = data.private_key || data.privateKey || data.ATLAS_PRIVATE_KEY;
+
+        if (publicKey && privateKey) {
+            return {
+                success: true,
+                auth_method: 'api_key',
+                message: 'Found API key credentials',
+                credentials_found: {
+                    public_key: publicKey,
+                    private_key: privateKey
+                }
+            };
+        }
+
+        return { success: false, message: 'JSON file does not contain recognized credentials' };
+    } catch (e) {
+        // Not JSON, try parsing as .env format
+        const credentials = {};
+        content.split('\n').forEach(line => {
+            line = line.trim();
+            if (!line || line.startsWith('#')) return;
+            if (line.includes('=')) {
+                const [key, ...valueParts] = line.split('=');
+                const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+                credentials[key.trim()] = value;
+            }
+        });
+
+        // Check for API keys
+        const publicKey = credentials.ATLAS_PUBLIC_KEY;
+        const privateKey = credentials.ATLAS_PRIVATE_KEY;
+
+        if (publicKey && privateKey) {
+            return {
+                success: true,
+                auth_method: 'api_key',
+                message: 'Found API key credentials',
+                credentials_found: {
+                    public_key: publicKey,
+                    private_key: privateKey
+                }
+            };
+        }
+
+        // Check for service account
+        const clientId = credentials.ATLAS_SERVICE_ACCOUNT_CLIENT_ID || credentials.ATLAS_SERVICE_ACCOUNT_ID;
+        const clientSecret = credentials.ATLAS_SERVICE_ACCOUNT_CLIENT_SECRET || credentials.ATLAS_SERVICE_ACCOUNT_SECRET;
+
+        if (clientId && clientSecret) {
+            return {
+                success: true,
+                auth_method: 'service_account',
+                message: 'Found service account credentials',
+                credentials_found: {
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    project_id: credentials.ATLAS_SERVICE_ACCOUNT_PROJECT_ID || ''
+                }
+            };
+        }
+
+        return { success: false, message: 'File does not contain recognized Atlas credentials' };
+    }
+}
+
+async function loadCredentialsFromFile() {
+    const filePath = document.getElementById('credentialsFilePath').value.trim();
+    const resultDiv = document.getElementById('loadFileResult');
+    const spinner = document.getElementById('loadFileSpinner');
+    const icon = document.getElementById('loadFileIcon');
+
+    if (!filePath && !loadedFileContents) {
+        resultDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-exclamation-triangle"></i> Please select a file or enter a file path</div>';
+        resultDiv.style.display = 'block';
+        return;
+    }
+
+    // Show loading state
+    spinner.classList.remove('d-none');
+    icon.classList.add('d-none');
+    resultDiv.style.display = 'none';
+
+    try {
+        let loadData;
+
+        // If we have file contents from the browser file picker, parse locally
+        if (loadedFileContents) {
+            loadData = parseCredentialsFromContent(loadedFileContents);
+        } else {
+            // Otherwise, use the server API to read from file path
+            const loadResponse = await fetch('/api/setup/load-credentials-file', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ file_path: filePath })
+            });
+            loadData = await loadResponse.json();
+        }
+
+        if (!loadData.success) {
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> ${loadData.message}</div>`;
+            resultDiv.style.display = 'block';
+            return;
+        }
+
+        // Credentials found - now configure them
+        resultDiv.innerHTML = `<div class="alert alert-info py-2 mb-0"><i class="bi bi-hourglass-split"></i> ${loadData.message}. Configuring...</div>`;
+        resultDiv.style.display = 'block';
+
+        let configResponse;
+        if (loadData.auth_method === 'api_key') {
+            configResponse = await fetch('/api/setup/configure/api-key', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    public_key: loadData.credentials_found.public_key,
+                    private_key: loadData.credentials_found.private_key
+                })
+            });
+            selectedAuthMethod = 'api_key';
+        } else if (loadData.auth_method === 'service_account') {
+            configResponse = await fetch('/api/setup/configure/service-account', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    client_id: loadData.credentials_found.client_id,
+                    client_secret: loadData.credentials_found.client_secret,
+                    project_id: loadData.credentials_found.project_id || ''
+                })
+            });
+            selectedAuthMethod = 'service_account';
+        }
+
+        const configData = await configResponse.json();
+
+        if (!configResponse.ok) {
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> Configuration failed: ${configData.detail || 'Unknown error'}</div>`;
+            resultDiv.style.display = 'block';
+            return;
+        }
+
+        // Success - test connection and go to completion
+        resultDiv.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle"></i> Credentials loaded successfully! Testing connection...</div>`;
+        resultDiv.style.display = 'block';
+
+        // Test connection and go to step 4
+        await testConnection();
+
+    } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> Error: ${err.message}</div>`;
+        resultDiv.style.display = 'block';
+    } finally {
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+    }
+}
+
+function goToStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.setup-step').forEach(el => el.style.display = 'none');
+
+    // Update step tabs
+    document.querySelectorAll('#setupSteps .nav-link').forEach((el, idx) => {
+        el.classList.remove('active');
+        if (idx + 1 < step) {
+            el.classList.add('completed');
+        } else {
+            el.classList.remove('completed');
+        }
+    });
+
+    // Show target step
+    if (step === 1) {
+        document.getElementById('step1').style.display = 'block';
+        document.getElementById('step1-tab').classList.add('active');
+    } else if (step === 2) {
+        document.getElementById('step2').style.display = 'block';
+        document.getElementById('step2-tab').classList.add('active');
+    } else if (step === 3) {
+        if (selectedAuthMethod === 'api_key') {
+            document.getElementById('step3-api-key').style.display = 'block';
+        } else {
+            document.getElementById('step3-service-account').style.display = 'block';
+        }
+        document.getElementById('step3-tab').classList.add('active');
+    } else if (step === 4) {
+        document.getElementById('step4').style.display = 'block';
+        document.getElementById('step4-tab').classList.add('active');
+    }
+
+    currentStep = step;
+    window.scrollTo(0, 0);
+}
+
+function selectAuthMethod(method) {
+    selectedAuthMethod = method;
+
+    // Update UI
+    const apiKeyOption = document.getElementById('apiKeyOption');
+    const serviceAccountOption = document.getElementById('serviceAccountOption');
+    const apiKeyCheck = document.getElementById('apiKeyCheck');
+    const serviceAccountCheck = document.getElementById('serviceAccountCheck');
+
+    if (method === 'api_key') {
+        apiKeyOption.classList.add('border-success');
+        serviceAccountOption.classList.remove('border-warning');
+        apiKeyCheck.style.display = 'block';
+        serviceAccountCheck.style.display = 'none';
+        document.querySelector('input[value="api_key"]').checked = true;
+    } else {
+        apiKeyOption.classList.remove('border-success');
+        serviceAccountOption.classList.add('border-warning');
+        apiKeyCheck.style.display = 'none';
+        serviceAccountCheck.style.display = 'block';
+        document.querySelector('input[value="service_account"]').checked = true;
+    }
+}
+
+function confirmAuthMethod() {
+    goToStep(3);
+}
+
+function togglePrivateKeyVisibility() {
+    const privateKeyInput = document.getElementById('privateKey');
+    const checkbox = document.getElementById('showPrivateKey');
+    privateKeyInput.type = checkbox.checked ? 'text' : 'password';
+}
+
+async function submitAPIKey(event) {
+    event.preventDefault();
+
+    const publicKey = document.getElementById('publicKey').value.trim();
+    const privateKey = document.getElementById('privateKey').value.trim();
+    const errorDiv = document.getElementById('apiKeyError');
+    const successDiv = document.getElementById('apiKeySuccess');
+    const submitBtn = document.getElementById('apiKeySubmitBtn');
+    const spinner = document.getElementById('apiKeySpinner');
+
+    // Clear previous messages
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    // Show spinner
+    spinner.style.display = 'inline-block';
+    submitBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/setup/configure/api-key', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({public_key: publicKey, private_key: privateKey})
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            successDiv.textContent = data.message;
+            successDiv.style.display = 'block';
+
+            // Test connection
+            await testConnection();
+        } else {
+            errorDiv.textContent = data.detail || 'Configuration failed';
+            errorDiv.style.display = 'block';
+        }
+    } catch (err) {
+        errorDiv.textContent = 'Failed to configure: ' + err.message;
+        errorDiv.style.display = 'block';
+    } finally {
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+}
+
+async function submitServiceAccount(event) {
+    event.preventDefault();
+
+    const clientId = document.getElementById('clientId').value.trim();
+    const clientSecret = document.getElementById('clientSecret').value.trim();
+    const projectId = document.getElementById('projectId').value.trim();
+    const errorDiv = document.getElementById('serviceAccountError');
+    const successDiv = document.getElementById('serviceAccountSuccess');
+    const submitBtn = document.getElementById('serviceAccountSubmitBtn');
+    const spinner = document.getElementById('serviceAccountSpinner');
+
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    submitBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/setup/configure/service-account', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                client_id: clientId,
+                client_secret: clientSecret,
+                project_id: projectId
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            successDiv.textContent = data.message;
+            if (data.warning) {
+                successDiv.textContent += ' Note: ' + data.warning;
+            }
+            successDiv.style.display = 'block';
+
+            // Test connection
+            await testConnection();
+        } else {
+            errorDiv.textContent = data.detail || 'Configuration failed';
+            errorDiv.style.display = 'block';
+        }
+    } catch (err) {
+        errorDiv.textContent = 'Failed to configure: ' + err.message;
+        errorDiv.style.display = 'block';
+    } finally {
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+}
+
+async function testConnection() {
+    try {
+        const response = await fetch('/api/setup/test-connection?auth_method=' + selectedAuthMethod, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Show organizations if available
+            if (data.organizations && data.organizations.length > 0) {
+                const orgsList = document.getElementById('organizationsList');
+                const orgsListGroup = document.getElementById('orgsListGroup');
+
+                orgsListGroup.innerHTML = '';
+                data.organizations.forEach(org => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item';
+                    item.innerHTML = `<strong>${org.name}</strong><br><small class="text-muted">${org.id}</small>`;
+                    orgsListGroup.appendChild(item);
+                });
+
+                orgsList.style.display = 'block';
+                document.getElementById('setupCompleteMessage').textContent =
+                    `Found ${data.organizations_count} organization(s). You're ready to go!`;
+            }
+
+            // Go to completion step
+            setTimeout(() => goToStep(4), 1000);
+        } else {
+            console.warn('Connection test returned with warnings:', data);
+            // Still go to step 4 but with warning
+            setTimeout(() => goToStep(4), 1000);
+        }
+    } catch (err) {
+        console.error('Connection test failed:', err);
+        // Still go to step 4 - configuration is saved
+        setTimeout(() => goToStep(4), 1000);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    goToStep(1);
+});
+</script>
+{% endblock %}
