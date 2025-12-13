@@ -1,0 +1,114 @@
+name: Tests
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+    workflow_dispatch:
+jobs:
+    ruff:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+                  cache: "pip"
+            - run: "pip install '.[dev]'"
+            - run: ruff check .
+
+    mypy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+                  cache: "pip"
+            - run: "pip install -e '.[dev]'"
+            - run: mypy src examples
+
+    ruff-format:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+                  cache: "pip"
+            - run: "pip install -e '.[dev]'"
+            - run: ruff format --check .
+
+    pytest:
+        # https://ericmjl.github.io/blog/2021/12/30/better-conda-environments-on-github-actions/
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash -l {0}
+
+        steps:
+            - uses: actions/checkout@v4
+            - uses: conda-incubator/setup-miniconda@v3
+
+              with:
+                  miniforge-version: latest
+                  python-version: 3.13
+                  activate-environment: pytest
+
+            - name: Build environment
+              run: |
+                  conda activate pytest
+                  python -m pip install --upgrade pip
+                  python -m pip install --upgrade setuptools
+                  python -m pip install -e '.[dev]'
+                  conda install -c conda-forge openff-toolkit
+            - run: pytest
+
+    example-tests:
+        # https://ericmjl.github.io/blog/2021/12/30/better-conda-environments-on-github-actions/
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash -l {0}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: conda-incubator/setup-miniconda@v3
+
+              with:
+                  miniforge-version: latest
+                  python-version: 3.13
+                  activate-environment: pytest
+
+            - name: Build environment
+              run: |
+                  conda activate pytest
+                  python -m pip install --upgrade pip
+                  python -m pip install --upgrade setuptools
+                  python -m pip install -e '.[dev]'
+                  conda install -c conda-forge openff-toolkit
+            - name: Run script
+              run: python examples/testable_example.py
+
+    doctest:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash -l {0}
+
+        steps:
+            - uses: actions/checkout@v4
+            - uses: conda-incubator/setup-miniconda@v3
+
+              with:
+                  miniforge-version: latest
+                  python-version: 3.13
+                  activate-environment: pytest
+
+            - name: Build environment
+              run: |
+                  conda activate pytest
+                  python -m pip install --upgrade pip
+                  python -m pip install --upgrade setuptools
+                  python -m pip install -e '.[dev]'
+                  conda install -c conda-forge openff-toolkit
+            - run: make -C docs doctest

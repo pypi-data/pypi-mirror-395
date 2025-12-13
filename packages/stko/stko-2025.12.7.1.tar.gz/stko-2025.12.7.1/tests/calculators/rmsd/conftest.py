@@ -1,0 +1,241 @@
+from dataclasses import dataclass
+
+import numpy as np
+import pytest
+import stk
+
+import stko
+
+
+@dataclass(frozen=True, slots=True)
+class CaseData:
+    mol1: stk.Molecule
+    mol2: stk.Molecule
+    rmsd: float
+    kabsch_rmsd: float
+
+
+_optimizer = stko.UFF()
+
+
+_cc_molecule = stk.BuildingBlock("[C][C]")
+
+
+@pytest.fixture(
+    scope="session",
+    params=[
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_centroid(np.array((4, 0, 0))),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_position_matrix(
+                np.array(
+                    [[0.7520009, 0.0, 0.0], [-0.7520009, 0.0, 0.0]],
+                )
+            ),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_position_matrix(
+                np.array(
+                    [[1.7520009, 0.0, 0.0], [-1.7520009, 0.0, 0.0]],
+                )
+            ),
+            rmsd=1.0,
+            kabsch_rmsd=1.0,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("NCCN")),
+            rmsd=0.26064179792023834,
+            kabsch_rmsd=0.19260330679258864,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=stk.BuildingBlock("CCCCCC"),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("CCCCCC")),
+            rmsd=0.19244341360361064,
+            kabsch_rmsd=0.19223980907993865,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("c1ccccc1"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("c1ccccc1")),
+            rmsd=0.032841285146032156,
+            kabsch_rmsd=0.032795057670018585,
+        ),
+    ],
+)
+def case_data(request: pytest.FixtureRequest) -> CaseData:
+    """A pair of :class:`stk.Molecule` instances and an RMSD."""
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("NCCN")),
+            rmsd=0.21879819525792274,
+            kabsch_rmsd=0.20811702035676308,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("CCCCCC")),
+            rmsd=0.08585307417542548,
+            kabsch_rmsd=0.22563756374632568,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=stk.BuildingBlock("CCCCCC"),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("c1ccccc1"),
+            mol2=_optimizer.optimize(stk.BuildingBlock("c1ccccc1")),
+            rmsd=0.03417702414054854,
+            kabsch_rmsd=0.029156836455717483,
+        ),
+    ],
+)
+def ignore_h_case_data(request: pytest.FixtureRequest) -> CaseData:
+    """A pair of :class:`stk.Molecule` instances and an RMSD."""
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=stk.BuildingBlock("CCCCCC"),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=stk.BuildingBlock("c1ccccc1"),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+    ],
+)
+def different_case_data(request: pytest.FixtureRequest) -> CaseData:
+    """A pair of :class:`stk.Molecule` instances and an RMSD."""
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[
+        CaseData(
+            mol1=stk.BuildingBlock(
+                smiles=(
+                    "C(#Cc1cccc2ccncc21)c1ccc2[nH]c3ccc(C#Cc4cccc5cncc"
+                    "c54)cc3c2c1"
+                ),
+            ),
+            mol2=stk.BuildingBlock(
+                smiles=(
+                    "C(#Cc1cccc2ccncc21)c1ccc2[nH]c3ccc(C#Cc4cccc5cncc"
+                    "c54)cc3c2c1"
+                ),
+            ).with_canonical_atom_ordering(),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+    ],
+)
+def ordering_case_data(request: pytest.FixtureRequest) -> CaseData:
+    """A pair of :class:`stk.Molecule` instances and an RMSD."""
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_centroid(np.array((4, 0, 0))),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_position_matrix(
+                np.array(
+                    [[0.7520009, 0.0, 0.0], [-0.7520009, 0.0, 0.0]],
+                )
+            ),
+            rmsd=0.0,
+            kabsch_rmsd=0.0,
+        ),
+        CaseData(
+            mol1=_cc_molecule,
+            mol2=_cc_molecule.with_position_matrix(
+                np.array(
+                    [[1.7520009, 0.0, 0.0], [-1.7520009, 0.0, 0.0]],
+                )
+            ),
+            rmsd=1.0,
+            kabsch_rmsd=1.0,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=stk.BuildingBlock("NCCN")
+            .with_rotation_about_axis(
+                1.34,
+                np.array((0, 0, 1)),
+                np.array((0, 0, 0)),
+            )
+            .with_displacement(np.array((2, 0, 1))),
+            rmsd=1.1330923155830888,
+            kabsch_rmsd=1.1309858484314543,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("CCCCCC"),
+            mol2=stk.BuildingBlock("CCCCCC")
+            .with_rotation_about_axis(
+                0.24,
+                np.array((1, 0, 1)),
+                np.array((0, 0, 0)),
+            )
+            .with_displacement(np.array((0, 0, 1))),
+            rmsd=0.6239555728484898,
+            kabsch_rmsd=0.5943193981905652,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=stk.BuildingBlock("NCCCN"),
+            rmsd=0.885665672705266,
+            kabsch_rmsd=0.8832914099448816,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("NCOCN"),
+            mol2=stk.BuildingBlock("NCCN"),
+            rmsd=1.2842057097676525,
+            kabsch_rmsd=1.2678595995702466,
+        ),
+        CaseData(
+            mol1=stk.BuildingBlock("NCCN"),
+            mol2=stk.BuildingBlock("NCOCN"),
+            rmsd=1.4164013380180553,
+            kabsch_rmsd=1.4164013380180553,
+        ),
+    ],
+)
+def aligned_case_data(request: pytest.FixtureRequest) -> CaseData:
+    """A pair of :class:`stk.Molecule` instances and an RMSD."""
+    return request.param
