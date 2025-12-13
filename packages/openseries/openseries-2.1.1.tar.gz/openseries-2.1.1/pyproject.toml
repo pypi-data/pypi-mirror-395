@@ -1,0 +1,140 @@
+[project]
+name = "openseries"
+version = "2.1.1"
+description = "Tools for analyzing financial timeseries."
+authors = [
+    { name = "Martin Karrin", email = "martin.karrin@captor.se" },
+]
+maintainers = [
+    { name = "Martin Karrin", email = "martin.karrin@captor.se" },
+]
+license = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Natural Language :: English",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Framework :: Pydantic",
+]
+
+keywords = [
+    "python",
+    "finance",
+    "fintech",
+    "data-science",
+    "timeseries",
+    "timeseries-data",
+    "timeseries-analysis",
+    "investment",
+    "investment-analysis",
+    "investing"
+]
+
+dependencies = [
+    "exchange-calendars>=4.8",
+    "holidays>=0.30",
+    "numpy>=1.23.2",
+    "openpyxl>=3.1.2",
+    "pandas>=2.1.2",
+    "plotly>=5.18.0",
+    "pydantic>=2.5.2",
+    "python-dateutil>=2.8.2",
+    "requests>=2.20.0",
+    "scipy>=1.14.1",
+    "scikit-learn>=1.4.0"
+]
+
+[project.urls]
+"Homepage" = "https://captorab.github.io/openseries/"
+"Documentation" = "https://openseries.readthedocs.io/"
+"Source" = "https://github.com/CaptorAB/openseries"
+"Issue Tracker" = "https://github.com/CaptorAB/openseries/issues"
+"Release Notes" = "https://github.com/CaptorAB/openseries/releases"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "1.19.0"
+pandas-stubs = ">=2.1.2"
+pre-commit = ">=4.5.0"
+pytest = ">=9.0.2"
+pytest-cov = ">=7.0.0"
+pytest-xdist = ">=3.8.0"
+ruff = "0.14.8"
+types-openpyxl = ">=3.1.2"
+scipy-stubs = ">=1.14.1.0"
+types-python-dateutil = ">=2.8.2"
+types-requests = ">=2.20.0"
+
+[tool.poetry.group.docs.dependencies]
+myst-parser = ">=4.0.1"
+sphinx = ">=8.2.3"
+sphinx-autobuild = ">=2025.8.25"
+sphinx-autodoc-typehints = ">=3.5.2"
+sphinx-rtd-theme = ">=3.0.2"
+
+[build-system]
+requires = ["poetry-core>=2.2.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools.package-data]
+openseries = ["py.typed"]
+
+packages = [
+  { include = "openseries" }
+]
+
+include = [{ path = "openseries/py.typed", format = ["sdist", "wheel"] }]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = ["."]
+cache_dir = ".mypy_cache"
+exclude = ["venv/*", "docs/*"]
+strict = true
+pretty = true
+incremental = true
+follow_imports = "normal"
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+cache_fine_grained = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 87
+exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["COM812"]
+fixable = ["ALL"]
+pydocstyle = { convention = "google" }
+pylint = { max-args = 20, max-branches = 12, max-statements = 48 }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = [
+  "-n", "auto",
+  "--dist=worksteal",
+  "--cov=openseries",
+  "--strict-markers",
+  "--cov-fail-under=99",
+  "--cov-branch",
+  "--cov-report=term",
+  "--cov-report=term-missing",
+  "--cov-report=xml",
+  "--junitxml=junit.xml"
+]
