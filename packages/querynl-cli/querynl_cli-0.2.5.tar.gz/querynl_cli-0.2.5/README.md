@@ -1,0 +1,526 @@
+# QueryNL CLI - Natural Language Database Queries from the Terminal
+
+A powerful command-line interface for executing database queries using natural language. QueryNL CLI provides terminal-native access to database querying, connection management, and query history tracking.
+
+## 🎯 MVP Features (Version 0.1.0)
+
+This is the **Minimum Viable Product** implementation with core functionality:
+
+### ✅ Implemented Features
+
+- **Connection Management** (User Story 2 - P1)
+  - Add/list/test/use/remove database connections
+  - Secure credential storage via OS keychain
+  - Support for PostgreSQL, MySQL, SQLite, MongoDB
+  - SSH tunnel configuration
+  - Environment variable support for CI/CD
+
+- **Natural Language Queries** (User Story 1 - P1)
+  - Execute database queries using natural language
+  - **🆕 Real LLM Integration** (OpenAI GPT-4 & Anthropic Claude)
+  - SQL generation with syntax highlighting preview
+  - Confirmation prompts for destructive operations
+  - Multiple output formats (table, JSON, CSV, markdown)
+  - Query history tracking
+  - Scriptable commands with proper exit codes
+  - Automatic fallback to pattern matching if LLM unavailable
+
+### 🆕 LLM Integration (NEW!)
+
+QueryNL now supports real AI-powered query generation:
+
+- **Providers**: OpenAI GPT-4, Anthropic Claude 3.5 Sonnet
+- **Secure**: API keys stored in system keychain
+- **Smart**: Understands database schema and context
+- **Safe**: Confidence scoring and destructive operation detection
+- **Fallback**: Works without API keys using pattern matching
+
+**Quick Setup:**
+```bash
+querynl config llm --provider openai --test
+# Enter your OpenAI API key when prompted
+```
+
+See [LLM_SETUP.md](LLM_SETUP.md) for detailed configuration guide.
+
+### 🎉 Test Data Generation (NEW!)
+
+**Feature Branch**: `005-add-test-data`
+
+Automatically populate your database schemas with realistic test data using natural language!
+
+- **Natural Language**: "add sample data", "add 100 users", "add e-commerce product data"
+- **Smart Dependencies**: Automatically handles foreign key relationships
+- **Constraint Compliance**: Respects UNIQUE, NOT NULL, and CHECK constraints
+- **Multi-Database**: Works with MySQL, PostgreSQL, and SQLite
+- **Realistic Data**: Uses Faker library for names, emails, addresses, dates, etc.
+- **Domain Aware**: Generate domain-specific data (e-commerce, blog, medical, etc.)
+- **Progress Tracking**: Real-time progress bars with speed and ETA
+- **Error Recovery**: Graceful handling of constraint violations
+
+**Quick Start:**
+```bash
+# Create a schema
+querynl> \schema design
+Schema Designer> blog with users, posts, and comments
+Schema Designer> finalize
+
+# Generate test data
+querynl> add sample data
+
+# Or specify quantities
+querynl> add 100 users and 500 posts
+
+# Or with domain context
+querynl> add e-commerce product data
+```
+
+See [specs/005-add-test-data/quickstart.md](specs/005-add-test-data/quickstart.md) for full documentation.
+
+### 🚧 Coming in Future Releases
+
+- Migration generation (Phase 8)
+- Advanced output formatting (Phase 6)
+- Configuration management commands (Phase 10)
+
+## 📦 Installation
+
+### Prerequisites
+
+- Python 3.11 or higher
+- pip (Python package manager)
+
+### Install from Source
+
+```bash
+# Clone the repository
+cd /Users/marcus/Developer/QueryNLAgent/QueryNL
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+```
+
+### Verify Installation
+
+```bash
+querynl --version
+# Output: QueryNL CLI, version 0.1.0
+```
+
+## 🚀 Quick Start
+
+### 1. Add Your First Connection
+
+```bash
+# Interactive mode (recommended)
+querynl connect add my-db
+
+# You'll be prompted for:
+# - Database type (postgresql, mysql, sqlite, mongodb)
+# - Host (default: localhost)
+# - Port (default: 5432 for PostgreSQL)
+# - Database name
+# - Username
+# - Password (hidden input)
+```
+
+### 2. Test the Connection
+
+```bash
+querynl connect test my-db
+
+# Output:
+# Testing connection 'my-db'...
+# ✓ Connection successful
+#   Database: PostgreSQL 15.2
+#   Latency: 23ms
+```
+
+### 3. Start Interactive REPL Mode
+
+```bash
+querynl repl
+
+# Output:
+# QueryNL Interactive REPL
+# Type '\help' for available commands, 'exit' to quit
+#
+# querynl (my-db)>
+```
+
+### 4. Execute Your First Query
+
+**In REPL mode:**
+```
+querynl (my-db)> count all users
+
+Generated SQL:
+SELECT COUNT(*) AS count FROM users;
+
+Executing query...
+┌───────┐
+│ count │
+├───────┤
+│  1523 │
+└───────┘
+
+1 row returned (45ms)
+```
+
+**Or using CLI:**
+```bash
+querynl query exec "count all users"
+```
+
+## 📚 Usage Examples
+
+### Interactive REPL Mode
+
+The REPL (Read-Eval-Print Loop) provides an interactive session for natural language queries with conversation context.
+
+**Start REPL:**
+```bash
+querynl repl
+
+# Or specify a connection
+querynl repl --connection prod-db
+```
+
+**REPL Features:**
+
+1. **Natural Language Queries**
+   ```
+   querynl> show me all active users
+   querynl> count orders by status
+   querynl> find products with price > 100
+   ```
+
+2. **Schema Design Mode**
+   ```
+   querynl> \schema design
+   Schema Designer> blog with users, posts, and comments
+   Schema Designer> finalize
+   ```
+
+3. **Test Data Generation**
+   ```
+   querynl> add sample data
+   querynl> add 100 users and 500 posts
+   querynl> add e-commerce product data
+   ```
+
+4. **REPL Commands**
+   ```
+   querynl> \help         # Show available commands
+   querynl> \tables       # List all tables in database
+   querynl> \schema       # Display database schema
+   querynl> \history      # Show query history
+   querynl> \clear        # Clear screen
+   querynl> exit          # Exit REPL
+   ```
+
+5. **Conversation Context**
+   The REPL maintains context across queries:
+   ```
+   querynl> show users created this month
+   querynl> now filter them by status = 'active'
+   querynl> order by created_at desc
+   ```
+
+6. **Tab Completion**
+   - Press `Tab` to autocomplete table names
+   - Works for commands starting with `\`
+
+7. **History Navigation**
+   - Use ↑/↓ arrow keys to navigate previous queries
+   - History persists across sessions
+
+### Connection Management
+
+```bash
+# List all connections
+querynl connect list
+
+# Add a SQLite connection
+querynl connect add local-db --type sqlite --database ./app.db
+
+# Add with SSH tunnel
+querynl connect add remote-db --ssh-tunnel
+
+# Set default connection
+querynl connect use prod-db
+
+# Remove a connection
+querynl connect remove dev-db --confirm
+```
+
+### Executing Queries
+
+```bash
+# Basic natural language query
+querynl query exec "show all active users"
+
+# JSON output (for piping to jq)
+querynl query exec --format json "count orders by status"
+
+# Save results to file
+querynl query exec --output results.csv --format csv "all orders from last week"
+
+# Non-interactive mode (skip confirmations)
+querynl query exec -y "delete from temp_table"
+
+# Explain mode (show SQL without executing)
+querynl query exec --explain "update user status"
+
+# Use specific connection
+querynl query exec --connection staging-db "list tables"
+
+# Limit results
+querynl query exec --limit 100 "all users"
+```
+
+### Query History
+
+```bash
+# View recent queries
+querynl query history
+
+# Show last 50 queries
+querynl query history --limit 50
+
+# Filter by connection
+querynl query history --connection prod-db
+
+# JSON output
+querynl query history --format json
+```
+
+### CI/CD Integration
+
+```bash
+# Use environment variables for credentials
+export QUERYNL_CONNECTION_STRING="postgresql://user:pass@host:5432/db"
+
+# Non-interactive query execution
+querynl query exec -y --format json "SELECT 1" > /dev/null
+echo $?  # Exit code: 0 = success, non-zero = error
+
+# Pipe results to other tools
+querynl query exec --format json "all active users" | jq '.rows | length'
+```
+
+## 🔧 Configuration
+
+### Config File Location
+
+- **Linux**: `~/.config/querynl/config.yaml`
+- **macOS**: `~/Library/Application Support/querynl/config.yaml`
+- **Windows**: `%APPDATA%\querynl\config.yaml`
+
+### Config File Structure
+
+```yaml
+version: "1.0"
+default_connection: prod-db
+default_output_format: table
+llm_provider: openai
+enable_telemetry: false
+repl_history_size: 1000
+confirm_destructive: true
+color_output: auto
+
+connections:
+  prod-db:
+    database_type: postgresql
+    host: prod.example.com
+    port: 5432
+    database_name: production
+    username: app_user
+    ssl_enabled: true
+    created_at: '2025-10-14T10:30:00'
+```
+
+**Note**: Passwords are stored separately in OS keychain, never in the config file.
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `QUERYNL_CONNECTION_STRING` | Database connection string (bypasses keychain) |
+| `QUERYNL_KEYRING_PASSWORD` | Master password for encrypted file keyring (headless servers) |
+| `QUERYNL_CONFIG` | Custom config file path |
+| `QUERYNL_NO_COLOR` | Disable color output (set to `1`) |
+
+## 🔐 Security
+
+### Credential Storage
+
+QueryNL CLI uses platform-native credential storage:
+
+- **macOS**: Keychain Access
+- **Windows**: Windows Credential Manager
+- **Linux**: Secret Service API (GNOME Keyring, KWallet)
+
+For headless servers without keychain access:
+
+```bash
+# Option 1: Use encrypted file keyring
+export QUERYNL_KEYRING_PASSWORD="your-master-password"
+querynl connect add my-db
+
+# Option 2: Use connection string directly
+export QUERYNL_CONNECTION_STRING="postgresql://user:pass@host/db"
+querynl query exec "your query"
+```
+
+### Security Features
+
+- ✅ Credentials encrypted at rest via OS keychain
+- ✅ Passwords never displayed in logs or error messages
+- ✅ SSL/TLS enabled by default for network connections
+- ✅ Confirmation required for destructive operations (DELETE, DROP, etc.)
+- ✅ Input sanitization to prevent SQL injection
+
+## 🗂️ Project Structure
+
+```
+QueryNL/
+├── src/cli/
+│   ├── __init__.py           # Version and package info
+│   ├── main.py               # CLI entry point
+│   ├── config.py             # Configuration management
+│   ├── credentials.py        # Keyring integration
+│   ├── database.py           # Database driver wrapper
+│   ├── errors.py             # Custom exceptions
+│   ├── history.py            # Query history tracking
+│   ├── llm.py                # LLM service integration
+│   ├── logging.py            # Logging configuration
+│   ├── models.py             # Data models (ConnectionProfile, etc.)
+│   ├── commands/
+│   │   ├── connect.py        # Connection management commands
+│   │   └── query.py          # Query execution commands
+│   └── formatting/
+│       └── table.py          # Result formatting
+├── tests/cli/                # Tests (coming soon)
+├── requirements.txt          # Python dependencies
+├── setup.py                  # Package setup
+└── README.md                 # This file
+```
+
+## 🧪 Testing
+
+```bash
+# Run tests (when implemented)
+pytest
+
+# Run specific test file
+pytest tests/cli/test_connect.py
+
+# Run with coverage
+pytest --cov=src/cli --cov-report=html
+```
+
+## 🐛 Troubleshooting
+
+### "Connection refused"
+
+```bash
+# Test connectivity
+querynl connect test my-db
+
+# Check if database is running
+# Verify host/port are correct
+# Check firewall rules
+```
+
+### "Permission denied to access keychain" (macOS)
+
+1. Open Keychain Access app
+2. Find "querynl" entry
+3. Right-click → Get Info → Access Control
+4. Allow querynl to access this item
+
+### "D-Bus session not available" (Linux headless)
+
+```bash
+# Use encrypted file keyring fallback
+export QUERYNL_KEYRING_PASSWORD="your-master-password"
+querynl connect add my-db
+```
+
+### "No default connection set"
+
+```bash
+# Add a connection
+querynl connect add my-db
+
+# Or use --connection flag
+querynl query exec --connection my-db "your query"
+```
+
+## 📖 Documentation
+
+- **Feature Specification**: `specs/002-command-line-interface/spec.md`
+- **Implementation Plan**: `specs/002-command-line-interface/plan.md`
+- **Task Breakdown**: `specs/002-command-line-interface/tasks.md`
+- **Quick start Guide**: `specs/002-command-line-interface/quickstart.md`
+- **API Contracts**: `specs/002-command-line-interface/contracts/`
+
+## 🗺️ Roadmap
+
+### Phase 1-4: MVP ✅ (Current Release)
+- [x] Project setup and infrastructure
+- [x] Connection management
+- [x] Natural language query execution
+- [x] Query history tracking
+
+### Phase 5: REPL Mode 🚧 (Next Release)
+- [x] Interactive shell with history
+- [x] Tab completion
+- [x] Conversation context
+- [x] REPL-specific commands (\help, \tables, \schema)
+
+### Phase 6-8: Advanced Features 🔮 (Future)
+- [x] Schema design from natural language
+- [x] Migration generation
+- [x] Output format enhancements
+
+### Phase 9-10: Production Ready 🚀 (Future)
+- [x] Comprehensive testing
+- [x] CI/CD integration examples
+- [x] Binary distribution (PyInstaller)
+- [x] Package manager releases (Homebrew, apt)
+
+## 🤝 Contributing
+
+This project follows the [QueryNL Constitution](../.specify/memory/constitution.md):
+
+1. **Security-First Design**: All code must protect credentials and prevent SQL injection
+2. **User Experience**: Error messages must be actionable with clear next steps
+3. **Transparency**: Generated SQL must be shown before execution
+4. **Multi-Database Parity**: All supported databases must work equally well
+5. **Fail-Safe Defaults**: Destructive operations require confirmation
+
+## 📝 License
+
+Copyright © 2025 QueryNL Team
+
+## 🙏 Acknowledgments
+
+- Built with [Click](https://click.palletsprojects.com/) - Command-line framework
+- [Rich](https://rich.readthedocs.io/) - Beautiful terminal formatting
+- [Keyring](https://keyring.readthedocs.io/) - Secure credential storage
+- [Pydantic](https://pydantic.dev/) - Data validation
+
+---
+
+**Version**: 0.1.0 (MVP)
+**Status**: Production-ready for core features
+**Last Updated**: 2025-10-14
