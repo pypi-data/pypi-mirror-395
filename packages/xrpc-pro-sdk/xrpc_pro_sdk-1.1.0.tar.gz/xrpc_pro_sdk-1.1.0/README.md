@@ -1,0 +1,625 @@
+# xRPC Python SDK
+
+Official Python SDK for xRPC - Multi-chain RPC Gateway.
+
+[![PyPI version](https://img.shields.io/pypi/v/xrpc-pro-sdk.svg)](https://pypi.org/project/xrpc-pro-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Features
+
+- ✅ **Full Type Hints** - Complete type annotations included
+- ✅ **Multi-chain Support** - Ethereum, Polygon, Arbitrum, Optimism, Base, and more
+- ✅ **Premium Networks** - Beacon Chain and WebSocket (WSS) support for Premium users
+- ✅ **Batch Requests** - Execute multiple RPC calls in a single request
+- ✅ **Request Metadata** - Server latency, network info, and timestamps
+- ✅ **Error Handling** - Custom error class with detailed error information
+- ✅ **Convenience Methods** - Helper methods for common RPC operations
+- ✅ **Dynamic Network Discovery** - Get available networks from the backend
+- ✅ **Python 3.8+** - Works with Python 3.8 and above
+
+## Installation
+
+```bash
+pip install xrpc-pro-sdk
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/xrpcpro/xrpc-sdk-python.git
+cd xrpc-sdk-python
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from xrpc import XRpcClient
+
+# Initialize client
+client = XRpcClient(
+    api_key="your-api-key-here",
+    default_network="eth-mainnet"
+)
+
+# Make a request
+result, metadata = client.request("eth_blockNumber")
+print(f"Current block: {result}")
+print(f"Server latency: {metadata.server_latency} ms")
+```
+
+## Configuration
+
+```python
+from xrpc import XRpcClient, XRpcConfig
+
+config = XRpcConfig(
+    api_key="your-api-key",              # Required: Your xRPC API key
+    base_url="https://api.xrpc.pro",     # Optional: API base URL (default: https://api.xrpc.pro)
+    default_network="eth-mainnet",       # Optional: Default network for requests
+    timeout=60000,                        # Optional: Request timeout in ms (default: 60000)
+    debug=False,                         # Optional: Enable request/response logging
+    headers={                            # Optional: Custom headers
+        "Custom-Header": "value"
+    }
+)
+
+client = XRpcClient(config)
+```
+
+## Supported Networks
+
+### Network Availability
+
+Networks are **dynamically determined** by the backend based on available RPC nodes. A network is considered available if:
+
+1. **Active RPC nodes exist** - At least one node with `status: 'active'` exists
+2. **Node is enabled** - The node has `enabled: true`
+3. **Node is healthy** - The node passes health checks (responds to RPC requests)
+
+The backend performs health checks every 10 seconds and automatically updates network availability.
+
+### Standard Networks (Available to All Users)
+
+These networks use standard JSON-RPC over HTTP:
+
+- **Ethereum**
+  - `eth-mainnet` - Ethereum Mainnet (Chain ID: 1)
+  - `eth-sepolia` - Ethereum Sepolia Testnet (Chain ID: 11155111)
+  - `eth-holesky` - Ethereum Holesky Testnet (Chain ID: 17000)
+
+- **Polygon**
+  - `polygon-mainnet` - Polygon Mainnet (Chain ID: 137)
+  - `polygon-amoy` - Polygon Amoy Testnet (Chain ID: 80002)
+
+- **Arbitrum**
+  - `arbitrum-one` - Arbitrum One (Chain ID: 42161)
+  - `arbitrum-sepolia` - Arbitrum Sepolia Testnet (Chain ID: 421614)
+
+- **Optimism**
+  - `optimism` - Optimism Mainnet (Chain ID: 10)
+
+- **Base**
+  - `base-mainnet` - Base Mainnet (Chain ID: 8453)
+  - `base-sepolia` - Base Sepolia Testnet (Chain ID: 84532)
+
+### Premium Networks (Premium Plan Only)
+
+#### Beacon Chain Networks
+
+Ethereum Beacon Chain API endpoints (REST API):
+
+- `eth-mainnet-beacon` - Ethereum Beacon Chain (Mainnet)
+- `eth-sepolia-beacon` - Ethereum Beacon Chain (Sepolia)
+- `eth-holesky-beacon` - Ethereum Beacon Chain (Holesky)
+
+**Note:** Beacon networks are only available if:
+- User has Premium plan
+- Active beacon nodes exist in the backend
+
+#### WebSocket Secure (WSS) Networks
+
+WebSocket Secure endpoints for real-time subscriptions:
+
+- `eth-mainnet-wss` - Ethereum WSS (Mainnet)
+- `eth-sepolia-wss` - Ethereum WSS (Sepolia)
+- `eth-holesky-wss` - Ethereum WSS (Holesky)
+
+**Note:** WSS networks are only available if:
+- User has Premium plan
+- Active WSS nodes exist in the backend
+
+### Getting Available Networks
+
+You can dynamically fetch available networks from the backend:
+
+```python
+# Get all available chains and networks
+chains = client.get_available_networks()
+
+for chain in chains:
+    print(f"Chain: {chain.display_name}")
+    for subnetwork in chain.subnetworks:
+        print(f"  - {subnetwork.display_name} ({subnetwork.network})")
+        print(f"    RPC Types: {subnetwork.rpc_types}")
+        if subnetwork.node_stats:
+            print(f"    Healthy Nodes: {subnetwork.node_stats.get('healthyNodes')}")
+```
+
+**Response structure:**
+```python
+ChainInfo(
+    id="eth",
+    name="Ethereum",
+    display_name="Ethereum",
+    status="active",
+    subnetworks=[
+        NetworkInfo(
+            network="eth-mainnet",
+            display_name="Ethereum Mainnet",
+            chain_id=1,
+            type="mainnet",
+            rpc_types={
+                "standard": True,   # Always available
+                "beacon": True,      # If beacon nodes exist
+                "wss": True         # If WSS nodes exist
+            },
+            node_stats={
+                "totalNodes": 3,
+                "healthyNodes": 3,
+                "activeNodes": 3,
+                "avgLatency": 45
+            },
+            endpoints={
+                "standard": "https://eth-mainnet.xrpc.pro",
+                "beacon": "https://eth-mainnet-beacon.xrpc.pro",
+                "wss": "wss://eth-mainnet.xrpc.pro"
+            }
+        )
+    ]
+)
+```
+
+## Usage Examples
+
+### Basic Request
+
+```python
+result, metadata = client.request("eth_blockNumber")
+print(f"Block number: {result}")
+```
+
+### Request with Parameters
+
+```python
+result, metadata = client.request(
+    "eth_getBalance",
+    ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "latest"]
+)
+print(f"Balance: {result}")
+```
+
+### Request with Different Network
+
+```python
+from xrpc import RequestOptions
+
+# Override default network for this request
+result, metadata = client.request(
+    "eth_blockNumber",
+    [],
+    RequestOptions(network="polygon-mainnet")
+)
+```
+
+### Request Metadata
+
+Every request returns metadata:
+
+```python
+result, metadata = client.request("eth_blockNumber")
+
+print(f"Result: {result}")
+print(f"Server latency: {metadata.server_latency} ms")
+print(f"Network used: {metadata.network}")
+print(f"Timestamp: {metadata.timestamp}")
+```
+
+### Batch Requests
+
+Execute multiple RPC calls in a single request:
+
+```python
+from xrpc import BatchRequestItem
+
+requests = [
+    BatchRequestItem(method="eth_blockNumber", params=[], id=1),
+    BatchRequestItem(method="eth_gasPrice", params=[], id=2),
+    BatchRequestItem(
+        method="eth_getBalance",
+        params=["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "latest"],
+        id=3
+    )
+]
+
+results, metadata = client.batch(requests)
+
+for response in results:
+    if response.error:
+        print(f"Error: {response.error}")
+    else:
+        print(f"Result: {response.result}")
+```
+
+### WebSocket Subscriptions (Premium Feature)
+
+**⚠️ Premium Plan Required** - WebSocket subscriptions are available only for Premium plan users.
+
+Real-time subscriptions via WebSocket Secure (WSS) connections:
+
+```python
+import asyncio
+from xrpc import XRpcWebSocketClient, SubscriptionOptions
+
+async def main():
+    # Create WebSocket client
+    options = SubscriptionOptions(
+        api_key="your-api-key",
+        network="eth-mainnet",  # Use base network name (not eth-mainnet-wss)
+        debug=True,
+        auto_reconnect=True
+    )
+    
+    ws_client = XRpcWebSocketClient(options)
+
+    try:
+        # Connect to WebSocket
+        await ws_client.connect()
+        print("Connected!")
+
+        # Subscribe to new block headers
+        new_heads_sub = await ws_client.subscribe_new_heads(
+            lambda block: print(f"New block: {block}")
+        )
+        print(f"Subscribed to newHeads: {new_heads_sub}")
+
+        # Subscribe to new pending transactions
+        pending_tx_sub = await ws_client.subscribe_new_pending_transactions(
+            lambda tx_hash: print(f"New pending transaction: {tx_hash}")
+        )
+        print(f"Subscribed to newPendingTransactions: {pending_tx_sub}")
+
+        # Subscribe to logs
+        logs_sub = await ws_client.subscribe_logs(
+            {
+                "address": "0x...",  # Contract address
+                "topics": ["0x..."]  # Event topics
+            },
+            lambda log: print(f"New log: {log}")
+        )
+        print(f"Subscribed to logs: {logs_sub}")
+
+        # Keep connection alive
+        await asyncio.sleep(3600)  # Run for 1 hour
+
+    finally:
+        await ws_client.disconnect()
+
+asyncio.run(main())
+```
+
+**Note:** You need to install the `websockets` package:
+```bash
+pip install websockets
+```
+
+### Convenience Methods
+
+Use the extended client for common operations:
+
+```python
+from xrpc import XRpcClientExtended
+
+client = XRpcClientExtended(
+    api_key="your-api-key",
+    default_network="eth-mainnet"
+)
+
+# Get block number
+block_number = client.get_block_number()
+print(f"Block number: {block_number}")
+
+# Get balance
+balance = client.get_balance("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+print(f"Balance: {balance}")
+
+# Get gas price
+gas_price = client.get_gas_price()
+print(f"Gas price: {gas_price}")
+
+# Get transaction receipt
+receipt = client.get_transaction_receipt("0x...")
+print(f"Receipt: {receipt}")
+
+# Call contract
+result = client.call({
+    "to": "0x...",
+    "data": "0x..."
+})
+print(f"Call result: {result}")
+
+# Estimate gas
+gas = client.estimate_gas({
+    "to": "0x...",
+    "from": "0x...",
+    "data": "0x..."
+})
+print(f"Estimated gas: {gas}")
+
+# Get logs
+logs = client.get_logs({
+    "fromBlock": "0x0",
+    "toBlock": "latest",
+    "address": "0x..."
+})
+print(f"Logs: {logs}")
+```
+
+### Error Handling
+
+```python
+from xrpc import XRpcClient, XRpcError
+
+try:
+    result, metadata = client.request("eth_blockNumber")
+    print(f"Success: {result}")
+except XRpcError as e:
+    print(f"RPC Error Code: {e.code}")
+    print(f"RPC Error Message: {e.message}")
+    print(f"Error Data: {e.data}")
+    
+    # Handle specific errors
+    if e.code == -32601:
+        print("Method not found or invalid API key")
+    elif e.code == 403:
+        print("Premium plan required for this network")
+except Exception as e:
+    print(f"Unknown error: {e}")
+```
+
+### Health Check
+
+```python
+health = client.health()
+print(f"Status: {health['status']}")
+print(f"Networks: {health.get('networks')}")
+```
+
+### Network Statistics
+
+```python
+stats = client.get_network_stats()
+print(f"Total chains: {stats['totalChains']}")
+print(f"Total networks: {stats['totalSubnetworks']}")
+print(f"Active networks: {stats['activeSubnetworks']}")
+print(f"Mainnets: {stats['mainnets']}")
+print(f"Testnets: {stats['testnets']}")
+```
+
+### Update Configuration
+
+```python
+# Update API key
+client.set_api_key("new-api-key")
+
+# Update default network
+client.set_default_network("polygon-mainnet")
+
+# Get masked API key (for logging)
+masked_key = client.get_api_key()  # Returns "abc12345..."
+```
+
+## Network Availability Logic
+
+### How Networks Are Determined
+
+1. **Backend Node Loading:**
+   - Backend loads all RPC nodes from MongoDB on startup
+   - Nodes are grouped by network (e.g., `eth-mainnet`, `polygon-mainnet`)
+   - Each node has properties: `status`, `enabled`, `healthy`, `rpcType`
+
+2. **Health Checks:**
+   - Backend performs health checks every 10 seconds
+   - Health check uses `eth_blockNumber` for standard nodes
+   - Beacon nodes use REST API endpoints
+   - WSS nodes use WebSocket health checks
+   - Nodes that fail health checks are marked as `healthy: false`
+
+3. **Network Availability:**
+   - A network is available if **at least one node** meets all criteria:
+     - `status === 'active'`
+     - `enabled === true`
+     - `healthy === true`
+   - If all nodes for a network are unhealthy, the network becomes unavailable
+   - Fallback nodes are used when all primary nodes fail
+
+4. **RPC Type Availability:**
+   - **Standard:** Always available if standard nodes exist
+   - **Beacon:** Available only if:
+     - User has Premium plan
+     - Active beacon nodes exist (`rpcType: 'beacon'`)
+   - **WSS:** Available only if:
+     - User has Premium plan
+     - Active WSS nodes exist (`rpcType: 'wss'`)
+
+5. **Dynamic Updates:**
+   - Network availability updates in real-time as nodes become healthy/unhealthy
+   - Use `get_available_networks()` to get current network status
+   - Health check endpoint (`/rpc/health`) shows current network health
+
+### Example: Checking Network Availability
+
+```python
+# Get all available networks
+chains = client.get_available_networks()
+
+# Find a specific network
+eth_mainnet = None
+for chain in chains:
+    if chain.id == "eth":
+        for subnetwork in chain.subnetworks:
+            if subnetwork.network == "eth-mainnet":
+                eth_mainnet = subnetwork
+                break
+
+if eth_mainnet:
+    print("Network is available")
+    print(f"Standard RPC: {eth_mainnet.rpc_types.get('standard')}")
+    print(f"Beacon RPC: {eth_mainnet.rpc_types.get('beacon')}")
+    print(f"WSS RPC: {eth_mainnet.rpc_types.get('wss')}")
+    if eth_mainnet.node_stats:
+        print(f"Healthy nodes: {eth_mainnet.node_stats.get('healthyNodes')}")
+else:
+    print("Network is not available")
+```
+
+## Error Codes
+
+The SDK uses standard JSON-RPC 2.0 error codes:
+
+| Code | Description |
+|------|-------------|
+| `-32600` | Invalid Request - The JSON sent is not a valid Request object |
+| `-32601` | Method not found / Invalid API key / Access denied |
+| `-32602` | Invalid params - Invalid method parameter(s) |
+| `-32603` | Internal error - Internal JSON-RPC error |
+| `-32000` | Server error - Generic server error |
+| `-32001` | Rate limit exceeded |
+| `403` | Forbidden - Premium plan required for Beacon/WSS networks |
+
+## Type Hints
+
+The SDK includes full type annotations:
+
+```python
+from xrpc import XRpcClient, Network, RequestOptions
+
+client = XRpcClient(
+    api_key="your-api-key",
+    default_network="eth-mainnet"  # type: Network
+)
+
+# Type-safe request
+result: str
+result, metadata = client.request[str]("eth_blockNumber")
+# result is typed as str
+```
+
+## Debug Mode
+
+Enable debug mode to see detailed request/response logging:
+
+```python
+client = XRpcClient(
+    api_key="your-api-key",
+    debug=True  # Enable logging
+)
+
+# All requests and responses will be logged to console
+```
+
+## API Reference
+
+### XRpcClient
+
+#### Constructor
+
+```python
+XRpcClient(config: XRpcConfig)
+```
+
+#### Methods
+
+- `request(method: str, params: Optional[List[Any] | Dict[str, Any]] = None, options: Optional[RequestOptions] = None) -> Tuple[Any, RequestMetadata]`
+- `batch(requests: List[BatchRequestItem], options: Optional[RequestOptions] = None) -> Tuple[List[BatchResponseItem], RequestMetadata]`
+- `health() -> Dict[str, Any]`
+- `get_available_networks() -> List[ChainInfo]`
+- `get_network_stats() -> Dict[str, int]`
+- `set_api_key(api_key: str) -> None`
+- `set_default_network(network: Network) -> None`
+- `get_api_key() -> str`
+
+### XRpcWebSocketClient
+
+WebSocket client for real-time subscriptions (Premium feature):
+
+- `connect() -> None` - Connect to WebSocket server
+- `disconnect() -> None` - Disconnect from WebSocket server
+- `subscribe_new_heads(callback: Callable) -> str` - Subscribe to new block headers
+- `subscribe_new_pending_transactions(callback: Callable) -> str` - Subscribe to new pending transactions
+- `subscribe_logs(filter: Dict, callback: Callable) -> str` - Subscribe to logs
+- `subscribe(type: SubscriptionType, params: List, callback: Callable) -> str` - Generic subscribe method
+- `unsubscribe(subscription_id: str) -> bool` - Unsubscribe from a subscription
+- `get_state() -> str` - Get connection state
+- `is_connected() -> bool` - Check if connected
+- `get_subscriptions() -> List[Subscription]` - Get active subscriptions
+
+**Note:** Requires `websockets` package. Install with: `pip install websockets`
+
+### XRpcClientExtended
+
+Extends `XRpcClient` with convenience methods:
+
+- `get_block_number(options: Optional[RequestOptions] = None) -> str`
+- `get_balance(address: str, block_tag: str = "latest", options: Optional[RequestOptions] = None) -> str`
+- `get_transaction_count(address: str, block_tag: str = "latest", options: Optional[RequestOptions] = None) -> str`
+- `get_gas_price(options: Optional[RequestOptions] = None) -> str`
+- `get_transaction_receipt(tx_hash: str, options: Optional[RequestOptions] = None) -> Dict[str, Any]`
+- `get_transaction(tx_hash: str, options: Optional[RequestOptions] = None) -> Dict[str, Any]`
+- `get_block_by_number(block_number: str, full_transactions: bool = False, options: Optional[RequestOptions] = None) -> Dict[str, Any]`
+- `get_block_by_hash(block_hash: str, full_transactions: bool = False, options: Optional[RequestOptions] = None) -> Dict[str, Any]`
+- `call(call_object: Dict[str, Any], block_tag: str = "latest", options: Optional[RequestOptions] = None) -> str`
+- `estimate_gas(transaction: Dict[str, Any], options: Optional[RequestOptions] = None) -> str`
+- `send_raw_transaction(signed_tx: str, options: Optional[RequestOptions] = None) -> str`
+- `get_logs(filter_obj: Dict[str, Any], options: Optional[RequestOptions] = None) -> List[Dict[str, Any]]`
+- `get_code(address: str, block_tag: str = "latest", options: Optional[RequestOptions] = None) -> str`
+- `get_storage_at(address: str, position: str, block_tag: str = "latest", options: Optional[RequestOptions] = None) -> str`
+- `get_chain_id(options: Optional[RequestOptions] = None) -> str`
+- `get_network_version(options: Optional[RequestOptions] = None) -> str`
+
+## Development
+
+```bash
+# Install dependencies
+pip install -r requirements-dev.txt
+
+# Install in development mode
+pip install -e .
+
+# Run tests (when tests are added)
+pytest
+
+# Type checking
+mypy xrpc/
+
+# Code formatting
+black xrpc/ examples/
+
+# Linting
+ruff check xrpc/ examples/
+```
+
+## License
+
+MIT
+
+## Support
+
+- **Documentation:** https://docs.xrpc.pro
+- **Support:** https://t.me/xnode_support
+- **GitHub:** https://github.com/xrpcpro/xrpc-sdk-python
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for a list of changes.
+
