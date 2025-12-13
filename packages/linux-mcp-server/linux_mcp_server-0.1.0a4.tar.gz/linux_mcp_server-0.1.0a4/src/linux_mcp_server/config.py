@@ -1,0 +1,34 @@
+"""Settings for linux-mcp-server"""
+
+import getpass
+
+from pathlib import Path
+
+from pydantic_settings import BaseSettings
+from pydantic_settings import SettingsConfigDict
+
+from linux_mcp_server.utils.types import UpperCase
+
+
+class Config(BaseSettings):
+    # The `_`` is required in the env_prefix, otherwise, pydantic would
+    # interpret the prefix as `LINUX_MCPLOG_DIR`, instead of `LINUX_MCP_LOG_DIR`
+    model_config = SettingsConfigDict(env_prefix="LINUX_MCP_", env_ignore_empty=True)
+
+    user: str = getpass.getuser()
+
+    # Logging configuration
+    log_dir: Path | None = None
+    log_level: UpperCase = "INFO"
+    log_retention_days: int = 10
+
+    # Log file access control
+    allowed_log_paths: str | None = None
+
+    # SSH configuration
+    ssh_key_path: Path | None = None
+    key_passphrase: str | None = None
+    search_for_ssh_key: bool = False
+
+
+CONFIG = Config()

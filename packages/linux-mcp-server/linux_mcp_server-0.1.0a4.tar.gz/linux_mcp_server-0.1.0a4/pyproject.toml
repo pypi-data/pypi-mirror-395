@@ -1,0 +1,176 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "linux-mcp-server"
+description = "MCP server for read-only Linux system administration, diagnostics, and troubleshooting"
+authors = [
+    { name = "RHEL Lightspeed" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=0.9.0",
+    "psutil>=5.9.0",
+    "asyncssh>=2.14.0",
+    "bcrypt",
+    "pydantic-settings>=2.12.0",
+    "pydantic>=2.12.4",
+]
+dynamic = ["version"]
+license-files = ["LICENSE", "licenses/GPL-3.0.txt"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.url]
+"Source code" = "https://github.com/rhel-lightspeed/linux-mcp-server"
+"Bug Tracker" = "https://github.com/rhel-lightspeed/linux-mcp-server/issues"
+
+[project.scripts]
+linux-mcp-server = "linux_mcp_server.__main__:cli"
+
+[dependency-groups]
+dev = [
+    "ipdb",
+    "ipython",
+    {include-group = "lint"},
+    {include-group = "test"},
+]
+
+lint = [
+    "pyright",
+    "ruff",
+]
+
+test = [
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock",
+    "pytest>=8.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/linux_mcp_server"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.pytest.ini_options]
+addopts = [
+    "-r", "a",
+    "--verbose",
+    "--strict-markers",
+    "--cov", "src",
+    "--cov", "tests",
+    "--cov-report", "html",
+    "--cov-report", "term-missing:skip-covered",
+    "--durations-min", "1",
+    "--durations", "10",
+    "--color", "yes",
+    "--showlocals",
+    "--pdbcls", "IPython.terminal.debugger:TerminalPdb",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+pythonpath = "src"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+data_file = "coverage/.data"
+source = [
+    "src",
+    "tests",
+    "src/linux_mcp_server/_vendor/__init__.py",
+]
+omit = [
+    "src/linux_mcp_server/_vendor/*/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.coverage.html]
+directory = "coverage/htmlcov"
+
+[tool.coverage.json]
+output = "coverage/coverage.json"
+
+[tool.coverage.xml]
+output = "coverage/coverage.xml"
+
+[tool.gha-update]
+tag-only = [
+    "actions/checkout",
+    "actions/download-artifact",
+    "actions/setup-python",
+    "actions/upload-artifact",
+    "astral-sh/setup-uv",
+    "codecov/codecov-action",
+    "pypa/gh-action-pypi-publish",
+]
+
+[tool.pyright]
+include = [
+    "src",
+    "tests",
+]
+ignore = [
+    "src/linux_mcp_server/_vendor/*/*"
+]
+pythonVersion = "3.10"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+# Enable ruff rules to act like flake8
+select = [
+    "E",  # pycodestyle (formerly part of flake8)
+    "F",  # pyflakes (formerly part of flake8)
+    "I",  # import order (like isort)
+    # "B",  # flake8-bugbear
+    "C90",  # flake8-comprehensions
+    "RUF100",  # unused-noqa
+    "T20",  # flake8-print
+]
+mccabe.max-complexity = 12
+
+# Exclude specific rules if needed
+ignore = [
+    "E501",  # Ignore line length (similar to flake8's max-line-length)
+]
+
+
+[tool.ruff.lint.isort]
+case-sensitive = false
+force-single-line = true
+lines-after-imports = 2
+lines-between-types = 1
+order-by-type = false
