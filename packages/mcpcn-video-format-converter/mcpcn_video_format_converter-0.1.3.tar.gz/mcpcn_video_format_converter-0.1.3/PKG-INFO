@@ -1,0 +1,101 @@
+Metadata-Version: 2.4
+Name: mcpcn-video-format-converter
+Version: 0.1.3
+Summary: MCP server for video format conversion using FFmpeg
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Keywords: codec,container,conversion,ffmpeg,format,mcp,video
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Multimedia :: Video :: Conversion
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.12
+Requires-Dist: ffmpeg-python>=0.2.0
+Requires-Dist: mcp[cli]>=1.9.0
+Description-Content-Type: text/markdown
+
+# Video Format Converter MCP
+
+基于 MCP (Model Context Protocol) 的视频格式转换服务器，使用 FFmpeg 进行视频处理。
+
+## 功能特性
+
+- **视频容器转换**: MP4、MOV、MKV、WebM、AVI、WMV 等格式互转
+- **视频编码设置**: 支持 libx264、libx265、vp9、mpeg4 等编码器
+- **分辨率调整**: 支持指定分辨率或按比例缩放
+- **码率控制**: 视频码率、音频码率独立设置
+- **音频属性**: 编码器、采样率、声道数配置
+- **智能 Remux**: 纯换容器时直接复制流，无需重编码
+
+## 安装
+
+通过 uvx 安装（推荐）:
+
+```bash
+uvx mcpcn-video-format-converter
+```
+
+或通过 pip 安装:
+
+```bash
+pip install mcpcn-video-format-converter
+```
+
+## 使用方法
+
+启动 MCP 服务器:
+
+```bash
+mcpcn-video-format-converter
+```
+
+## 系统要求
+
+- Python >= 3.12
+- FFmpeg（需要系统安装）
+
+## 环境变量
+
+- `FFMPEG_BINARY`: 指定 FFmpeg 可执行文件路径
+- `FFPROBE_BINARY`: 指定 FFprobe 可执行文件路径
+
+## 工具说明
+
+### convert_video_format
+
+批量视频容器转换与属性重设。
+
+**参数:**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| input_video_paths | list[string] | 是 | 输入视频文件路径列表，支持批量转换多个视频 |
+| output_dir | string | 是 | 输出目录路径，转换后的视频保存到此目录 |
+| target_format | string | 是 | 目标格式 (mp4/mov/mkv/webm/avi/wmv) |
+| resolution | string | 否 | 分辨率，如 '1920x1080' 或 '720' |
+| video_codec | string | 否 | 视频编码器 (libx264/libx265/vp9等) |
+| video_bitrate | string | 否 | 视频码率，如 '2500k' |
+| frame_rate | int | 否 | 帧率，如 24/30/60 |
+| audio_codec | string | 否 | 音频编码器 (aac/libopus/mp3等) |
+| audio_bitrate | string | 否 | 音频码率，如 '128k' |
+| audio_sample_rate | int | 否 | 音频采样率，如 44100/48000 |
+| audio_channels | int | 否 | 声道数，1=单声道，2=立体声 |
+
+**支持的格式与默认编解码器:**
+
+| 格式 | 视频编码器 | 音频编码器 | 附加参数 |
+|------|-----------|-----------|----------|
+| mp4/m4v | libx264 | aac | movflags=+faststart |
+| mov | libx264 | aac | - |
+| webm | libvpx-vp9 | libopus | - |
+| mkv | libx264 | aac | - |
+| avi | mpeg4 | mp3 | - |
+| wmv | wmv2 | wmav2 | - |
+
+## License
+
+MIT License
