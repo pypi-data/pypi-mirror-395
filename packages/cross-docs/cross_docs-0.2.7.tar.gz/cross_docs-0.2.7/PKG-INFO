@@ -1,0 +1,91 @@
+Metadata-Version: 2.4
+Name: cross-docs
+Version: 0.2.7
+Summary: Documentation framework built on Cross-Inertia
+Project-URL: Homepage, https://github.com/usecross/cross-docs
+Project-URL: Documentation, https://cross-docs.dev
+Project-URL: Repository, https://github.com/usecross/cross-docs
+Author-email: Patrick Arminio <patrick.arminio@gmail.com>
+License: MIT
+Keywords: documentation,fastapi,inertia,react,ssr
+Classifier: Development Status :: 3 - Alpha
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Documentation
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.10
+Requires-Dist: cross-inertia>=0.10.0
+Requires-Dist: fastapi>=0.100.0
+Description-Content-Type: text/markdown
+
+# cross-docs
+
+Python backend utilities for Cross-Docs documentation framework.
+
+## Installation
+
+```bash
+uv add cross-docs
+# or
+pip install cross-docs
+```
+
+## Usage
+
+```python
+from pathlib import Path
+from fastapi import FastAPI, Request
+from cross_docs import (
+    generate_nav,
+    create_docs_handler,
+    strip_trailing_slash_middleware,
+)
+from inertia.fastapi import InertiaDep
+
+app = FastAPI()
+app.middleware("http")(strip_trailing_slash_middleware)
+
+CONTENT_DIR = Path("content")
+NAV = generate_nav(CONTENT_DIR / "docs")
+
+docs_handler = create_docs_handler(CONTENT_DIR, NAV)
+
+@app.get("/docs")
+async def docs_index(request: Request, inertia: InertiaDep):
+    return await docs_handler(request, inertia)
+
+@app.get("/docs/{path:path}")
+async def docs_page(path: str, request: Request, inertia: InertiaDep):
+    return await docs_handler(request, inertia, path=path)
+```
+
+## API
+
+### Markdown Utilities
+
+- `parse_frontmatter(content: str)` - Parse YAML frontmatter
+- `load_markdown(content_dir: Path, path: str)` - Load and parse markdown
+- `load_raw_markdown(content_dir: Path, path: str)` - Load raw markdown
+
+### Navigation
+
+- `generate_nav(docs_dir, base_path, section_order, index_page)` - Generate nav from files
+
+### Middleware
+
+- `strip_trailing_slash_middleware` - Redirect trailing slashes
+- `wants_markdown(request)` - Check Accept header for markdown
+
+### Routes
+
+- `create_docs_handler(...)` - Create a docs route handler
+
+## License
+
+MIT
