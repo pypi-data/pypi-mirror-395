@@ -1,0 +1,385 @@
+Metadata-Version: 2.4
+Name: PyDNI
+Version: 0.9.0
+Summary: Spanish identity utilities: validation and generation of DNI, NIE, CIF, NIF, names, emails and birthdates.
+Home-page: https://github.com/agonzalezla/PyDNI
+Author: Alberto Gonzalez
+Author-email: agonzalezla@protonmail.com
+License: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Utilities
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: Natural Language :: Spanish
+Classifier: Natural Language :: English
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: faker
+Requires-Dist: faker>=20.0; extra == "faker"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-python
+Dynamic: summary
+
+![Status](https://img.shields.io/badge/status-stable-brightgreen)
+![Tests](https://github.com/agonzalezla/PyDNI/actions/workflows/tests.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/pydni)
+![Downloads](https://img.shields.io/pypi/dm/pydni)
+![Python](https://img.shields.io/pypi/pyversions/pydni)
+![License](https://img.shields.io/pypi/l/pydni)
+<!-- ![Coverage](https://codecov.io/gh/agonzalezla/PyDNI/branch/main/graph/badge.svg) -->
+![Status](https://img.shields.io/badge/release-production--ready-blue)
+![Mock Data](https://img.shields.io/badge/type-mock--data-orange)
+![Spain](https://img.shields.io/badge/country-Spain-red)
+![Style](https://img.shields.io/badge/code%20style-PEP8-blue)
+![Security](https://img.shields.io/badge/security-tested-green)
+![SemVer](https://img.shields.io/badge/versioning-semver-blue)
+
+# PyDNI
+
+PyDNI es un módulo de Python que permite validar y generar identificadores españoles:
+DNI, NIE, CIF y NIF, así como generar personas ficticias válidas para uso en desarrollo, qa y pruebas. Incluye validación, generación aleatoria y un motor de pruebas completo con pytest.
+
+## ¿Para qué sirve PyDNI?
+
+PyDNI está diseñado para facilitar el desarrollo, testing y validación de aplicaciones que trabajan con datos españoles. Es ideal para:
+
+- Tests unitarios y de integración.
+- Generación de datos ficticios (mock data).
+- Entornos de staging y preproducción.
+- Pruebas de validación de formularios.
+- Simulación de usuarios reales en aplicaciones españolas.
+- Automatización de QA.
+
+
+## Generadores disponibles
+
+| Generador | Descripción |
+|----------|-------------|
+| DNI | Genera DNIs válidos |
+| NIE | Genera NIEs válidos |
+| CIF | Genera CIFs válidos |
+| Nombres | Nombres masculinos, femeninos y aleatorios |
+| Emails | Emails realistas basados en nombre |
+| Teléfonos | Móviles y fijos españoles |
+| Fechas | Fechas de nacimiento realistas |
+| Personas | Perfil completo con datos reales |
+
+### Estructura modular
+Código limpio, organizado y fácil de integrar en otros proyectos.
+
+## Instalación desde el repositorio
+
+```bash
+pip install .
+```
+
+(Ejecuta este comando en la carpeta donde esté el `setup.py` del paquete.)
+
+Si prefieres usarlo directamente sin instalarlo, puedes importarlo desde el directorio:
+
+```python
+from PyDNI import verificar_dni, verificar_cif, verificar_identificador
+```
+
+## Instalacion con pip desde PyPI
+```bash
+pip install PyDNI
+```
+Instalacion version concreta
+```bash
+pip install pydni==0.8.1
+```
+
+https://pypi.org/project/PyDNI/
+
+## Uso básico
+
+```python
+from PyDNI import verificar_dni, verificar_cif, verificar_identificador, Generator
+
+gen = Generator()
+
+# Verificar un DNI
+print(verificar_dni("12345678Z"))   # True
+
+# Verificar un CIF
+print(verificar_cif("A58818501"))   # True
+
+# Detección automática
+print(verificar_identificador("12345678Z"))   # "DNI válido"
+print(verificar_identificador("A58818501"))   # "CIF válido"
+
+# Generación de documentos
+print("DNI:", gen.generar_dni())
+print("NIE:", gen.generar_nie())
+print("CIF:", gen.generar_cif())
+
+# Generación múltiple (sin duplicados)
+print("AUTO x5:", gen.generar_varios(5, "AUTO"))
+
+# Generación de nombres
+print("Nombre masculino:", gen.generar_nombre("masculino"))
+print("Nombre femenino:", gen.generar_nombre("femenino"))
+print("Nombre aleatorio:", gen.generar_nombre("aleatorio"))
+
+# Generacion de emails
+print(gen.email_gen.generar_email_aleatorio())
+print(gen.email_gen.generar_email_aleatorio("midominio.com"))
+print(gen.email_gen.generar_email_nombre("María Ruiz Gómez", "empresa.com"))
+print(gen.email_gen.generar_email("Ana García Fernández"))
+
+# Generacion de telefonos
+print("Teléfono móvil:", gen.phone_gen.generar_movil())
+print("Teléfono fijo:", gen.phone_gen.generar_fijo())
+print("Teléfono automático:", gen.phone_gen.generar_telefono())
+
+# Generación de personas completas
+persona = gen.generar_persona()
+print("Persona completa:", persona)
+
+'''
+ Estructura de ejemplo:
+ {
+     "nombre": "María Ruiz Gómez",
+     "sexo": "femenino",
+     "tipo_documento": "DNI",
+     "documento": "12345678Z",
+     "email": "mruiz@gmail.com",
+     "fecha_nacimiento": "1992-04-18",
+     "telefono": "612345678"
+ }
+'''
+```
+
+## Uso desde Faker
+```python
+from faker import Faker
+from PyDNI import PyDNIFakerProvider
+
+fake = Faker("es_ES")
+fake.add_provider(PyDNIFakerProvider)
+
+print(fake.dni())
+print(fake.nie())
+print(fake.cif())
+print(fake.documento())
+
+print(fake.nombre())
+print(fake.telefono())
+
+persona = fake.persona()
+print(persona)
+```
+
+## Estructura del paquete
+
+```
+PyDNI/
+├── .gitignore              # Archivos y carpetas que Git debe ignorar (ej. entornos, builds, cache)
+├── CHANGELOG.md            # Registro de cambios por versión (historial de mejoras, fixes, nuevas features)
+├── LICENSE                 # Licencia del proyecto (MIT)
+├── README.md               # Documentación principal: descripción, instalación, uso y ejemplos
+├── setup.py                # Script de configuración para instalar el paquete (PyPI)
+├── test.py                 # Script rápido/manual para probar funciones básicas del paquete
+│
+├── PyDNI/                  # Carpeta principal del paquete (código fuente)
+│   ├── __init__.py         # Inicializa el paquete y expone funciones principales
+│   ├── dni.py              # Lógica de validación de DNI
+│   ├── cif.py              # Lógica de validación de CIF
+│   ├── nie.py              # Lógica de validación de NIE
+│   ├── nif.py              # Lógica de validación de NIF
+│   ├── utils.py            # Funciones auxiliares
+│   └── generator.py        # Generador de datos aleatorios
+│
+├── tests/                  # Carpeta con tests unitarios usando pytest
+│   ├── test_dni.py         # Tests para verificar la función de DNI
+│   ├── test_nie.py         # Tests para verificar la función de NIE
+│   ├── test_cif.py         # Tests para verificar la función de CIF
+│   ├── test_nif.py         # Tests para verificar la función de NIF genérico
+│   ├── test_nombres.py     # Tests generador de nombres y apellidos
+│   ├── test_generar_persona.py # Tests generacion de una persona completa
+│   └── test_utils.py       # Tests para verificar la función unificada de utils
+│
+└── tools/                  # Scripts auxiliares (ej. automatización, publicación, CI/CD, utilidades)
+
+```
+
+## Requisitos
+
+- Python 3.10 o superior
+- No requiere dependencias externas
+
+## Test rápido
+
+Ejecuta el archivo `test.py` incluido:
+
+```bash
+python test.py
+```
+
+Deberías ver algo como:
+
+```
+===== TESTS RÁPIDOS DE VALIDACIÓN ======
+DNI 12345678Z (válido): True
+NIE X1234567L (válido): True
+CIF A58818501 (válido): True
+
+===== TESTS NIF GENÉRICO =====
+verificar_nif('12345678Z') → DNI válido
+verificar_nif('X1234567L') → NIE válido
+verificar_nif('A58818501') → CIF válido
+
+===== TESTS AUTOMÁTICOS =====
+Auto (DNI): DNI válido
+Auto (CIF): CIF válido
+Auto (NIE): NIE válido
+
+===== TESTS GENERACIÓN =====
+Generar DNI: 69487115K
+Generar NIE: X1696965W
+Generar CIF: L1722668I
+Generar 10 AUTO: ['06534924A', 'Y2741161N', 'Y5995450P', 'J82715343', '03564494T', '68554386B', 'A74055153', 'Z1300847H', '98083304B', '74821854W']
+
+===== TESTS GENERACIÓN DE NOMBRES =====
+Nombre masculino: MOHAMMED REYES DOMINGUEZ
+Nombre femenino: SARA LOZANO FLORES
+Nombre aleatorio: ENCARNACION MOLINA FERRER
+Nombre sin parámetros: LOURDES MUÑOZ CRESPO
+
+===== TESTS GENERACIÓN DE PERSONAS =====
+Persona aleatoria: {'nombre': 'SERGIO HERRERO HERRERA', 'sexo': 'masculino', 'tipo_documento': 'NIE', 'documento': 'Y8427772B', 'email': 'sherrero@proton.me', 'fecha_nacimiento': '1952-06-20', 'telefono': '695127455'}
+Persona masculina: {'nombre': 'ESTEBAN NAVARRO ARIAS', 'sexo': 'masculino', 'tipo_documento': 'NIE', 'documento': 'Z1415427N', 'email': 'enavarro@outlook.com', 'fecha_nacimiento': '1933-12-29', 'telefono': '778282359'}
+Persona con DNI: {'nombre': 'BELEN ARIAS SANTIAGO', 'sexo': 'femenino', 'tipo_documento': 'DNI', 'documento': '11766888L', 'email': 'barias@proton.me', 'fecha_nacimiento': '1960-03-22', 'telefono': '708422812'}
+Persona con NIE femenina: {'nombre': 'PAULA SANCHEZ CASTRO', 'sexo': 'femenino', 'tipo_documento': 'NIE', 'documento': 'X7769230Z', 'email': 'psanchez@yahoo.es', 'fecha_nacimiento': '1962-02-11', 'telefono': '985841094'}
+
+===== TESTS GENERACIÓN DE EMAILS =====
+zv88fsjqo1tq@gmail.com
+215z7crn@midominio.com
+mruiz@empresa.com
+agarcia@proton.me
+
+===== TESTS GENERACIÓN DE TELÉFONOS =====
+Teléfono móvil: 749450388
+Teléfono fijo: 948136220
+Teléfono automático: 814960119
+```
+## Tests unitarios
+
+Este proyecto incluye tests unitarios con pytest.  
+Para ejecutarlos, asegúrate de tener instalado `pytest`:
+
+```bash
+pip install pytest
+```
+Luego, desde la raíz del proyecto:
+```bash
+ python -m pytest tests -v
+ ```
+
+Ejemplo de salida:
+```bash
+collected 46 items
+
+tests/test_cif.py::test_cif_valido_telefonica PASSED                                                                                                 [  2%]
+tests/test_cif.py::test_cif_valido_ayuntamiento_madrid PASSED                                                                                        [  4%]
+tests/test_cif.py::test_cif_invalido PASSED                                                                                                          [  6%]
+tests/test_dni.py::test_dni_valido PASSED                                                                                                            [  8%]
+tests/test_dni.py::test_dni_invalido_letra PASSED                                                                                                    [ 10%]
+tests/test_dni.py::test_dni_invalido_formato PASSED                                                                                                  [ 13%]
+tests/test_generar_persona.py::test_generar_persona_estructura PASSED                                                                                [ 15%]
+tests/test_generar_persona.py::test_generar_persona_nombre_valido PASSED                                                                             [ 17%]
+tests/test_generar_persona.py::test_generar_persona_documento_valido PASSED                                                                          [ 19%]
+tests/test_generar_persona.py::test_generar_persona_masculina PASSED                                                                                 [ 21%]
+tests/test_generar_persona.py::test_generar_persona_femenina PASSED                                                                                  [ 23%]
+tests/test_generar_persona.py::test_generar_persona_con_dni PASSED                                                                                   [ 26%]
+tests/test_generar_persona.py::test_generar_persona_con_nie PASSED                                                                                   [ 28%]
+tests/test_generar_persona.py::test_generar_persona_con_cif PASSED                                                                                   [ 30%]
+tests/test_generar_persona.py::test_generar_persona_sexo_aleatorio PASSED                                                                            [ 32%]
+tests/test_generar_persona.py::test_generar_persona_tipo_aleatorio PASSED                                                                            [ 34%]
+tests/test_generar_persona.py::test_generar_persona_sexo_invalido PASSED                                                                             [ 36%]
+tests/test_generar_persona.py::test_generar_persona_tipo_documento_invalido PASSED                                                                   [ 39%]
+tests/test_generator.py::test_generar_dni_formato PASSED                                                                                             [ 41%]
+tests/test_generator.py::test_generar_dni_valido PASSED                                                                                              [ 43%]
+tests/test_generator.py::test_generar_nie_formato PASSED                                                                                             [ 45%]
+tests/test_generator.py::test_generar_nie_valido PASSED                                                                                              [ 47%]
+tests/test_generator.py::test_generar_cif_formato PASSED                                                                                             [ 50%]
+tests/test_generator.py::test_generar_cif_valido PASSED                                                                                              [ 52%]
+tests/test_generator.py::test_generar_varios_dni_sin_repetidos PASSED                                                                                [ 54%]
+tests/test_generator.py::test_generar_varios_nie_sin_repetidos PASSED                                                                                [ 56%]
+tests/test_generator.py::test_generar_varios_cif_sin_repetidos PASSED                                                                                [ 58%]
+tests/test_generator.py::test_generar_varios_auto_varios_tipos PASSED                                                                                [ 60%]
+tests/test_nie.py::test_nie_valido PASSED                                                                                                            [ 63%]
+tests/test_nie.py::test_nie_invalido_letra_control PASSED                                                                                            [ 65%]
+tests/test_nie.py::test_nie_invalido_formato PASSED                                                                                                  [ 67%]
+tests/test_nif.py::test_nif_dni_valido PASSED                                                                                                        [ 69%]
+tests/test_nif.py::test_nif_nie_valido PASSED                                                                                                        [ 71%]
+tests/test_nif.py::test_nif_cif_valido PASSED                                                                                                        [ 73%]
+tests/test_nif.py::test_nif_invalido PASSED                                                                                                          [ 76%]
+tests/test_nombres.py::test_generar_nombre_masculino PASSED                                                                                          [ 78%]
+tests/test_nombres.py::test_generar_nombre_femenino PASSED                                                                                           [ 80%]
+tests/test_nombres.py::test_generar_nombre_aleatorio PASSED                                                                                          [ 82%]
+tests/test_nombres.py::test_generar_nombre_sin_parametro_es_aleatorio PASSED                                                                         [ 84%]
+tests/test_nombres.py::test_generar_nombre_formato_correcto PASSED                                                                                   [ 86%]
+tests/test_nombres.py::test_generar_nombre_apellidos_distintos PASSED                                                                                [ 89%]
+tests/test_nombres.py::test_generar_nombre_sexo_invalido PASSED                                                                                      [ 91%]
+tests/test_utils.py::test_identificador_dni PASSED                                                                                                   [ 93%]
+tests/test_utils.py::test_identificador_nie PASSED                                                                                                   [ 95%]
+tests/test_utils.py::test_identificador_cif PASSED                                                                                                   [ 97%]
+tests/test_utils.py::test_identificador_formato_invalido PASSED                                                                                      [100%]
+
+=================================================================== 46 passed in 0.11s ====================================================================
+```
+
+## Autor
+
+**Alberto Gonzalez**  
+agonzalezla@protonmail.com  
+
+## Licencia
+
+Este proyecto se distribuye bajo la licencia MIT.  
+Consulta el archivo `LICENSE`
+
+## Contribuciones
+
+¡Las contribuciones son bienvenidas!
+
+1. Haz un fork del proyecto
+2. Crea una rama nueva
+3. Añade tus cambios y tests
+4. Envía un Pull Request
+
+## Soporte
+
+Si encuentras un bug o quieres proponer una mejora, abre un **Issue en GitHub**.
+
+Repositorio:
+https://github.com/agonzalezla/PyDNI
+
+## Aviso legal
+
+Los datos generados por PyDNI son completamente ficticios y se utilizan únicamente con fines de desarrollo, testing y aprendizaje.
