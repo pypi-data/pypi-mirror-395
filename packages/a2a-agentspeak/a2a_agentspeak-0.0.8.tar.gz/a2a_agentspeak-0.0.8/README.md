@@ -1,0 +1,39 @@
+# A2A Agentspeak
+AgentSpeak agents on A2A/ACL protocol. (Work in progress).
+
+# Features
+ * Run AgentSpeak agents on an A2A server.
+ * Describe agent card and skills in an interface file in a dedicated format.
+ * Targets that are not declared in the interface are private and ignored from incoming messages.
+ * Extension of the A2A protocol that supports _tell_, _achieve_, and _ask_ performatives.
+ * Synchronous answers for _ask_ messages (to consult a belief).
+ * Asynchronous answers for _achieve_ messages (to request some actions and optionally answer later).
+ * Two repositories : one to keep track of running agents (hot repository for hot agents) and one to keep track of agents that can be run locally on demand (cold repository for cold agents). 
+ * Hot agent repositories can be accessed by requested interface (formatted, see `samples/llm_req_manager_with_orchestrator_and_hot_repository`) 
+   or by natural language (interpreted by a LLM, see `samples/llm_req_manager_with_orchestrator_and_repository_and_nl_selection`).
+ * Cold agent repositories can be accessed by interface (see `tests/ping_agent_on_cold_repo`, `tests/cold_agent_on_repo_with_holes`, and `tests/spawn`).
+ * Hot agent repositories can receive failure reports and degrade the reputation of failing agents. 
+   That reputation is taken into account when selecting agents (see `samples/llm_req_manager_with_orchestrator_and_hot_repository` and `samples/llm_req_manager_with_orchestrator_and_repository_and_nl_selection`).
+ * Configuration of agents with customized actions at init time (see `tests/customizable_robot`, `tests/action`, and `tests/cold_agent_on_repo_with_holes`).
+ * Different codecs can be used to encode/decode the content of the messages (AgentSpeak agents can encode the content of the message differently than Python agents or Java agents).
+
+
+# Examples and Documentation
+
+Some examples are given in the `samples` and `tests` directories. This is the only source of documentation currently.
+
+To run the simple example from `samples/ping`, first run `run_receiver_agent.py` and `run_sender_agent.py`, then run `run_test_client.py`. That example does not require access to an LLM.
+
+
+# Requirements
+This module relies on the A2A Protocol (package `a2a-sdk`), the A2A-ACL package (`acl-a2a`),
+and [python-agentspeak](https://github.com/niklasf/python-agentspeak) (package `agentspeak`). 
+
+## Optional Requirements
+
+ To run the examples that use an LLM, you need: 
+  * the package `mistralai`
+and set your MISTRAL_API_KEY in the environment,
+  * the package `openai`
+and set your OPENAI_API_KEY in the environment.
+
