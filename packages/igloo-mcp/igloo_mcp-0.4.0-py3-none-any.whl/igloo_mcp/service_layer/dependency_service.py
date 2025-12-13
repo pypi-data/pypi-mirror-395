@@ -1,0 +1,49 @@
+"""Dependency service for service layer."""
+
+from typing import Any
+
+
+class DependencyService:
+    """Service for building dependency graphs."""
+
+    def __init__(self, context: Any | None = None):
+        """Initialize dependency service.
+
+        Args:
+            context: Service context with profile information
+        """
+        self.context = context
+        if context is not None and hasattr(context, "config") and hasattr(context.config, "snowflake"):
+            self.profile = context.config.snowflake.profile
+        else:
+            self.profile = None
+
+    def build_dependency_graph(
+        self,
+        database: str | None = None,
+        schema: str | None = None,
+        account_scope: bool = True,
+        format: str = "dot",
+        output_dir: str = "./dependencies",
+    ) -> dict[str, Any]:
+        """Build dependency graph.
+
+        Args:
+            database: Database to analyze
+            format: Output format ('dot', 'json', 'graphml')
+            output_dir: Output directory
+
+        Returns:
+            Dependency graph result
+        """
+        # Mock implementation
+        return {
+            "status": "success",
+            "database": database or "current",
+            "schema": schema,
+            "account_scope": account_scope,
+            "format": format,
+            "output_dir": output_dir,
+            "nodes": 10,
+            "edges": 15,
+        }
