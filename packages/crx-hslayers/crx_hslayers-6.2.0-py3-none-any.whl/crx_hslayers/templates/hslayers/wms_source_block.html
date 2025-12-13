@@ -1,0 +1,14 @@
+{% load wagtailcore_tags wagtailimages_tags coderedcms_tags %}
+
+{% if tiled %}
+  new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+{% else %}
+  new ol.layer.Image({
+    source: new ol.source.ImageWMS({
+{% endif %}
+
+      url: '{{ value.url }}',
+      params: {'LAYERS': {% autoescape off %}'{{ value.layers }}'{% endautoescape %}}
+    }),
+properties: {

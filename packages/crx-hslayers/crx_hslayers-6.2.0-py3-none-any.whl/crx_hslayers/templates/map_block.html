@@ -1,0 +1,175 @@
+{% load wagtailcore_tags wagtailimages_tags coderedcms_tags map_tags static %}
+
+{% comment %} {% if self.enable_3d %}
+<link rel="stylesheet" href="{% static 'node_modules/hslayers-cesium-app/styles.css' %}">
+{% else %}
+<link rel="stylesheet" href="{% static 'node_modules/hslayers-ng-app/styles.css' %}" media="print" onload="this.media='all'">
+{% endif %} {% endcomment %}
+<style>
+  hslayers-app {
+    display: block;
+    height: 100vh;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.min.js" integrity="sha512-Y/B11KRfeaNHAonSdwnF0fvpzsA+W27fqfMPmfkxRAwuySCcA7aT9LfJcWz5fi32McMI02jngFYj7LYT1z+VVg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+{% comment %} <h2>
+  {% if not request.GET.composition %}
+  neni je tam
+  {% endif %}
+</h2> {% endcomment %}
+
+{% generate_hash as app_id %}
+{% comment %} <script src="/static/hslayers/js/projs.js"></script> {% endcomment %}
+<script>
+
+  function hslayersNgConfig{{ app_id }} (ol) {
+    ol.projRegister(proj4);
+
+    {% if self.settings.projection %}
+      const projection = '{{ self.settings.projection }}';
+    {% else %}
+      const projection = 'EPSG:3857';
+    {% endif %}
+
+    return {
+      assetsPath: '/static/node_modules/hslayers-ng-app/assets',
+      enabledLanguages: "en,cs,sk,lv",
+      language: 'en',
+      proxyPrefix: window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')
+        ? `${window.location.protocol}//${window.location.hostname}:8085/`
+        : '/proxy/',
+      zoomWithModifierKeyOnly: '{{ self.zoom_with_ctrl }}' == 'True',
+      popUpDisplay: 'click',
+
+      {% if self.composition_url %}
+      defaultComposition: "{{ self.composition_url }}",
+
+      {% endif %}
+
+      default_layers: [
+        new ol.layer.Tile({
+            source: new ol.source.OSM(),
+            visible: true,
+            properties: {
+              title: 'OpenStreetMap',
+              base: true,
+              removable: false,
+            }
+          }),
+
+        {% for layer in self.settings.layers reversed %}
+          {% include_block layer %}
+        {% endfor %}
+      ],
+      // domFeatureLinks: [{{ self.dynamic_links }}],
+
+      status_manager_url: '/share/',
+
+      {% if self.settings.hsl_tools %}
+      {% autoescape off %}
+      {{ self.settings.hsl_tools }}
+      {% endautoescape %}
+      ,
+      {% else %}
+        panelsEnabled: {
+          addData: false,
+          compositions: false,
+          draw: false,
+          info: true,
+          language: true,
+          layerManager: true,
+          legend: true,
+          mapSwipe: false,
+          print: false,
+          query: true,
+          saveMap: false,
+          share: true,
+          toolbar: false,
+          feature_crossfilter: false,
+          featureTable: false,
+          tracking: false,
+          tripPlanner: false,
+        },
+        componentsEnabled: {
+          sidebar: true,
+          basemapGallery: true,
+          defaultViewButton: true,
+          drawToolbar: false,
+          geolocationButton: true,
+          guiOverlay: true,
+          info: true,
+          mapControls: true,
+          mapSwipe: false,
+          measureToolbar: false,
+          queryPopup: false,
+          searchToolbar: false,
+          toolbar: false,
+        },
+        sidebarClosed: true,
+      {% endif %}
+
+      open_lm_after_comp_loaded: false,
+
+      {% if self.map_center and not request.GET.composition %}
+        default_view: new ol.View({
+          projection: projection,
+          center: [{{ self.map_center }}], //Latitude longitude
+
+          {% if self.map_zoom %}
+            zoom: {{ self.map_zoom }},
+          {% else %}
+            zoom: 5,
+          {% endif %}
+        }),
+      {% endif %}
+      
+      datasources: [
+        {% autoescape off %}
+        {% if self.settings.layman_url %}
+        {
+          title: 'Layman',
+          url: '{{ self.settings.layman_url}}',          
+          type: 'layman-wagtail'          
+        },
+        {% endif %}
+        {% if self.settings.micka_url %}
+        {
+          title: 'Micka',
+          url: '{{ self.settings.micka_url }}',
+          language: 'eng',
+          type: 'micka'
+        }
+        {% endif %}
+        {% endautoescape %}
+      ]      
+    }
+  }
+
+  {% if self.enable_3d %}
+    function hslayersCesiumConfig{{ app_id }} () {
+      return {
+        cesiumBase: '/static/node_modules/hslayers-cesium-app/assets/cesium/',
+        terrainLayers: [
+          {% for terrain in self.settings.terrains %}
+            {% include_block terrain %}
+          {% endfor %}
+        ]
+      };
+    }
+  {% endif %}
+</script>
+
+{% if self.enable_3d %}
+<hslayers-cesium-app id="{{ app_id }}" style="{{ self.settings.map_style }}"></hslayers-cesium-app>
+{% comment %} <script src="{% static 'node_modules/hslayers-cesium-app/runtime.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-cesium-app/polyfills.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-cesium-app/vendor.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-cesium-app/main.js' %}" type="module"></script> {% endcomment %}
+{% else %}
+<hslayers-app id="{{ app_id }}" style="{{ self.settings.map_style }}"></hslayers-app>
+{% comment %} <script src="{% static 'node_modules/hslayers-ng-app/runtime.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-ng-app/polyfills.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-ng-app/vendor.js' %}" type="module"></script> {% endcomment %}
+{% comment %} <script src="{% static 'node_modules/hslayers-ng-app/main.js' %}" type="module"></script> {% endcomment %}
+{% endif %}
