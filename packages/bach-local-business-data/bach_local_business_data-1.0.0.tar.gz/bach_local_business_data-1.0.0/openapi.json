@@ -1,0 +1,1209 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Local Business Data",
+    "version": "1.0.0",
+    "description": "RapidAPI: letscrape-6bRBa3QguO5/local-business-data"
+  },
+  "servers": [
+    {
+      "url": "https://local-business-data.p.rapidapi.com"
+    }
+  ],
+  "paths": {
+    "/review-details": {
+      "get": {
+        "summary": "Business Review Details",
+        "description": "Get the details of a specific review by Google Id / Business Id or Google Place Id and Review Author Id.",
+        "operationId": "business_review_details",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "The Business Id of the business for which the review belongs. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "review_author_id",
+            "in": "query",
+            "required": true,
+            "description": "Review author id (i.e review author_id field). In addition, batching of up to 20 Review Author Ids is supported in a single request using a comma separated list (e.g. review_author_id=id1,id2).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search-in-area": {
+      "get": {
+        "summary": "Search In Area",
+        "description": "Search businesses in a specific geographic area defined by a center coordinate point and zoom level. To see it in action, make a query on Google Maps, wait for the results to show, move the map or change the zoom and click \\",
+        "operationId": "search_in_area",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Search query / keyword",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Latitude of the center coordinate point of the area to search in.",
+            "schema": {
+              "type": "number",
+              "default": "37.359428",
+              "enum": null
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "description": "Longitude of the center coordinate point of the area to search in.",
+            "schema": {
+              "type": "number",
+              "default": "-121.925337",
+              "enum": null
+            }
+          },
+          {
+            "name": "zoom",
+            "in": "query",
+            "required": true,
+            "description": "Zoom level on which to make the search (the search area / viewport is determined by lat, lng and zoom on a 1000x1000 screen).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of businesses to return. Default: 20 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "20",
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "subtypes",
+            "in": "query",
+            "required": false,
+            "description": "Find businesses with specific subtypes, specified as a comma separated list of types (business categories). For the complete list of types, see https://daltonluka.com/blog/google-my-business-categories. Examples: Plumber,Carpenter,Electrician Night club,Dance club,Bar,Pub",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "extract_emails_and_contacts",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of business fields to include in the response (field projection). By default all fields are returned. Example: business_id,type,phone_number,full_address",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "X-User-Agent",
+            "in": "query",
+            "required": false,
+            "description": "Device type for the search. Default desktop.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/autocomplete": {
+      "get": {
+        "summary": "Autocomplete",
+        "description": "Returns place/address, business and query predictions for text-based geographic queries.",
+        "operationId": "autocomplete",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Return results biased to a particular region. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "coordinates",
+            "in": "query",
+            "required": false,
+            "description": "Geographic coordinates of the location from which the query is applied - recommended to use so that results are biased towards this location. Defaults to some central location in the region (see the region parameter).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/photo-details": {
+      "get": {
+        "summary": "Business Photo Details",
+        "description": "Get extra details about a business photo - caption, owner name and avatar, and more information. Supports batching of up to 20 Photo Ids.",
+        "operationId": "business_photo_details",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "The Business Id of the business for which the photo belongs. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "query",
+            "required": true,
+            "description": "Photo Id of the photo to fetch. In addition, batching of up to 20 Photo Ids is supported in a single request using a comma separated list (e.g. photo_id=id1,id2).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/business-posts": {
+      "get": {
+        "summary": "Business Posts",
+        "description": "Get all / paginate Business Owner Posts (\\",
+        "operationId": "business_posts",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "Unique Business Id. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Specify the cursor obtained from the previous request to get the next of result page (use for pagination).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reverse-geocoding": {
+      "get": {
+        "summary": "Reverse Geocoding",
+        "description": "Get the details of a place or address in a specific geographic location by latitude and longitude (reverse geocoding). This endpoint implements the \\",
+        "operationId": "reverse_geocoding",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Example value: 40.6958453",
+            "schema": {
+              "type": "number",
+              "default": "40.6958453",
+              "enum": null
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "description": "Example value: -73.9799119",
+            "schema": {
+              "type": "number",
+              "default": "-73.9799119",
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of business fields to include in the response (field projection). By default all fields are returned. Example: business_id,type,phone_number,full_address",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search-nearby": {
+      "get": {
+        "summary": "Search Nearby",
+        "description": "Search businesses near by specific geographic coordinates. To see it in action, right click on a specific point in the map on Google Maps and select \\",
+        "operationId": "search_nearby",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Search query / keyword Examples: Bars and pubs Plumbers",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Latitude of the geographic coordinates to search near by.",
+            "schema": {
+              "type": "number",
+              "default": "37.359428",
+              "enum": null
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "description": "Longitude of the geographic coordinates to search near by.",
+            "schema": {
+              "type": "number",
+              "default": "-121.925337",
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of businesses to return. Default: 20 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "20",
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "subtypes",
+            "in": "query",
+            "required": false,
+            "description": "Find businesses with specific subtypes, specified as a comma separated list of types (business categories). For the complete list of types, see https://daltonluka.com/blog/google-my-business-categories. Examples: Plumber,Carpenter,Electrician Night club,Dance club,Bar,Pub",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "extract_emails_and_contacts",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of business fields to include in the response (field projection). By default all fields are returned. Example: business_id,type,phone_number,full_address",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "X-User-Agent",
+            "in": "query",
+            "required": false,
+            "description": "Device type for the search. Default desktop.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/business-photos": {
+      "get": {
+        "summary": "Business Photos",
+        "description": "Get business photos by Business Id.",
+        "operationId": "business_photos",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "Unique Business Id. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of business photos to return. Default: 20 Allowed values: 1-100",
+            "schema": {
+              "type": "number",
+              "default": "20",
+              "enum": null
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Specify the cursor obtained from the previous request to get the next of result page (use for pagination).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "is_video",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of review fields to include in the response (field projection). By default all fields are returned. Example: type,photo_url",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Search",
+        "description": "Search local businesses on Google Maps with an option to pull emails and social profile links from their website (see the `extract_emails_and_contacts` parameter below).",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Search query / keyword Examples: Plumbers near New-York, USA Bars in 94102, USA",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of businesses to return. Default: 20 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "20",
+              "enum": null
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "description": "Latitude of the coordinates point from which the query is applied - recommended to use so that results are biased towards this location. Defaults to some central location in the region (see the region parameter).",
+            "schema": {
+              "type": "number",
+              "default": "37.359428",
+              "enum": null
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "description": "Longitude of the coordinates point from which the query is applied - recommended to use so that results are biased towards this location. Defaults to some central location in the region (see the region parameter).",
+            "schema": {
+              "type": "number",
+              "default": "-121.925337",
+              "enum": null
+            }
+          },
+          {
+            "name": "zoom",
+            "in": "query",
+            "required": false,
+            "description": "Zoom level on which to make the search (the viewport is determined by lat, lng and zoom). Default: 13",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "subtypes",
+            "in": "query",
+            "required": false,
+            "description": "Find businesses with specific subtypes, specified as a comma separated list of types (business categories). For the complete list of types, see https://daltonluka.com/blog/google-my-business-categories. Examples: Plumber,Carpenter,Electrician Night club,Dance club,Bar,Pub",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "verified",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "business_status",
+            "in": "query",
+            "required": false,
+            "description": "Find businesses with specific status, specified as a comma separated list of the following values: OPEN, CLOSED_TEMPORARILY, CLOSED. Examples: OPEN CLOSED_TEMPORARILY,CLOSED",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of business fields to include in the response (field projection). By default all fields are returned. Example: business_id,type,phone_number,full_address",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "extract_emails_and_contacts",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "X-User-Agent",
+            "in": "query",
+            "required": false,
+            "description": "Device type for the search. Default desktop.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Bulk Search",
+        "description": "Search local businesses on Google Maps. Batching of up to 20 queries is supported in a single request.",
+        "operationId": "bulk_search",
+        "parameters": [
+          {
+            "name": "X-User-Agent",
+            "in": "query",
+            "required": false,
+            "description": "Device type for the search. Default desktop.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/business-details": {
+      "get": {
+        "summary": "Business Details",
+        "description": "Get full business details including emails and social contacts. Supports batching of up to 20 Business Ids.",
+        "operationId": "business_details",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "Unique Business Id. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow In addition, batching of up to 20 Business Ids is supported in a single request using a comma separated list (e.g. business_id=id1,id2).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "extract_emails_and_contacts",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "extract_share_link",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of business fields to include in the response (field projection). By default all fields are returned. Example: business_id,type,phone_number,full_address",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "coordinates",
+            "in": "query",
+            "required": false,
+            "description": "Geographic coordinates of the location from which the query is applied - recommended to use so that results are biased towards this location. Defaults to some central location in the region (see the region parameter).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/business-reviews-v2": {
+      "get": {
+        "summary": "Business Reviews V2",
+        "description": "Get business reviews by Business Id with pagination support.",
+        "operationId": "business_reviews_v2",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "Unique Business Id. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of business reviews to return. Default: 20 Allowed values: 1-1000",
+            "schema": {
+              "type": "number",
+              "default": "20",
+              "enum": null
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The cursor value from the previous response to get the next set of results (scrolling / pagination).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "translate_reviews",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Return reviews matching a text query.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "description": "How to sort the reviews in the results. Default: most_relevant Allowed values: most_relevant, newest, highest_ranking, lowest_ranking",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of review fields to include in the response (field projection). By default all fields are returned. Example: review_id,review_text,rating",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/business-reviews": {
+      "get": {
+        "summary": "Business Reviews",
+        "description": "Get business reviews by Business Id with pagination support.",
+        "operationId": "business_reviews",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": true,
+            "description": "Unique Business Id. Accepts google_id / business_id or place_id. Examples: 0x880fd393d427a591:0x8cba02d713a995ed ChIJkaUn1JPTD4gR7ZWpE9cCuow",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of business reviews to return. Default: 20 Allowed values: 1-1000",
+            "schema": {
+              "type": "number",
+              "default": "5",
+              "enum": null
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of business reviews to skip (for pagination/scrolling). Default: 0",
+            "schema": {
+              "type": "number",
+              "default": "0",
+              "enum": null
+            }
+          },
+          {
+            "name": "translate_reviews",
+            "in": "query",
+            "required": false,
+            "description": "Example value: ",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Return reviews matching a text query.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "description": "How to sort the reviews in the results. Default: most_relevant Allowed values: most_relevant, newest, highest_ranking, lowest_ranking",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "description": "A comma separated list of review fields to include in the response (field projection). By default all fields are returned. Example: review_id,review_text,rating",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Query Google Maps from a particular region or country. For a list of supported region/country codes see https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes (Alpha-2 code). Default: us",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "description": "Set the language of the results. For a list of supported language codes see https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes . Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-RapidAPI-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiAuth": []
+    }
+  ]
+}
