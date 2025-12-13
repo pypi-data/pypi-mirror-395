@@ -1,0 +1,327 @@
+# Minitap MCP Server
+
+A Model Context Protocol (MCP) server that enables AI assistants to control and interact with real mobile devices (Android & iOS) through natural language commands.
+
+## Quick Start
+
+### Installation
+
+```bash
+pip install minitap-mcp
+```
+
+### Prerequisites
+
+Before running the MCP server, ensure you have the required mobile automation tools installed:
+
+- **For Android devices:**
+
+  - [ADB (Android Debug Bridge)](https://developer.android.com/tools/adb) - For device communication
+
+- **For iOS devices (macOS only):**
+  - Xcode Command Line Tools with `xcrun`
+  - **[fb-idb](https://fbidb.io/docs/installation/)**: Facebook's iOS Development Bridge for device automation.
+
+```bash
+# Install via Homebrew (macOS)
+brew tap facebook/fb
+brew install idb-companion
+```
+
+> [!NOTE]
+> `idb_companion` is required to communicate with iOS simulators. Make sure it's in your PATH after installation.
+
+For detailed setup instructions, see the [mobile-use repository](https://github.com/minitap-ai/mobile-use).
+
+### Running the Server
+
+The simplest way to start:
+
+```bash
+minitap-mcp --server --api-key your_minitap_api_key
+```
+
+This starts the server on `localhost:8000` with your API key. Get your free API key at [platform.minitap.ai/api-keys](https://platform.minitap.ai/api-keys).
+
+**Available CLI options:**
+
+```bash
+minitap-mcp --server --api-key YOUR_KEY --llm-profile PROFILE_NAME
+```
+
+- `--api-key`: Your Minitap API key (overrides `MINITAP_API_KEY` env var). Get yours at [platform.minitap.ai/api-keys](https://platform.minitap.ai/api-keys).
+- `--llm-profile`: LLM profile name to use (overrides `MINITAP_LLM_PROFILE_NAME` env var). If unset, uses the default profile. Configure profiles at [platform.minitap.ai/llm-profiles](https://platform.minitap.ai/llm-profiles).
+
+### Configuration (Optional)
+
+Alternatively, you can set environment variables instead of using CLI flags:
+
+```bash
+export MINITAP_API_KEY="your_minitap_api_key"
+export MINITAP_API_BASE_URL="https://platform.minitap.ai/api/v1"
+export MINITAP_LLM_PROFILE_NAME="default"
+```
+
+You can set these in your `.bashrc` or equivalent, then simply run:
+
+```bash
+minitap-mcp --server
+```
+
+CLI flags always override environment variables when both are present.
+
+By default, the server will bind to `0.0.0.0:8000`. You can customize the port:
+
+```bash
+# Using CLI argument
+minitap-mcp --server --port 9000
+
+# Or using environment variable
+export MCP_SERVER_PORT="9000"
+minitap-mcp --server
+
+# You can also customize the host
+export MCP_SERVER_HOST="0.0.0.0"
+```
+
+## IDE Integration
+
+1. Start the server: `minitap-mcp --server --api-key your_minitap_api_key`
+2. Add to your IDE MCP settings file:
+
+```jsonc
+# For Windsurf
+{
+  "mcpServers": {
+    "minitap-mcp": {
+      "serverUrl": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+```jsonc
+# For Cursor
+{
+  "mcpServers": {
+    "minitap-mcp": {
+      "transport": "http",
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+## Available Resources & Tools
+
+Once connected, your AI assistant can use these resources and tools:
+
+### Resource: `data://devices`
+
+Lists all connected mobile devices (Android and iOS).
+
+**Returns:** Array of device information objects with:
+
+- `device_id`: Device serial (Android) or UDID (iOS)
+- `platform`: `"android"` or `"ios"`
+- `name`: Device name
+- `state`: Device state (`"connected"` or `"Booted"`)
+
+### Tool: `analyze_screen`
+
+Captures a screenshot from a mobile device and analyzes it using a vision language model.
+
+**Parameters:**
+
+- `prompt` (required): Analysis prompt describing what information to extract
+- `device_id` (optional): Specific device ID to target. If not provided, uses the first available device.
+
+**Returns:** AI-generated analysis of the screenshot based on the prompt.
+
+**Example:**
+
+```
+Prompt: "What app is currently open? List all visible UI elements."
+```
+
+The tool will:
+
+1. Find the specified device (or first available)
+2. Capture a screenshot
+3. Analyze it with the vision model
+4. Return the analysis
+
+### Tool: `execute_mobile_command`
+
+Execute natural language commands on your mobile device using the mobile-use SDK. This tool allows you to control your Android or iOS device with simple instructions.
+
+**Parameters:**
+
+- `goal` (required): Natural language command to execute on the device
+- `output_description` (optional): Description of the expected output format (e.g., "A JSON list of objects with sender and subject keys")
+- `profile` (optional): Name of the profile to use for this task. Defaults to 'default'
+- `locked_app_package` (optional): Package name of the app to lock the device to. Will launch the app if not already running, and keep it in foreground until the task is completed.
+
+**Returns:** Execution result with status, output, and any extracted data.
+
+**Examples:**
+
+```python
+# Simple command
+goal: "Go to settings and tell me my current battery level"
+
+# Data extraction with structured output
+goal: "Open Gmail, find first 3 unread emails, and list their sender and subject line"
+output_description: "A JSON list of objects, each with 'sender' and 'subject' keys"
+
+# App navigation
+goal: "Open Twitter and scroll to the latest tweet"
+```
+
+The tool will:
+
+1. Find the specified device (or first available)
+2. Execute the command using the mobile-use AI agent
+3. Return the result or extracted data
+
+### Tool: `save_figma_assets`
+
+Fetch Figma design assets and React implementation code, then save them locally in the workspace.
+
+**Parameters:**
+
+- `node_id` (required): The node ID of the Figma design in format "1:2" (colon-separated). Extract from URLs like `https://figma.com/design/:fileKey/:fileName?node-id=1-2`
+- `file_key` (required): The file key from the Figma URL (e.g., "abc123" from `https://figma.com/design/abc123/MyFile`)
+- `workspace_path` (optional): The workspace path where assets should be saved. Defaults to current directory.
+
+**Returns:** Download summary with list of successfully downloaded assets and any failures.
+
+**Example:**
+
+```python
+node_id: "1:2"
+file_key: "abc123xyz"
+workspace_path: "."
+```
+
+The tool will:
+
+1. Call `get_design_context` from Figma MCP to get React/TypeScript code
+2. Extract all asset URLs from the code implementation
+3. Download each asset to `.mobile-use/figma_assets/<node-id>/` folder
+4. Save the code implementation to `.mobile-use/figma_assets/<node-id>/code_implementation.ts`
+5. Return a list of downloaded files with success/failure status
+
+### Tool: `compare_screenshot_with_figma`
+
+Compare a screenshot of the current mobile device state with a Figma design to identify visual differences.
+
+**Parameters:**
+
+- `node_id` (required): The node ID of the Figma design in format "1:2" (colon-separated). Extract from URLs like `https://figma.com/design/:fileKey/:fileName?node-id=1-2`
+
+**Returns:** Detailed comparison report with both the Figma design and current device screenshots for visual context.
+
+The tool will:
+
+1. Capture a screenshot of the current device state
+2. Fetch the Figma design screenshot
+3. Compare both screenshots using vision AI
+4. Return a detailed analysis highlighting differences
+
+## Cloud Mobile Mode
+
+Run the MCP server with cloud-hosted mobile devices instead of requiring a local device. This enables:
+
+- **Zero local setup**: No ADB or physical device required
+- **Remote development**: Control cloud mobiles from anywhere
+- **Scalable automation**: Access multiple cloud devices
+
+### Setting Up Cloud Mobile Mode
+
+1. **Create a Cloud Mobile** on [Minitap Platform](https://platform.minitap.ai/cloud-mobiles):
+   - Click **Create New Device**
+   - Choose platform (currently Android v11 / API level 30)
+   - Set a **Reference Name** (e.g., `my-dev-device`)
+
+2. **Configure the environment variable**:
+
+```bash
+# Using reference name (recommended)
+export CLOUD_MOBILE_NAME="my-dev-device"
+```
+
+3. **Start the server** (no local device needed):
+
+```bash
+minitap-mcp --server --api-key your_minitap_api_key
+```
+
+The server will:
+- Connect to your cloud mobile on startup
+- Maintain a keep-alive connection while running
+- Automatically disconnect when the server stops
+
+> ⚠️ **Important**: Cloud mobiles are billed while connected. The MCP server automatically stops the connection when you close your IDE or stop the server. Make sure to properly shut down the server to avoid unexpected charges.
+
+### Cloud vs Local Mode
+
+| Feature | Local Mode | Cloud Mode |
+|---------|------------|------------|
+| Device requirement | Physical/emulator | None |
+| Setup complexity | ADB setup required | Low (env var only) |
+| `CLOUD_MOBILE_NAME` | Not set | Set to device name/UUID |
+| Billing | None | Per-minute usage |
+
+## Advanced Configuration
+
+### Custom ADB Server
+
+If using a remote or custom ADB server (like on WSL):
+
+```bash
+export ADB_SERVER_SOCKET="tcp:192.168.1.100:5037"
+```
+
+### Vision Model
+
+Customize the vision model used for screen analysis:
+
+```bash
+export VISION_MODEL="qwen/qwen-2.5-vl-7b-instruct"
+```
+
+## Device Setup
+
+### Android
+
+1. Enable USB debugging on your device
+2. Connect via USB or network ADB
+3. Verify connection: `adb devices`
+
+### iOS (macOS only)
+
+1. Install Xcode Command Line Tools
+2. Start a simulator or connect a physical device
+3. Verify: `xcrun simctl list devices booted`
+
+## Troubleshooting
+
+**No devices found:**
+
+- Verify ADB/xcrun connection
+- Check USB debugging is enabled (Android)
+- Ensure device is unlocked
+
+**Connection refused errors:**
+
+- Check ADB/xcrun connection
+
+**API authentication errors:**
+
+- Verify `MINITAP_API_KEY` is set correctly
+
+## Links
+
+- **Mobile-Use SDK:** [github.com/minitap-ai/mobile-use](https://github.com/minitap-ai/mobile-use)
+- **Mobile-Use Documentation:** [docs.minitap.ai](https://docs.minitap.ai)
