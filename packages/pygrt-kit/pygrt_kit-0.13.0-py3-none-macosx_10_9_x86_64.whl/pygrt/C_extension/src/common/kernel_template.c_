@@ -1,0 +1,286 @@
+/**
+ * @file   kernel_template.c_
+ * @author Zhu Dengda (zhudengda@mail.iggcas.ac.cn)
+ * @date   2025-11
+ * 
+ *    广义 R/T 矩阵计算函数模板，以下代码通过递推公式实现 广义反射透射系数矩阵 ，参考：
+ * 
+ *         1. 姚振兴, 谢小碧. 2022/03. 理论地震图及其应用（初稿）.  
+ *         2. Yao Z. X. and D. G. Harkrider. 1983. A generalized refelection-transmission coefficient 
+ *               matrix and discrete wavenumber method for synthetic seismograms. BSSA. 73(6). 1685-1699
+ * 
+ * 
+ */
+
+
+#include <stdio.h>
+#include <complex.h>
+#include <string.h>
+
+#include "grt/common/RT_matrix.h"
+#include "grt/common/model.h"
+#include "grt/common/matrix.h"
+
+// 不可以同时定义宏
+#if defined(__DYNAMIC_KERNEL__) && defined(__STATIC_KERNEL__)
+#error "Cannot define both __DYNAMIC_KERNEL__ and __STATIC_KERNEL__ simultaneously"
+#endif
+
+// ================ 动态解 =====================
+#ifdef __DYNAMIC_KERNEL__
+    #define CONCAT_PREFIX(base)  grt_##base
+    #include "grt/dynamic/layer.h"
+    #include "grt/dynamic/source.h"
+#endif
+
+// ================ 静态解 =====================
+#ifdef __STATIC_KERNEL__
+    #define CONCAT_PREFIX(base)  grt_static_##base
+    #include "grt/static/static_layer.h"
+    #include "grt/static/static_source.h"
+#endif
+
+#define __KERNEL_FUNC__           CONCAT_PREFIX(kernel)
+#define __GRT_MATRIX_FUNC__       CONCAT_PREFIX(GRT_matrix)
+#define __BUILD_QWV__             CONCAT_PREFIX(GRT_build_QWV)
+#define __grt_RT_matrix_PSV       CONCAT_PREFIX(RT_matrix_PSV)
+#define __grt_RT_matrix_SH        CONCAT_PREFIX(RT_matrix_SH)
+#define __grt_delay_RT_matrix     CONCAT_PREFIX(delay_RT_matrix)
+#define __grt_source_coef         CONCAT_PREFIX(source_coef)
+#define __grt_topfree_RU          CONCAT_PREFIX(topfree_RU)
+#define __grt_wave2qwv_REV_PSV    CONCAT_PREFIX(wave2qwv_REV_PSV)
+#define __grt_wave2qwv_REV_SH     CONCAT_PREFIX(wave2qwv_REV_SH)
+#define __grt_wave2qwv_z_REV_PSV  CONCAT_PREFIX(wave2qwv_z_REV_PSV)
+#define __grt_wave2qwv_z_REV_SH   CONCAT_PREFIX(wave2qwv_z_REV_SH)
+
+
+void __GRT_MATRIX_FUNC__(GRT_MODEL1D *mod1d, const real_t k)
+{
+    mod1d->k = k;
+    // 为动态解计算xa,xb,caca,cbcb
+    #if defined(__DYNAMIC_KERNEL__)
+        grt_mod1d_xa_xb(mod1d, k);
+    #endif
+
+    size_t isrc = mod1d->isrc; // 震源所在虚拟层位, isrc>=1
+    size_t ircv = mod1d->ircv; // 接收点所在虚拟层位, ircv>=1, ircv != isrc
+    size_t imin, imax; // 相对浅层深层层位
+    imin = GRT_MIN(isrc, ircv);
+    imax = GRT_MAX(isrc, ircv);
+
+    // 广义层的反射透射系数
+    RT_MATRIX *M_BL = &mod1d->M_BL;
+    RT_MATRIX *M_RS = &mod1d->M_RS;
+    RT_MATRIX *M_FA = &mod1d->M_FA;
+    // 自由表面
+    RT_MATRIX *M_top = &mod1d->M_top;
+
+    // 从顶到底进行矩阵递推, 公式(5.5.3)
+    for(size_t iy=1; iy<mod1d->n; ++iy){ // 因为n>=3, 故一定会进入该循环
+        
+        // 定义物理层内的反射透射系数矩阵
+        grt_init_RT_matrix(M);
+
+        // 只有动态解才可以使用这个 if 简化，
+        // 对于静态解，即使是震源层、接收层这种虚拟层位也需要显式计算R/T矩阵
+        #ifdef __DYNAMIC_KERNEL__
+        if(iy != isrc && iy != ircv){
+        #endif
+            // 对第iy层的系数矩阵赋值
+            __grt_RT_matrix_PSV(mod1d, iy, M);
+            __grt_RT_matrix_SH(mod1d, iy, M);
+            if(M->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+        #ifdef __DYNAMIC_KERNEL__
+        }
+        #endif
+
+        // 加入时间延迟因子(第iy-1界面与第iy界面之间)
+        __grt_delay_RT_matrix(mod1d, iy, M);
+
+        // FA
+        if(iy <= imin){ 
+            if(iy == 1){ // 初始化FA
+                memcpy(M_FA, M, sizeof(*M));
+            }
+            #ifdef __DYNAMIC_KERNEL__
+            else if(iy == imin){
+                grt_delay_GRT_matrix(mod1d, iy, M_FA);
+            }
+            #endif
+            else { // 递推FA
+                grt_recursion_RT_matrix(M_FA, M, M_FA);  // 写入原地址
+                if(M_FA->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+            }
+        } 
+        // RS
+        else if(iy <= imax){
+            if(iy == imin+1){// 初始化RS
+                memcpy(M_RS, M, sizeof(*M));
+            }
+            #ifdef __DYNAMIC_KERNEL__
+            else if(iy == imax){
+                grt_delay_GRT_matrix(mod1d, iy, M_RS);
+            }
+            #endif
+            else { // 递推RS
+                grt_recursion_RT_matrix(M_RS, M, M_RS);  // 写入原地址
+                if(M_RS->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+            }
+        } 
+        // BL
+        else {
+            if(iy == imax+1){// 初始化BL
+                memcpy(M_BL, M, sizeof(*M));
+            } else { // 递推BL
+                // 只有 RD 矩阵最终会被使用到
+                grt_recursion_RT_matrix(M_BL, M, M_BL);  // 写入原地址
+                if(M_BL->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+            }
+        } // END if
+
+
+    } // END for loop 
+    //===================================================================================
+
+    // 递推RU_FA
+    __grt_topfree_RU(mod1d);
+    if(M_top->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+    grt_recursion_RU(M_top, M_FA, M_FA);
+    if(M_FA->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+
+    BEFORE_RETURN:
+    return;
+}
+
+
+void __BUILD_QWV__(
+    GRT_MODEL1D *mod1d, cplxChnlGrid QWV,
+    bool calc_uiz, cplxChnlGrid QWV_uiz)
+{
+    // 初始化qwv为0
+    memset(QWV, 0, sizeof(cplxChnlGrid));
+    if(calc_uiz)  memset(QWV_uiz, 0, sizeof(cplxChnlGrid));
+
+    bool ircvup = mod1d->ircvup;
+    // 广义层的反射透射系数
+    RT_MATRIX *M_BL = &mod1d->M_BL;
+    RT_MATRIX *M_AL = &mod1d->M_AL;
+    RT_MATRIX *M_RS = &mod1d->M_RS;
+    RT_MATRIX *M_FA = &mod1d->M_FA;
+    RT_MATRIX *M_FB = &mod1d->M_FB;
+
+    // 计算震源系数
+    __grt_source_coef(mod1d);
+
+    // 临时中转矩阵 (temperary)
+    cplx_t tmpR2[2][2], tmp2x2[2][2], tmpRL, tmp2x2_uiz[2][2], tmpRL2;
+    
+    // 根据震源和台站相对位置，计算最终的系数
+    if(ircvup){ // A接收  B震源
+
+        // 计算R_EV
+        __grt_wave2qwv_REV_PSV(mod1d);
+        __grt_wave2qwv_REV_SH(mod1d);
+
+        // 递推RU_FS
+        grt_recursion_RU(M_FA, M_RS, M_FB); // 已从ZR变为FR，加入了自由表面的效应
+        if(M_FB->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+        
+        // 公式(5.7.12-14)
+        grt_cmat2x2_mul(M_BL->RD, M_FB->RU, tmpR2);
+        grt_cmat2x2_one_sub(tmpR2);
+        if((M_FB->stats = grt_cmat2x2_inv(tmpR2, tmpR2)) == GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;// (I - xx)^-1
+        grt_cmat2x2_mul(M_FB->invT, tmpR2, tmp2x2);
+
+        if(calc_uiz) grt_cmat2x2_assign(tmp2x2, tmp2x2_uiz); // 为后续计算空间导数备份
+
+        grt_cmat2x2_mul(mod1d->R_EV, tmp2x2, tmp2x2);
+        tmpRL = M_FB->invTL  / (1.0 - M_BL->RDL * M_FB->RUL);
+        tmpRL2 = mod1d->R_EVL * tmpRL;
+
+        grt_construct_qwv(ircvup, tmp2x2, tmpRL2, M_BL->RD, M_BL->RDL, mod1d->src_coefD, mod1d->src_coefU, QWV);
+
+
+        if(calc_uiz){
+            __grt_wave2qwv_z_REV_PSV(mod1d);
+            __grt_wave2qwv_z_REV_SH(mod1d);
+            grt_cmat2x2_mul(mod1d->uiz_R_EV, tmp2x2_uiz, tmp2x2_uiz);
+            tmpRL2 = mod1d->uiz_R_EVL * tmpRL;
+
+            grt_construct_qwv(ircvup, tmp2x2_uiz, tmpRL2, M_BL->RD, M_BL->RDL, mod1d->src_coefD, mod1d->src_coefU, QWV_uiz);
+        }
+    } 
+    else { // A震源  B接收
+
+        // 计算R_EV
+        __grt_wave2qwv_REV_PSV(mod1d);    
+        __grt_wave2qwv_REV_SH(mod1d);    
+
+        // 递推RD_SL
+        grt_recursion_RD(M_RS, M_BL, M_AL);
+        if(M_AL->stats==GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;
+        
+        // 公式(5.7.26-27)
+        grt_cmat2x2_mul(M_FA->RU, M_AL->RD, tmpR2);
+        grt_cmat2x2_one_sub(tmpR2);
+        if((M_AL->stats = grt_cmat2x2_inv(tmpR2, tmpR2)) == GRT_INVERSE_FAILURE)  goto BEFORE_RETURN;// (I - xx)^-1
+        grt_cmat2x2_mul(M_AL->invT, tmpR2, tmp2x2);
+
+        if(calc_uiz) grt_cmat2x2_assign(tmp2x2, tmp2x2_uiz); // 为后续计算空间导数备份
+
+        grt_cmat2x2_mul(mod1d->R_EV, tmp2x2, tmp2x2);
+        tmpRL = M_AL->invTL / (1.0 - M_FA->RUL * M_AL->RDL);
+        tmpRL2 = mod1d->R_EVL * tmpRL;
+
+        grt_construct_qwv(ircvup, tmp2x2, tmpRL2, M_FA->RU, M_FA->RUL, mod1d->src_coefD, mod1d->src_coefU, QWV);
+
+
+        if(calc_uiz){
+            __grt_wave2qwv_z_REV_PSV(mod1d);    
+            __grt_wave2qwv_z_REV_SH(mod1d);    
+            grt_cmat2x2_mul(mod1d->uiz_R_EV, tmp2x2_uiz, tmp2x2_uiz);
+            tmpRL2 = mod1d->uiz_R_EVL * tmpRL;
+            
+            grt_construct_qwv(ircvup, tmp2x2_uiz, tmpRL2, M_FA->RU, M_FA->RUL, mod1d->src_coefD, mod1d->src_coefU, QWV_uiz);
+        }
+
+    } // END if
+
+
+
+    BEFORE_RETURN:
+
+    // 对一些特殊情况的修正
+    // 当震源和场点均位于地表时，可理论验证DS分量恒为0，这里直接赋0以避免后续的精度干扰
+    if(mod1d->depsrc == 0.0 && mod1d->deprcv == 0.0)
+    {
+        for(int c=0; c<GRT_CHANNEL_NUM; ++c){
+            QWV[GRT_SRC_M_DS_INDEX][c] = 0.0;
+            if(calc_uiz)  QWV_uiz[GRT_SRC_M_DS_INDEX][c] = 0.0;
+        }
+    }
+}
+
+
+void __KERNEL_FUNC__(
+    GRT_MODEL1D *mod1d, const real_t k, cplxChnlGrid QWV,
+    bool calc_uiz, cplxChnlGrid QWV_uiz)
+{
+    __GRT_MATRIX_FUNC__(mod1d, k);
+    __BUILD_QWV__(mod1d, QWV, calc_uiz, QWV_uiz);
+}
+
+
+#undef CONCAT_PREFIX
+#undef __KERNEL_FUNC__
+#undef __GRT_MATRIX_FUNC__
+#undef __BUILD_QWV__
+#undef __grt_RT_matrix_PSV
+#undef __grt_RT_matrix_SH
+#undef __grt_delay_RT_matrix
+#undef __grt_source_coef
+#undef __grt_topfree_RU
+#undef __grt_wave2qwv_REV_PSV
+#undef __grt_wave2qwv_REV_SH
+#undef __grt_wave2qwv_z_REV_PSV
+#undef __grt_wave2qwv_z_REV_SH
