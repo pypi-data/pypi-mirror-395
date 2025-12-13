@@ -1,0 +1,17 @@
+# AUTO-GENERATED - DO NOT EDIT
+# Generated from: model/domain/error_code_enum.yaml
+
+from enum import Enum
+
+
+class ErrorCode(Enum):
+    """Error codes for model processing failures"""
+    NONE = 'NONE'
+    MISSING_MODEL = 'MISSING_MODEL'
+    THUMBNAIL_GENERATION = 'THUMBNAIL_GENERATION'
+    UNSUPPORTED_FORMAT = 'UNSUPPORTED_FORMAT'
+    FILE_TOO_LARGE = 'FILE_TOO_LARGE'
+    MARKETPLACE_PUBLICATION = 'MARKETPLACE_PUBLICATION'
+    METADATA_GENERATION = 'METADATA_GENERATION'
+    MISSING_SUB_MODEL = 'MISSING_SUB_MODEL'
+    UNKNOWN = 'UNKNOWN'
