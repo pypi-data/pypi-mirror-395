@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dialog Component</title>
+    <style>
+        /* Import Ginto Copilot Variable font fallback to Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        /* Import Fluent UI Icons */
+        @import url('https://use.fontawesome.com/releases/v6.0.0/css/all.css');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8F4F1;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        
+        /* Dialog Component */
+        .dialog-window {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 448px;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 60px;
+            backdrop-filter: blur(60px);
+            overflow: hidden;
+        }
+        
+        .dialog-content {
+            display: flex;
+            flex-direction: column;
+            align-self: stretch;
+            padding: 32px;
+            border-radius: 24px;
+        }
+        
+        .dialog-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-self: stretch;
+            gap: 12px;
+        }
+        
+        .icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 3px;
+        }
+        
+        .think-deeper-icon {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            background: #FFFFFF;
+        }
+        
+        .icon-shape {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .icon-circle {
+            width: 37px;
+            height: 37px;
+            border-radius: 50%;
+            background: transparent;
+            position: absolute;
+        }
+        
+        .icon-border {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid #272320;
+            position: absolute;
+        }
+        
+        .header-text-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            align-self: stretch;
+        }
+        
+        .spacer {
+            width: 0;
+            height: 16px;
+            border: none;
+            background: transparent;
+        }
+        
+        .header-title {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 480;
+            font-size: 28px;
+            line-height: 1.1428571428571428em;
+            letter-spacing: -0.01em;
+            text-align: center;
+            color: #191513;
+            width: 100%;
+        }
+        
+        .dialog-body {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding: 24px 0px 0px;
+            width: 384px;
+        }
+        
+        .body-text-frame {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-self: stretch;
+            gap: 24px;
+        }
+        
+        .body-text {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 410;
+            font-size: 17px;
+            line-height: 1.5294117647058822em;
+            text-align: center;
+            color: #3F3935;
+            width: 100%;
+        }
+        
+        .dialog-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            align-self: stretch;
+            gap: 12px;
+            padding: 32px 0px 0px;
+        }
+        
+        .primary-button {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            align-self: stretch;
+            padding: 0px 14px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.7);
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            box-shadow: 
+                0px 1px 3px 0px rgba(0, 0, 0, 0.12), 
+                inset 0px 0.5px 0.5px 0.5px rgba(255, 255, 255, 1);
+        }
+        
+        .secondary-button {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            align-self: stretch;
+            padding: 0px 14px;
+            height: 56px;
+            background: rgba(0, 0, 0, 0);
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+        }
+        
+        .button-content {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .button-text-padding {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 6px;
+        }
+        
+        .button-text {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 410;
+            font-size: 17px;
+            line-height: 1.5294117647058822em;
+            text-align: center;
+            color: #272320;
+        }
+    </style>
+</head>
+<body>
+    <div class="dialog-window">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <div class="icon-wrapper">
+                    <div class="think-deeper-icon">
+                        <div class="icon-shape">
+                            <div class="icon-circle"></div>
+                            <div class="icon-border"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-text-wrapper">
+                    <div class="spacer"></div>
+                    <h1 class="header-title">Wise and deep responses</h1>
+                </div>
+            </div>
+            <div class="dialog-body">
+                <div class="body-text-frame">
+                    <p class="body-text">With Think Deeper, Copilot takes 30 seconds to consider your question from all angles and perspectives.<br><br>It's for the toughest questions on your mind like problem solving, math, science, or careers.</p>
+                </div>
+            </div>
+            <div class="dialog-actions">
+                <button class="primary-button">
+                    <div class="button-content">
+                        <div class="button-text-padding">
+                            <span class="button-text">Okay</span>
+                        </div>
+                    </div>
+                </button>
+                <button class="secondary-button">
+                    <div class="button-content">
+                        <div class="button-text-padding">
+                            <span class="button-text">Cancel</span>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
