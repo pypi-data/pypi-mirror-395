@@ -1,0 +1,42 @@
+command = "extract"  # extract | pca | tuning | training | crossvalidate
+
+[extract]
+ticker = "AAPL"  # OR/AND 'industry' key
+history = "10y"
+skip = true
+dir_path = "./out/data/"
+format = "feather"
+# datest     = "2020-01-01"
+# datend     = "2024-12-31"
+save = false
+
+[pca]
+n_components = 0
+alpha = 0.05
+drop = true
+pca_force = false
+
+[loader]
+tsize = 20
+batch_size = 50
+val_size = 0.15
+test_size = 0.15
+device = "cpu"  # cuda / mps / xpu as detected
+cores = 4
+seed = 2
+scaler = "standard"
+
+[tuning]
+tuning_path = "./tuning/"
+param_path = "out/hyper"
+n_split = 5
+num_samples = 50
+gpu_per_trial = 1.0
+model = "GRU"
+
+[training]
+cfg_path = "./out/hyper/gru/my_params.toml"
+model_path = "./out/models/gru/my_gru.pth"
+
+[crossvalidate]
+out_path = "./out/cross/gru/val_my_gru.pkl"

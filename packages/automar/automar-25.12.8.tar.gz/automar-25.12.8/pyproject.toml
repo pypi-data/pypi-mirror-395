@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "build_backend"
+backend-path = ["."]
+
+[tool.setuptools]
+include-package-data = false
+
+# Package structure: all modules under automar namespace
+# automar.core, automar.cli, automar.shared, automar.web
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["automar*"]
+
+# Include non-Python files in packages (using new paths)
+[tool.setuptools.package-data]
+"automar.shared" = ["config/templates/**/*"]
+"automar.web" = ["static/**/*"]
+
+# Include build_backend.py in source distribution
+# This is required for building from sdist with our custom build backend
+[tool.setuptools.data-files]
+"." = ["build_backend.py"]
+
+[project.scripts]
+automar = "automar.cli.main:main"
+
+[project]
+name = "automar"
+version = "25.12.08"
+description = "Time series-based machine learning framework for stock market forecasting"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    {name = "Alejandro Gil (Kzurro)", email = "patomail@duck.com"},
+    {name = "Sergio Pablo-García", email = "spgarcica@gmail.com"},
+]
+maintainers = [
+    {name = "Alejandro Gil (Kzurro)"}
+]
+keywords = ["stock", "deep learning", "machine learning", "time series", "forecasting", "GRU", "transformer", "financial prediction"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "fastapi",
+    "joblib",
+    "lxml",
+    "numba",
+    "numpy",
+    "optuna",
+    "pandas",
+    "pandas_market_calendars",
+    "pyarrow",
+    "pydantic>=2.8",
+    "python-multipart",
+    "requests",
+    "scikit-learn",
+    "scipy",
+    "sktime",
+    "tomli",
+    "tomli_w",
+    "tqdm",
+    "uvicorn",
+    "yfinance",
+]
+
+[project.optional-dependencies]
+torch = [
+    "torch>=2.4.0",
+    "torcheval",
+]
+ray = [
+    "ray[data,train,tune,serve]>=2.34.0",
+]
+all = [
+    "torch>=2.4.0",
+    "torcheval",
+    "ray[data,train,tune,serve]>=2.34.0",
+]
+
+[project.urls]
+homepage = "https://codeberg.org/Kzurro/Automar"
+repository = "https://codeberg.org/Kzurro/Automar"
+documentation = "https://codeberg.org/Kzurro/Automar"
+"Bug Tracker" = "https://codeberg.org/Kzurro/Automar/issues"

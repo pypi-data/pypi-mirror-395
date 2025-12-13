@@ -1,0 +1,814 @@
+<div align="center">
+
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/src/automar/web/static/favicon.svg" alt="AuToMaR Logo" width="100"/>
+
+# AuToMaR
+
+**Automated Time Series Machine Learning for Stock Market Forecasting**
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.4.0+-red.svg)](https://pytorch.org/)
+
+[Installation](#installation) • [Quick Start](#quick-start) • [Tutorial](#visual-tutorial) • [Architecture](WEB_APPLICATION_ARCHITECTURE.md)
+
+</div>
+
+---
+
+## Overview
+
+AuToMaR is a customizable time series-based machine learning framework for forecasting the stock market. Built in Python, it provides both a powerful web-based GUI and a command-line interface for financial data analysis and model training.
+
+The framework supports sector-aware modeling: optionally extract data for all companies in a chosen economic sector, apply PCA dimensionality reduction to capture sector-wide patterns, and train models on this enriched feature space. This allows models to learn from industry-level dynamics and correlations, or work with individual stocks in isolation.
+
+**Key capabilities:**
+
+| Component | Description |
+|-----------|-------------|
+| **Web Interface** | Full-featured SvelteKit GUI with real-time job tracking and visualization |
+| **Data Pipeline** | Yahoo Finance extraction with automated technical indicator generation |
+| **ML Models** | GRU, Transformer, and Logistic Regression with Ray Tune hyperparameter optimization |
+| **Dimensionality Reduction** | PCA transformation with feature name visualization |
+| **Validation** | Growing windows cross-validation for robust time series evaluation |
+| **Forecasting** | Multi-day ahead predictions using autoregressive feature synthesis |
+| **Visualization** | Interactive Plotly charts with comprehensive statistical analysis |
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [From Source](#from-source-development)
+  - [Building with Web UI](#building-from-source-with-web-ui)
+- [Quick Start](#quick-start)
+  - [Web Interface](#web-interface-recommended)
+  - [Command Line Interface](#command-line-interface)
+  - [Python API](#python-api)
+- [How It Works](#how-it-works)
+- [Visual Tutorial](#visual-tutorial)
+  - [Main Operation Tabs](#main-operation-tabs)
+  - [Shared Components](#shared-components)
+  - [System Features](#system-features)
+- [Configuration](#configuration)
+  - [Basic Configuration](#basic-configuration)
+  - [Storage Configuration](#storage-configuration)
+  - [Output Structure](#output-structure)
+- [Building Distribution Packages](#building-distribution-packages)
+- [Requirements](#requirements)
+- [Developed With](#developed-with)
+- [References](#references)
+- [Authors](#authors)
+
+---
+
+## Features
+
+### Core Operations
+
+- **Data Extraction**: Fetch historical stock data from Yahoo Finance for S&P 500 companies with industry-wide feature generation
+- **Principal Component Analysis**: Dimensionality reduction with explained variance visualization and feature importance analysis
+- **Hyperparameter Tuning**: Distributed Ray Tune optimization with customizable search spaces
+- **Model Training**: Train GRU, Transformer, and Logistic Regression models with full GPU support
+- **Cross-Validation**: K-fold validation using the growing windows method for time series
+- **Prediction & Forecasting**: Two-mode inference system:
+  - **Evaluation Mode**: Test model performance on holdout data with comprehensive metrics
+  - **Forecast Mode**: Multi-day ahead forecasting (1-30 business days) with autoregressive synthesis
+
+### System Features
+
+- **Interactive Web GUI**: Full-featured interface accessible via single command (`automar gui`)
+- **Job Management**: Persistent SQLite-based job tracking with filtering, progress monitoring, and result visualization
+- **Storage Management**: Flexible path configuration with validation and per-job output customization
+- **CLI & Python API**: Complete programmatic access for automation and scripting
+- **Visualization Suite**: Interactive Plotly charts for training curves, confusion matrices, PCA analysis, and forecast confidence intervals
+
+---
+
+## Installation
+
+### Prerequisites
+
+> **Important**: AuToMaR requires PyTorch, TorchEval, and Ray Tune to be installed separately due to system-specific builds (CPU vs CUDA) and platform compatibility constraints.
+
+> **Windows Users**: Ray Tune does not support Python 3.13 on Windows. Use Python 3.12 instead. Linux users can use Python 3.13 without issues.
+
+**Step 1 - Install PyTorch**
+
+Visit [PyTorch's official installation guide](https://pytorch.org/get-started/locally/) and follow the instructions for your system (CPU vs CUDA, operating system).
+
+**Step 2 - Install TorchEval**
+
+```bash
+pip install torcheval
+```
+
+**Step 3 - Install Ray Tune**
+
+```bash
+pip install -U "ray[data,train,tune,serve]"
+```
+
+See [Ray's installation guide](https://docs.ray.io/en/latest/ray-overview/installation.html) for more details.
+
+**Step 4 - Install AuToMaR**
+
+```bash
+pip install automar
+```
+
+---
+
+### From Source (Development)
+
+For development without the web interface (faster, recommended for backend development):
+
+```bash
+git clone https://codeberg.org/Kzurro/Automar.git
+cd Automar
+
+# Install dependencies first (see Prerequisites above)
+# Then install automar (without web UI)
+pip install -e .
+```
+
+This installs the package without building the web UI. You can still use all CLI commands and the API server, but the `automar gui` command will not be available.
+
+---
+
+### Building from Source with Web UI
+
+To build the package with the web interface included:
+
+**Prerequisites**: Node.js and npm must be installed.
+
+**Linux/macOS**:
+```bash
+git clone https://codeberg.org/Kzurro/Automar.git
+cd Automar
+
+# Install Python dependencies (PyTorch, TorchEval, Ray - see Prerequisites section)
+
+# Build and install with web UI
+BUILD_WEB=1 pip install -e .
+```
+
+**Windows (PowerShell)**:
+```powershell
+git clone https://codeberg.org/Kzurro/Automar.git
+cd Automar
+
+# Install Python dependencies (PyTorch, TorchEval, Ray - see Prerequisites section)
+
+# Build and install with web UI
+$env:BUILD_WEB=1; pip install -e .
+```
+
+This will install npm dependencies, build the SvelteKit frontend, and install the Python package with web UI support.
+
+---
+
+## Quick Start
+
+### Web Interface (Recommended)
+
+Start the web UI with automatic browser opening:
+
+```bash
+automar gui
+```
+
+This command starts the API server and automatically opens your browser to the web interface, where you can access all features through an intuitive UI.
+
+**Alternative: API server only**
+
+```bash
+automar api --host 127.0.0.1 --port 8000
+```
+
+Then manually navigate to `http://127.0.0.1:8000` in your browser.
+
+---
+
+### Command Line Interface
+
+For automation and scripting, all operations are available via CLI:
+
+```bash
+# Extract stock data for a specific ticker
+automar extract --ticker AAPL --history 10y
+
+# Perform PCA
+automar pca --dataset out/data/AAPL_10y.pkl
+
+# Run hyperparameter tuning
+automar tune --ticker AAPL --model gru
+
+# Train a model with optimized parameters
+automar train --param-file out/hyper/AAPL_gru_params.toml
+
+# Perform cross-validation
+automar crossvalidate --ticker AAPL --model gru
+
+# Make predictions with a trained model
+automar predict --model-path out/models/gru/AAPL_model.pth --dataset out/data/AAPL_10y.pkl
+```
+
+---
+
+### Python API
+
+```python
+from automar.core.models import GRUModel
+from automar.core.preprocessing import loaders
+
+# Your custom code here
+```
+
+---
+
+## How It Works
+
+AuToMaR implements a complete time series forecasting pipeline:
+
+1. **Data Extraction**: Fetches stock panel data from Yahoo Finance for a target company, with optional sector-wide extraction to include all S&P 500 companies in the chosen economic sector
+2. **Feature Engineering**: Generates technical indicators following applied deep learning literature
+3. **Dimensionality Reduction (Optional)**: Apply PCA to sector-wide data to capture industry-level patterns and reduce feature space while preserving variance
+4. **Time Series Transformation**: Applies WEASEL-MUSE algorithm for time series classification
+5. **Hyperparameter Optimization**: Fine-tunes models using parallel Ray Tune optimization
+6. **Model Training**: Trains GRU, Transformer, and Logistic Regression models on either individual stock data or PCA-transformed sector features
+7. **Robust Validation**: Cross-validates using the growing windows method
+8. **Prediction**: Generates forecasts in two modes:
+   - **Evaluation**: Test set performance with comprehensive metrics
+   - **Forecast**: Multi-day ahead predictions using autoregressive synthesis
+9. **Visualization**: Creates interactive Plotly charts and statistical tables
+10. **Job Tracking**: Maintains persistent job history with filtering and result access
+
+---
+
+## Visual Tutorial
+
+This section walks through the complete workflow using the web interface. All screenshots show the actual AuToMaR GUI.
+
+### Main Operation Tabs
+
+#### Data Extraction
+
+The Data Extract tab provides an interface for fetching historical stock data from Yahoo Finance. You can configure ticker selection, time periods, output formats, and sector filtering options.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/dataextract1.png" alt="Data extraction interface" width="700"/>
+
+*Data extraction configuration panel showing ticker selection, history period, output format, and sector filtering options*
+</div>
+
+**Configuration options:**
+- **Ticker Symbol**: Select from S&P 500 company ticker symbols via searchable dropdown
+- **Sector**: Select a GICS sector whose S&P 500 companies' data will be used as context
+- **History Period**: Choose historical data period (1y minimum, 10y maximum)
+- **Output Format**: Export as Pickle, Feather, CSV, Excel, Parquet, or SQLite
+- **Start Date/End Date**: Choose a range of dates to download data from, it will override the *History Period* settting
+- **Force re-download**: If active, data will be downloaded even if it had been previously acquired already
+
+<details>
+<summary>View extraction results visualization</summary>
+
+<br>
+
+After extraction completes, the job results display a time series for the stock price evolution of the selected companies, including the plot of the mean value in the selected GICS sector.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/extractViz.png" alt="Data extraction results" width="700"/>
+
+*Extraction results showing the evolution of the closing stock price*
+</div>
+
+</details>
+
+---
+
+#### Principal Component Analysis (PCA)
+
+The PCA tab enables dimensionality reduction on your datasets. Configure the number of components, select input data sources (regular files or SQLite databases), and visualize explained variance.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/pca1.png" alt="PCA configuration interface" width="700"/>
+
+*PCA configuration showing dataset selection, component count, output format, and feature visualization options*
+</div>
+
+**PCA Configuration:**
+- **Number of Components**: Specify target dimensionality for reduction
+- **Significance level**: Defines threshold for the significance test
+- **Drop non-significant components**: If active, non-significant principal components will be ignored
+- **Force recompute PCA**: If active, PCA will be generated even if it already exists
+- **Skip dataframe output**: If active, the transformed dataframe will not be saved
+
+<details>
+<summary>View PCA analysis visualization</summary>
+
+<br>
+
+PCA results include visualizations showing explained variance ratio, cumulative variance, and principal component contributions across features.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/pcaViz.png" alt="PCA results and variance explained" width="700"/>
+
+*PCA analysis showing explained variance, cumulative variance, and component contributions*
+</div>
+
+</details>
+
+---
+
+#### Hyperparameter Tuning
+
+The Tuning tab provides Ray Tune-based hyperparameter optimization for your models. Configure search spaces, resource allocation, and the number of trials to explore.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/tuning1.png" alt="Hyperparameter tuning configuration" width="700"/>
+
+*Hyperparameter tuning interface with model selection, sample count, search space configuration, and compute resources*
+</div>
+
+**Tuning Parameters:**
+- **Epochs**: Number of training iterations for each trial
+- **Number of Trials**: Number of experiments to test
+- **Time Series Window Size**: Number of observations used for each prediction
+- **Batch Size**: Number of observations in each training batch
+- **Validation Split**: Fraction of the total number of observations used for validation purposes
+- **Test Split**: Fraction of the total number of observations used for testing purposes
+- **Significance Level**: Threshold for accepting a principal component (if PCA per batch is active)
+- **Data Scaler**: Method for data standarization to employ.
+
+**Search Space Configuration:**
+
+You can customize Ray Tune search spaces to define the hyperparameter ranges explored during optimization.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/searchspaceconfig.png" alt="Search space configuration" width="700"/>
+
+*Custom search space editor for defining hyperparameter ranges and distributions*
+</div>
+
+<details>
+<summary>View tuning results visualization</summary>
+
+<br>
+
+Tuning results display Ray Tune optimization progress, showing AUROC evolution across trials, best hyperparameters found, and performance metrics.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/tuningViz.png" alt="Hyperparameter tuning results" width="700"/>
+
+*Ray Tune optimization results showing trial performance, best parameters, and convergence metrics*
+</div>
+
+</details>
+
+---
+
+#### Model Training
+
+The Training tab allows you to train models using optimized hyperparameters from tuning results. Configure training epochs, batch sizes, and compute resources.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/training1.png" alt="Model training interface" width="700"/>
+
+*Model training configuration with hyperparameter file selection, dataset choice, and training parameters*
+</div>
+
+**Training Parameters:**
+- **Epochs**: Number of training iterations for each trial
+- **Time Series Window Size**: Number of observations used for each prediction
+- **Batch Size**: Number of observations in each training batch
+- **Validation Split**: Fraction of the total number of observations used for validation purposes
+- **Test Split**: Fraction of the total number of observations used for testing purposes
+- **Significance Level**: Threshold for accepting a principal component (if PCA per batch is active)
+- **Data Scaler**: Method for data standarization to employ.
+
+<details>
+<summary>View training visualizations</summary>
+
+<br>
+
+**Training Loss Curves:**
+
+Inspect training and validation loss evolution throughout the training process.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/trainingViz2.png" alt="Training loss curves" width="700"/>
+
+*Training and validation loss curves showing model convergence over epochs*
+</div>
+
+**Training Metrics:**
+
+View statistics of the test for the trained model: confusion matrix and derived performance indicators.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/trainingViz1.png" alt="Training metrics and performance" width="700"/>
+
+*Comprehensive training metrics including AUROC, accuracy, and learning rate evolution*
+</div>
+
+</details>
+
+---
+
+#### Cross-Validation
+
+The Cross-Validation tab provides robust model evaluation using the growing windows method, specifically designed for time series validation.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/crossvalidation1.png" alt="Cross-validation setup" width="700"/>
+
+*Cross-validation configuration showing fold count, model selection, and validation strategy*
+</div>
+
+**Cross-Validation Settings:**
+- **Epochs**: Number of training iterations for each trial
+- **Number of Folds**: Number of growing windows models will be trained on. 
+- **Number of Trials**: Number of experiments to test
+- **Time Series Window Size**: Number of observations used for each prediction
+- **Batch Size**: Number of observations in each training batch
+- **Validation Split**: Fraction of the total number of observations used for validation purposes
+- **Test Split**: Fraction of the total number of observations used for testing purposes
+- **Significance Level**: Threshold for accepting a principal component (if PCA per batch is active)
+- **Data Scaler**: Method for data standarization to employ.
+
+<details>
+<summary>View cross-validation visualizations</summary>
+
+<br>
+
+**Fold Results:**
+
+Performance metrics across all validation folds with statistical distributions.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/crossvalViz1.png" alt="Cross-validation fold results" width="700"/>
+
+*Performance metrics distribution across validation folds*
+</div>
+
+**Detailed Metrics:**
+
+Analyze detailed statistics and performance distributions for each fold.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/crossvalViz2.png" alt="Cross-validation detailed metrics" width="700"/>
+
+*Detailed fold-by-fold performance analysis with metric breakdowns*
+</div>
+
+**Growing windows structure:**
+
+Distribution of available data across the requested number of folds, detailed by training, validation and test class.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/crossvalViz3.png" alt="Cross-validation summary" width="700"/>
+
+*Structure of data distribution in each fold*
+</div>
+
+</details>
+
+---
+
+#### Predictions
+
+The Prediction tab offers model inference in two modes: Evaluation (test set performance) and Forecast (multi-day ahead predictions).
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/prediction1.png" alt="Prediction configuration" width="700"/>
+
+*Prediction interface with mode selection, model file picker, and forecast horizon configuration*
+</div>
+
+**Prediction Configuration:**
+- **Mode Selection**:
+  - **Evaluation Mode**: Test model performance on holdout data with known labels
+  - **Forecast Mode**: Multi-day forecasting (1-30 business days) using autoregressive synthesis
+- **Forecast Horizon**: Number of days ahead to predict (Forecast mode only)
+
+<details>
+<summary>View evaluation mode visualization</summary>
+
+<br>
+
+Evaluation mode provides comprehensive performance analysis of the pre-trained model running on the new inputted data, including the confusion matrix and classification metrics.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/evaluationViz.png" alt="Evaluation mode results" width="700"/>
+
+*Evaluation results showing prediction accuracy, confusion matrix, and performance metrics*
+</div>
+
+</details>
+
+<details>
+<summary>View forecast mode visualization</summary>
+
+<br>
+
+Forecast mode generates multi-day ahead predictions with confidence intervals and historical price context.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/forecastViz.png" alt="Forecast mode results" width="700"/>
+
+*Multi-day forecast with confidence intervals, probability distributions, and historical trend context*
+</div>
+
+</details>
+
+---
+
+### Shared Components
+
+The web interface includes several powerful shared components that appear across multiple operation tabs.
+
+#### Data Source Selection
+
+Choose between regular file selection and SQLite database mode with advanced filtering capabilities.
+
+**Regular File Mode:**
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/datasourceregular.png" alt="Regular data source selector" width="700"/>
+
+*Regular file selection with ticker-specific filtering for quick dataset location*
+</div>
+
+Browse and select files from the filesystem with optional ticker-based filtering to quickly find datasets for specific companies.
+
+**SQLite Database Mode:**
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/datasourcesql.png" alt="SQLite data source selector" width="700"/>
+
+*SQLite database selection with sector filtering, ticker selection, and date range controls*
+</div>
+
+Query SQLite databases with advanced filtering including sector selection, target company specification, and date range constraints.
+
+---
+
+#### Hyperparameter Configuration
+
+Load and manage model hyperparameters from TOML configuration files generated by tuning operations.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/hyperparameterconfig.png" alt="Hyperparameter configuration" width="700"/>
+
+*Hyperparameter file selector showing available configurations organized by model type*
+</div>
+
+Browse hyperparameter configuration files organized by model architecture (GRU, Transformer, Logistic Regression) and select optimized settings from previous tuning runs.
+
+---
+
+#### Compute Resources
+
+Configure CPU/GPU allocation and memory limits for computationally intensive operations.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/computeresources.png" alt="Compute resources configuration" width="700"/>
+
+*Compute resource allocation panel for device selection, CPU cores, and memory limits*
+</div>
+
+**Resource Configuration:**
+- **Device**: Select CPU or GPU (CUDA) execution
+- **CPU Cores**: Number of CPU cores to utilize for parallel processing
+- **Memory**: RAM allocation limits for data loading and processing
+- **GPU Memory**: VRAM limits for GPU-accelerated operations
+
+---
+
+#### Save Location
+
+Override default storage configuration on a per-job basis with custom output paths.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/savelocation.png" alt="Save location selector" width="700"/>
+
+*Custom save location selector for per-job output path overrides*
+</div>
+
+Specify a custom output directory for individual operations, allowing you to organize results outside the default storage configuration.
+
+---
+
+### System Features
+
+#### Job Management
+
+Track all operations through the persistent job management system with filtering and real-time progress monitoring.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/jobmanager3.png" alt="Job management interface" width="700"/>
+
+*Job management panel showing active and completed jobs with filtering options*
+</div>
+
+**Job Management Features:**
+- Quantifies number of jobs in each status.
+- Quick management of jobs in bulk: lock all, unlock all, delete all. Check the job card in Job Status for manipulating specific jobs.
+
+---
+
+#### Job Status
+
+Access comprehensive details for individual operations including logs, parameters, and result visualizations.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/jobstatus.png" alt="Job status tab" width="700"/>
+
+*Detailed job status view with execution logs, parameters, and visualization access*
+</div>
+
+**Job Status Provides:**
+- Detailed execution logs and progress tracking
+- Complete job parameters and configuration
+- Output file locations and results
+- Direct access to interactive visualizations for completed operations
+- Status updates and error diagnostics for failed jobs
+
+**Individual Job Card:**
+
+Each job in the Job Status tab displays as an expandable card with detailed information and controls.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/jobstatus2.png" alt="Individual job card" width="700"/>
+
+*Expanded job card showing detailed information, visualization access, and management options (lock, unlock, delete)*
+</div>
+
+The expanded card for each job provides quick access to the lock/unlock function (preventing both its automated and bulk deletion), delete function, and to view visualizations for succesful jobs.
+
+---
+
+#### Storage Configuration
+
+Configure custom storage paths through the Settings feature accessible from the top navigation bar.
+
+<div align="center">
+<img src="https://codeberg.org/Kzurro/Automar/raw/branch/dev/docs/images/storageconfig3.png" alt="Storage configuration modal" width="700"/>
+
+*Settings interface for customizing output paths with validation*
+</div>
+
+**Storage Management:**
+- View current storage paths for all operations (data, models, PCA, predictions, etc.)
+- Override root directory to change all operation paths at once
+- Override individual operation paths for granular control
+- Validate paths before saving to prevent configuration errors
+- Changes take effect immediately without requiring server restart
+
+---
+
+## Configuration
+
+AuToMaR uses TOML configuration files for system-wide settings. A default `config.toml` is provided with sensible defaults. When running the web UI, these defaults are loaded directly from `schema.py`, then overridden by `$HOME/.automar/config.toml` (auto-created on first launch) before reaching the frontend. Edit that file manually to customize loader/tuning/cross-validation defaults or use the Settings modal to reset it back to schema values.
+
+### Storage Configuration
+
+AuToMaR provides flexible path configuration with a 3-tier priority system:
+
+1. **Custom paths in config.toml** - Highest priority
+2. **AUTOMAR_DATA_DIR environment variable** - Medium priority
+3. **Default location** - Lowest priority (repository root or `~/.automar/`)
+
+#### Using the Web UI (Recommended)
+
+The web interface includes a **Manage Storage** button in the top navigation bar that opens a configuration modal. You can view current paths, override the root directory or individual operation paths, validate configurations, and apply changes immediately without restarting the server.
+
+Additionally, all operation tabs include an optional **Save Location** field for per-job path overrides.
+
+#### Manual Configuration
+
+Edit `config.toml` directly to configure storage paths:
+
+```toml
+[paths]
+# Override the root directory (all operations use this as base)
+root = "/custom/path/to/data"
+
+# Or override individual operation directories
+data = "/custom/path/to/datasets"
+models = "/custom/path/to/models"
+pca = "/custom/path/to/pca"
+```
+
+#### Environment Variable
+
+Set the `AUTOMAR_DATA_DIR` environment variable to change the default storage location:
+
+**Linux/macOS**:
+```bash
+export AUTOMAR_DATA_DIR=/path/to/custom/directory
+```
+
+**Windows (PowerShell)**:
+```powershell
+$env:AUTOMAR_DATA_DIR="C:\path\to\custom\directory"
+```
+
+---
+
+### Output Structure
+
+Results are stored following the 3-tier path configuration priority. The default output structure within the configured location is:
+
+```
+out/
+├── data/          # Extracted datasets (.pkl, .feather, .xlsx, .csv, .parquet, .sqlite)
+├── pca/           # PCA transformations (.joblib) with feature names
+│   └── data/      # PCA-transformed dataframes (.feather)
+├── hyper/         # Hyperparameter configurations (.toml)
+│   ├── gru/       # GRU model hyperparameters
+│   ├── transformer/ # Transformer model hyperparameters
+│   └── logreg/    # Logistic Regression hyperparameters
+├── models/        # Trained model weights (.pth) with training context metadata
+│   ├── gru/       # GRU model checkpoints
+│   ├── transformer/ # Transformer model checkpoints
+│   └── logreg/    # Logistic Regression model checkpoints
+├── cross/         # Cross-validation results (.pkl)
+├── preds/         # Prediction results (.pkl, .json)
+│   ├── eval/      # Evaluation mode predictions with metrics
+│   └── forecast/  # Forecast mode predictions (multi-day)
+├── jobs/          # Job tracking database (.db)
+├── ray/           # Ray Tune trial reports
+└── search_spaces/ # Custom search spaces for tuning (.py)
+```
+
+---
+
+## Building Distribution Packages
+
+To create distribution packages (wheels) for PyPI or local distribution:
+
+**Without Web UI** (API and CLI only - smaller package):
+```bash
+python -m build
+```
+
+**With Web UI** (includes compiled frontend - recommended for end users):
+
+Linux/macOS:
+```bash
+BUILD_WEB=1 python -m build
+```
+
+Windows (PowerShell):
+```powershell
+$env:BUILD_WEB=1; python -m build
+```
+
+This creates:
+- `dist/automar-*.tar.gz` - Source distribution
+- `dist/automar-*-py3-none-any.whl` - Wheel distribution
+
+The wheel can be installed with `pip install dist/automar-*.whl`
+
+> **Note**: Building with `BUILD_WEB=1` requires Node.js and npm installed. The build process takes longer (~30-60 seconds extra) but creates a complete package with the web UI ready to use.
+
+---
+
+## Requirements
+
+- Python >= 3.12 (Python 3.13 not supported on Windows due to Ray Tune compatibility)
+- PyTorch 2.4.0+
+- TorchEval 0.0.7+
+- Ray Tune 2.34.0+
+- See [pyproject.toml](pyproject.toml) for complete dependency list
+
+---
+
+## Developed with
+
+- Python 3.12
+- PyTorch 2.4.0
+- Scikit-Learn 1.5.1
+- Sktime 0.31.0
+- Ray Tune 2.34.0
+- SvelteKit 1.20.4
+- Plotly.js
+
+---
+
+## References
+
+Zhao, J., Zeng, D., Liang, S., Kang, H., & Liu, Q. (2021). Prediction model
+for stock price trend based on recurrent neural network. *Journal of Ambient
+Intelligence and Humanized Computing*, 12(1), 745-753.
+https://doi.org/10.1007/s12652-020-02057-0
+
+---
+
+## Authors
+
+- Alejandro Gil (Kzurro)
+- Sergio Pablo-García
