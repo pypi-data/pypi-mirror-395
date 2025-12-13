@@ -1,0 +1,7 @@
+(changelog)=
+
+(history)=
+
+```{include} ../CHANGES
+
+```

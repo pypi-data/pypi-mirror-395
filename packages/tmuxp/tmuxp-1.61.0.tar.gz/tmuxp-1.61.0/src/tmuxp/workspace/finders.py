@@ -1,0 +1,262 @@
+"""Workspace (configuration file) finders for tmuxp."""
+
+from __future__ import annotations
+
+import logging
+import os
+import typing as t
+
+from colorama import Fore
+
+from tmuxp.cli.utils import tmuxp_echo
+from tmuxp.workspace.constants import VALID_WORKSPACE_DIR_FILE_EXTENSIONS
+
+logger = logging.getLogger(__name__)
+
+if t.TYPE_CHECKING:
+    import pathlib
+    from typing import TypeAlias
+
+    from tmuxp.types import StrPath
+
+    ValidExtensions: TypeAlias = t.Literal[".yml", ".yaml", ".json"]
+
+
+def is_workspace_file(
+    filename: str,
+    extensions: ValidExtensions | list[ValidExtensions] | None = None,
+) -> bool:
+    """
+    Return True if file has a valid workspace file type.
+
+    Parameters
+    ----------
+    filename : str
+        filename to check (e.g. ``mysession.json``).
+    extensions : str or list
+        filetypes to check (e.g. ``['.yaml', '.json']``).
+
+    Returns
+    -------
+    bool
+    """
+    if extensions is None:
+        extensions = [".yml", ".yaml", ".json"]
+    extensions = [extensions] if isinstance(extensions, str) else extensions
+    return any(filename.endswith(e) for e in extensions)
+
+
+def in_dir(
+    workspace_dir: pathlib.Path | str | None = None,
+    extensions: list[ValidExtensions] | None = None,
+) -> list[str]:
+    """
+    Return a list of workspace_files in ``workspace_dir``.
+
+    Parameters
+    ----------
+    workspace_dir : str
+        directory to search
+    extensions : list
+        filetypes to check (e.g. ``['.yaml', '.json']``).
+
+    Returns
+    -------
+    list
+    """
+    if workspace_dir is None:
+        workspace_dir = os.path.expanduser("~/.tmuxp")
+
+    if extensions is None:
+        extensions = [".yml", ".yaml", ".json"]
+
+    return [
+        filename
+        for filename in os.listdir(workspace_dir)
+        if is_workspace_file(filename, extensions) and not filename.startswith(".")
+    ]
+
+
+def in_cwd() -> list[str]:
+    """
+    Return list of workspace_files in current working directory.
+
+    If filename is ``.tmuxp.py``, ``.tmuxp.json``, ``.tmuxp.yaml``.
+
+    Returns
+    -------
+    list
+        workspace_files in current working directory
+
+    Examples
+    --------
+    >>> sorted(in_cwd())
+    ['.tmuxp.json', '.tmuxp.yaml']
+    """
+    return [
+        filename
+        for filename in os.listdir(os.getcwd())
+        if filename.startswith(".tmuxp") and is_workspace_file(filename)
+    ]
+
+
+def get_workspace_dir() -> str:
+    """
+    Return tmuxp workspace directory.
+
+    ``TMUXP_CONFIGDIR`` environmental variable has precedence if set. We also
+    evaluate XDG default directory from XDG_CONFIG_HOME environmental variable
+    if set or its default. Then the old default ~/.tmuxp is returned for
+    compatibility.
+
+    Returns
+    -------
+    str :
+        absolute path to tmuxp config directory
+    """
+    paths = []
+    if "TMUXP_CONFIGDIR" in os.environ:
+        paths.append(os.environ["TMUXP_CONFIGDIR"])
+    if "XDG_CONFIG_HOME" in os.environ:
+        paths.append(os.path.join(os.environ["XDG_CONFIG_HOME"], "tmuxp"))
+    else:
+        paths.append("~/.config/tmuxp/")
+    paths.append("~/.tmuxp")
+
+    for path in paths:
+        path = os.path.expanduser(path)
+        if os.path.isdir(path):
+            return path
+    # Return last path as default if none of the previous ones matched
+    return path
+
+
+def find_workspace_file(
+    workspace_file: StrPath,
+    workspace_dir: StrPath | None = None,
+) -> str:
+    """
+    Return the real config path or raise an exception.
+
+    If workspace file is directory, scan for .tmuxp.{yaml,yml,json} in directory. If
+    one or more found, it will warn and pick the first.
+
+    If workspace file is ".", "./" or None, it will scan current directory.
+
+    If workspace file is has no path and only a filename, e.g. "my_workspace.yaml" it
+    will search workspace dir.
+
+    If workspace file has no path and no extension, e.g. "my_workspace", it will scan
+    for file name with yaml, yml and json. If multiple exist, it will warn and pick the
+    first.
+
+    Parameters
+    ----------
+    workspace_file : str
+        Workspace file, valid examples:
+
+        - a file name, my_workspace.yaml
+        - relative path, ../my_workspace.yaml or ../project
+        - a period, .
+
+    Returns
+    -------
+    str
+        Resolved absolute path to workspace file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If workspace file cannot be found.
+    """
+    if not workspace_dir:
+        workspace_dir = get_workspace_dir()
+    path = os.path
+    exists, join, isabs = path.exists, path.join, path.isabs
+    dirname, normpath, splitext = path.dirname, path.normpath, path.splitext
+    cwd = os.getcwd()
+    is_name = False
+    file_error = None
+
+    workspace_file = os.path.expanduser(workspace_file)
+    # if purename, resolve to confg dir
+    if is_pure_name(workspace_file):
+        is_name = True
+    elif (
+        not isabs(workspace_file)
+        or len(dirname(workspace_file)) > 1
+        or workspace_file in {".", "", "./"}
+    ):  # if relative, fill in full path
+        workspace_file = normpath(join(cwd, workspace_file))
+
+    # no extension, scan
+    if path.isdir(workspace_file) or not splitext(workspace_file)[1]:
+        if is_name:
+            candidates = [
+                x
+                for x in [
+                    f"{join(workspace_dir, workspace_file)}{ext}"
+                    for ext in VALID_WORKSPACE_DIR_FILE_EXTENSIONS
+                ]
+                if exists(x)
+            ]
+            if not candidates:
+                file_error = (
+                    "workspace-file not found "
+                    f"in workspace dir (yaml/yml/json) {workspace_dir} for name"
+                )
+        else:
+            candidates = [
+                x
+                for x in [
+                    join(workspace_file, ext)
+                    for ext in [".tmuxp.yaml", ".tmuxp.yml", ".tmuxp.json"]
+                ]
+                if exists(x)
+            ]
+
+            if len(candidates) > 1:
+                tmuxp_echo(
+                    Fore.RED
+                    + "Multiple .tmuxp.{yml,yaml,json} workspace_files in "
+                    + dirname(workspace_file)
+                    + Fore.RESET,
+                )
+                tmuxp_echo(
+                    "This is undefined behavior, use only one. "
+                    "Use file names e.g. myproject.json, coolproject.yaml. "
+                    "You can load them by filename.",
+                )
+            elif not candidates:
+                file_error = "No tmuxp files found in directory"
+        if candidates:
+            workspace_file = candidates[0]
+    elif not exists(workspace_file):
+        file_error = "file not found"
+
+    if file_error:
+        raise FileNotFoundError(file_error, workspace_file)
+
+    return workspace_file
+
+
+def is_pure_name(path: str) -> bool:
+    """
+    Return True if path is a name and not a file path.
+
+    Parameters
+    ----------
+    path : str
+        Path (can be absolute, relative, etc.)
+
+    Returns
+    -------
+    bool
+        True if path is a name of workspace in workspace dir, not file path.
+    """
+    return (
+        not os.path.isabs(path)
+        and len(os.path.dirname(path)) == 0
+        and not os.path.splitext(path)[1]
+        and path not in {".", ""}
+    )
