@@ -1,0 +1,46 @@
+# This workflow will upload a Python Package using Twine when a release is created
+# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout full Git history and tags
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensures setuptools_scm can see tags
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build setuptools setuptools-scm twine
+
+    - name: (Optional) Force version if setuptools_scm fails
+      run: echo "SETUPTOOLS_SCM_PRETEND_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+
+    - name: Build package
+      run: python -m build
+
+    - name: Check metadata with Twine
+      run: twine check dist/*
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: twine upload dist/*
+
