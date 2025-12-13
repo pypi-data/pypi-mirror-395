@@ -1,0 +1,153 @@
+{% extends "page.html.j2" %}
+
+{% block container %}
+
+<h1>{{ _('Explorer Tiles') }}</h1>
+
+{% if zoom_level_not_generated %}
+<p>{{ _('You try to access explorer tiles for a level that hasn\'t been generated before. That is not a problem, we just don\'t generate all levels to save a bit of time. If you want to have it, just enable it!') }}</p>
+
+<a href="{{ url_for('.enable_zoom_level', zoom=zoom_level_not_generated) }}" class="btn btn-primary">{{ _('Enable Zoom') }} {{
+    zoom_level_not_generated }}</a>
+{% else %}
+
+<div class="row mb-3">
+    <div class="col">
+        <p>{{ _('You have') }} {{ num_tiles }} {{ _('explored tiles. There are') }} {{ num_cluster_tiles }} {{ _('cluster tiles in total. Your largest cluster consists of') }} {{ max_cluster_size }} {{ _('tiles. Your largest square has size') }}
+            {{ square_size }}².
+        </p>
+        <p>{{ _('Open the') }} <a
+                href="{{ url_for('square_planner.index', zoom=zoom, x=square_x, y=square_y, size=square_size) }}">{{ _('Square Planner') }}</a> {{ _('to plan the next extension.') }}</p>
+    </div>
+</div>
+
+{% if bookmarks %}
+<div class="btn-group mb-3" role="group" aria-label="Cluster bookmarks">
+    <button type="button" class="btn btn-outline-primary" data-center-bbox='{{ center.bbox | safe }}'>Biggest ({{ max_cluster_size }})</button>
+    {% for bookmark in bookmarks %}
+    <button type="button" class="btn btn-outline-primary" data-center-bbox='{{ bookmark.bbox | safe }}'>{{ bookmark.name }} ({{ bookmark.size }})</button>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row mb-3">
+    <div class="col">
+        <div id="explorer-map" class="mb-1" style="height: min(800px, calc(100vh - 300px));"></div>
+        <p>{{ _('Download tiles in visible area:') }}
+            <a href="#" data-download-suffix="explored.geojson">{{ _('Explored as GeoJSON') }}</a>,
+            <a href="#" data-download-suffix="explored.gpx">{{ _('Explored as GPX') }}</a>,
+            <a href="#" data-download-suffix="missing.geojson">{{ _('Missing as GeoJSON') }}</a> {{ _('or') }}
+            <a href="#" data-download-suffix="missing.gpx">{{ _('Missing as GPX') }}</a>.
+        </p>
+        <script type="module">
+            import { initExplorerMap } from '/static/server-side-explorer.js';
+            initExplorerMap({
+                centerLatitude: {{ center.latitude }},
+                centerLongitude: {{ center.longitude }},
+                zoom: {{ zoom }},
+                attribution: '{{ map_tile_attribution|safe }}',
+                bbox: {{ center.bbox | safe }}
+            });
+        </script>
+    </div>
+</div>
+
+{% if bookmarks %}
+<h2 class="mb-3">{{ _('Bookmarked cluster sizes') }}</h2>
+
+<table class="table mb-3">
+    <thead>
+        <tr>
+            <th>{{ _('Name') }}</th>
+            <th>{{ _('Tiles') }}</th>
+            <th>{{ _('Relative to maximum') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ _('Max Cluster') }}</td>
+            <td>{{ max_cluster_size }}</td>
+            <td></td>
+            <td></td>
+        </tr>
+        {% for bookmark in bookmarks %}
+        <tr>
+            <td>{{ bookmark.name }}</td>
+            <td>{{ bookmark.size }}</td>
+            <td>{{ '%.1f'|format(bookmark.size / max_cluster_size * 100) }} %</td>
+            <td><a class="btn btn-danger btn-sm"
+                    href="{{ url_for('settings.cluster_bookmark_delete', id=bookmark.id) }}"
+                    onclick="if(!confirm('{{ _('Are you sure to delete this?') }}')){event.preventDefault()}">{{ _('Delete') }}</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
+<h2 class="mb-3">{{ _('Tile history') }}</h2>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        {% if plot_tile_evolution|length > 0 %}
+        {{ vega_direct(plot_tile_evolution) }}
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        {% if plot_cluster_evolution|length > 0 %}
+        {{ vega_direct(plot_cluster_evolution) }}
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        {% if plot_square_evolution|length > 0 %}
+        {{ vega_direct(plot_square_evolution) }}
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="mb-3">{{ _('Tile coloring') }}</h2>
+<p><a href="{{ url_for('settings.color_strategy') }}">{{ _('Modify color values') }}</a>.</p>
+
+<h2 class="mb-3">{{ _('Tile URLs') }}</h2>
+
+<p>{{ _('You can use the overlay tiles with other services like') }} <a href="https://bikerouter.de/" target="_blank">Bike
+        Router</a>. {{ _('See') }} <a href="https://martin-ueding.github.io/geo-activity-playground/using-maps-as-overlays/"
+        target="_blank">{{ _('the documentation for this feature') }}</a>. {{ _('For your server, use the following URLs:') }}</p>
+
+<code><pre class="tile-urls">/tile/grayscale/{z}/{x}/{y}.png
+/tile/pastel/{z}/{x}/{y}.png
+/tile/color/{z}/{x}/{y}.png
+/tile/inverse_grayscale/{z}/{x}/{y}.png</pre></code>
+
+<p>{{ _('For the explorer tiles, you can use these:') }}</p>
+
+<code><pre class="tile-urls">/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=colorful_cluster
+/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=max_cluster
+/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=first
+/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=last
+/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=visits
+/explorer/14/tile/{z}/{x}/{y}.png?color_strategy=missing
+
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=colorful_cluster
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=max_cluster
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=first
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=last
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=visits
+/explorer/17/tile/{z}/{x}/{y}.png?color_strategy=missing</pre></code>
+
+<p>{{ _('And for the heatmap, you can use this:') }}</p>
+
+<code><pre class="tile-urls">/heatmap/tile/{z}/{x}/{y}.png</pre></code>
+
+<script>
+// Prepend the current origin (protocol + host) to tile URLs
+// This ensures correct https:// when behind a reverse proxy
+document.querySelectorAll('pre.tile-urls').forEach(pre => {
+    pre.textContent = pre.textContent.split('\n')
+        .map(line => line.trim() ? window.location.origin + line : line)
+        .join('\n');
+});
+</script>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "page.html.j2" %}
+
+{% block container %}
+
+<h1>{{ _('Activities Through Tile') }}</h1>
+
+<div class="row mb-3">
+    <div class="col">
+        <p>
+            {{ _('Showing') }} {{ num_activities }} {{ _('activities passing through tile') }} ({{ tile_x }}, {{ tile_y }}) @ {{ _('zoom') }} {{ zoom }}
+            {% if radius > 0 %}
+            {{ _('with radius') }} {{ radius }} ({{ (2 * radius + 1) ** 2 }} {{ _('tiles') }})
+            {% endif %}
+        </p>
+        <label class="me-2">{{ _('Search Radius:') }}</label>
+        <div class="btn-group" role="group" aria-label="Radius selection">
+            {% for r in range(6) %}
+            <a href="{{ url_for('.activities_through_tile', zoom=zoom, tile_x=tile_x, tile_y=tile_y, radius=r) }}"
+               class="btn btn-{{ 'primary' if r == radius else 'outline-primary' }}">
+                {{ r }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if activities %}
+<div class="row mb-3">
+    <div class="col">
+        <div class="table-responsive">
+            <table class="table table-sort table-arrows">
+                <thead>
+                    <tr>
+                        <th>{{ _('Name') }}</th>
+                        <th>{{ _('Date') }}</th>
+                        <th class="numeric-sort">{{ _('Distance / km') }}</th>
+                        <th>{{ _('Elapsed time') }}</th>
+                        <th>{{ _('Speed / km/h') }}</th>
+                        <th>{{ _('Equipment') }}</th>
+                        <th>{{ _('Kind') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in activities %}
+                    <tr>
+                        <td><a href="{{ url_for('activity.show', id=activity.id) }}">{{ activity.name }}</a></td>
+                        <td>
+                            {% if activity.start %}
+                            {{ activity.start_local_tz|dt }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if activity.distance_km %}
+                            {{ activity.distance_km | round(1) }}
+                            {% endif %}
+                        </td>
+                        <td>{{ activity.elapsed_time|td }}</td>
+                        <td>
+                            {% if activity.average_speed_moving_kmh %}
+                            {{ activity.average_speed_moving_kmh|round(1) }}
+                            {% endif %}
+                        </td>
+                        <td>{{ activity.equipment.name if activity.equipment else '' }}</td>
+                        <td>{{ activity.kind.name if activity.kind else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    {{ _('No activities found passing through this tile.') }}
+</div>
+{% endif %}
+
+{% endblock %}
+
