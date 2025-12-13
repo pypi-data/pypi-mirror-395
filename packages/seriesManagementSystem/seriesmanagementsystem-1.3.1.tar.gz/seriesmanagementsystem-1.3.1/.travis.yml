@@ -1,0 +1,30 @@
+language: python
+python:
+- '2.7'
+- '3.4'
+install:
+- pip install tox
+- pip install pex
+- pip install -r requirements.txt
+script:
+- tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | sed -e 's/pypypy/pypy/')
+- pex . --no-wheel -o dist/seriesmgmt$(echo $TRAVIS_PYTHON_VERSION | tr -d .).pex -e seriesmgmtsystem.main:main --platform=linux-x86_64
+- tox -e docs
+notifications:
+  slack:
+    secure: PGoIf/m17cPQAVW/8oIork4qg2uYyLPAGaZ+ral9E3E7E2NTshtnD28YoMWYflBu/W2BFot11h/tgYrcyxRNv8U/5RDezS8lMtwKroc4OxbVI86W20pwuepPsKgovbWXYkmGvsRuzqxiewA3Tqd1g+xAArLOjx3eQ+KQTxTrJHQl1UGZhR8SI3Anhdp7dhlbIUk69QCumtRGGbWJ12oUdU5jm/u0mLz7fnrnu1ytqrRXial6wQ+89WtN5egv9py5YXxXwci3ANWcqgJIUubdOIEgQIlYuwhtum3HQgumbTUE6pX1G8UHuELMaQfDVccCItfW8geaKS3P8syg9sSX3787x6RhDPGTZjaVhMTYIYSOT+aQztIVv6d+RJ53Wdnb/kdnN7T5dt9KK4c9owF5IvA9xhFZEQafJ11hj8C/PBAxadqUKc5rLT/+VKy0FoSwX/zAAIV2j4BrHf8EeyaXh7WEYALbMZofVYWkMZeJANMWP+quvGnPixHCVzlD5S86MCd+zJxXtvXrWZ1n6ts26s7FW/SjnhY8roTKFwqPFqINpIdQd07j4m+5FybV12zt4d+O48/wypLZGfBfdU040PMZbBgVsz46Km1GUUrnJrP8NHTffmktZ9Pk4PT3YeU9LSZ6JvMW0yjnDkg3pYe12W8ggbF79TCVOhJAphOmsWA=
+  email:
+    recipients:
+    - andreas.ruppen@gmail.com
+    on_success: change
+    on_failure: always
+deploy:
+  provider: releases
+  api_key:
+    secure: "oeJoRe14TpWRyH3ZTJmFcOzKglWyh4m3GMrp8IfgMO0UFIVAyDxG1Z+GdaczLvOIF9rFJKSQs8BAui/m52rul+M5NSrEg23ngErBHDo/G/a1beFPTpWQfLwwmhgWOJuWVE1G4qm8Ejs/ct04JTfSbYw41Nrg/kCP1s4sl675UjWgE9E2gvY3BHYefONc2aEyUc8iLGZ9PFZFD51mz4YwQnvxyraAra2w3diOV0feiNdB8in/2ai+OO1GQoGljta30Le+dTXVWlaRaw3cOuyj2bmC5TgwwlpYd1qxQhRTeqpa6uTxj4i713bJxjA09+DTytmWNlxzscT+XjJeYQlkBUN436PSqzRzc53hlnCnmq5C8drQJ0owt8YPdIpdMPsleU3YyEtphm8Fap/Kn9UIaZ83ADwbQIdPoLHaMtMClid/HVWaZonyUpKAy15SZ63q6Vx353nq/grqTo+jzBSUKS8L2ZHcU8+Tf7H+APc7jQeC+xk/XlIlKcOCkIZAF+0B3cZOOCz35q1kjWN7Q5AFn241CHbyZc6k2IgI5hBu51D3dCPvOfO1XOGXfj89i15eiKLnIRuWc5lWJlfyWlFdaP/YDCqcuELZvC05/Zkzbzfj+GjH8wMNbOecsph8z4leu9I1ehRukw8xNJZjdKJJrVo9AVNrsgg8og5GANhk2ac="
+  file:
+  - dist/seriesmgmt$(echo $TRAVIS_PYTHON_VERSION | tr -d .).pex
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
