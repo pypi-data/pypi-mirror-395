@@ -1,0 +1,41 @@
+name: publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Hatch
+        run: python -m pip install --upgrade hatch
+      - name: Build package
+        run: hatch build
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install Hatch
+        run: python -m pip install --upgrade hatch
+      - name: Build package
+        run: hatch build
+      - name: Publish to PyPI
+        env:
+          HATCH_INDEX_USER: "__token__"
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
+        run: hatch publish --yes
