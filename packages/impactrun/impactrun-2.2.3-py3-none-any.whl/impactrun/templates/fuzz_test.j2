@@ -1,0 +1,277 @@
+import requests
+import json
+import pytest
+import assertions
+import os
+from jinja2 import Template
+import curlify
+from collections import OrderedDict
+from conftest import get_params_from_file, CLI_OPTIONS_FROM_PROPERTIES_FILE
+from cvutils import *
+import itertools
+import random
+
+HOST_URL = "{{ host_url }}"
+SUPPORTED_FUZZ_TYPES = {{ fuzz_supported }}
+responses_recieved = []
+fuzzdb_values = {}
+
+
+def _prep_data_for_fuzzing(api, method, fuzz_dict_path, params_list):
+    if not params_list:
+        return []
+    fuzz_values = []
+    fuzz_types_from_env = os.environ.get("CVIAST_FUZZ_TYPE", "all").split(",")
+    global fuzzdb_values
+    values = []
+
+    def recurse_dir(root_dir, fuzzing_values={}):
+        root_dir = os.path.abspath(root_dir)
+        fuzz_type = None
+        for _ in SUPPORTED_FUZZ_TYPES:
+            if str(_).lower() in root_dir:
+                fuzz_type = str(_)
+        if fuzz_type not in fuzzing_values:
+            fuzzing_values[fuzz_type] = []
+
+        for item in os.listdir(root_dir):
+            if not fuzz_type:
+                continue
+            item_full_path = os.path.join(root_dir, item)
+
+            if os.path.isdir(item_full_path):
+                recurse_dir(item_full_path, fuzzing_values)
+            else:
+                with open(os.path.join(root_dir, item), encoding="iso-8859-15") as fobj:
+                    fuzzing_values[fuzz_type] += [root_dir.replace("\\", "/").split(
+                        "fuzzdb")[-1] + "/" + item + "::-->" + str(_).replace("\n", "") + "<--::" for _ in fobj.readlines()]
+
+        return fuzzing_values
+
+    if fuzz_types_from_env:
+        if str(fuzz_types_from_env[0]).lower() == "all":
+            fuzz_types_from_env = SUPPORTED_FUZZ_TYPES
+        fuzz_dict_root_path = fuzz_dict_path
+        for fuzz_type_from_env in fuzz_types_from_env:
+            fuzz_dict_path = fuzz_dict_root_path
+            if os.path.exists(
+                    os.path.join(
+                        fuzz_dict_path,
+                        fuzz_type_from_env)):
+                fuzz_dict_path = os.path.join(
+                    fuzz_dict_path, fuzz_type_from_env)
+                print(fuzz_dict_path)
+            else:
+                print("Unknown fuzz type set in env variable CVIAST_FUZZ_TYPE!\n\n")
+
+            fuzzdb_values = recurse_dir(fuzz_dict_path)
+
+            try:
+                MAX_VALUES_TO_FUZZ = int(os.environ.get(
+                    "CVIAST_MAX_VALUES_TO_FUZZ", 100))
+                # if len(raw_values) < MAX_VALUES_TO_FUZZ:
+                #     MAX_VALUES_TO_FUZZ = len(raw_values)
+            except ValueError:
+                MAX_VALUES_TO_FUZZ = os.environ.get(
+                    "CVIAST_MAX_VALUES_TO_FUZZ")
+            if str(MAX_VALUES_TO_FUZZ).lower() != "all":
+                if int(MAX_VALUES_TO_FUZZ) > 0:
+                    for k, v in fuzzdb_values.items():
+                        try:
+                            fuzzdb_values [k] = random.sample(v, MAX_VALUES_TO_FUZZ)
+                        except ValueError:
+                            fuzzdb_values [k] = v
+                else:
+                    print(
+                        "Environment variable CVIAST_MAX_VALUES_TO_FUZZ has to be 'all' or a value greater than Zero!")
+                    raise SystemExit
+
+    for _ in list(fuzzdb_values.values()):
+        for x in _:
+            values.append("".join(str(x).split("::-->")[-1].split("<--::")[0]))
+
+    params_to_fuzz = OrderedDict()
+    for param in params_list:
+        param = param.replace("_arg", "")
+        values_to_trigger_success = get_params_from_file(param, api, method)
+        print(values_to_trigger_success)
+        if values_to_trigger_success:
+            params_to_fuzz[param] = values_to_trigger_success[-1]
+        else:
+            params_to_fuzz[param] = []
+
+    success_values = list(params_to_fuzz.values())
+    if len(success_values) == 1:
+        fuzz_values.append(success_values[0])
+    else:
+        fuzz_values.append(success_values)
+
+    for _ in values:
+        if not _:
+            continue
+        for i in range(1, len(success_values) + 1):
+            for selected in itertools.combinations(
+                    range(len(success_values)), i):
+
+                res = success_values[:]
+                for n in selected:
+                    res[n] = _
+                if len(res) == 1:
+                    fuzz_values.append(res[0])
+                else:
+                    fuzz_values.append(res)
+    return fuzz_values
+
+
+def _trigger_requests(req_method, url, header, data, proxies=None):
+    print("\n\nRegenerating traffic from CloudVector events....")
+    for _ in range(3):
+        resp = requests.request(
+        method=req_method,
+        url=url,
+        proxies=proxies,
+        headers=header,
+        data=data,
+        verify=False)
+        if resp.status_code == 401:
+            if _ < 2:
+                print("Got a 401, retrying....")
+                time.sleep(5)
+                continue
+            else:
+                pytest.exit("\n\n\t Got 401 Unauthorised error so exiting the tests, Pls check the auth flow or the token provided!")
+        return resp
+
+
+def _create_curl_request(url, method, headers, payloads):
+    # construct the curl command from request
+    command = "curl -v -H {headers} {data} -X {method} {uri}"
+    data = ""
+    if payloads:
+        payloads = json.loads(payloads)
+        payload_list = [
+            '"{0}":"{1}"'.format(
+                k,
+                v) for k,
+            v in payloads.items()]
+        data = " -d '{" + ", ".join(payload_list) + "}'"
+    header_list = ['"{0}: {1}"'.format(k, v) for k, v in headers.items()]
+    header = " -H ".join(header_list)
+    return command.format(method=method, headers=header, data=data, uri=url)
+
+
+def _parse_fuzz_values(*args):
+    for _ in args:
+        if isinstance(_, list):
+            if len(_) > 0:
+                for k, v in fuzzdb_values.items():
+                    for each in v:
+                        if "::-->" + str(_[0]) + "<--::" in each:
+                            return k,str(each)
+            else:
+                continue
+        else:
+            for k, v in fuzzdb_values.items():
+                for each in v:
+                    if "::-->" + str(_) + "<--::" in each:
+                        return k,str(each)
+    return "na",""
+
+
+
+{% for fuzz_info in fuzzing_details %}
+{% set api_name = api_name | replace("{","") | replace("}","") %}
+{% for method, api_info in apis_metadata.items() %}
+{% set params_covered = [] %}
+{% for param in api_info.get("params",[]) %}
+{%- if param not in ['host','access_token', 'url_prefix'] %}
+{%- set params_covered = params_covered.append(param.replace(".", "_") + "_arg") -%}
+{% endif -%}
+{% endfor %}
+{% if stateful_fuzz == 1 %}
+create_fuzz_state = True
+{% elif stateful_fuzz == 0 %}
+create_fuzz_state = False
+{% endif %}
+@pytest.mark.parametrize("{{ params_covered|join(", ") }}", prep_data_for_fuzzing("/{{ api_name | replace("__","/") }}","{{ method }}",{{ fuzz_info.get("path") }}, {{ params_covered }}))
+def test_{{ method | lower }}_{{ api_name | lower | replace("-","9i9")}}_for_fuzzing({{ params_covered|join(", ") }}{% if params_covered %},{% endif %} host, access_token, url_prefix, update_headers, properties):
+    os.environ["CVBOT_FUZZ_SUBTYPE"] = "{{ api_info.get("params",["::"])[0].split("::")[0] }}"
+    os.environ["CVBOT_FUZZ_TYPE"] = {{ fuzz_info.get("path") }}
+    data = {}
+    {% for param in api_info.get("params",[]) %}{% if (param not in ('host', 'access_token','url_prefix')) %}
+    data["{{ param }}"] = {{ param.replace(".","_") }}_arg{% endif %}
+    {% endfor %}
+    if not data:
+        os.environ["CVIAST_SKIP_REASON"] = "No Parameters to fuzz! so skipping the test"
+        pytest.skip("No Parameters to fuzz! so skipping the test")
+
+    iflag = False
+    for k, v in data.items():
+        if v:
+            iflag = True
+    if not iflag:
+        os.environ["CVIAST_SKIP_REASON"] = "No values for the parameters to fuzz! so skipping the test"
+        pytest.skip("No values for the parameters to fuzz! so skipping the test")
+
+
+    os.environ["IMPACT_TEST_APP_HOST"] = host
+
+    fuzz_info, fuzz_file_used = parse_fuzz_values({{ params_covered|join(", ") }})
+
+    os.environ["CVIAST_FUZZ_TYPE"] = fuzz_info
+    os.environ["CVIAST_FUZZ_FILE"] = fuzz_file_used.split("::")[0]
+
+    global create_fuzz_state
+    req = {
+             "data": data,
+             "headers": {{ api_info.get("header") }}
+          }
+    if 'headers' in CLI_OPTIONS_FROM_PROPERTIES_FILE:
+        for k, v in CLI_OPTIONS_FROM_PROPERTIES_FILE.get('headers').items():
+            req["headers"][k] = v
+
+    if "Content-Type" not in req["headers"]:
+        req["headers"]["Content-Type"] = "application/json"
+    req["headers"]["cv-fuzzed-event"] = "1"
+    if "Authorization" in req["headers"] and req["headers"]["Authorization"] is None:
+        req["headers"]["Authorization"] = os.environ.get("IMPACT_ACCESS_TOKEN")
+    if access_token:
+        req["headers"]["Authorization"] = access_token
+    req["headers"] = update_headers(headers=req["headers"], api="{{ api_info.get("url").split("?")[0] }}", method="{{ method }}")
+    print("for debugging:" + str(req))
+    url = Template(host + url_prefix + "{{ api_info.get("url") | replace("//","/") }}").render(**data)
+    try:
+        resp = trigger_requests("{{ method }}", url,
+                          header=req["headers"],
+                          data=json.dumps(data))
+        responses_recieved.append(resp)
+    except requests.exceptions.ConnectionError:
+        os.environ["CVIAST_SKIP_REASON"] = "Exception in sending the requests to API endpoint, so skipping the test"
+        pytest.skip("Exception in sending the requests to API endpoint, so skipping the test")
+    print("Response content length:" + str(len(resp.content)))
+    print("Response time:" + str(resp.elapsed))
+    print("Response status code:" + str(resp.status_code))
+    os.environ["response_time"] = str(resp.elapsed)
+    os.environ["response_code"] = str(resp.status_code)
+    os.environ["response_length"] = str(len(resp.content))
+    os.environ["CVIAST_TEST_RESPONSE"] = str(resp.status_code) + "-->" + str(resp.text)
+    if create_fuzz_state:
+        assertions.assert_for_{{ api_name | lower | replace("-","9i9")}}(req, resp)
+        create_fuzz_state = False
+    else:
+        assertions.assert_for_negative_scenarios(req, resp)
+{% endfor %}
+{% endfor %}
+
+#def test_for_anomalies():
+#    pattern_observed = {"status_code": [], "resp_size": [], "request":[], "fuzz_type": "{{ fuzz_type }}"}
+#    for resp in responses_recieved:
+#        pattern_observed["status_code"].append(resp.status_code)
+#        pattern_observed["resp_size"].append(len(resp.content))
+#        #pattern_observed["request"].append(_create_curl_request(resp.request.url,resp.request.method,resp.request.headers,resp.request.body))
+#        pattern_observed["request"].append(curlify.to_curl(resp.request))
+#    if len(pattern_observed["status_code"]) > 1:
+#        assertions.assert_for_anomalies(pattern_observed)
+#    else:
+#        assert False
+

@@ -1,0 +1,24 @@
+
+import json
+import fuzz_lightyear
+import random
+
+
+def get_params_from_file(param):
+    with open("params_captured.json") as fobj:
+        params = json.load(fobj)
+    for api, params_info in params.items():
+        if param in params_info:
+            values = params[api][param]
+            if None in values:
+                values.remove(None)
+            return random.choice(values)
+
+{% for api,params in api_info.items() %}
+{% for param,values in params.items() %}
+@fuzz_lightyear.register_factory('{{ param }}')
+def {{ param }}_fuzz_arg():
+    return get_params_from_file("{{ param }}")
+{% endfor %}
+{% endfor %}
+

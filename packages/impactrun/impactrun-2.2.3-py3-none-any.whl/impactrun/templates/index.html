@@ -1,0 +1,919 @@
+<!-- notes: 
+
+HTML structure is based on bootstrap grid of containers, rows and columns
+- A container can have any number of rows
+- A row is a logical and physical organizational element which holds columns and extends the full width of its parent container
+- Columns are logical and physical organizational elements which expand vertically as necessary with their inner content, unless a maximum height is defined. Column class syntax is `col-md-12` for example. 
+    - "col" - denoting a column
+    - "md" denotes a reference to screen size for fluid/resizble layouts. It's usually one of: "lg", "md", "sm", "xs". For our purposes it is irrelevant, as the report will always be fixed size
+    - "12" - how many (out of 12 maximum) column widths it should extend sideways. 
+
+CSS syntax is based on BEM philosophy, or "Block, ELement, Modifier"
+
+
+// end notes -->
+
+
+<html data-ember-extension="1" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>CloudVector API Fuzz Test Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="assets/styles/bootstrap-grid.min.css" rel="stylesheet" type="text/css" />
+  <link href="assets/styles/report-styles.css" rel="stylesheet" type="text/css" />
+  <link href="assets/styles/report-styles-print.css" rel="stylesheet" type="text/css" />
+  <link href="assets/styles/report-styles-page1.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" type="text/javascript"></script>
+
+</head>
+
+<body class="page">
+  <div class="page__wrapper">
+    <header class="page__header page__header--risk-report">
+      <div class="col-md-9">
+        <h1>Summary</h1>
+        <!-- <div class="text--small">Created by: {{username}} on {{created_at}}</div> -->
+      </div>
+
+      <div class="col-md-3">
+        <div class="report--type text--18px page__header--text">
+          CVIAST Fuzz Test Result
+        </div>
+        <!-- <div class="pt-1 text--small">
+          Start Date/Time: Dec 27, 2020 20:35 GMT-08:00<br />
+          End Date/Time: Dec 27, 2020 22:35 GMT-08:00
+        </div> -->
+      </div>
+    </header><!-- // end header -->
+
+    <div class="clearfix page__sub-head pt-1 pb-1">
+      <div class="col-md-4">&nbsp;</div>
+      <div class="col-md-8 pr-0 aligned--right">
+        <ul class="list--inline">
+          <li class="mr-3">
+            <strong>Severity Levels</strong>
+          </li>
+          <li class="mr-4">
+            <div class="severity__badge severity-background-p1"></div> Critical
+          </li>
+          <li class="mr-4">
+            <div class="severity__badge severity-background-p2"></div> High
+          </li>
+          <li class="mr-4">
+            <div class="severity__badge severity-background-p3"></div> Medium
+          </li>
+          <li class="mr-4">
+            <div class="severity__badge severity-background-p4"></div> Low
+          </li>
+          <li class="mr-1">
+            <div class="severity__badge severity-background-p5"></div> Best practice
+          </li>
+      </div><!-- // end legend -->
+    </div><!-- // end sub-head -->
+
+
+    <div class="container-fluid">
+      <!-- row1 with 2 columns -->
+      <div class="row mt-4" id="row1">
+        <div class="col-md-6 pl-0" id="left_column">
+
+          <!-- card comprised of 2 elements: an h4 + div.card -->
+          <!-- first card -->
+          <h4 class="heading page__wrapper--heading">Summary of Generated Tests</h4>
+
+
+          <div class="card card--bordered text--center clearfix">
+            <div class="row">
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <h2>{{num_spec_files}}</h2>
+                  <div class="text--h5">&nbsp;<br />APISpec Files</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <h2>{{num_total_apis}}</h2>
+                  <div class="text--h5">&nbsp;<br />APIs</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <h2>{{num_dst_hosts}}</h2>
+                  <div class="text--h5">Destination Hosts</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <h2>{{num_attack_categ}}</h2>
+                  <div class="text--h5">Attack Categories</div>
+                </div>
+              </div>
+            </div>
+            <!-- // end row -->
+
+            <!-- start of pie chart row -->
+            <div class="row mt-4 aligned--center text--h6 ">
+              <!-- start of spacer column in pie chart row -->
+              <!--                   <div class="col-md-1">&nbsp;</div>
+ -->
+              <!-- start of left column in pie chart row -->
+              <div class="col-md-4">
+                <!-- start of inner row within left column next to pie chart -->
+                <div class="row aligned--left ">
+                  <div class="col-12">
+                    <div class="text--600 ml-4 mt-3 aligned--left text--blue-accent">Total Attack Vectors Generated:
+                      {{total_attack_vectors}}</div>
+                    <div class="text--600 mt-4 ml-4 mt-3 aligned--left text--blue-accent">Critical:
+                      {{total_critical_av_count}}</div>
+                    <div class="text--600 mt-4 ml-4 mt-3 aligned--left text--blue-accent">High: {{total_high_av_count}}
+                    </div>
+                    <div class="text--600 mt-4 ml-4 mt-3 aligned--left text--blue-accent">Medium:
+                      {{total_medium_av_count}}</div>
+                    <div class="text--600 mt-4 ml-4 mt-3 aligned--left text--blue-accent">Low: {{total_low_av_count}}
+                    </div>
+                    <!-- 
+                        <ul class="list--inline">
+                          <li>
+                            <div class="mt-4 mr-4 text--h3"> 
+                              <span class="text--small text--600">Total Attack Vectors</span>
+                              <div class="card card__card--nested card--bordered">
+                                <span class="text--h2">&nbsp;<br />50200
+                                  <br />&nbsp;<br /></span>
+                              </div>
+                            </div>
+                          </li>
+                          <li>
+                            <div class="mt-4 mr-4 text--h3"> 
+                              <span class="text--small text--600">Average Speed</span>
+                              <div class="card card__card--nested card--bordered">
+                                <span class="text--h2">&nbsp;<br />14.4 <span class="text--small">req/sec</span>
+                                  <br />&nbsp;<br /></span>
+                              </div>
+                            </div>
+                          </li>
+                        </ul> -->
+                  </div><!-- end inner row inner column -->
+                </div><!-- end inner row -->
+              </div><!-- end col-md-4 -->
+
+              <!-- start of right-hand column for pie chart -->
+              <div class="col-md-7">
+                <canvas id="myChart" width="20" height="20" style="margin-top: 0px;"></canvas>
+                <script>
+                  var ctx = document.getElementById('myChart');
+                  var myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    showTooltips: false,
+                    data: {
+                      labels: ['Critical', 'High', 'Medium', 'Low'],
+                      datasets: [{
+                        label: '# of Fuzz Attack Vectors',
+                        data: {{av_count_list}},
+                    backgroundColor: [
+                      '#FF0000',
+                      '#FF8C00',
+                      '#FFD700',
+                      '#00CEC1'
+                      //'#E01B50',
+                      //'#7733FF'
+                    ],
+                    // borderColor: [
+                    //   'rgba(255, 99, 132, 1)',
+                    //   'rgba(54, 162, 235, 1)',
+                    //   'rgba(255, 206, 86, 1)',
+                    //   'rgba(75, 192, 192, 1)',
+                    //   'rgba(153, 102, 255, 1)',
+                    //   'rgba(255, 159, 64, 1)'
+                    // ],
+                    // borderWidth: 1
+                  }]
+                    },
+                  options: {
+                    cutoutPercentage: 72,
+                      tooltips: {
+                      enabled: true
+                    },
+                    legend: {
+                      display: true,
+                        position: 'bottom',
+                          align: 'start',
+                            onAnimationComplete: function () {
+                              // -- can we display the values in the legend here?
+                            } (),
+                      },
+                    scales: {
+
+                      yAxes: [{
+                        display: false,
+                        ticks: {
+                          beginAtZero: true
+                        }
+                      }]
+                    }
+                  }
+                  });
+                </script>
+
+              </div>
+
+
+            </div><!-- // end pie-chart row -->
+
+
+            <div class="mt-4">
+            </div><!-- // end row -->
+          </div><!-- // end card -->
+
+
+          <!-- second card -->
+          <!-- second card heading -->
+          <h4 class="heading page__wrapper--heading mt-4 --scorecard">API Security Test Summary</h4>
+          <!-- second card body -->
+          <div class="card card--bordered text--center clearfix">
+
+            <!-- start of subheading row -->
+            <div class="row text--h3">
+              <div class="col-md-6">
+                <div class="text--small text--600 mt-2">Vulnerable APIs</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">Total</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">Impacted</div>
+              </div>
+            </div><!-- // end row -->
+
+            <!-- start of row -->
+            <div class="row mt-2 aligned--center">
+              <div class="col-md-6">
+                <div class="text--h6 mt-2 aligned--left">All Spec Files</div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h4">{{num_total_apis}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h4">{{total_vul_apis}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+            </div><!-- // end row -->
+
+            <!-- start of doughnut chart row -->
+            <!-- <div class="row ">
+              <div class="col-md-12">
+                <div class="text--small text--600 mt-2">charts here ...</div>
+              </div>
+          </div> -->
+            <!-- // end row -->
+
+            <!-- start of subheading row
+            <div class="row text--h3">
+              <div class="col-md-6">
+                <div class="text--small text--600 mt-2">Secure API Stats</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">Total</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">Secure</div>
+              </div>
+            </div> // end row -->
+
+
+            <!-- start of row 
+            <div class="row mt-2 aligned--center">
+              <div class="col-md-6">
+                <div class="text--h6 mt-2 aligned--left">All Spec Files</div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h2">21</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h2">-</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+            </div> // end row -->
+
+            <!-- start of subheading row -->
+            <div class="row text--h3">
+              <div class="col-md-12">
+                <div class="text--small text--600 mt-2">Vulnerable APIs by File</div>
+              </div>
+            </div><!-- // end row -->
+
+
+
+            <!-- start of spec file-specific stats row -->
+            {% for spec, spec_info in spec_details.items() %}
+            <div class="row mt-2 aligned--center">
+              <div class="col-md-6">
+                  <div class="text--h6 mt-2 aligned--left">{{spec}}</div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                    <span class="text--h4">{{spec_info.get('all_apis_count', 0)}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h4">{{spec_info.get('failed_apis_count', 0)}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+            </div><!-- // end spec file-specific stats row -->
+            {% endfor %}
+
+            </div><!-- // end card -->
+
+        </div><!-- // end left column -->
+
+
+        <div class="col-md-6 pr-0" id="right_column">
+          <h4 class="heading page__wrapper--heading --scorecard">API Severity Per Attack Category</h4>
+          <div class="card card--bordered text--center clearfix">
+
+            <!-- start of heading row -->
+            <div class="row text--h3">
+              <div class="col-md-6">
+                <div class="text--small text--600 mt-2">Attack Category</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">APIs Impacted</div>
+              </div>
+              <div class="col-md-3">
+                <div class="text--small text--600 mt-2">Highest Priority</div>
+              </div>
+            </div><!-- // end heading row -->
+
+            {% for category, info in attack_category.items() %}
+            <!-- start of data row -->
+            <div class="row mt-2 aligned--center">
+              <div class="col-md-6">
+                <div class="text--h4 mt-2 aligned--left">{{category}}</div>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h4">{{info.get('all_apis_count', 0)}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+              <div class="col-md-3">
+                <div class="card card__card--nested card--bordered">
+                  <span class="text--h4">{{info.get('priority', '')}} 
+                    {{info.get('pri_count', 0)}}/{{info.get('all_apis_count', 0)}}</span>
+                </div>
+                <span class="text--small">APIs</span>
+              </div>
+            </div><!-- // end data row -->
+            {% endfor %}
+          </div><!-- // end card -->
+
+
+        </div><!-- // end right_col -->
+      </div><!-- // end row -->
+
+
+
+      <div class="row mt-4">
+        <div class="col-md-12 pl-0 pr-0">
+          <h4 class="heading page__wrapper--heading">Overall Issue Insights</h4>
+          <div class="card card--bordered">
+
+            <div class="row mt-2 aligned--center">
+              <div class="col-md-4 text--h3">
+                <div class="text--h4 text--600">
+                  <span class="text--blue-accent">{{total_tests}}</span>
+                  Total Tests Run
+                </div>
+                <canvas id="testRunChart" width="80%" height="40%" style="margin-top: 24px;"></canvas>
+                <script>
+
+                  var ctx = document.getElementById('testRunChart');
+                  var myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    showTooltips: false,
+                    data: {
+                      labels: ['Passed', 'Failed'],
+                      datasets: [{
+                        label: '# of Fuzz Attack Vectors',
+                        data: [{{passed_count}}, {{failed_count}}],
+                    backgroundColor: [
+                      '#55ad07',
+                      '#d64223'
+                    ],
+                    // borderColor: [
+                    //   'rgba(255, 99, 132, 1)',
+                    //   'rgba(54, 162, 235, 1)',
+                    //   'rgba(255, 206, 86, 1)',
+                    //   'rgba(75, 192, 192, 1)',
+                    //   'rgba(153, 102, 255, 1)',
+                    //   'rgba(255, 159, 64, 1)'
+                    // ],
+                    // borderWidth: 1
+                  }]
+                    },
+                  options: {
+                    cutoutPercentage: 72,
+                      tooltips: {
+                      enabled: false
+                    },
+                    legend: {
+                      display: false,
+                        position: 'bottom',
+                          align: 'start',
+                            onAnimationComplete: function () {
+                              // -- can we display the values in the legend here?
+                            } (),
+                      },
+                    scales: {
+
+                      yAxes: [{
+                        display: false,
+                        ticks: {
+                          beginAtZero: true
+                        }
+                      }]
+                    }
+                  }
+                  });
+                </script>
+                <ul class="list--inline list--full-width mt-4">
+                  <li class="aligned--center col-md-6">
+                    <div class="card__tile severity-border-ok">{{passed_count}}</div>
+                    <span class="text--small">Passed</span>
+                  </li>
+                  <li class="aligned--center col-md-6">
+                    <div class="card__tile severity-border-p1">{{failed_count}}</div>
+                    <span class="text--small">Failed</span>
+                  </li>
+
+                </ul>
+              </div>
+
+              <div class="col-md-4 text--h6 aligned--center">
+                <div class="text--h4 text--600">
+                  <span class="text--blue-accent">{{failed_count}}</span>
+                  Failing Tests, by Severity
+                </div>
+
+                <canvas id="testFailedChart" width="80%" height="40%" style="margin-top: 24px;"></canvas>
+
+                <script>
+                  var ctx = document.getElementById('testFailedChart');
+
+                  var myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    showTooltips: false,
+                    data: {
+                      labels: ['Critical', 'High', 'Medium', 'Low'],
+                      datasets: [{
+                        label: 'Severity Distribution of Failing Tests',
+                          data: [{{failed_critical_count}}, {{failed_high_count}}, {{failed_medium_count}}, {{failed_low_count}}],
+                  centerText: {{failed_count}},
+                  backgroundColor: [
+                    '#d64223',
+                    '#ff7700',
+                    '#f4a739',
+                    '#f9cf7f'
+                  ],
+                  }]
+                    },
+                  options: {
+                    cutoutPercentage: 72,
+                      tooltips: {
+                      enabled: false
+                    },
+                    legend: {
+                      display: false,
+                        position: 'right',
+                          align: 'start',
+                            onAnimationComplete: function () {
+                              // -- can we display the values in the legend here?
+                            } (),
+                      },
+                    scales: {
+
+                      yAxes: [{
+                        display: false,
+                        ticks: {
+                          beginAtZero: true
+                        }
+                      }]
+                    }
+                  }
+                  });
+                </script>
+                <ul class="list--inline list--full-width mt-4">
+                  <li class="aligned--center col-md-3">
+                    <div class="card__tile severity-border-p1">{{failed_critical_count}}</div>
+                    <span class="text--small">Critical</span>
+                  </li>
+                  <li class="aligned--center col-md-3">
+                    <div class="card__tile severity-border-p3">{{failed_high_count}}</div>
+                    <span class="text--small">High</span>
+                  </li>
+
+                  <li class="aligned--center col-md-3">
+                    <div class="card__tile severity-border-p3">{{failed_medium_count}}</div>
+                    <span class="text--small">Medium</span>
+                  </li>
+                  <li class="aligned--center col-md-3">
+                    <div class="card__tile severity-border-p4">{{failed_low_count}}</div>
+                    <span class="text--small">Low</span>
+                  </li>
+
+                </ul>
+              </div>
+              <div class="col-md-4 aligned--left">
+                <h4 class="text--500 mt-2">
+                  Most frequently occurring Issue
+                </h4>
+                <span><b>{{ frequent_attack.get('attack') }} - {{ frequent_attack.get('failed_test') }} Tests Failed Across {{ frequent_attack.get('num_of_apis') }} APIs.</b></span>
+
+              </div>
+
+            </div><!-- // end row -->
+          </div>
+        </div>
+      </div>
+      <!-- end -->
+
+      <!-- begin cards per spec file -->
+      {% for spec, info in spec_details.items() %}
+      <div class="row mt-4 ">
+        <div class="col-md-12 pl-0 pr-0">
+          <!-- medcabinetgateway specfile card ... -->
+          <h4 class="heading page__wrapper--heading">{{spec}} Spec</h4>
+          <div class="card--bordered">
+
+            <div class="row ml-1 mr-1">
+              <div class="col-md-5 cell--background-white">
+                <!-- start inner row -->
+                <div class="row">
+                  <!-- <div class="col-md-1">&nbsp;</div> -->
+                  <!-- spacer column -->
+                  <!-- start small bordered square cta for metadata -->
+                  <div class="col-md-4">
+                    <div class="card card__card--nested ">
+                      <h2>1</h2>
+                      <div class="text--h5">Spec Files</div>
+                    </div>
+                  </div><!-- end small bordered square cta for metadata -->
+
+                  <!-- start small bordered square cta for metadata -->
+                  <div class="col-md-4">
+                    <div class="card card__card--nested ">
+                      <h2>1</h2>
+                      <div class="text--h5">End Points</div>
+                    </div>
+                  </div><!-- end small bordered square cta for metadata -->
+
+                  <!-- start small bordered square cta for metadata -->
+                  <div class="col-md-4">
+                    <div class="card card__card--nested ">
+                      <h2>{{info.get('all_apis_count', 0)}}</h2>
+                      <div class="text--h5">APIs</div>
+                    </div>
+                  </div><!-- end small bordered square cta for metadata -->
+
+                  <!-- start small bordered square cta for metadata -->
+
+                </div><!-- // end inner row -->
+
+                <div class="row mt-4 mb-4">
+                  <div class=" col-12 pl-4">
+                    <div class="text--h4 text--600">APIs with Reported Issues by Priority</div>
+                  </div>
+                </div><!-- end 2nd subheading row -->
+
+
+                <div class="row">
+                  <div class="col-md-12 mt-4 p-4 aligned--center">
+                    {% set p1_api_count = info.get('count_by_api_priority', {}).get('p1', 0) %}
+                    {% set p2_api_count = info.get('count_by_api_priority', {}).get('p2', 0) %}
+                    {% set p3_api_count = info.get('count_by_api_priority', {}).get('p3', 0) %}
+                    {% set p4_api_count = info.get('count_by_api_priority', {}).get('p4', 0) %}
+                    {% set no_issues_count = info.get('all_apis_count', 0) - p1_api_count - p2_api_count - p3_api_count - p4_api_count %}
+                    <canvas id="myChart2_{{spec}}" width="40%" height="15%" style="margin: 25% auto 0;"></canvas>
+                    <script>
+                        var ctx = document.getElementById('myChart2_{{spec}}');
+                      var myChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        showTooltips: false,
+                        data: {
+                          labels: ['Critical', 'High', 'Medium', 'Low', 'No Risk'],
+                          datasets: [{
+                            label: '# of Fuzz Attack Vectors',
+                              data: [{{p1_api_count}}, {{p2_api_count}}, {{p3_api_count}}, {{p4_api_count}}, {{no_issues_count}}],
+                      backgroundColor: [
+                        '#d64223',
+                        '#ff7700',
+                        '#f4a739',
+                        '#f9cf7f',
+                        '#55ad07'
+                      ],
+                          // borderColor: [
+                          //   'rgba(255, 99, 132, 1)',
+                          //   'rgba(54, 162, 235, 1)',
+                          //   'rgba(255, 206, 86, 1)',
+                          //   'rgba(75, 192, 192, 1)',
+                          //   'rgba(153, 102, 255, 1)',
+                          //   'rgba(255, 159, 64, 1)'
+                          // ],
+                          // borderWidth: 1
+                        }]
+                      },
+                      options: {
+                        cutoutPercentage: 72,
+                          tooltips: {
+                          enabled: false
+                        },
+                        legend: {
+                          display: false,
+                            position: 'left',
+                              align: 'start',
+                                onAnimationComplete: function () {
+                                  // -- can we display the values in the legend here?
+                                } (),
+                        },
+                        scales: {
+
+                          yAxes: [{
+                            display: false,
+                            ticks: {
+                              beginAtZero: true
+                            }
+                          }]
+                        }
+                      }
+                      });
+                    </script>
+                    <br />
+                    <ul class="list--inline list--full-width mt-4">
+                      <li class="aligned--center col-md-1">&nbsp;</li>
+                      <li class="aligned--center col-md-2">
+                        <div class="card__tile severity-border-p1">
+                          {{info.get('count_by_api_priority', {}).get('p1', 0)}}</div>
+                        <span class="text--small">Critical</span>
+                      </li>
+                      <li class="aligned--center col-md-2">
+                        <div class="card__tile severity-border-p3">
+                          {{info.get('count_by_api_priority', {}).get('p2', 0)}}</div>
+                        <span class="text--small">High</span>
+                      </li>
+
+                      <li class="aligned--center col-md-2">
+                        <div class="card__tile severity-border-p3">
+                          {{info.get('count_by_api_priority', {}).get('p3', 0)}}</div>
+                        <span class="text--small">Medium</span>
+                      </li>
+                      <li class="aligned--center col-md-2">
+                        <div class="card__tile severity-border-p4">
+                          {{info.get('count_by_api_priority', {}).get('p4', 0)}}</div>
+                        <span class="text--small">Low</span>
+                      </li>
+
+                      <li class="aligned--center col-md-2">
+                          <div class="card__tile severity-border-ok">{{no_issues_count}}</div>
+                        <span class="text--small">No Issues</span>
+                      </li>
+                      <li class="aligned--center col-md-1">&nbsp;</li>
+                    </ul>
+
+                  </div>
+                </div><!-- // end inner row -->
+
+              </div><!-- // end col-8 -->
+              <div class="col-md-7 cell--background-ice">
+                <!-- start inner row -->
+                <div class="row pr-4">
+                  <!-- <div class="col-md-1">&nbsp;</div> -->
+                  <!-- spacer column -->
+                  <!-- start small bordered square cta for metadata -->
+                  <div class="col-md-3">
+                    <div class="card cell--background-ice card__card--nested aligned--left ">
+                      <div class="text--h5">
+                        <span class=" text--blue-accent">Total Tests</span>
+                        <span class=" text--700">{{info.get('total_tests_count', 0)}}</span>
+                      </div>
+                    </div>
+                  </div><!-- end small bordered square cta for metadata -->
+
+                  <!-- start small bordered square cta for metadata -->
+                  <div class="col-md-3">
+                    <div class="card cell--background-ice card__card--nested aligned--right ">
+                      <div class="text--h5">
+                        <span class=" text--blue-accent">Failed Tests</span>
+                        <span class=" text--700 text--red-accent">{{info.get('total_failed_count', 0)}}</span>
+                      </div>
+                    </div>
+                  </div><!-- end small bordered square cta for metadata -->
+
+                  <div class="cell__test-bar test-bar--total" style="width: 98%"></div>
+                  <div class="cell__test-bar test-bar--failed" style="width: 2%"></div>
+                </div><!-- // end inner row -->
+
+
+                <div class="row mt-4 mb-4">
+                  <div class=" col-12 pl-4">
+                    <div class="text--h4 text--600">Test Results: Issues by Priority</div>
+                  </div>
+                </div><!-- end 2nd subheading row -->
+
+
+                <div class="row mt-4 mb-4">
+                  <!-- start doughnut cell -->
+                  <div class="col-md-6">
+                    {% set p1_count = info.get('priority_count', {}).get('p1_count', 0) %}
+                    {% set p2_count = info.get('priority_count', {}).get('p2_count', 0) %}
+                    {% set p3_count = info.get('priority_count', {}).get('p3_count', 0) %}
+                    {% set p4_count = info.get('priority_count', {}).get('p4_count', 0) %}
+                    <canvas id="myChart3_{{spec}}" width="90%" height="50%" style="margin-top: 45%;"></canvas>
+                    <script>
+                      var ctx = document.getElementById('myChart3_{{spec}}');
+                      var myChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        showTooltips: false,
+                        data: {
+                          labels: ['p1', 'p2', 'p3', 'p4'],
+                          datasets: [{
+                            label: '# of Fuzz Attack Vectors',
+                              data: [{{p1_count}}, {{p2_count}}, {{p3_count}}, {{p4_count}}],
+                      backgroundColor: [
+                        '#d64223',
+                        '#ff7700',
+                        '#f4a739',
+                        '#f9cf7f'
+                      ],
+                          }]
+                        },
+                      options: {
+                        cutoutPercentage: 72,
+                          tooltips: {
+                          enabled: false
+                        },
+                        legend: {
+                          display: false,
+                            position: 'left',
+                              align: 'start',
+                                onAnimationComplete: function () {
+                                  // -- can we display the values in the legend here?
+                                } (),
+                          },
+                        scales: {
+
+                          yAxes: [{
+                            display: false,
+                            ticks: {
+                              beginAtZero: true
+                            }
+                          }]
+                        }
+                      }
+                      });
+                    </script>
+                  </div><!-- end doughnut cell -->
+                  <!-- start text description cell -->
+                  <div class="col-md-6">
+                    <ul>
+                      <li class="test-result severity-list-item severity--p1">
+                        <span>{{info.get('priority_count', {}).get('p1_count', 0)}}</span>
+                        <p>
+                          When an API is called with parameter value set to patterns that were associated with attacks
+                          that can cause critical/high severity damage, the API returns 200 with OK data. It appears
+                          that the application not only processes the fuzz parameter, but also is at risk of leaking
+                          data.
+                        </p>
+                      </li>
+                      <li class="test-result severity-list-item severity--p2">
+                        <span>{{info.get('priority_count', {}).get('p2_count', 0)}}</span>
+                        <p>
+                          When an API is called with parameter value set to patterns that were associated with known 
+                          attacks that can cause medium/low severity damages, the API returns 200 OK with data. It 
+                          appears that the app not only processes the fuzz parameter but also is at risk of leaking data.
+                        </p>
+                      </li>
+                      <li class="test-result severity-list-item severity--p3">
+                        <span>{{info.get('priority_count', {}).get('p3_count', 0)}}</span>
+                        <p>
+                          When an API is called with parameter value set to patterns that were associated with known
+                          attacks that can cause critical/high severity damages, the API returns 200 OK with no data.
+                          Though it does not appear that the app is at risk of leaking data, the app might have processed
+                          the fuzzed input, which can cause subsequent security issues.
+                        </p>
+                      </li>
+                      <li class="test-result severity-list-item severity--p4">
+                        <span>{{info.get('priority_count', {}).get('p4_count', 0)}}</span>
+                        <p>
+                          When an API is called with parameter value set to patterns that were associated with known
+                          attacks that can cause medium/low severity damages, the API returns 200 OK with no data.
+                          Though it does not appear that the app is at risk of leaking data, the app might have processed
+                          the fuzzed input, which can cause subsequent security issues.
+                        </p>
+                      </li>
+                    </ul>
+                  </div><!-- end text cell -->
+                </div><!-- end doughnut and text data row -->
+
+
+              </div><!-- // end col-4 -->
+            </div><!-- // end row -->
+
+            <div class="card card__inner-subheading--light">
+              <h3>Failed Tests</h3>
+            </div>
+
+            <!-- begin row for failed test tabular data -->
+            <div class="row ml-1 mr-1 aligned--center">
+              <table>
+                <tr>
+                  <th width="14%">API</th>
+                  <th width="12%">Category</th>
+                  <th width="50%">
+                    <ul class="list--inline list--full-width ">
+                      <li class="col-md-2">Issue Severity</li>
+                      <li class="col-md-2">Tests Failed</li>
+                      <li class="col-md-4">Affected Classifications</li>
+                    </ul>
+                  </th>
+                  <th width="12%">Tests Request/Response</th>
+                </tr>
+                {% for api, api_info in info.get('api_details', {}).items() %}
+                {% for each_record in api_info %}
+                <tr>
+                    <td class="aligned--center">
+                      {{api}}
+                  </td>
+                  <td>
+                    <div class="row__data-summary severity-left-border-p1 bordered severity-end-cap ">
+                        {{each_record.get('attack', '-')}}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="bordered row ml-2 mr-2">
+                      </div>
+                      <div class="col-md-2 pt-2 pb-1">
+                        <p>
+                          <strong>
+                            {{each_record.get('pri', '-')}}
+                          </strong>
+                        </p>
+                      </div>
+                      <div class="col-md-2 pt-1 pb-1">
+                        <p>
+                          <strong>
+                            {{each_record.get('count', '-')}}
+                          </strong>
+                        </p>
+                      </div>
+                      <div class="col-md-4 pt-1 pb-1">
+                        <span class="text--small">{{each_record.get('classification', '-')}}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="word-break:break-word;">
+                        {{each_record.get('testinput', '-')}}
+                  </td>
+                 </tr>
+                 {% endfor %}
+                 {% endfor %}
+              </table>
+            </div><!-- // end row -->
+
+          </div>
+        </div><!-- end medcabinetgateway specfile card ... -->
+      </div><!-- // end row -->
+      {% endfor %}
+
+      <!-- to insert a page break with logo in the footer, add these lines -->
+      <!-- 
+      <div class="row footer row__page-break">
+        <div class="logo"></div>
+
+      </div>
+      -->
+
+
+
+    </div><!-- // end container -->
+
+    <footer>
+      <div class="logo"></div>
+
+    </footer>
+  </div><!-- // end .report_wrapper -->
+</body>
+
+</html>

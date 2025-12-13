@@ -1,0 +1,222 @@
+
+import requests
+import json
+import time
+import pytest
+import assertions
+import os
+from jinja2 import Template
+import curlify
+from collections import OrderedDict
+from conftest import get_params_from_file
+from cvutils import *
+import itertools
+import random
+
+SUPPORTED_FUZZ_TYPES = {{ fuzz_supported }}
+responses_recieved = []
+fuzzdb_values = {}
+
+
+def prep_data_for_fuzzing(api, method, fuzz_dict_path, params_list):
+    if not params_list:
+        return []
+    fuzz_values = []
+    fuzz_types_from_env = os.environ.get("CVIAST_FUZZ_TYPE", "").split(",")
+    global fuzzdb_values
+    values = []
+
+    def recurse_dir(root_dir, fuzzing_values={}):
+        root_dir = os.path.abspath(root_dir)
+        fuzz_type = None
+        for _ in SUPPORTED_FUZZ_TYPES:
+            if str(_).lower() in root_dir:
+                fuzz_type = str(_)
+        if fuzz_type not in fuzzing_values:
+            fuzzing_values[fuzz_type] = []
+
+        for item in os.listdir(root_dir):
+            if not fuzz_type:
+                continue
+            item_full_path = os.path.join(root_dir, item)
+
+            if os.path.isdir(item_full_path):
+                recurse_dir(item_full_path, fuzzing_values)
+            else:
+                with open(os.path.join(root_dir, item), encoding="iso-8859-15") as fobj:
+                    fuzzing_values[fuzz_type] += [root_dir.replace("\\", "/").split(
+                        "fuzzdb")[-1] + "/" + item + "::-->" + str(_).replace("\n", "") + "<--::" for _ in fobj.readlines()]
+
+        return fuzzing_values
+
+    if fuzz_types_from_env:
+        if str(fuzz_types_from_env[0]).lower() == "all":
+            fuzz_types_from_env = SUPPORTED_FUZZ_TYPES
+        fuzz_dict_root_path = fuzz_dict_path
+        for fuzz_type_from_env in fuzz_types_from_env:
+            fuzz_dict_path = fuzz_dict_root_path
+            if os.path.exists(
+                    os.path.join(
+                        fuzz_dict_path,
+                        fuzz_type_from_env)):
+                fuzz_dict_path = os.path.join(
+                    fuzz_dict_path, fuzz_type_from_env)
+                print(fuzz_dict_path)
+            else:
+                print("Unknown fuzz type set in env variable CVIAST_FUZZ_TYPE!\n\n")
+
+            fuzzdb_values = recurse_dir(fuzz_dict_path)
+
+            try:
+                MAX_VALUES_TO_FUZZ = int(os.environ.get(
+                    "CVIAST_MAX_VALUES_TO_FUZZ", 100))
+                # if len(raw_values) < MAX_VALUES_TO_FUZZ:
+                #     MAX_VALUES_TO_FUZZ = len(raw_values)
+            except ValueError:
+                MAX_VALUES_TO_FUZZ = os.environ.get(
+                    "CVIAST_MAX_VALUES_TO_FUZZ")
+            if str(MAX_VALUES_TO_FUZZ).lower() != "all":
+                if int(MAX_VALUES_TO_FUZZ) > 0:
+                    for k, v in fuzzdb_values.items():
+                        try:
+                            fuzzdb_values [k] = random.sample(v, MAX_VALUES_TO_FUZZ)
+                        except ValueError:
+                            fuzzdb_values [k] = v
+                else:
+                    print(
+                        "Environment variable CVIAST_MAX_VALUES_TO_FUZZ has to be 'all' or a value greater than Zero!")
+                    raise SystemExit
+
+    for _ in list(fuzzdb_values.values()):
+        for x in _:
+            values.append("".join(str(x).split("::-->")[-1].split("<--::")[0]))
+
+    params_to_fuzz = OrderedDict()
+    for param in params_list:
+        param = param.replace("_arg", "")
+        values_to_trigger_success = get_params_from_file(param, api, method)
+        print(values_to_trigger_success)
+        if values_to_trigger_success:
+            params_to_fuzz[param] = values_to_trigger_success[-1]
+        else:
+            params_to_fuzz[param] = []
+
+    success_values = list(params_to_fuzz.values())
+    if len(success_values) == 1:
+        fuzz_values.append(success_values[0])
+    else:
+        fuzz_values.append(success_values)
+
+    for _ in values:
+        if not _:
+            continue
+        for i in range(1, len(success_values) + 1):
+            for selected in itertools.combinations(
+                    range(len(success_values)), i):
+
+                res = success_values[:]
+                for n in selected:
+                    res[n] = _
+                if len(res) == 1:
+                    fuzz_values.append(res[0])
+                else:
+                    fuzz_values.append(res)
+    return fuzz_values
+
+
+def trigger_requests(req_method, url, header, data, proxies=None):
+    print("\n\nRegenerating traffic from CloudVector events....")
+    print("\n---------------------------------\n")
+    print("CURL command to retry: \n" + str(create_curl_request(url, req_method.upper(), header, data)))
+    print("\n---------------------------------\n")
+    return requests.request(
+        method=req_method,
+        url=url,
+        proxies=proxies,
+        headers=header,
+        data=data,
+        verify=False)
+
+
+def create_curl_request(url, method, headers, payloads):
+    # construct the curl command from request
+    command = "curl -v -H {headers} {data} -X {method} {uri}"
+    data = ""
+    if payloads:
+        payloads = json.loads(payloads)
+        payload_list = [
+            '"{0}":"{1}"'.format(
+                k,
+                v) for k,
+            v in payloads.items()]
+        data = " -d '{" + ", ".join(payload_list) + "}'"
+    header_list = ['"{0}: {1}"'.format(k, v) for k, v in headers.items()]
+    header = " -H ".join(header_list)
+    return command.format(method=method, headers=header, data=data, uri=url)
+
+
+def parse_fuzz_values(*args):
+    for _ in args:
+        if isinstance(_, list):
+            if len(_) > 0:
+                for k, v in fuzzdb_values.items():
+                    for each in v:
+                        if "::-->" + str(_[0]) + "<--::" in each:
+                            return k,str(each)
+            else:
+                continue
+        else:
+            for k, v in fuzzdb_values.items():
+                for each in v:
+                    if "::-->" + str(_) + "<--::" in each:
+                        return k,str(each)
+    return "na",""
+
+
+
+def parse_inputs(properties, **kwargs):
+    for k, v in kwargs.items():
+        if properties.get(k):
+            input_val = properties[k]
+            try:
+                if "epochtime" in input_val or "utcnow" in input_val:
+                    dv = input_val.replace("<", "").replace(">", "").split("_")
+                    date_format = dv[0]
+                    try:
+                        operation = dv[1]
+                        timeframe = dv[2].replace("d", "")
+                    except IndexError:
+                        operation = None
+                        timeframe = None
+                    if date_format == "utcnow":
+                        from datetime import timedelta
+                        import datetime
+                        utcnow = datetime.datetime.utcnow()
+                        if operation:
+                            if operation == "plus":
+                                utcnow_resolved = utcnow + \
+                                    timedelta(days=float(timeframe))
+                            elif operation == "minus":
+                                utcnow_resolved = utcnow - \
+                                    timedelta(days=float(timeframe))
+                        else:
+                            utcnow_resolved = utcnow
+                        return utcnow_resolved.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    elif date_format == "epoch":
+                        epochnow = time.time()
+                        if operation:
+                            if operation == "plus":
+                                epochnow_resolved = epochnow + \
+                                    int(60 * 60 * 24)
+                            elif operation == "minus":
+                                epochnow_resolved = epochnow - \
+                                    int(60 * 60 * 24)
+                        else:
+                            epochnow_resolved = epochnow
+                        return epochnow_resolved
+                else:
+                    return input_val
+            except TypeError:
+                return v
+        else:
+            return v
