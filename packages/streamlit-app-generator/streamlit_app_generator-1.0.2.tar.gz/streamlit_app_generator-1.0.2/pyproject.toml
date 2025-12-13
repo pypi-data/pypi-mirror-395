@@ -1,0 +1,118 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamlit-app-generator"
+version = "1.0.2"
+description = "Generate complete Streamlit applications with authentication and database templates"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Leandro Meyer DC", email = "lmdcorti@gmail.com"}
+]
+keywords = ["streamlit", "generator", "authentication", "database", "cli", "template"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "streamlit>=1.28.0",
+    "click>=8.0.0",
+    "jinja2>=3.0.0",
+    "pyyaml>=6.0",
+    "bcrypt>=4.0.0",
+    "python-dotenv>=1.0.2",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+postgresql = ["psycopg2-binary>=2.9.0", "sqlalchemy>=2.0.0"]
+mysql = ["mysql-connector-python>=8.0.0", "sqlalchemy>=2.0.0"]
+mongodb = ["pymongo>=4.0.0"]
+redis = ["redis>=5.0.0"]
+oracle = ["oracledb>=2.0.0"]
+all-databases = [
+    "psycopg2-binary>=2.9.0",
+    "mysql-connector-python>=8.0.0",
+    "pymongo>=4.0.0",
+    "redis>=5.0.0",
+    "oracledb>=2.0.0",
+    "sqlalchemy>=2.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.2",
+    "isort>=5.12.0",
+    "pre-commit>=3.0.0",
+]
+
+[project.scripts]
+streamlit-app-generator = "streamlit_app_generator.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/leandrodalcortivo/streamlit-app-generator"
+Repository = "https://github.com/leandrodalcortivo/streamlit-app-generator"
+Documentation = "https://github.com/leandrodalcortivo/streamlit-app-generator#readme"
+"Bug Tracker" = "https://github.com/leandrodalcortivo/streamlit-app-generator/issues"
+Funding = "https://github.com/leandrodalcortivo/streamlit-app-generator/blob/master/SUPPORT.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests", "docs", "*.tests", "*.tests.*", "tests.*"]
+
+[tool.setuptools.package-data]
+streamlit_app_generator = [
+    "templates/**/*",
+    "templates/**/*.py",
+    "templates/**/*.toml",
+    "templates/**/*.md",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=streamlit_app_generator --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["streamlit_app_generator"]
+omit = ["tests/*", "setup.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
