@@ -1,0 +1,23 @@
+from ..engine.database_engine import DatabaseEngine as DatabaseEngine
+from ..logger.logging_ import logging as logging
+from _typeshed import Incomplete
+
+class PackageConfigSetting:
+    Registry: Incomplete
+    RegistryModel: Incomplete
+    EngineName: Incomplete
+    RouterTags: Incomplete
+    RouterPath: Incomplete
+    SchemaName: Incomplete
+    AuthRole: Incomplete
+    def __init__(
+        self, *, engine_name, schema_name, router_path, router_tags, auth_role=None
+    ) -> None: ...
+    @property
+    def SchemaTable(self): ...
+    @property
+    def SchemaForeignKey(self): ...
+    def add_router_path(self, router_path, table_or_view_name) -> None: ...
+    def get_router_path(self, router_path): ...
+    def remove_router_path(self, router_path) -> None: ...
+    def clear_router_paths(self) -> None: ...

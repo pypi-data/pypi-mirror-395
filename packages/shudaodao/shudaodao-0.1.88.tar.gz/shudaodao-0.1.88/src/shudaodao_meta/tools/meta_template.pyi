@@ -1,0 +1,19 @@
+from .meta_convert import MetaConverter as MetaConverter
+from .meta_query import MetaQuery as MetaQuery
+from .template_clazz import (
+    TemplateClazz as TemplateClazz,
+    TemplateColumn as TemplateColumn,
+)
+from shudaodao_core import AsyncSession as AsyncSession
+
+class MetaTemplate:
+    def __init__(self, db: AsyncSession = None) -> None: ...
+    @classmethod
+    def format_column(cls, column: TemplateColumn) -> str: ...
+    async def render_schema(self, schema_name: str): ...
+    async def render_view(self, schema_name: str, view_name: str, files: list[str]): ...
+    async def render_table(
+        self, schema_name: str, table_name: str, files: list[str]
+    ): ...
+    @staticmethod
+    def comment_vue_file(file_path) -> None: ...

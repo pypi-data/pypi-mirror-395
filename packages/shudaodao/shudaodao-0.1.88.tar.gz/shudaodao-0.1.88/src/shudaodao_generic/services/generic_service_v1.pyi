@@ -1,0 +1,13 @@
+from ..meta.entity_class import EntityClass as EntityClass
+from ..meta.service import GenericMetaService as GenericMetaService
+from .generic_service import GenericService as GenericService
+
+class GenericServiceV1(GenericService):
+    @classmethod
+    async def create(cls, *, schema_path, entity_path, create_models): ...
+    @classmethod
+    async def delete(cls, *, schema_path, entity_path, primary_id): ...
+    @classmethod
+    async def update(cls, *, schema_path, entity_path, primary_id, update_models): ...
+    @classmethod
+    async def read(cls, *, schema_path, entity_path, primary_id): ...
