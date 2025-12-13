@@ -1,0 +1,18 @@
+services:
+  updates2mqtt:
+    container_name: updates2mqtt
+    image: ghcr.io/rhizomatics/updates2mqtt:release
+    volumes:
+      - ./conf:/app/conf  # Config file lives at /app/conf/config.yaml inside the container
+      - /var/run/docker.sock:/var/run/docker.sock # Access to Docker daemon for container updates
+      - /my/container/home:/my/container/home # Optional, map all root paths for docker compose directories
+    restart: always
+    env_file: ./.env  # Environment variables file
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh","healthcheck/dockernuc/updates2mqtt"] # Change for your node name
+      interval: 5m
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+
+
