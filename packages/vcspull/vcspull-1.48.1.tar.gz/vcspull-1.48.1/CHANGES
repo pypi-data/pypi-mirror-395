@@ -1,0 +1,1548 @@
+# Changelog
+
+To install the unreleased vcspull version, see [developmental releases](https://vcspull.git-pull.com/quickstart.html#developmental-releases).
+
+[pip](https://pip.pypa.io/en/stable/):
+
+```console
+$ pip install --user --upgrade --pre vcspull
+```
+
+[pipx](https://pypa.github.io/pipx/docs/):
+
+```console
+$ pipx install --suffix=@next 'vcspull' --pip-args '\--pre' --force
+// Usage: vcspull@next sync [config]
+```
+
+[uv](https://docs.astral.sh/uv/):
+
+```console
+$ uv add vcspull --prerelease allow
+```
+
+[uvx](https://docs.astral.sh/uv/guides/tools/):
+
+```console
+$ uvx --from 'vcspull' --prerelease allow vcspull
+```
+
+## vcspull v1.49.x (unreleased)
+
+<!-- Maintainers, insert changes / features for the next release here -->
+
+## vcspull v1.48.1 (2025-12-06)
+
+### Breaking changes
+
+- Bump minimum libvcs from v0.38.0 -> v0.38.1 (#491)
+
+### Documentation
+
+#### Fix Sphinx autodoc indentation errors (#490)
+
+- Configure `sphinx-autodoc-typehints` to prevent RST parsing conflicts with
+  Napoleon-processed docstrings by disabling type injection into docstring
+  bodies (`always_document_param_types`, `typehints_document_rtype`).
+- Suppress cosmetic forward reference warnings from TYPE_CHECKING imports.
+
+_Upcoming changes will be written here._
+
+## vcspull v1.48.0 (2025-11-30)
+
+### Breaking changes
+
+- Bump minimum libvcs from v0.37.0 -> v0.38.0 (#489)
+
+### Bug fixes
+
+#### Path privacy improvements (#488)
+
+Path privacy added to:
+
+- `vcspull fmt`: summary banners, success logs, and `--all` listings cache the
+  `PrivatePath` display value so config paths always render as `~/.vcspull.yaml`.
+- `vcspull add`: invalid-config errors reuse the redacted path, keeping failure
+  logs consistent with other config operations.
+- `vcspull discover`: warnings for repos without remotes and "no repos found"
+  notices collapse their target directories via `PrivatePath`.
+- `vcspull sync`: human "Synced …" lines now mirror the structured JSON payloads
+  by showing tilde-collapsed repository paths.
+
+## vcspull v1.47.0 (2025-11-15)
+
+### Bug Fixes
+
+#### `vcspull discover`: Success logs redact config paths (#487)
+
+Writes triggered by `vcspull discover` now pass the config file through
+`PrivatePath`, so confirmations like "✓ Successfully updated ~/.vcspull.yaml"
+and dry-run notices no longer leak the absolute home directory.
+
+#### `vcspull discover`: Fix another workspace dir case (#487)
+
+Discover now inspects the config scope (user/system/project) before writing,
+so user-level configs like `~/.vcspull.yaml` prefer tilde-prefixed workspace
+keys while project-level configs keep their relative `./` sections. Tests
+cover both behaviors to guard against regressions.
+
+### Development
+
+#### PrivatePath centralizes home-directory redaction (#485)
+
+- Introduced a dedicated `PrivatePath` helper for all CLI logging and structured
+  output, ensuring tilde-collapsed paths stay consistent without duplicating the
+  contraction logic across commands.
+
+## vcspull v1.46.1 (2025-11-03)
+
+### Bug Fixes
+
+#### Fix `vcspull.__version__`
+
+- v1.46.0 shipped with v1.45.0
+
+#### `vcspull add`: Fix legacy `./` heuristics for path-first flow (#484)
+
+- Path-based imports now always record their workspaces using the tilde label
+  unless callers explicitly pass `--workspace ./`, avoiding stray top-level
+  `./` sections.
+- Duplicate-aware writes operate directly on the ordered loader output, keeping
+  repeated workspace roots intact while removing the old `config_items`
+  scaffolding.
+- CLI decisions no longer round-trip through `normalize_workspace_roots`
+  unless duplicate merges are needed, reducing the chances of accidental YAML
+  rewrites during `--no-merge` operations.
+
+## vcspull v1.46.0 (2025-11-02)
+
+### Bug Fixes
+
+#### `vcspull add` keeps tilde workspace labels in path-first mode (#482, #483)
+
+- Running `vcspull add ~/study/python/…` from inside the workspace now logs the
+  workspace as `~/study/python/` instead of `./`, preserving tilde-shortened
+  labels for path-first imports.
+
+## vcspull v1.45.0 (2025-11-02)
+
+### Bug Fixes
+
+#### `vcspull add --no-merge` preserves duplicate workspace roots (#482)
+
+- Duplicate workspace sections are no longer flattened when adding a repository
+  with `--no-merge`; all previously configured repositories stay intact.
+- The configuration loader now exposes ordered duplicate entries so CLI writes
+  can target the correct section without data loss.
+
+## vcspull v1.44.0 (2025-11-02)
+
+### Improvements
+
+#### `vcspull add` streamlines path-first imports (#481)
+
+- The CLI now requires a repository path as its positional argument, inferring
+  the name and `origin` remote automatically. Supply `--url` to record an
+  alternative remote and `--name` when you need a different label.
+- Workspace roots default to the checkout's parent directory; use
+  `--workspace/--workspace-root` to override the destination while keeping the
+  path-first flow intact.
+- CLI output contracts configuration paths to `~/.vcspull.yaml`, keeping
+  dry-run previews concise when configs live under the home directory.
+
+### Development
+
+#### Snapshot stability for CLI logs (#481)
+
+- Discover command snapshots replace volatile line numbers with placeholders so
+  future refactors and lint rewrites do not break the test suite.
+
+## vcspull v1.43.0 (2025-11-02)
+
+### Improvements
+
+#### `vcspull fmt` gains duplicate root merging (#479)
+
+- Running `vcspull fmt` now consolidates repeated workspace sections into one
+  merged block so no repositories vanish during cleanup; pass `--no-merge` if
+  you want the command to surface duplicates without rewriting them.
+
+#### `vcspull add` protects workspace configs during imports (#480)
+
+- Default behavior now merges duplicate workspace roots so prior entries stay
+  intact; add `--no-merge` to keep the raw sections and handle them yourself.
+- You can invoke `vcspull add ~/study/python/project`; the command inspects the
+  path, auto-fills the `origin` remote, shows the tilde-shortened workspace, and
+  asks for confirmation unless you supply `--yes`.
+- CLI previews now contract `$HOME` to `~/…`, matching the rest of the UX.
+
+#### `vcspull discover` honors --no-merge (#480)
+
+- Running `vcspull discover --no-merge` only reports duplicates—it leaves the
+  file untouched until you decide to act.
+
+#### Configuration loader: Support for duplicate workspace roots (#480)
+
+- Commands backed by `load_configs` (`list`, `status`, `sync`, etc.)
+  automatically keep every repository even when workspace sections repeat; pass
+  `merge_duplicates=False` to fall back to the legacy "last entry wins"
+  behavior with a warning.
+
+### Development
+
+#### Snapshot coverage for formatter tests (#479)
+
+- Formatter scenarios are checked against [Syrupy] JSON/YAML snapshots, making it
+  obvious when future changes alter the merged output or log text.
+
+#### CLI `add` path-mode regression tests (#480)
+
+- Parameterized pytest scenarios cover interactive prompts, duplicate merging,
+  and path inference to keep the redesigned workflow stable.
+
+[syrupy]: https://github.com/syrupy-project/syrupy
+
+## vcspull v1.42.0 (2025-11-01)
+
+### Breaking changes
+
+- Bump minimum libvcs from v0.36.0 -> v0.37.0
+- Drop support for Python 3.9; the new minimum is Python 3.10 (#478)
+
+  See also:
+  - [Python 3.9 EOL timeline](https://devguide.python.org/versions/#:~:text=Release%20manager-,3.9,-PEP%20596)
+  - [PEP 596](https://peps.python.org/pep-0596/)
+
+## vcspull v1.41.0 (2025-10-25)
+
+### Breaking Changes
+
+#### JSON/NDJSON paths now use tilde notation
+
+**All commands** (`list`, `status`, `sync`) now contract home directory paths in JSON/NDJSON output for consistency, privacy, and portability.
+
+**Before:**
+```json
+{
+  "name": "flask",
+  "path": "/home/username/code/flask",
+  "workspace_root": "~/code/"
+}
+```
+
+**After:**
+```json
+{
+  "name": "flask",
+  "path": "~/code/flask",
+  "workspace_root": "~/code/"
+}
+```
+
+**Why:** The `workspace_root` field already used tilde notation in JSON output, creating an inconsistency. Full home paths (`/home/username/`) expose usernames and make output less portable between machines.
+
+**Impact:** Automation consuming JSON/NDJSON output will need to expand `~` to absolute paths if required. Most tools handle tilde expansion automatically.
+
+### Bug Fixes
+
+- Defer imports of `ConfigDict` to `TYPE_CHECKING` blocks so CLI modules never import `typing_extensions` at runtime (#476).
+
+  vcspull treats `typing-extensions` as a dev-only dependency, so avoiding those imports fixes crashes when the package isn’t installed in production environments and still keeps type information intact for static analysis.
+
+## vcspull v1.40.0 (2025-10-19)
+
+### Performance Improvements
+
+#### Concurrent status checking (#474)
+
+- **`vcspull status`**: Now checks repositories concurrently using asyncio
+  - Dramatically faster when checking many repositories (5-10x speedup for 20+ repos)
+  - Live progress display on TTY: `Progress: 5/10 ✓:3 ✗:2`
+  - New `--max-concurrent N` flag to control concurrency limit (default: 32)
+  - New `--no-concurrent`/`--sequential` flag to disable concurrent mode
+  - Duration tracking included in JSON/NDJSON output (`duration_ms` field)
+  - Uses same asyncio pattern as `vcspull sync --dry-run`
+  - Backward compatible with sequential fallback option
+
+## vcspull v1.39.1 (2025-10-19)
+
+### Improvements
+
+#### Improved home directories paths (#473)
+
+- **Human-readable output**: Contract `$HOME` to `~/` in introspection commands
+  - `vcspull list`, `vcspull status`, and `vcspull sync --dry-run` now display
+    paths like `~/code/flask` instead of `/home/username/code/flask`
+  - Reduces verbosity and avoids exposing usernames in terminal output
+  - JSON/NDJSON output preserves full absolute paths for accuracy in automation
+- **Documentation**: Updated all examples to use `~/` for consistency
+
+## vcspull v1.39.0 (2025-10-19)
+
+### Breaking Changes
+
+This release modernizes the vcspull CLI to align with DevOps tool conventions (Terraform, Cargo, Ruff, Biome). **This is a breaking change release**.
+
+#### Command Changes (#472)
+
+- **REMOVED**: `vcspull import` command
+  - Replaced by `vcspull add <name> <url>` to add a single repository
+  - Replaced by `vcspull discover <path>` to scan and add multiple repositories
+- **NEW**: `vcspull list` - List configured repositories with optional `--tree`, `--json`, `--ndjson` output
+- **NEW**: `vcspull status` - Check repository health (clean/dirty status, ahead/behind tracking with `--detailed`)
+
+#### Flag Changes (#472)
+
+- **RENAMED**: `-c/--config` → `-f/--file` (all commands)
+- **NEW**: `-w/--workspace/--workspace-root` - All three aliases supported for workspace root
+- **NEW**: `--dry-run/-n` - Preview changes without making modifications (sync, add, discover)
+- **NEW**: `--json/--ndjson` - Machine-readable output for automation (sync, list, status)
+- **NEW**: `--color {auto,always,never}` - Control color output
+
+#### Migration Guide (#472)
+
+```bash
+# Old → New
+vcspull import NAME URL              → vcspull add NAME URL
+vcspull import --scan DIR            → vcspull discover DIR
+vcspull sync -c FILE                 → vcspull sync -f FILE
+vcspull sync --workspace-root PATH   → vcspull sync -w PATH  # (or keep long form)
+vcspull fmt -c FILE                  → vcspull fmt -f FILE
+```
+
+### Features
+
+#### Developer Experience Improvements (#472)
+
+- Action commands (`sync`, `add`, `discover`) support `--dry-run` for safe previewing of changes
+- Structured output (`--json`, `--ndjson`) enables CI/CD integration and automation
+- Semantic colors with `NO_COLOR` environment variable support
+- Short `-w` flag for workspace root reduces typing
+- Consistent flag naming across all commands
+- `vcspull sync --dry-run` renders a Terraform-style plan (with live progress on
+  TTYs) and exposes the same data via a stable JSON/NDJSON schema for automation
+
+#### New Introspection Commands (#472)
+
+- `vcspull list` - View all configured repositories
+  - `--tree` mode groups by workspace root
+  - `--json/--ndjson` for programmatic access
+- `vcspull status` - Check repository health
+  - Shows which repos exist, are clean/dirty, or missing
+  - `--detailed` mode shows branch, ahead/behind tracking, and full paths
+
+## vcspull v1.38.0 (2025-10-18)
+
+### Improvements
+
+#### Improved help output for `--help`
+
+- Align CLI help output with CPython’s argparse theming by adding a dedicated
+  formatter that colorizes example sections for top-level and subcommand help
+  screens (#471).
+- Expand `vcspull --help` to include additional example commands for the `sync`,
+  `import`, and `fmt` subcommands, giving users clearer quick-start guidance (#471).
+- Keep CLI logger discovery stable while refactoring the formatter into its own
+  module, preventing additional loggers from surfacing in downstream tools (#471).
+
+## vcspull v1.37.0 (2025-10-18)
+
+### Breaking changes
+
+- Rename the import CLI flag `--base-dir-key`/`--dir` and the related internal
+  argument names to `--workspace-root`, aligning both user-facing options and
+  implementation terminology with the workspace-root concept (#470).
+
+### Bug fixes
+
+- Normalize workspace roots during imports so equivalent labels (for example
+  `~/foo`, `~/foo/`, `/home/user/foo`) collapse into a single canonical entry;
+  avoids duplicate "already added" prompts (#470).
+- Have `vcspull fmt` apply the same normalization before formatting and writing
+  configs, so duplicate workspace-root sections are removed automatically (#470).
+
+### Development
+
+- Expand CLI tests to cover mixed workspace-root scenarios and the formatter’s
+  normalization behavior (#470).
+
+## vcspull v1.36.0 (2025-10-18)
+
+### New features
+
+#### New command: `vcspull import` (#465)
+
+- **Manual import**: Register a single repository with `vcspull import <name> <url>`
+  - Optional `--dir`/`--path` helpers for base-directory detection
+- **Filesystem scan**: Discover and import existing repositories with `vcspull import --scan <dir>`
+  - Recursively scan with `--recursive`/`-r`
+  - Interactive confirmation prompt or `--yes` for unattended runs
+  - Custom base directory with `--base-dir-key`
+
+#### New command: `vcspull fmt` (#465)
+
+- Normalize configuration files by expanding compact entries to `{repo: ...}`, sorting directories/repos, and standardizing keys; pair with `--write` to persist the formatted output.
+
+### Improvements
+
+- Enhanced logging system with better CLI module propagation and StreamHandler configuration for improved output visibility in tests and CLI usage (#465).
+
+### Development
+
+- Add Python 3.14 to test matrix, trove classifiers (#469)
+
+## vcspull v1.35.0 (2025-09-04)
+
+### Development
+
+- libvcs 0.35.1 -> 0.36.0 (#467)
+
+  Improved Git URL detection
+
+## vcspull v1.34.1 (2025-06-21)
+
+### Development
+
+- libvcs 0.35.0 -> 0.35.1 (#466)
+
+  Fixes issue with console streaming output, e.g. `git clone` progress.
+
+## vcspull v1.34.0 (2025-02-22)
+
+### Development
+
+#### libvcs: 0.34.0 -> 0.35.0 (#461)
+
+Internally, this libvcs will use `text=True` in subprocess, and deal only with
+unicode. Before this change, handling bytestrings was supported.
+
+#### chore: Implement PEP 563 deferred annotation resolution (#459)
+
+- Add `from __future__ import annotations` to defer annotation resolution and reduce unnecessary runtime computations during type checking.
+- Enable Ruff checks for PEP-compliant annotations:
+  - [non-pep585-annotation (UP006)](https://docs.astral.sh/ruff/rules/non-pep585-annotation/)
+  - [non-pep604-annotation (UP007)](https://docs.astral.sh/ruff/rules/non-pep604-annotation/)
+
+For more details on PEP 563, see: https://peps.python.org/pep-0563/
+
+## vcspull v1.33.0 (2024-11-23)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Breaking changes
+
+#### Project and package management: poetry to uv (#457)
+
+[uv] is the new package and project manager for the project, replacing Poetry.
+
+[uv]: https://github.com/astral-sh/uv
+
+#### Build system: poetry to hatchling (#457)
+
+[Build system] moved from [poetry] to [hatchling].
+
+[Build system]: https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
+[poetry]: https://github.com/python-poetry/poetry
+[hatchling]: https://hatch.pypa.io/latest/
+
+#### libvcs 0.33.0 -> 0.34.0 (#456)
+
+First libvcs release built with `uv` package and project manager. No changes to libvcs API itself.
+
+## vcspull v1.32.0 (2024-10-13)
+
+_Maintenance only, no bug fixes or new features_
+
+### New features
+
+#### Python 3.13 support
+
+Added Python 3.13 to package trove classifiers and CI tests.
+
+#### libvcs 0.30.1 -> 0.33.0 (#453)
+
+Faster, cached pytest fixtures. Upstream tests are 50% faster.
+
+- https://github.com/vcs-python/libvcs/blob/v0.32.1/CHANGES#libvcs-0310-2024-10-12
+- https://libvcs.git-pull.com/history.html#libvcs-0-32-1-2024-10-12
+
+#### Faster tests fixtures (#453)
+
+libvcs's included test fixtures beyond v0.31.0+ are 33%+ faster.
+
+## vcspull v1.31.0 (2024-06-18)
+
+### Breaking changes
+
+- libvcs: 0.29.0 -> 0.30.1 (#449, #450)
+
+  [AWS CodeCommit] support. Example:
+
+  ```yaml
+  ~/study/aws-codecommit:
+  test:
+    repo: "codecommit::us-east-1://test"
+  ```
+
+[AWS CodeCommit]: https://docs.aws.amazon.com/codecommit/
+
+### Documentation
+
+- Automatically linkify links that were previously only text.
+
+### Development
+
+- poetry: 1.8.1 -> 1.8.2
+
+  See also: https://github.com/python-poetry/poetry/blob/1.8.2/CHANGELOG.md
+
+- Code quality: Use f-strings in more places (#445)
+
+  via [ruff 0.4.2](https://github.com/astral-sh/ruff/blob/v0.4.2/CHANGELOG.md).
+
+## vcspull v1.30.0 (2024-03-24)
+
+_Maintenance only, no bug fixes or new features_
+
+### Development
+
+- Aggressive automated lint fixes via `ruff` (#442)
+
+  via ruff v0.3.4, all automated lint fixes, including unsafe and previews were applied:
+
+  ```sh
+  ruff check --select ALL . --fix --unsafe-fixes --preview --show-fixes; ruff format .
+  ```
+
+  Branches were treated with:
+
+  ```sh
+  git rebase \
+      --strategy-option=theirs \
+      --exec 'poetry run ruff check --select ALL . --fix --unsafe-fixes --preview --show-fixes; poetry run ruff format .; git add src tests; git commit --amend --no-edit' \
+      origin/master
+  ```
+
+## vcspull v1.29.0 (2024-03-24)
+
+_Maintenance only, no bug fixes or new features_
+
+### Breaking changes
+
+- libvcs: 0.28.2 -> 0.29.0 (#443)
+
+  Internal refactorings and maintenance.
+
+### Development
+
+- poetry: 1.7.1 -> 1.8.1
+
+  See also: https://github.com/python-poetry/poetry/blob/1.8.1/CHANGELOG.md
+
+- ruff 0.2.2 -> 0.3.0 (#441)
+
+  Related formattings. Update CI to use `ruff check .` instead of `ruff .`.
+
+  See also: https://github.com/astral-sh/ruff/blob/v0.3.0/CHANGELOG.md
+
+## vcspull v1.28.1 (2024-02-17)
+
+### Fixes
+
+- libvcs: 0.28.0 -> 0.28.1 (#440)
+
+  Fixes `'--max-count': not an integer` issue when syncing git repos.
+
+### Testing
+
+- CI: Bump actions for Node 20 (#439)
+
+## vcspull v1.28.0 (2024-02-07)
+
+_Maintenance only, no bug fixes or new features_
+
+### Breaking changes
+
+- libvcs: 0.27.0 -> 0.28.0 (#437)
+
+  QueryList generic typing improvements.
+
+## vcspull v1.27.0 (2024-02-07)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Breaking changes
+
+- libvcs: v0.26.0 -> v0.27.0 (#435)
+
+  Renamings of `dir` to `path`.
+
+- Fix shadowing of python builtins
+
+  - `dir` -> `path` (#435)
+
+### Development
+
+- Strengthen linting (#436)
+
+  - Add flake8-commas (COM)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-commas-com
+    - https://pypi.org/project/flake8-commas/
+
+  - Add flake8-builtins (A)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-builtins-a
+    - https://pypi.org/project/flake8-builtins/
+
+  - Add flake8-errmsg (EM)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
+    - https://pypi.org/project/flake8-errmsg/
+
+### Documentation
+
+- Refactor API docs to split across multiple pages (#431)
+- Remove unused reStructuredText section headers from some modules (#431)
+
+## vcspull v1.26.0 (2023-12-16)
+
+_Maintenance only, no bug fixes, or new features_
+
+### CI
+
+- ci: Add pydocstyle rule to ruff (#428)
+
+### Documentation
+
+- Add docstrings to functions, methods, classes, and packages (#428)
+
+## vcspull v1.25.0 (2023-11-26)
+
+### Packaging
+
+- libvcs 0.25.1 -> 0.26.0: Minor bug fixes, docstring updates
+
+### CI
+
+- Move CodeQL from advanced configuration file to GitHub's default
+
+## vcspull v1.24.1 (2023-11-24)
+
+### Packaging
+
+- libvcs 0.25.0 -> 0.25.1 (maintenance release)
+
+## vcspull v1.24.0 (2023-11-19)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Packaging
+
+- libvcs 0.24.0 -> 0.25.0 (maintenance release)
+- Add Python 3.12 to trove classifiers
+- Poetry: 1.6.x -> 1.7.0
+
+  See also: https://github.com/python-poetry/poetry/blob/1.7.0/CHANGELOG.md
+
+- Packaging (poetry): Fix development dependencies
+
+  Per [Poetry's docs on managing dependencies] and `poetry check`, we had it wrong: Instead of using extras, we should create these:
+
+  ```toml
+  [tool.poetry.group.group-name.dependencies]
+  dev-dependency = "1.0.0"
+  ```
+
+  Which we now do.
+
+  [Poetry's docs on managing dependencies]: https://python-poetry.org/docs/master/managing-dependencies/
+
+### Development
+
+- Move formatting from `black` to [`ruff format`] (#427)
+
+  This retains the same formatting style of `black` while eliminating a
+  dev dependency by using our existing rust-based `ruff` linter.
+
+  [`ruff format`]: https://docs.astral.sh/ruff/formatter/
+
+- CI: Update action packages to fix warnings
+
+  - [dorny/paths-filter]: 2.7.0 -> 2.11.1
+
+  [dorny/paths-filter]: https://github.com/dorny/paths-filter
+
+## vcspull v1.23.0 (2023-10-22)
+
+### Breaking changes
+
+- libvcs: Bumped from 0.22.2 -> 0.24.0 (#419)
+
+### Bug fixes
+
+- Git Remote URLs: Fix bug that would cause git remotes with `@` to be chopped off after the
+  protocol (#419, fixes #425)
+
+### Development
+
+- Refactor of two testsuites to used `NamedTuple` parametrization (#423):
+
+  - test_config_variations
+  - test_updating_remote
+
+## vcspull v1.22.0 (2023-09-02)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- Code quality improved via [ruff] rules (#417)
+
+  This includes fixes made by hand, and with ruff's automated fixes. With
+  the expanded set of linting rules (which include import sorting) - ruff runs are
+  still instant when checking the whole codebase.
+
+## vcspull v1.21.1 (2023-05-28)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- Add back `black` for formatting
+
+  This is still necessary to accompany `ruff`, until it replaces black.
+
+## vcspull v1.21.0 (2023-05-27)
+
+_Maintenance only, no bug fixes or features_
+
+### Internal improvements
+
+- Move formatting, import sorting, and linting to [ruff].
+
+  This rust-based checker has dramatically improved performance. Linting and
+  formatting can be done almost instantly.
+
+  This change replaces black, isort, flake8 and flake8 plugins.
+
+- libvcs: 0.21.1 -> 0.21.2 (addition of ruff)
+- poetry: 1.4.0 -> 1.5.0
+
+  See also: https://github.com/python-poetry/poetry/releases/tag/1.5.0
+
+[ruff]: https://ruff.rs
+
+## vcspull v1.20.3 (2023-05-14)
+
+### Bug fix
+
+- Refactor `.types` imports to not require `typing-extensions` on production
+  builds (fixes #412 via #414, thank you for the report @Jasha10)
+
+## vcspull v1.20.2 (2023-04-07)
+
+_Maintenance only, no bug fixes or features_
+
+### Development
+
+- Update mypy to 1.2.0
+- libvcs: 0.21.1 -> 0.21.2
+
+  Typing update only
+
+## vcspull v1.20.1 (2023-03-15)
+
+- libvcs: 0.21.0 -> 0.21.1
+
+  This removes even more `typing-extensions` runtime dependencies from
+  production builds.
+
+## vcspull v1.20.0 (2023-03-15)
+
+### Bug fix
+
+- libvcs: 0.20.0 -> 0.21.0
+
+  This removes the `typing-extensions` requirement from production builds.
+
+## vcspull v1.19.0 (2022-12-31)
+
+### Internal
+
+- mypy: Add `--strict` typings (#386)
+
+## vcspull v1.18.0 (2022-10-31)
+
+### Python 3.11 support (#409)
+
+- Bump libvcs 0.19.1 -> 0.20.0
+
+  Adds python 3.11 support
+
+## vcspull v1.17.1 (2022-10-23)
+
+**Maintenance release, no features or fixes**
+
+### Internal
+
+- Bump libvcs 0.19.0 -> 0.19.1
+
+  Doc fixes and test improvements
+
+## vcspull v1.17.0 (2022-10-23)
+
+**Maintenance release, no features or fixes**
+
+### Internal
+
+- Bump libvcs 0.18.1 -> 0.19.0 (#408)
+
+  Refactor of sync and commands. Syncing now uses commands instead of invoking
+  directly through `run()`.
+
+## vcspull v1.16.0 (2022-10-23)
+
+**Maintenance release, no features or fixes**
+
+### Internal
+
+- `sync()`: Rename `repo_terms` to `repo_patterns` (#406)
+- Bump libvcs 0.17.0 to 0.18.1
+
+  - 0.18.0 includes support for URL Matcher weights
+
+## vcspull v1.15.8 (2022-10-16)
+
+### CLI
+
+- Doc fix for sphinx-argparse CLI generation
+
+## vcspull v1.15.7 (2022-10-16)
+
+### CLI
+
+- `vcspull` and `vcspull sync` Copy updates and metavar updates (#404)
+
+## vcspull v1.15.6 (2022-10-16)
+
+### CLI
+
+- `vcspull`: Add usage examples to CLI output
+
+## vcspull v1.15.5 (2022-10-16)
+
+### CLI
+
+- `vcspull sync`: Fix showing of help when no arguments passed (#405)
+
+## vcspull v1.15.4 (2022-10-16)
+
+### CLI
+
+- File completions for `-c` / `--config` files (#403)
+
+  After updating, you can re-run [shtab]'s setup (see [completions page]) completion of:
+
+  ```console
+  $ vcspull sync -c [tab]
+  ```
+
+  ```console
+  $ vcspull sync --config [tab]
+  ```
+
+[completions page]: https://vcspull.git-pull.com/cli/completion.html
+[shtab]: https://docs.iterative.ai/shtab/
+
+### Documentation
+
+- Fix readme example for syncing repositories
+
+## vcspull v1.15.3 (2022-10-09)
+
+### Documentation
+
+- Updates for migrations page
+- Add back page on completions
+
+### CLI
+
+- Capitalization fixes and help text updates
+
+## vcspull v1.15.2 (2022-10-08)
+
+### Packaging
+
+- Add missing pyyaml dependency (needed after #397's transition to `ConfigReader`)
+
+## vcspull v1.15.1 (2022-10-02)
+
+### Bug fix
+
+- Fix help text for `vcspull sync` arguments and flags
+
+## vcspull v1.15.0 (2022-10-02)
+
+**Maintenance release, no features or fixes**
+
+### Internal
+
+- Move from click to {mod}`argparse` (#400)
+
+### Packaging
+
+- Drop click dependency (#400)
+
+## vcspull v1.14.0 (2022-10-01)
+
+**Maintenance release, no features or fixes**
+
+### Internal
+
+- Move test fixtures over to libvcs's pytest plugin (#398)
+- Move conftest.py to root directory (#399)
+- Add `ConfigReader`: Our clean, typed parser for raw strings and files (#397)
+
+  This is our shiny, new, 200-line, doctested and typed parser that replaces `kaptan`.
+
+### Packaging
+
+- Drop kaptan dependency (#397)
+
+## vcspull v1.13.0 (2022-09-25)
+
+### What's new
+
+- Refreshed logo
+- `vcspull sync`:
+
+  - Empty command will now show help output
+
+    ```console
+    $ vcspull sync
+    Usage: vcspull sync [OPTIONS] [REPO_TERMS]...
+
+    Options:
+    -c, --config PATH Specify config
+    -x, --exit-on-error Exit immediately when encountering an error syncing
+    multiple repos
+    -h, --help Show this message and exit.
+    ```
+
+    To achieve the equivalent behavior of syncing all repos, pass `'*'`:
+
+    ```console
+    $ vcspull sync '*'
+    ```
+
+    Depending on how shell escaping works in your shell setup with [wild card / asterisk], you may not need to quote `*`.
+
+    [wild card / asterisk]: https://tldp.org/LDP/abs/html/special-chars.html#:~:text=wild%20card%20%5Basterisk%5D.
+
+  - Terms with no match in config will show a notice (#394)
+
+    > No repo found in config(s) for "non_existent_repo"
+
+  - Syncing will now skip to the next repos if an error is encountered
+
+  - Learned `--exit-on-error` / `-x`
+
+    Usage:
+
+    ```console
+    $ vcspull sync --exit-on-error grako django
+    ```
+
+    Print traceback for errored repos:
+
+    ```console
+    $ vcspull --log-level DEBUG sync --exit-on-error grako django
+    ```
+
+  - Syncing in git repositories with untracked files has been improved (via
+    libvcs 0.17)
+
+    See also https://github.com/vcs-python/libvcs/pull/425
+
+### Development
+
+- Move to `src/` directory structure (#382)
+- libvcs: Update to 0.17.x (#373)
+- mypy:
+
+  - Basic mypy annotations (#373)
+  - [`mypy --strict`] compliant (#386)
+
+  [`mypy --strict`]: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict
+
+- Remove `.pre-commit-config.yaml`: Let's not automate what the contributor could /
+  should do themselves.
+- Add [flake8-bugbear](https://github.com/PyCQA/flake8-bugbear) (#379)
+- Add [flake8-comprehensions](https://github.com/adamchainz/flake8-comprehensions) (#380)
+
+### Testing
+
+- Add CLI tests (#387)
+
+### Documentation
+
+- Render changelog in sphinx-autoissues (#378)
+
+### Bug fixes
+
+- Fix cloning of mercurial repositories
+
+### Infrastructure
+
+- CI speedups (#383)
+
+  - Split out release to separate job so the PyPI Upload docker image isn't pulled on normal runs
+  - Clean up CodeQL
+
+- Upgraded poetry 1.1.x to 1.2.x
+
+### Packaging
+
+- Remove `MANIFEST.in`
+
+  Redundant since poetry has pyproject.toml with `include`
+
+- Remove unused `.tmuxp-before-script.sh`, which was used as a `before_script`
+  in `.tmuxp.yaml`
+- Move `.coveragerc` into `pyproject.toml` (#384)
+
+## vcspull 1.12.3 (2022-06-01)
+
+### Bug fixes
+
+- Fix cloning of mercurial repositories (backported fix from libvcs 0.13.x)
+
+## vcspull 1.12.2 (2022-05-15)
+
+### Packaging
+
+- Update tags and description
+
+### Documentation
+
+- Update README
+
+## vcspull 1.12.1 (2022-05-02)
+
+### Bug fixes
+
+- Pin [click at
+  8+](https://click.palletsprojects.com/en/8.0.x/changes/#version-8-0-0)
+
+## vcspull 1.12.0 (2022-04-24)
+
+Patch branch: [`v1.12.x`](https://github.com/vcs-python/vcspull/tree/v1.12.x)
+
+### Breaking changes
+
+- Config location uses `XDG_CONFIG_HOME` from [XDG Base Directory],
+  (#367).
+
+  Old path: `~/.vcspull`
+
+  New path: `XDG_CONFIG_HOME`, usually `~/.config/vcspull`
+
+  [xdg base directory]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+- Override config directory via `VCSPULL_CONFIGDIR` (#367)
+- Switch from `str` to `pathlib.Path` (#364)
+- Requires click 8+
+
+### Compatibility
+
+- Allow click 8.1.x (#372)
+- vcspull learned `-h` for help (thanks HN 2022-04-11)
+- Python 3.7 and 3.8 dropped (#356)
+
+  Branch [`v1.11.x`](https://github.com/vcs-python/vcspull/tree/v1.11.x) opened for security / bug fixes.
+
+- `--version` learned to show libvcs version
+- `--version` learned to accept the `-V` flag
+- `vcspull sync` accepts config file params via `--config`. Before it was only
+  `-c`. Assume myrepos.yaml in your path:
+
+  ```console
+  $ vcspull sync --config myrepos.yaml
+  ```
+
+### Development
+
+- Publish to PyPI via CI when git tags are pushed
+
+### Documentation
+
+- Sidebar reorganized into sections
+- Added documentation on fetching developmental releases of libvcs
+
+## vcspull 1.11.5 (2022-04-20)
+
+### Compatibility
+
+- `vcspull sync` accepts config file params via `--config`. Before it was only
+  `-c`. Assume myrepos.yaml in your path:
+
+  ```console
+  $ vcspull sync --config myrepos.yaml
+  ```
+
+  (backport from vcspull v1.12.0b22)
+
+## vcspull 1.11.4 (2022-04-17)
+
+### Compatibility
+
+- Allow click 8.1.x (backport of #372)
+
+## vcspull 1.11.3 (2022-04-11)
+
+### Compatibility
+
+- vcspull learned `-h` for help (thanks HN 2022-04-11)
+- vcspull learned `-V` for version
+- vcspull shows libvcs version with `-V` / `--version`
+
+## vcspull 1.11.2 (2022-03-21)
+
+### Fix
+
+- Tab-completion for repository names and configurations (retracted in v1.15)
+
+## vcspull 1.11.1 (2022-03-12)
+
+### Security
+
+- Update libvcs 0.11.0 -> 0.11.1 to patch [CVE-2022-21187](https://nvd.nist.gov/vuln/detail/CVE-2022-21187): mercurial URL injection
+  vulnerability with URLs arguments ([libvcs#306](https://github.com/vcs-python/libvcs/pull/306))
+
+### Development
+
+- Run pyupgrade formatting (#353)
+- Tests: Move from pytest `tmp_dir` (`py.path.local`) to `tmp_path`
+  (`pathlib.Path`)
+
+### Documentation
+
+- Move to furo theme
+- Root: `make start_docs`, `make design_docs`
+- docs/: `make start`, `make design`
+
+## vcspull 1.11.0 (2022-02-28)
+
+### Development
+
+- CLI moved from `cli.py` -> `cli/__init__.py`, `cli/sync.py`
+- CLI: Default groups removed
+
+### Documentation
+
+- Updates for `vcspull sync` changed in 1.10.0
+
+## vcspull 1.10.0 (2022-02-28)
+
+### Breaking
+
+- Sync through `vcspull sync`
+
+  Syncing is no longer ran by default when `vcspull` is typed
+
+### Improvements
+
+- Experimental completion (retracted in v1.15):
+
+  - Completion for sync:
+
+    - `vcspull sync <tab>`
+    - `vcspull sync -c <tab> <tab>`
+
+### Documentation
+
+- Added completion:
+
+## vcspull 1.9.0 (2022-02-26)
+
+### Compatibility
+
+- Drop Python 3.6 (#329)
+- Add Python 3.10 (#329)
+
+### Documentation
+
+_✨ Renewed_
+
+- GitLab config importer example script, credit @aschleifer (#336, #337, #341)
+
+  These are hosted on the new _config generation_ page.
+
+- Rename `examples` page to `configuration`
+- Theme has been moved to [furo]
+- Broken URLs have ben fixed
+- Added copy paste button next to code snippets
+- Inline tab examples for configuration and config generators
+
+[furo]: https://github.com/pradyunsg/furo
+
+### Development
+
+- CI: Use poetry 1.1.12 and new `install-poetry.py` install location (#329)
+
+## vcspull 1.8.1 (2021-12-05)
+
+- Update libvcs 0.10.0 to 0.10.1
+- #313: Update poetry to 1.1
+  - CI: Use poetry 1.1.7 and `install-poetry.py` installer
+  - Relock poetry.lock at 1.1 (w/ 1.1.7's fix)
+
+## vcspull 1.8.0 (2021-06-16)
+
+- #277: Convert to markdown
+- Update libvcs to 0.10.0
+
+## vcspull 1.7.0post0 (2021-06-14)
+
+- Fix image in README
+
+## vcspull 1.7.0 (2021-06-14)
+
+- #308: Update to libvcs 0.9.0 (python 3.6+ only)
+
+## vcspull 1.6.1 (2021-06-14)
+
+- Remove some python 2.7 compat imports
+
+## vcspull 1.6.0 (2021-06-14)
+
+- #307: Drop python 2.7
+
+## vcspull 1.5.0 (2020-08-11)
+
+- #304, #299 (tests) - Fix adding of remotes
+- #303 - Overhaul docs and packaging
+- #303 - Add docs for CLI via sphinx-click
+
+## vcspull 1.4.3 (2020-08-05)
+
+- Bump libvcs to 0.4.4
+
+## vcspull 1.4.2 (2020-08-01)
+
+- Bump libvcs to 0.4.3, fix issue with updating branches that have special
+  characters (e.g. hyphens)
+
+## vcspull 1.4.1 (2020-08-01)
+
+- Bump libvcs to 0.4.2, fixes issues with checking out branches where
+  branch doesn't exist upstream
+
+## vcspull 1.4.0 (2020-08-01)
+
+- :issue:`300` Update libvcs to 0.4.0, also fixes :issue:`298` issue on initial checkout
+- :issue:`301` Move from Travis to GitHub Actions
+
+## vcspull 1.3.1 (2020-07-26)
+
+- :issue:`231` Add updating / merging of remote URLs (via PR :issue:`297`)
+- Fix colorama constraint
+- poetry lockfile: Fix (accidentally pushed lockfile via prerelease
+  version of poetry)
+
+## vcspull 1.3.0post2 (2020-07-26)
+
+- Fix pyproject.toml libvcs pin
+
+## vcspull 1.3.0post1 (2020-07-26)
+
+- Fix pyproject.toml release version
+- Fixes to contribution docs
+
+## vcspull 1.3.0 (2020-07-25)
+
+- :issue:`257` - Move from Pipfile to poetry
+- Removed dependency on releases for CHANGES, use plain reStructuredText
+  for now
+- Loosen constraints for colorama
+- Update click to 7/8
+- Add `project_urls` to setup.py
+
+## vcspull 1.2.0 (2018-07-08)
+
+- Sort imports
+- Add isort package, isort configuration in setup.cfg, and
+  `make isort` task to Makefile.
+- Add `make sync_pipfile` for updating _Pipfile_
+  dependencies against _requirements/\*.txt_ files.
+- Update Pipfile
+- Package updates
+
+  Base / Core dependencies:
+
+  - kaptan: 0.5.9 to >=0.5.9,<1 (adds Python 3.7 compatibility)
+  - pyyaml: >=3.12,<4 (adds Python 3.7 compatibility)
+
+  Docs:
+
+  - sphinx: 1.7.1 to 1.7.5
+  - alagitpull: 0.0.19 to 0.0.21
+  - releases: 1.4.0 to 1.7.1
+
+  Testing:
+
+  - pytest: 3.4.2 to 3.6.3
+
+## vcspull 1.1.0 (2018-03-11)
+
+- Move to new organization, vcs-python
+- Fix a bug in libvcs that prevented syncing on Ubuntu 18.04 LTS
+  beta.
+- Update libvcs to 0.3.0
+- Various package updates for support infrastructure,
+  including pytest and sphinx
+
+## vcspull 1.0.3 (2016-12-19)
+
+- Update more documentation domain at vcspull.git-pull.com
+
+## vcspull 1.0.2 (2016-12-19)
+
+- Update to new documentation domain at vcspull.git-pull.com
+- Fix travis tests via `pip install -u mock` in
+  `.travis.yaml`.
+
+## vcspull 1.0.1 (2016-11-24)
+
+- :issue:`43` - fix missing test dependency on anaconda by updating libvcs
+- README tweaks
+
+## vcspull 1.0.0 (2016-09-13)
+
+- :issue:`41` Transition uses `libvcs`\_ backend
+- :issue:`41` Transition tests from unittest to pytest
+- :issue:`40` Major API refactorings and removal of unused code, see the
+  api reference for more.
+- :issue:`38` Improve SVN and git support, thanks `@jcfr`!
+- :issue:`35` Don't run mercurial tests if `hg(1)` missing, by `@jcfr`
+- :issue:`36` , :issue:`37` Documentation updates from `@jcfr`
+- :issue:`34` Fix missing mock library, thanks `@jfcr`
+
+[libvcs]: https://github.com/vcs-python/libvcs
+
+## vcspull 0.9.0 (2016-05-26)
+
+- [cli] [internal]: command line arg parsing now uses [click] library.
+- [cli] vcspull will use the beginning part of the argument to determine
+  if its searching by vcs URL, repository name or system path.
+- [config] `repo` (the longform for the vcs url) is now `url`.
+- [config] [internal] repos are now passed around in a list of
+  :py:mod:`dict`. :class:`vcspull.config.expand_config` has been
+  simplified.
+- [internal] flake8 and sort imports
+- [internal] [dev] Add `Makefile` for `watch_test` (re-running
+  tests on file change), `watch_flake` (re-running flake8 check
+  on changes)
+- [internal] [dev] Move `.tmuxp.yaml` commands to use Makefile
+- [internal] [dev] split up requirements into `requirements/`
+  folder.
+- Drop Python 2.6 support
+- [internal] `find_config` renamed to `find_config_files`.
+- Rename `get_repos` to `filter_repos`, simplify argument signature.
+- [cli] Experimental support for concurrently synchroniznig repos via
+  :py:mod:`multiprocessing`.
+- [api][internal]: Refactor :class:`vcspull.repo.Repo` factory class
+  into :func:`vcspull.repo.create_repo`.
+- [internal]: major internal cleanup of dead code, pep8 style updates.
+- [git] [tests]: fix git+https remotes [#14], add regression tests.
+
+## vcspull 0.2.2 (2015-07-10)
+
+- [internal]: devendorize colorama
+
+## vcspull 0.2.1 (2015-06-12)
+
+- [internal] [tests]: handle `ERROR` in git cloning, add tests. Fixes
+  cases like `ERROR: Repository not found`.
+
+## vcspull 0.2.0 (2015-05-19)
+
+- [api] Change the API of :class:`vcspull.repo.base.BaseRepo` and
+  :class:`vcspull.repo.Repo` to accept arguments as `kwargs`
+- [api]: Rename `parent_path` to `cwd`.
+- [docs]: Pydoc documentation for `Repo` usage.
+- [docs]: Python API example
+
+## vcspull 0.1.1 (2015-05-09)
+
+- [testing] Fix sniffer on Python 3
+- [cli] remove redundant message when adding remotes
+- [docs] add animated screencast preview for ReadTheDocs and README.rst
+
+## vcspull 0.1.0 (2015-04-30)
+
+- [cli]: support for specifying for config file path with `-c`.
+- [cli]: clarify error output when no repositories found
+
+## vcspull 0.0.10 (2015-04-08)
+
+- [cli]: fix message when adding remotes
+- [internals]: split config-related functions into `config` module.
+- [tests]: consolidate tests from `testsuite.cli` into
+  `testsuite.config`.
+- [tests]: remove stub TestSuites insite of `cli` tests.
+- [tests]: Refactor helpers. Tests should now run much faster.
+- [cli]: vcspull now checks for configs in `~/.vcspull` (yaml and json
+  files) as well as the standard `~/.vcspull.{yaml,json}` files.
+
+## vcspull 0.0.9-1 (2015-03-27)
+
+- [internals]: move to `__about__.py` convention for pulling package
+  data.
+- [internals]: remove extraneous url from stdout in git repositories.
+
+## vcspull 0.0.9 (2015-03-25)
+
+- [dev]: support for tmuxp `before_script` to set up local virtualenv +
+  dependencies.
+- [dev]: Clean up `__init__.py` imports
+- [internals]: move :meth:`update` to :meth:`update_dict` in `utils`.
+- [cli]: `-d` / `--dirmatch` for matching directories, accepts
+  [fnmatch]'s.
+- [cli]: `-r` / `--repomatch` for matching directories, accepts
+  [fnmatch]'s.
+- [cli]: `-c` / `--config` YAML / JSON file of repositories
+- [config/vcs]: Exception for private / ssh GitHub repository URLs and
+  message to change to correct format.
+- [docs]: Update docs to reflect updates on new commands and how to clone
+  private / privileged GitHub repos.
+
+## vcspull 0.0.8-4 (2014-02-06)
+
+- [cli] Update documentation when no config found to show `yaml` and
+  `json`. Remove mentioning of `conf`.
+
+## vcspull 0.0.8-3 (2014-02-06)
+
+- [logging] [#6] - fix issue where log templates would not
+  concatenate correctly.
+
+[#6]: https://github.com/vcs-python/vcspull/issues/6
+
+## vcspull 0.0.8-2 (2014-02-05)
+
+- [packaging] Fix issue where `package_metadata.py` missing from
+  `MANIFEST.in`.
+
+## vcspull 0.0.8-1 (2014-02-05)
+
+- [setup.py] remove history from readme
+
+## vcspull 0.0.8 (2014-02-05)
+
+- Use werkzeug/flask style unit test suites.
+- [docs] Fix section headings.
+- [internals] use conventions from [tony/cookiecutter-pypackage].
+
+vcspull 0.0.7 (2014-01-07)
+
+- New logging system from pypa/pip with support showing current stderr
+  (checkout, pull, cloning) progress.
+- `unicode_literals`, `__future__` for python 3 support.
+
+## vcspull 0.0.6 (2013-12-03)
+
+- Renamed to `vcspull`.
+
+## vcspull 0.0.5 (2013-11-28)
+
+- [tests] tests for loading multiple configs, config conflict cases
+- [internal] fix recursive imports, using explicit importing
+- [git] handle cli case where git is on a different branch, just fetch
+  repo.
+- [py3] python 3 support
+
+## vcspull 0.0.4 (2013-11-25)
+
+- [svn] [git] [hg] added functionality for pip's netloc and vcs
+  functionality.
+- [docs] update license docs for methods from salt (apache) and pip (mit).
+- [cli] autocomplete
+- [config] [tests] Support for expanding environment variables in syntax
+  with `${envvar}` and `~`.
+- [cli] Exit with `Ctrl-C` gracefully.
+
+## vcspull 0.0.3 (2013-11-23)
+
+- [docs] [examples] more docs and examples
+- [internal] remove developer logger message that would show when
+  updating.
+- [cli] - fixed bug where logger would output message twice
+- [`pep257`_] [`pep8`_] [logger] update `vcspull.log` module to latest
+  code (from `tmuxp`\_ project).
+
+## vcspull 0.0.2 (2013-11-23)
+
+- [tests] Move tests for making directory paths to `test_repo`
+  TestSuite.
+- [tests] [git] more work on remotes with :class:`vcspull.repo.git.GitRepo`.
+
+## vcspull 0.0.2 (2013-11-16)
+
+- [tests] refactor tests modules
+- [git] add some functions with saltstack to
+  :py:class:`vcspull.repo.git.GitRepo`.
+- [version] reset to 0.1.0 w/o dev tag to begin releases.
+
+## vcspull 0.0.1 (2013-11-15)
+
+- [cli] [tests] [#1] for making directories recursively.
+- [tests] :py:mod:`tempfile`.
+- [cli] [config] remove .ini support
+
+[#1]: https://github.com/vcs-python/vcspull/issues/1
+
+## vcspull 0.0.1 (2013-11-09)
+
+- [pep257] to all modules.
+- Add [argcomplete]
+- Move in code patterns from [tmuxp]. New logger, setup.py, testsuite
+  structure, etc.
+
+## vcspull 0.0.1 (2013-10-23)
+
+- add example
+
+## vcspull 0.0.1 (2013-10-17)
+
+- fix packaging issue, add MANIFEST.in
+- bump to 0.1.1
+
+## vcspull 0.0.1 (2013-10-08)
+
+- move to semver
+
+## vcspull 0.0.1 (2013-10-06)
+
+- https://github.com/vcs-python/vcspull/compare/a96e723269...a5be723de5
+- remove virtualenv dep [Done]
+- remove pip dep [Done]
+- logging for repo obtain/update/makedir/rev [Done]
+- logging.notify with alternative format [Done]
+- removed salt-specific code used for Popen
+  (https://github.com/vcs-python/vcspull/commit/67dbb793e7)
+
+[tmuxp]: http://tmuxp.git-pull.com
+[pep257]: http://www.python.org/dev/peps/pep-0257/
+[pep8]: http://www.python.org/dev/peps/pep-0008/
+[sphinx-argparse]: https://github.com/tony/sphinx-argparse
+[argcomplete]: https://github.com/kislyuk/argcomplete
+[tony/cookiecutter-pypackage]: https://github.com/tony/cookiecutter-pypackage.
+[#14]: https://github.com/vcs-python/vcspull/issues/14
+[click]: https://github.com/pallets/click
+[fnmatch]: http://pubs.opengroup.org/onlinepubs/009695399/functions/fnmatch.html
+
+<!---
+.. vim: set filetype=markdown:
+-->
