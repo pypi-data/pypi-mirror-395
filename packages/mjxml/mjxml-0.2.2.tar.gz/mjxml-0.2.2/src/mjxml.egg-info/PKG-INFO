@@ -1,0 +1,131 @@
+Metadata-Version: 2.4
+Name: mjxml
+Version: 0.2.2
+Summary: Utilities to programatically create MuJoCo XML configuration files
+Author-email: Lena <lenazhu2007@gmail.com>
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pydantic
+
+# mjxml
+
+Programmatic, type-checked helpers for composing MuJoCo XML. Define assets and worldbody elements in Python (with Pydantic validation), serialize to XML, and write files you can load in MuJoCo.
+
+## Highlights
+
+- Strong typing and validation via Pydantic v2.
+- Easy XML serialization: `to_xml()`, `to_xml_str()`, `write()`.
+- Assets: `TextureAsset`, `MeshAsset`, `HFieldAsset`, `ModelAsset`.
+- Bodies: `Geom` (with many MuJoCo attributes), `WorldBody` base.
+- Utilities: `Defaults` blocks, rotation helpers, and runtime type protocols.
+
+## Requirements
+
+- Python >= 3.13
+- Runtime deps: `numpy`, `pydantic`
+
+## Install
+
+From PyPI:
+
+```bash
+pip install mjxml
+```
+
+## Development
+
+This project relies on `uv`. To setup a virtual environment, just do:
+
+```bash
+uv sync --dev
+export PYTHONPATH=src
+```
+
+## Quickstart
+
+The snippets below sketch a typical flow: create assets, place them in the worldbody, and export a MuJoCo XML file.
+
+### 1. Define assets with validation
+
+```python
+from mjxml.asset.texture import TextureAsset
+from mjxml.asset.mesh import MeshAsset
+
+texture = TextureAsset(
+    name="tex_grid",
+    file="albedo.png",
+    type="2d",
+    colorspace="srgb",
+    content_type="image/png",
+    nchannel=3,
+)
+
+mesh = MeshAsset(
+    name="m_cube",
+    file="cube.obj",
+    content_type="model/obj",
+    scale=[1.0, 1.0, 1.0],
+    inertia="exact",
+)
+```
+
+Each asset only emits the attributes you set; Pydantic validators ensure parameters such as `nchannel` or `scale` stay within MuJoCo’s requirements.
+
+### 2. Create bodies and geoms
+
+```python
+from mjxml.body import Body, Geom
+
+body = Body(name="torso")
+body.add(
+    Geom(
+        name="box1",
+        type="box",
+        size=[0.5, 0.5, 0.5],
+        material=None,
+        rgba=[0.8, 0.2, 0.2, 1.0],
+        friction=[0.5, 0.1, 0.01],
+    )
+)
+```
+
+Geoms automatically infer fields such as `condim` from the friction vector length and warn when MuJoCo would ignore an attribute.
+
+### 3. Assemble a complete `MujocoModel`
+
+```python
+from mjxml.model import MujocoModel
+
+model = MujocoModel(name="demo")
+model.add_asset(texture)
+model.add_asset(mesh)
+model.add_body(body)
+
+root = model.to_xml()
+print(model.to_xml_str())
+model.write("scene.xml")
+```
+
+`MujocoModel` deduplicates identical assets, appends worldbody, actuator, and contact sections, and returns a ready-to-save ElementTree root.
+
+## Testing
+
+Run the unit tests with `pytest`.
+
+```bash
+pytest -q -s
+```
+
+## Status
+
+This repository is under active development; expect minor API adjustments. A high-level `MujocoModel` aggregator is planned but not yet included.
+
+## Roadmap
+
+- [✅] **High-level Wrapper**: `MujocoModel` class to aggregate assets, worldbody, and other sections.
+- [✅] **Body Elements**: Support for `joint`, `site`, `camera`.
+- [=] **Sections**: Support for `actuator`, `sensor`, `equality`, `contact`, `tendon`.
+- [❌] **IO**: Parsing existing XML files for round-trip editing.
+- [❌] **Docs**: Comprehensive API documentation and more examples.
+
