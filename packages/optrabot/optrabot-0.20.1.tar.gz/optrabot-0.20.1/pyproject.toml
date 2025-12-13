@@ -1,0 +1,108 @@
+[project]
+name = "optrabot"
+version = "0.20.1"
+description = "QuantX OptraBot is a Options Trading Bot for automatically trading options strategies with an Interactive Brokers account."
+authors = [{name = "QuantX GmbH"}]
+readme = "README.md"
+license = {text = "MIT"}
+homepage = "http://www.optrabot.com"
+keywords = ["tws"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent"
+]
+requires-python = ">=3.12,<=3.13"
+dependencies = [
+    "fastapi==0.117.0",
+    "uvicorn==0.32.1",
+    "loguru==0.7.3",
+    "ruyaml==0.91.0",
+    "ib-async==1.0.3",
+    "httpx==0.28.1",
+    "inquirerpy>=0.3.4",
+    "tzdata>=2023.3",
+    "sqlalchemy==2.0.36",
+    "alembic>=1.13.1",
+    "apscheduler==3.11.0",
+    "tastytrade==11.0.3",
+    "packaging>=24.2",
+    "pandas-market-calendars>=5.1.3",
+    "simpleeval>=0.9.13",
+    "ntplib>=0.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "frontend/",
+    "tests/",
+    "doc/",
+    "logs/",
+    "2ndbot/",
+    "sample_configs/",
+    "static/",
+    "webapp/",
+    ".vscode/",
+    ".git/",
+    ".gitignore",
+    "*.db",
+    "*.bak.yaml",
+    "config.yaml",
+    "package.json",
+    "package-lock.json",
+    "uv.lock",
+    "DEVELOPMENT.md",
+    "OTB-*.md",
+    "TEST-PLAN-*.md",
+    "RELEASE*.md",
+    "test_*.py",
+    "docker/",
+    "/alembic.ini",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"optrabot/ui" = "optrabot/ui"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+    "frontend/",
+    "tests/",
+    "doc/",
+    "logs/",
+    "2ndbot/",
+    "sample_configs/",
+    "static/",
+    "webapp/",
+    ".vscode/",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"optrabot/ui" = "optrabot/ui"
+
+[project.scripts]
+optrabot = "optrabot.main:run"
+build = "optrabot.build:build_with_frontend"
+
+[dependency-groups]
+dev = []
+
+[tool.ruff.lint]
+extend-select = [
+	"A",	# Miss use of Python build in names
+	"B", 	# Bugbear lints
+	"E",	# Pycodestyle errors
+	#"W",	# Pycodestyle warnings
+	"PTH", 
+	"ANN",	# Type annotation issues
+	"N",	# Naming convention issues
+	"Q",	# Flake8 Quotes
+	"S",	# Security issues
+]
+ignore = [
+	"E501"  # Line too long
+]
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
