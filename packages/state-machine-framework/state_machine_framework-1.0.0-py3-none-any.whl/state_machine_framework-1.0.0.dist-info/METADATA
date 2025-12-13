@@ -1,0 +1,311 @@
+Metadata-Version: 2.1
+Name: state-machine-framework
+Version: 1.0.0
+Summary: A flexible state machine framework for Python
+Author: State Machine Framework Team
+License: MIT
+Project-URL: Homepage, https://github.com/AbhigyaShridhar/python-state-machines
+Project-URL: Documentation, https://github.com/AbhigyaShridhar/python-state-machines#readme
+Project-URL: Repository, https://github.com/AbhigyaShridhar/python-state-machines
+Project-URL: Issues, https://github.com/AbhigyaShridhar/python-state-machines/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic>=1.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+
+# State Machine Framework
+
+A flexible state machine framework for Python with clean abstractions, ORM integration support, and type-safe workflow management.
+
+## Features
+
+- 🎯 **Clean State Definitions**: Minimal boilerplate with decorator-based validators and hooks
+- 🔄 **Integration Agnostic**: Works ORM via adapter pattern
+- ✅ **Type Safety**: Pydantic schema validation and type-checked workflow contexts
+- 🎨 **External Registration**: Register validators and hooks in separate modules for clean code organization
+- 📋 **Workflow Context**: Type-safe context management with automatic validation
+
+## Installation
+
+```bash
+pip install state-machine-framework
+```
+
+## Quick Start
+
+### 1. Define Your Models
+
+```python
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class Order(Base):
+    __tablename__ = 'orders'
+    
+    id = Column(Integer, primary_key=True)
+    order_id = Column(String(100), unique=True)
+    status = Column(String(50))
+```
+
+### 2. Define States
+
+```python
+from state_machine_framework import State
+
+class OrderPending(State):
+    is_start_state = True
+    
+    class Meta:
+        order = 1
+        Order_status = 'pending'
+
+class OrderProcessing(State):
+    class Meta:
+        order = 2
+        Order_status = 'processing'
+
+class OrderCompleted(State):
+    is_terminal_state = True
+    
+    class Meta:
+        order = 3
+        Order_status = 'completed'
+```
+
+### 3. Define State Machine
+
+```python
+from state_machine_framework import StateMachine
+
+class OrderStateMachine(StateMachine):
+    pass
+
+OrderStateMachine.register(
+    Order,
+    state_field='status',
+    identifier_field='order_id'
+)
+```
+
+### 4. Add Validators (External Registration)
+
+```python
+from state_machine_framework import validator
+
+@validator(OrderPending, order=1)
+def validate_order_amount(state, data, context):
+    if data.get('amount', 0) <= 0:
+        raise ValueError("Invalid amount")
+    return {'validated': True}
+```
+
+### 5. Add Hooks (External Registration)
+
+```python
+from state_machine_framework import hook
+
+@hook(OrderProcessing, order=1)
+def send_confirmation_email(state, data, context):
+    order = data['instances']['Order']
+    send_email(order.customer_email)
+    return {'email_sent': True}
+```
+
+### 6. Define Pydantic Schemas
+
+```python
+from pydantic import BaseModel, Field
+
+class OrderData(BaseModel):
+    amount: float = Field(..., gt=0)
+    customer_email: str
+```
+
+### 7. Define Workflow Context
+
+```python
+from state_machine_framework import WorkflowContext
+
+class OrderWorkflowContext(WorkflowContext):
+    def define_requirements(self):
+        self.require_value('customer_id', str)
+        self.require_model('order', Order, created_in_state=OrderPending)
+        self.require_dict('order_data', OrderData)
+```
+
+### 8. Execute Workflow
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine('sqlite:///orders.db')
+Session = sessionmaker(bind=engine)
+session = Session()
+
+with OrderWorkflowContext(
+    OrderStateMachine,
+    customer_id='CUST123',
+    order_data={'amount': 99.99, 'customer_email': 'user@example.com'},
+    _session=session
+) as workflow:
+    
+    workflow.transition_to(OrderPending)
+    workflow.transition_to(OrderProcessing)
+    workflow.transition_to(OrderCompleted)
+    
+    print(workflow.get_history_summary())
+```
+
+## Package Structure
+
+```
+state_machine_framework/
+├── __init__.py              # Main package exports
+├── core/
+│   ├── __init__.py
+│   ├── state.py             # State base class and metaclass
+│   ├── state_machine.py     # StateMachine base class
+│   └── exceptions.py        # Custom exceptions
+├── decorators/
+│   ├── __init__.py
+│   └── hooks.py             # Decorators for validators, hooks, transitions
+├── orm/
+│   ├── __init__.py
+│   ├── base.py              # Abstract ORM adapter
+│   └── sqlalchemy_adapter.py # SQLAlchemy implementation
+└── workflow/
+    ├── __init__.py
+    ├── context.py           # WorkflowContext implementation
+    └── requirements.py      # Context requirement classes
+```
+
+## Key Concepts
+
+### States
+
+States represent points in your workflow. Define them by subclassing `State`:
+
+```python
+class MyState(State):
+    is_start_state = True  # Optional: mark as initial state
+    is_terminal_state = False  # Optional: mark as final state
+    
+    class Meta:
+        order = 1  # Execution order
+        ModelName_status = 'state_value'  # State value for model
+```
+
+### Validators
+
+Validators run **before** state transitions and perform validation logic:
+
+```python
+@validator(MyState, order=1)
+def validate_something(state, data, context):
+    # Validation logic here
+    if not valid:
+        raise ValueError("Validation failed")
+    return {'result': 'validated'}
+```
+
+### Hooks
+
+Hooks run **after** state transitions and perform side effects:
+
+```python
+@hook(MyState, order=1)
+def do_something(state, data, context):
+    # Side effects here (logging, notifications, etc.)
+    instances = data['instances']  # Access model instances
+    return {'action': 'completed'}
+```
+
+### Workflow Context
+
+Workflow contexts provide type-safe, validated context management:
+
+```python
+class MyWorkflowContext(WorkflowContext):
+    def define_requirements(self):
+        # Require a simple value
+        self.require_value('user_id', str, required=True)
+        
+        # Require a model instance (may be created during workflow)
+        self.require_model('order', Order, created_in_state=OrderPending)
+        
+        # Require a dict validated by Pydantic schema
+        self.require_dict('order_data', OrderDataSchema, required=True)
+```
+
+## Examples
+
+See the `examples/` directory for a complete vending machine implementation demonstrating:
+
+- SQLAlchemy ORM integration
+- Workflow context with validation
+- External validator and hook registration
+- Type-safe context management
+- Pydantic schema validation
+- Complete transaction workflow
+
+To run the example:
+
+```bash
+cd examples/vending_machine
+python main.py
+```
+
+### Dynamic ORM Adapters
+
+Implement the `ORMAdapter` interface for your ORM:
+
+```python
+from state_machine_framework import ORMAdapter, ORMAdapterFactory
+
+class MyORMAdapter(ORMAdapter):
+    def create(self, model_cls, **data):
+        # Your implementation
+        pass
+    
+    # ... implement all abstract methods
+
+# Register it
+ORMAdapterFactory.register_adapter('myorm', MyORMAdapter)
+
+# Use it
+sm = MyStateMachine(data, using_orm='myorm')
+```
+
+## Requirements
+
+- Python 3.8+
+- pydantic >= 1.8.0
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Contributing
+
+Contributions are welcome! Please feel free to reach out...
+
+
