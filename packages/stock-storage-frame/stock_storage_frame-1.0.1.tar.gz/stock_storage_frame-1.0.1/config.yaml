@@ -1,0 +1,59 @@
+# 应用基础配置
+app:
+  name: "stock-data-pipeline"
+  version: "1.0.0"
+  log_level: "INFO"
+  log_dir: "./logs"
+
+# 数据采集器配置
+collectors:
+  akshare1:
+    type: "akshare"
+    # method: "stock_zh_a_hist"  # 默认方法，可在workflow中设置
+    config:
+      timeout: 30
+      retry_times: 3
+  
+  tushare1:
+    type: "tushare"
+    config:
+      token: "${TUSHARE_TOKEN}"
+      timeout: 30
+
+  gainiancollector:
+    type: "custom"
+    # script: "./scripts/collector_demo.py" #默认配置脚本，可在workflow中设置
+    config:
+      host: "${MYSQL_HOST}"
+      port: "${MYSQL_PORT}"
+      database: "${MYSQL_DB}"
+      username: "${MYSQL_USER}"
+      password: "${MYSQL_PASSWORD}"
+
+  customcollector:
+    type: "custom"
+    # script: "./scripts/collector_demo.py" #默认配置脚本，可在workflow中设置
+    config:
+      api_url: "http://api_url"
+      api_key: "http_api_key"
+
+# 数据存储配置
+storages:
+  sqlite1:
+    type: "sqlite"
+    config:
+      database: "./data/stock_data.db"
+  
+  csv1:
+    type: "csv"
+    config:
+      directory: "./data/csv"
+  
+  mysql1:
+    type: "mysql"
+    config:
+      host: "${MYSQL_HOST}"
+      port: "${MYSQL_PORT}"
+      database: "${MYSQL_DB}"
+      username: "${MYSQL_USER}"
+      password: "${MYSQL_PASSWORD}"

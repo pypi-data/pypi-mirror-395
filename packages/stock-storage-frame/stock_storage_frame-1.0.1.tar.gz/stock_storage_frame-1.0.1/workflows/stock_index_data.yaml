@@ -1,0 +1,22 @@
+# workflow: stock_index_data.yaml
+name: "stock_index_data"
+description: "新浪财经-当天中国股票指数数据"
+schedule: "40 20 * * *"  # 每天19:00执行
+
+# 数据采集配置 - 使用不同的akshare方法
+collector:
+  name: "akshare1"
+  type: "akshare"
+  method: "stock_zh_index_spot_sina"  # 股票指数日线数据
+
+# 数据处理配置
+processor:
+  # 使用Python脚本处理数据
+  script: "./scripts/process_add_date.py"
+
+# 数据存储配置
+storage:
+  name: "mysql1"
+  type: "mysql"
+  config:
+    table_name: "stock_index_data"

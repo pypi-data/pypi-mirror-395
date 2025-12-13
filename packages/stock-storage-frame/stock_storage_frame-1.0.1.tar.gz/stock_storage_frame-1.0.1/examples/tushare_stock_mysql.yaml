@@ -1,0 +1,26 @@
+# workflow: daily_stock_data.yaml
+name: "daily_stock_data"
+description: "每日股票数据采集和处理"
+schedule: "0 18 * * *"  # 每天18:00执行
+
+# 数据采集配置
+collector:
+  name: "tushare1"
+  type: "tushare"
+  method: "daily"
+  config:
+    ts_code: "000001.SZ"
+    start_date: "20240101"
+    end_date: "20251001"
+
+# 数据处理配置
+processor:
+  # 使用Python脚本处理数据
+  script: "./scripts/process_data_fill.py"
+
+# 数据存储配置
+storage:
+  name: "mysql1"
+  type: "mysql"
+  config:
+    table_name: "daily_stock_data"

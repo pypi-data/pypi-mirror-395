@@ -1,0 +1,23 @@
+name: "stock_fund_flow_concept"
+description: "概念资金流"
+schedule: "16 17 * * *"  # 每天18:00执行
+
+# 数据采集配置
+collector:
+  name: "customcollector"
+  type: "custom"
+  script: "./scripts/collector_fetch_web.py"
+  config:
+    symbol: "即时"
+
+# 数据处理配置
+processor:
+  # 使用Python脚本处理数据
+  script: "./scripts/process_add_date.py"
+
+# 数据存储配置
+storage:
+  name: "csv1"
+  type: "csv"
+  config:
+    table_name: "test"

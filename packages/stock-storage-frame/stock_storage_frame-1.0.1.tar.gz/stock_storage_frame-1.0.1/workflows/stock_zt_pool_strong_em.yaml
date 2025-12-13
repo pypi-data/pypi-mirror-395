@@ -1,0 +1,27 @@
+name: "stock_zt_pool_strong_em"
+description: "强势股池"
+schedule: "35 20 * * *"  # 每天20:35执行
+
+# 条件配置（可选），判定是否是交易日，只有定时任务才判断
+condition:
+  script: "./scripts/condition_trade_day.py"
+
+# 数据采集配置
+collector:
+  name: "akshare1"
+  type: "akshare"
+  method: "stock_zt_pool_strong_em"
+  config:
+    date: "{{ today:YYYYMMDD }}"  # 日期
+
+# 数据处理配置
+processor:
+  # 使用Python脚本处理数据
+  script: "./scripts/process_add_date.py"
+
+# 数据存储配置
+storage:
+  name: "mysql1"
+  type: "mysql"
+  config:
+    table_name: "stock_zt_pool_strong"
