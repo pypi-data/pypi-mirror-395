@@ -1,0 +1,181 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "anyschema"
+version = "0.2.1"
+description = "From type specifications to dataframe schemas"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{ name = "Francesco Bruzzesi"}]
+requires-python = ">=3.10"
+dependencies = [
+  "narwhals>=2.0.0",
+  "typing_extensions>=4.14.0",
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed"
+]
+
+[project.urls]
+Homepage = "https://github.com/fbruzzesi/anyschema"
+Documentation = "https://fbruzzesi.github.io/anyschema/"
+Repository = "https://github.com/fbruzzesi/anyschema"
+"Issue Tracker" = "https://github.com/fbruzzesi/anyschema/issues"
+
+[project.optional-dependencies]
+attrs = ["attrs>=22.1.0"]
+pydantic = ["pydantic>=2.0.0"]
+
+[dependency-groups]
+tests = [
+  "anyschema[pydantic]",
+  "covdefaults>=2.3.0",
+  "hypothesis>=6.0.0",
+  "narwhals[pandas,polars,pyarrow]",
+  "pydantic-extra-types[pycountry,phonenumbers]",
+  "pytest>=8.0.0",
+  "pytest-cov>=6.0.0",
+]
+
+typing = [
+  "pandas-stubs",
+  "pyarrow-stubs",
+  "mypy",
+  "pyright",
+  "ty",
+]
+
+docs = [
+  "anyschema[attrs,pydantic]",
+  "black",  # required by mkdocstrings_handlers
+  "markdown-exec[ansi]",
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocstrings-python",
+  "mkdocs-autorefs",
+  "narwhals[pandas,polars,pyarrow]",
+  "pytest",
+]
+
+local-dev = [
+  "anyschema[attrs,pydantic]",
+  "pre-commit",
+  "ruff",
+  {include-group = "tests"},
+  {include-group = "typing"},
+  {include-group = "docs"}
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "anyschema/*",
+  "tests/*",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+  "anyschema/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+  "error",
+]
+xfail_strict = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+fix = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN401",
+  "PLC0415",
+  "UP045",
+  "COM812",
+  "ISC001",
+  "D100",  # Checks for undocumented public module definitions.
+  "D104",  # Checks for undocumented public package definitions.
+  "D107",  # Checks for public __init__ method definitions that are missing docstrings.
+  "D205",
+  "RET505",
+  "FIX002",
+  "TD003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+  "D101",
+  "D103",
+  "S101",
+  "UP",
+  "SLF",
+]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 6
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
+
+[tool.coverage.report]
+fail_under = 95
+omit = [
+  "anyschema/typing.py",
+]
+
+[tool.rumdl]
+line-length = 120
+flavor = "mkdocs"
+include = ["docs/**", "README.md"]
+disable = [
+  # NOTE: These look like either false positives or unsupported case
+  # TODO(FBruzzesi): Report upstream
+  # No blank line after admonition block
+  "MD031",
+  # Use fenced code blocks
+  "MD046",
+]
+
+[tool.rumdl.MD007]
+# Keep list indentation consistent
+indent = 4
+start-indented = false

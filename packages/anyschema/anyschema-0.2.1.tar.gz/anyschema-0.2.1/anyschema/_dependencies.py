@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+import sys
+from collections.abc import Mapping, Sequence
+from dataclasses import is_dataclass as dc_is_dataclass
+from importlib.util import find_spec
+from typing import TYPE_CHECKING, cast
+
+from typing_extensions import TypeIs, is_typeddict
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    from pydantic import BaseModel
+
+    from anyschema.typing import AttrsClassType, DataclassType, IntoOrderedDict, TypedDictType
+
+ANNOTATED_TYPES_AVAILABLE = find_spec("annotated_types") is not None
+PYDANTIC_AVAILABLE = find_spec("pydantic") is not None
+ATTRS_AVAILABLE = find_spec("attrs") is not None
+
+
+def get_pydantic() -> ModuleType | None:  # pragma: no cover
+    """Get pydantic module (if already imported - else return None)."""
+    return sys.modules.get("pydantic", None)
+
+
+def get_attrs() -> ModuleType | None:
+    """Get attrs module (if already imported - else return None)."""
+    return sys.modules.get("attrs", None)
+
+
+def is_into_ordered_dict(obj: object) -> TypeIs[IntoOrderedDict]:
+    """Check if the object can be converted into a python OrderedDict."""
+    tpl_size = 2
+    return isinstance(obj, Mapping) or (
+        isinstance(obj, Sequence) and all(isinstance(s, tuple) and len(s) == tpl_size for s in obj)
+    )
+
+
+def is_typed_dict(obj: object) -> TypeIs[TypedDictType]:
+    """Check if the object is a TypedDict and narrows type checkers."""
+    return is_typeddict(obj)
+
+
+def is_dataclass(obj: object) -> TypeIs[DataclassType]:
+    """Check if the object is a dataclass and narrows type checkers."""
+    return dc_is_dataclass(obj)
+
+
+def is_pydantic_base_model(obj: object) -> TypeIs[type[BaseModel]]:
+    """Check if the object is a pydantic BaseModel."""
+    return (
+        (pydantic := get_pydantic()) is not None
+        and isinstance(obj, cast("type", type(pydantic.BaseModel)))
+        and issubclass(obj, pydantic.BaseModel)  # type: ignore[arg-type]
+    )
+
+
+def is_attrs_class(obj: object) -> TypeIs[AttrsClassType]:
+    """Check if the object is an attrs class.
+
+    Uses attrs.has() to check if a class is an attrs class.
+    Supports @attrs.define/@attrs.frozen decorators.
+    """
+    return (attrs := get_attrs()) is not None and attrs.has(obj)
