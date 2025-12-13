@@ -1,0 +1,64 @@
+# Docker Compose configuration for RAFAEL Framework
+
+version: '3.8'
+
+services:
+  rafael:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rafael-framework
+    ports:
+      - "8080:8080"
+    environment:
+      - RAFAEL_ENV=production
+      - RAFAEL_LOG_LEVEL=INFO
+    volumes:
+      # Mount config and data directories
+      - ./rafael_data:/app/data
+      - ./rafael.config.json:/app/rafael.config.json:ro
+    restart: unless-stopped
+    networks:
+      - rafael-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import core; print('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: rafael-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rafael-network
+    restart: unless-stopped
+
+  # Optional: PostgreSQL for audit logs
+  postgres:
+    image: postgres:15-alpine
+    container_name: rafael-postgres
+    environment:
+      POSTGRES_DB: rafael
+      POSTGRES_USER: rafael
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rafael-network
+    restart: unless-stopped
+
+networks:
+  rafael-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:
