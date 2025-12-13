@@ -1,0 +1,126 @@
+# -*- coding: utf-8 -*-
+"""
+PromptManager: 统一管理 Agent 的系统提示词与附加提示词的构建逻辑。
+
+设计目标（阶段一，最小变更）：
+- 提供独立的提示构建类，不改变现有行为
+- 先行落地构建逻辑，后续在 Agent 中逐步委派使用
+- 保持与现有工具/记忆系统兼容
+"""
+
+from typing import TYPE_CHECKING
+
+from jarvis.jarvis_tools.registry import ToolRegistry
+from jarvis.jarvis_utils.tag import ot
+
+if TYPE_CHECKING:
+    # 避免运行时循环依赖，仅用于类型标注
+    from . import Agent  # noqa: F401
+
+
+class PromptManager:
+    """
+    提示管理器：负责构建系统提示与默认附加提示。
+    注意：该类不直接访问模型，只负责拼装字符串。
+    """
+
+    def __init__(self, agent: "Agent"):
+        self.agent = agent
+
+    # ----------------------------
+    # 系统提示词构建
+    # ----------------------------
+    def build_system_prompt(self) -> str:
+        """
+        构建系统提示词，复用现有的工具使用提示生成逻辑，保持行为一致。
+        """
+        action_prompt = self.agent.get_tool_usage_prompt()
+
+        # 检查 task_list_manager 工具是否可用
+        task_list_manager_note = ""
+        tool_registry = self.agent.get_tool_registry()
+        if isinstance(tool_registry, ToolRegistry):
+            task_list_tool = tool_registry.get_tool("task_list_manager")
+            if task_list_tool:
+                task_list_manager_note = """
+
+<task_list_manager_guide>
+# 任务列表管理工具使用指南
+
+**重要：在开始处理任务的第一步，先判断是否需要创建任务列表**
+
+在开始执行任务之前，首先评估任务复杂度。如果任务符合以下任一情况，**应该立即使用 `task_list_manager` 创建任务列表并拆分任务**，而不是直接开始执行：
+
+**适合提前规划的任务类型：**
+- **多步骤复杂任务**：需要多个步骤才能完成的复杂任务（如：实现完整功能模块、重构大型代码库）
+- **有依赖关系的任务**：任务之间存在依赖，需要按顺序执行（如：先设计数据库表，再实现API接口）
+- **需要并行执行的任务**：可以同时进行的独立任务（如：同时开发多个功能模块）
+- **需要跟踪进度的长期任务**：需要分阶段完成、跟踪进度的长期项目
+- **需要不同Agent类型的任务**：部分任务需要代码Agent，部分需要通用Agent（如：代码实现 + 文档编写）
+- **需要分阶段验证的任务**：每个阶段完成后需要验证，再继续下一步（如：先实现基础功能，测试通过后再添加高级特性）
+
+**使用流程：**
+1. **第一步：识别是否需要拆分** - 如果任务符合上述类型，立即使用 `create_task_list` 创建任务列表
+2. **同时拆分任务** - 在 `create_task_list` 时直接提供 `tasks_info`，一次性创建并添加所有子任务
+3. **执行任务** - 使用 `execute_task` 逐个执行任务，系统会自动创建子 Agent
+
+**核心功能：**
+- 创建任务列表并添加任务：使用 `create_task_list` 操作，可同时提供 `tasks_info` 一次性创建并添加所有任务
+- 管理任务执行：通过 `execute_task` 自动创建子 Agent 执行任务
+- 跟踪任务状态：查看任务执行进度和结果
+
+**使用建议：**
+- **关键原则**：在开始执行任务的第一步就判断是否需要拆分，如果需要则立即创建任务列表，避免先执行部分步骤再意识到需要拆分
+- 推荐在 `create_task_list` 时同时提供 `tasks_info`，一次性创建任务列表并添加所有任务
+- 任务之间的依赖关系可以使用任务名称引用（系统会自动匹配）
+- 通过任务列表可以更好地组织和管理任务执行流程，确保任务按正确顺序执行
+</task_list_manager_guide>
+"""
+
+        return f"""
+{self.agent.system_prompt}
+
+{action_prompt}{task_list_manager_note}
+"""
+
+    # ----------------------------
+    # 附加提示词构建
+    # ----------------------------
+    def build_default_addon_prompt(self, need_complete: bool) -> str:
+        """
+        构建默认附加提示词（与 Agent.make_default_addon_prompt 行为保持一致）。
+        仅进行字符串拼装，不操作会话状态。
+        """
+        # 结构化系统指令
+        action_handlers = ", ".join(
+            [handler.name() for handler in self.agent.output_handler]
+        )
+
+        # 任务完成提示
+        complete_prompt = (
+            f"- 输出{ot('!!!COMPLETE!!!')}"
+            if need_complete and self.agent.auto_complete
+            else ""
+        )
+
+        # 工具与记忆相关提示
+        tool_registry = self.agent.get_tool_registry()
+        memory_prompts = self.agent.memory_manager.add_memory_prompts_to_addon(
+            "", tool_registry if isinstance(tool_registry, ToolRegistry) else None
+        )
+
+        addon_prompt = f"""
+<system_prompt>
+    请判断是否已经完成任务，如果已经完成：
+    - 直接输出完成原因，不需要再有新的操作，不要输出{ot("TOOL_CALL")}标签
+    {complete_prompt}
+    如果没有完成，请进行下一步操作：
+    - 仅包含一个操作
+    - 如果信息不明确，请请求用户补充
+    - 如果执行过程中连续失败5次，请请求用户操作
+    - 操作列表：{action_handlers}{memory_prompts}
+</system_prompt>
+
+请继续。
+"""
+        return addon_prompt
