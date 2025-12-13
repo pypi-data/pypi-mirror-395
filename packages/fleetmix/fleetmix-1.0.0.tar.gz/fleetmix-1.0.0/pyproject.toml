@@ -1,0 +1,170 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fleetmix"
+version = "1.0.0"
+description = "Fleet Size and Mix optimizer for heterogeneous fleets of multi-compartment vehicles"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "streamlit",
+    "plotly",
+    "scikit-learn",
+    "kmedoids",
+    "folium",
+    "streamlit-folium",
+    "haversine",
+    "gurobipy",
+    "geopy",
+    "jupyter",
+    "pulp",
+    "numba",
+    "cython",
+    "joblib",
+    "tqdm",
+    "openpyxl",
+    "pyvrp",
+    "rich",
+    "vrplib",
+    "typer[all]>=0.9.0",
+    "tabulate",
+]
+
+[project.scripts]
+fleetmix = "fleetmix.app:app"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "hypothesis",
+    "pytest-xdist",
+    "attrs>=23.1",
+]
+dev = [
+    "mypy",
+    "ruff",
+    "types-tqdm",
+    "types-PyYAML", 
+    "types-seaborn",
+    "pandas-stubs",
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+exclude = ["src/fleetmix/experiments/.*"]
+
+# Ignore untyped imports for libraries without stubs
+[[tool.mypy.overrides]]
+module = [
+    "pulp.*",
+    "vrplib.*", 
+    "haversine.*",
+    "sklearn.*",
+    "scipy.*",
+    "statsmodels.*",
+    "kmedoids.*",
+    "joblib.*",
+    "folium.*",
+    "streamlit_folium.*",
+    "geopy.*",
+    "gurobipy.*",
+    "pyvrp.*",
+    "numba.*",
+    "cython.*",
+    "plotly.*",
+    "rich.*",
+    "streamlit.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "fleetmix-env",
+    "tests",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings  
+    "F",     # pyflakes
+    "I",     # isort
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "W293",   # blank line contains whitespace
+    "W291",   # trailing whitespace
+    "F401",   # unused import (often intentional in __init__.py)
+    "F841",   # unused variable (often intentional in tests)
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["fleetmix"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/fleetmix_example_plugins/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "src/fleetmix/experiments/fleet_composition/*",
+    "src/fleetmix/benchmarking/solvers/vrp_solver.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
