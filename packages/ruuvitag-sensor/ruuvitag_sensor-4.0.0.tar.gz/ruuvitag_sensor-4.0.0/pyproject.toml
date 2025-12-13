@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruuvitag_sensor"
+version = "4.0.0"
+authors = [
+  { name="Tomi Tuhkanen", email="tomi.tuhkanen@iki.fi" },
+]
+description = "Find RuuviTag sensors and get decoded data from selected sensors"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: AsyncIO",
+    "Framework :: Pytest"
+]
+keywords = ["RuuviTag", "BLE", "Bluetooth", "IoT", "Sensor"]
+dependencies = [
+    "reactivex",
+    "ptyprocess;platform_system=='Linux'",
+    "bleak",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff>=0.14.0,<0.15.0",
+    "mypy>=1.0.0,<2.0.0"
+]
+
+[project.urls]
+homepage = "https://github.com/ttu/ruuvitag-sensor"
+documentation = "https://ttu.github.io/ruuvitag-sensor/"
+source = "https://github.com/ttu/ruuvitag-sensor"
+changelog = "https://github.com/ttu/ruuvitag-sensor/blob/master/CHANGELOG.md"
+issues = "https://github.com/ttu/ruuvitag-sensor/issues"
+
+[tool.pytest.ini_options]
+testpaths = "tests/"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+exclude = [".venv", ".git", ".eggs", "__pycache__", "build", "dist"]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "A",     # flake8-builtins
+    "ARG",   # flake8-unused-arguments - catch unused args
+    "ASYNC", # flake8-async - async/await best practices
+    "B",     # flake8-bugbear - common bugs and design problems
+    "C4",    # flake8-comprehensions - better list/dict comprehensions
+    "C90",   # maccabe
+    "DTZ",   # flake8-datetimez - datetime best practices
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "G",     # flake8-logging-format
+    "I",     # isort
+    "PERF",  # perflint
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
+    "Q",     # flake8-quotes
+    "RUF",   # ruff-specific rules
+    "SIM",   # flake8-simplify
+    "UP",    # pyupgrade
+    "W",     # pycodestyle warnings
+]
+ignore = [
+    "PLR2004", # Magic value used in comparison
+    "RUF006",  # Store a reference to the return value of asyncio.create_task
+]
+
+[tool.ruff.format]
+quote-style = "double"  
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+exclude = "^(examples/|build/|dist/)$"
