@@ -1,0 +1,99 @@
+[tool.poetry]
+name = "inepandas"
+version = "0.1.0"
+description = "A Python wrapper for the Spanish National Statistics Institute (INE) API"
+authors = ["Jonathan Mair jonathan.mair@gmail.com"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/yourusername/pyine"
+repository = "https://github.com/yourusername/pyine"
+documentation = "https://github.com/yourusername/pyine#readme"
+keywords = ["ine", "spain", "statistics", "api", "data", "pandas"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+packages = [{include = "inepandas", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.32.0"
+pandas = "^2.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-cov = "^6.0.0"
+pytest-vcr = "^1.0.2"
+mypy = "^1.13.0"
+ruff = "^0.8.0"
+types-requests = "^2.32.0"
+pandas-stubs = "^2.2.0"
+pdoc = "^16.0.0"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.0"
+mkdocs-material = "^9.5.0"
+mkdocstrings = {extras = ["python"], version = "^0.27.0"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["inepandas"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pandas.typing"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=pyine --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/pyine"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
