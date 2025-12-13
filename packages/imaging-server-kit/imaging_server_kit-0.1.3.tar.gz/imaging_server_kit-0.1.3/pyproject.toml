@@ -1,0 +1,80 @@
+[project]
+name = "imaging-server-kit"
+dynamic = ["version"]
+description = "Convert image processing functions to GUIs, FastAPI servers, and more."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Mallory Wittwer", email = "mallory.wittwer@epfl.ch" }]
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+dependencies = [
+    "numpy",
+    "tifffile",  # To encode/decode
+    "tqdm",
+    "pydantic>=2.0",
+    "scikit-image[optional]",  # To imread samples and run demo examples
+    "jinja2",  # To template the info endpoint
+    "PyYAML",  # To load the metadata yaml file
+    "cookiecutter",  # To start from a template
+    "opencv-contrib-python-headless",  # We need this instead of opencv-python to be able to run servers in docker.
+    "imantics",  # To convert masks to features for QuPath. Comes with opencv-python.
+    "geojson",  # To convert masks and points to features for QuPath 
+    # Used in app
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    # Used in app + client
+    "msgpack",
+    "httpx",
+]
+
+[project.optional-dependencies]
+docs = ["jupyter-book<2.0", "jupytext"]
+test = ["pytest"]
+all = ["imaging-server-kit[docs,test]"]
+
+[project.scripts]
+serverkit = "imaging_server_kit.cli:main"
+
+[project.urls]
+repository = "https://github.com/Imaging-Server-Kit/imaging-server-kit"
+documentation = "https://imaging-server-kit.github.io/imaging-server-kit"
+
+[build-system]
+requires = ["setuptools>=42.0.0", "wheel", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]
+"imaging_server_kit.core" = [
+    "templates/*.html",
+    "static/css/*",
+    "static/js/*",
+    "static/*",
+]
+
+[tool.setuptools_scm]
+write_to = "src/imaging_server_kit/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
