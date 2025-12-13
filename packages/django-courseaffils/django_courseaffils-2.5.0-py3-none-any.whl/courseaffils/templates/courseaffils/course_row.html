@@ -1,0 +1,29 @@
+<tr>
+    <td class="course-choice">
+        <a class="choose-course"
+           href="?set_course={{course.group.name|urlencode}}{{next_redirect}}"
+        >{{course.title}}</a>
+    </td>
+    <td>
+        {% if course.info.termyear %}
+            {{course.info.termyear}}
+        {% endif %}
+    </td>
+    <td>{% if course.details.instructor %}{{course.details.instructor.value}}{% endif %}</td>
+    <td>
+        {% if course in as_instructor %}
+            Instructor
+        {% elif course in as_student %}
+            Student
+        {% else %}
+            Non-member
+        {% endif %}
+    </td>
+    {% if add_privilege %}
+        <td class="manage-course">
+            <a class="project"
+               href="{% url 'admin:courseaffils_course_change' course.id %}"
+            >manage</a>
+        </td>
+    {% endif %}
+</tr>
