@@ -1,0 +1,82 @@
+[project]
+name = "imu_python"
+version = "0.0.5a0"
+description = "IMU sensor codes in Python for the exosuit"
+readme = "README.md"
+authors = [
+  { name = "Tsmorz", email = "tony.smoragiewicz@tum.de" },
+  { name = "CatYang3", email = "haoqing.yang@tum.de" },
+]
+requires-python = ">=3.11,<3.14"
+
+# --- Core dependencies: NO hardware here ---
+dependencies = [
+  "numpy>=2.2.3",
+  "loguru>=0.7.3",
+]
+
+# --- Optional dependency groups (PEP 621 standard) ---
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6.9",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "pre-commit>=4.1.0",
+  "coveralls>=4.0.1",
+  "pyright>=1.1.407",
+]
+hw = [
+  "adafruit-circuitpython-bno055>=5.4.20",
+  "jetson-gpio>=2.1.12",
+  "adafruit-circuitpython-lsm6ds>=4.5.18",
+  "adafruit-circuitpython-lis3mdl>=1.2.6",
+]
+no_hw = [
+  # Add things here only if you need *extra* deps for simulations or mock drivers.
+  # For now this can be empty.
+]
+
+[project.urls]
+homepage = "https://github.com/TUM-Aries-Lab/imu-module"
+
+# -------------------------------------------------------------------
+# RUFF configuration
+# -------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+fix = true
+
+lint.select = [
+  "E","F","W","C90","I","N","D","UP","B","S","YTT","Q","PL","RUF","T20","F841","ERA001",
+]
+
+lint.ignore = [
+  "D203","D213","E501","N803","N806","D415","S101","E203","E731",
+  "D107","PLR2004","S607","S605","S603",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["imu_python"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# BUILD SYSTEM (Hatchling via uv)
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Tell hatchling where the package lives (src layout)
+[tool.hatch.build.targets.wheel]
+packages = ["src/imu_python"]
+
+# Include files in source distributions
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/imu_python",
+  "README.md",
+  "LICENSE",
+]
