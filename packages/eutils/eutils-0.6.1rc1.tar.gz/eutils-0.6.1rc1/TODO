@@ -1,0 +1,45 @@
+-*-outline-*-
+
+* doc, docstrings
+
+* more tests! (See coverage)
+
+* use tags to distinguish tests that require net connectivity from others
+Net tests need to not use cache (easier when these are separated! -- #123)
+But... commit cache into repo for non-net tests
+
+* distinguish tests that use vcr-cached data (common) from live tests that
+  ensure that the package still works against current endpoints, which obviously
+  need to be less stringent about exact matches.
+
+* filter out unused headers in cassettes
+
+* reenable testing for dbsnp xmlfacade; see tests/x-test_eutils_xmlfacades_dbsnp.py
+
+* switch to pytest-vcr config
+
+* FIX xmlfacade for dbsnp
+
+* #122: implement TTL support in cache
+
+* #123: refactor queryservice to separate querying, throttling, and caching
+queryservice implements too much functionality. It should be refactored into:
+a basic query service that executes queries, period
+a thin throttling service based on the basic query service
+a caching service on the throttled service (since that's all the caching service should use)
+separate caching, throttling, querying, parsing/facades
+
+* #124: Support large search result sets
+support webenv history
+use web history + iterators for chained searching
+
+* add test tags to isolate tests against live ncbi data (ie not pyvcr tests)
+
+* QueryService:
+** Fetch & compare
+** TTL support in cache, request-specific TTLs?
+** optional db -> options map (esp. for rettype & retmode)
+** deal with caching status 200 replies that are bogus (e.g., truncated xml) -- callbacks?
+** provide uncached access
+** support history
+** default args is misplaced -- it should go in client instead
