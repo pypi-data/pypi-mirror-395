@@ -1,0 +1,42 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set cdp_cmd = "show cdp neighbors" %}
+{% set lldp_cmd = "show lldp neighbors" %}
+{% elif 'nxos' in os_type |string %}
+{% set cdp_cmd = "show cdp neighbors" %}
+{% set lldp_cmd = "show lldp neighbors" %}
+{% elif 'asa' in os_type |string %}
+{% elif 'wlc' in os_type |string %}
+{% set cdp_cmd = "show cdp neighbors detail" %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### CDP: {intf: {neighbor: neighbor_interface}} ### #}
+{% if sub_feat == 'cdp' and cdp_cmd is defined %}
+    cdp:
+      {{ cdp_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        {{ input_vars }}
+{% endif %}
+{# ### LLDP: {intf: {neighbor: neighbor_interface}} ### #}
+{% elif sub_feat == 'lldp' and lldp_cmd is defined %}
+    lldp:
+      {{ lldp_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        {{ input_vars }}
+{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}

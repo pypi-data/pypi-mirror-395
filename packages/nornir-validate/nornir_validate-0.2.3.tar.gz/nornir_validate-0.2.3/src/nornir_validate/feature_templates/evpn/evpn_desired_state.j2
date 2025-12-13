@@ -1,0 +1,49 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set nve_vni_cmd = "show nve vni" %}
+{% set nve_peer_cmd = "show nve peers" %}
+{% elif 'nxos' in os_type |string %}
+{% set nve_vni_cmd = "show nve vni" %}
+{% set nve_peer_cmd = "show nve peers" %}
+{% elif 'asa' in os_type |string %}
+{% elif 'wlc' in os_type |string %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### NVE_VNI: {cmd: {l3vni: {bd_vrf: z, state: Up}}} ### #}
+{% if sub_feat == 'nve_vni' and nve_vni_cmd is defined %}
+    nve_vni:
+      {{ nve_vni_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+{% for each_vni, vni_info in input_vars.items() %}
+        {{ each_vni }}:
+          bd_vrf: {{ vni_info.bd_vrf }}
+          state: Up
+{% endfor %}{% endif %}
+{# ### NVE_PEER: {cmd: {peer: Up}} ### #}
+{% elif sub_feat == 'nve_peer' and nve_peer_cmd is defined %}
+    nve_peer:
+      {{ nve_peer_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        _mode: strict
+{% if input_vars.__class__.__name__ != 'list' %}
+        {{ input_vars }}: Up 
+{% elif input_vars.__class__.__name__ == 'list' %}
+{% for each_peer in input_vars %}
+        {{ each_peer }}: Up
+{% endfor %}{% endif %}{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}
