@@ -1,0 +1,154 @@
+# distribAPI
+
+distribAPI is a lightweight Python library for intelligent API request distribution.  
+It dynamically routes requests to the best available endpoint or to a local handler, based on:
+
+- CPU, RAM, and optionally GPU usage
+- Endpoint latency
+- Failure rate
+- Endpoint priority
+
+It is designed for distributed applications where load balancing and resource-aware routing are important.
+
+
+## Features
+
+- Asynchronous request dispatching using `aiohttp`
+- Automatic endpoint selection based on resource usage and latency
+- Local fallback processing when endpoints are overloaded or unavailable
+- Optional GPU monitoring
+- Retry logic for failed requests
+- Detailed endpoint statistics
+
+## Installation
+
+```bash
+pip install distribapi
+```
+
+Optional GPU monitoring:
+
+```bash
+pip install distribapi[gpu]
+```
+
+For development:
+
+```bash
+pip install distribapi[dev]
+```
+
+## Quick example
+
+```python
+import asyncio
+from distribapi import distrib
+
+async def local_handler(data):
+    return {"processed_locally": True, "echo": data}
+
+# Initialize distribAPI
+distrib.init(resources=["cpu", "ram"], latency=True)
+
+# Add API endpoints
+distrib.add_endpoint("http://localhost:8001/api", "Node-1")
+distrib.add_endpoint("http://localhost:8002/api", "Node-2")
+
+# Set local handler
+distrib.set_local_handler(local_handler)
+
+async def main():
+    result = await distrib.process({"input": "Hello World"})
+    print("Result:", result)
+    print("Stats:", distrib.get_stats())
+
+asyncio.run(main())
+```
+
+## Usage
+
+### Initialise
+
+```python
+distrib.init(
+    resources=["cpu", "ram", "gpu"],  # GPU is optional and needs the GPU-installation
+    latency=True,
+    fallback_local=True
+)
+```
+
+### Add Endpoints
+
+```python
+distrib.add_endpoint(
+    url="https://server1.example.com/infer",
+    name="Server-1",
+    priority=1,
+    max_cpu=80.0,
+    max_ram=80.0,
+    max_gpu=80.0,
+    timeout=30.0
+)
+```
+
+### Local Handler
+
+```python
+async def local_handler(data):
+    return {"status": "processed locally"}
+
+distrib.set_local_handler(local_handler)
+```
+
+### Process a Request
+
+```python
+response = await distrib.process({"text": "example"})
+```
+
+Response example:
+```json
+{
+  "success": true,
+  "data": {...},
+  "endpoint": "Server-1",
+  "latency": 0.042
+}
+```
+
+### Get Statistics
+
+```python
+stats = distrib.get_stats()
+print(stats)
+```
+
+Example:
+
+```json
+{
+  "endpoints": [
+    {
+      "name": "Server-1",
+      "url": "...",
+      "avg_latency": 0.221,
+      "request_count": 42,
+      "failed_requests": 3,
+      "success_rate": 92.85
+    }
+  ],
+  "system_resources": {
+    "cpu": 17.4,
+    "ram": 48.2
+  }
+}
+```
+
+## License
+
+This project is licensed under the MIT License.
+
+## Contributing
+
+Pull requests and issues are welcome.
+For major changes, please open a discussion first.
