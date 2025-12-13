@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dataset Resizer · SyntaxMatrix ML Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --smx-bg: #0f172a;
+      --smx-bg-soft: #020617;
+      --smx-card: #020617;
+      --smx-card-soft: #020617;
+      --smx-border: #1f2937;
+      --smx-border-soft: #111827;
+      --smx-accent: #38bdf8;
+      --smx-accent-soft: rgba(56, 189, 248, 0.16);
+      --smx-accent-strong: #0ea5e9;
+      --smx-text-main: #e5e7eb;
+      --smx-text-soft: #9ca3af;
+      --smx-danger: #f97373;
+      --smx-success: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 0 0, #1e293b 0, #020617 55%, #000000 100%);
+      color: var(--smx-text-main);
+      min-height: 100vh;
+    }
+
+    .smx-shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
+    }
+
+    .smx-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .smx-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .smx-logo-pill {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0ea5e9 35%, #22c55e 80%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      colour: #0b1120;
+    }
+
+    .smx-topbar-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .smx-topbar-title-main {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .smx-topbar-title-sub {
+      font-size: 0.8rem;
+      colour: var(--smx-text-soft);
+    }
+
+    .smx-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      text-decoration: none;
+      font-size: 0.8rem;
+      colour: var(--smx-text-main);
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .smx-back-link:hover {
+      border-colour: var(--smx-accent);
+      colour: var(--smx-accent-strong);
+    }
+
+    .smx-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.1fr);
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .smx-card {
+      background: radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.08), rgba(15, 23, 42, 0.98));
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      padding: 18px 18px 18px;
+      box-shadow:
+        0 18px 40px rgba(15, 23, 42, 0.80),
+        0 0 0 0.5px rgba(148, 163, 184, 0.35);
+    }
+
+    .smx-card-secondary {
+      background: radial-gradient(circle at 100% 0, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.98));
+      border-radius: 16px;
+      border: 1px solid rgba(30, 64, 175, 0.7);
+      padding: 18px 18px;
+      box-shadow:
+        0 16px 32px rgba(15, 23, 42, 0.85),
+        0 0 0 0.5px rgba(30, 64, 175, 0.55);
+    }
+
+    .smx-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .smx-card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .smx-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      colour: var(--smx-accent-strong);
+    }
+
+    .smx-card-body {
+      font-size: 0.85rem;
+      colour: var(--smx-text-soft);
+    }
+
+    .smx-description {
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      font-size: 0.82rem;
+      margin-bottom: 4px;
+    }
+
+    .smx-field {
+      margin-bottom: 10px;
+    }
+
+    input[type="file"],
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: rgba(15, 23, 42, 0.9);
+      colour: var(--smx-text-main);
+      font-size: 0.85rem;
+      color: #fff5;
+    }
+
+    input[type="file"] {
+      padding: 6px 0;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-colour: var(--smx-accent);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
+    }
+
+    .smx-hint {
+      font-size: 0.75rem;
+      colour: var(--smx-text-soft);
+      margin: 0 0 6px;
+    }
+
+    .smx-actions {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, #0ea5e9, #22c55e);
+      colour: #0b1120;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(8, 47, 73, 0.7);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.05);
+      box-shadow: 0 14px 28px rgba(8, 47, 73, 0.85);
+    }
+
+    .smx-adv-toggle {
+      font-size: 0.8rem;
+      colour: var(--smx-accent);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: centre;
+      gap: 4px;
+    }
+
+    .smx-adv-toggle:hover {
+      text-decoration: underline;
+    }
+
+    #advanced-box {
+      display: none;
+      margin-top: 8px;
+      padding: 10px 10px 8px;
+      border-radius: 10px;
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .flashes {
+      list-style: none;
+      padding-left: 0;
+      margin: 0 0 10px;
+      font-size: 0.78rem;
+    }
+
+    .flashes li {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(250, 204, 21, 0.8);
+      background: rgba(251, 191, 36, 0.06);
+      colour: #facc15;
+    }
+
+    .flashes li.error {
+      border-colour: rgba(248, 113, 113, 0.9);
+      background: rgba(248, 113, 113, 0.08);
+      colour: #fecaca;
+    }
+
+    .flashes li.success {
+      border-colour: rgba(34, 197, 94, 0.9);
+      background: rgba(22, 163, 74, 0.08);
+      colour: #bbf7d0;
+    }
+
+    .flashes li.warning {
+      border-colour: rgba(234, 179, 8, 0.9);
+      background: rgba(234, 179, 8, 0.08);
+      colour: #fef3c7;
+    }
+
+    .meta-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0 0 10px;
+      font-size: 0.8rem;
+      colour: var(--smx-text-soft);
+    }
+
+    .meta-list li {
+      margin-bottom: 3px;
+    }
+
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(34, 197, 94, 0.9);
+      colour: #bbf7d0;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-decoration: none;
+      background: rgba(22, 163, 74, 0.23);
+      box-shadow: 0 10px 22px rgba(4, 52, 35, 0.8);
+    }
+
+    .download-link:hover {
+      background: rgba(21, 128, 61, 0.9);
+      colour: #ecfdf5;
+    }
+
+    .smx-side-note-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .smx-side-note-text {
+      font-size: 0.8rem;
+      colour: var(--smx-text-soft);
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+
+    .smx-badge-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--smx-accent);
+      margin-right: 6px;
+    }
+
+    @media (max-width: 880px) {
+      .smx-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .smx-shell {
+        padding-top: 16px;
+      }
+      .smx-card,
+      .smx-card-secondary {
+        border-radius: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="smx-shell">
+    <div class="smx-topbar">
+      <div class="smx-topbar-left">
+        <div class="smx-logo-pill">SM</div>
+        <div class="smx-topbar-title">
+          <div class="smx-topbar-title-main">Dataset Resizer</div>
+          <div class="smx-topbar-title-sub">Subset of Explore · ML Lab</div>
+        </div>
+      </div>
+      <a href="{{ url_for('dashboard', section='explore') }}" class="smx-back-link">
+        <span aria-hidden="true">←</span>
+        <span>Back to ML Lab</span>
+      </a>
+    </div>
+
+    <div class="smx-layout">
+      <!-- Main card: form -->
+      <div class="smx-card">
+        {% with msgs = get_flashed_messages(with_categories=true) %}
+          {% if msgs %}
+            <ul class="flashes">
+              {% for category, msg in msgs %}
+                <li class="{{ category }}">{{ msg }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <div class="smx-card-header">
+          <div class="smx-card-title">
+            <span>Resize a dataset</span>
+            <span class="smx-pill">Explore subset</span>
+          </div>
+        </div>
+        <div class="smx-card-body">
+          <p class="smx-description">
+            Upload any CSV that feels too large to work with. Choose the percentage you want to keep,
+            and the resizer will return a smaller sample that preserves the overall feel of the data.
+          </p>
+
+          <form method="post" enctype="multipart/form-data">
+            <div class="smx-field">
+              <label for="dataset_file">CSV file</label>
+              <input id="dataset_file" type="file" name="dataset_file" accept=".csv" required>
+              <p class="smx-hint">
+                This is independent of the datasets listed in the ML Lab sidebar. You can bring in any CSV here.
+              </p>
+            </div>
+
+            <div class="smx-field">
+              <label for="target_pct">Target size (%)</label>
+              <input
+                id="target_pct"
+                name="target_pct"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                placeholder="For example: 20 for 20% of the rows"
+                required
+              >
+              <p class="smx-hint">
+                We will sample roughly this share of rows. For very large files, even 5–10&nbsp;% can be enough
+                to explore patterns.
+              </p>
+            </div>
+
+            <a href="#" id="advToggle" class="smx-adv-toggle">
+              <span aria-hidden="true">▸</span>
+              <span>Show advanced options</span>
+            </a>
+
+            <div id="advanced-box">
+              <div class="smx-field" style="margin-top:4px;">
+                <label for="strat_col">Stratify by column (optional)</label>
+                <input
+                  id="strat_col"
+                  name="strat_col"
+                  type="text"
+                  placeholder="Type a label/segment column to keep class balance"
+                >
+                <p class="smx-hint">
+                  If you supply a valid column name (for example a target label), the resizer will allocate rows per
+                  class so proportions remain close to the original.
+                </p>
+              </div>
+            </div>
+
+            <div class="smx-actions">
+              <button type="submit" class="btn-primary">
+                Create resized CSV
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Side card: summary + download -->
+      <div class="smx-card-secondary">
+        <div class="smx-card-header">
+          <div class="smx-card-title">
+            <span class="smx-badge-dot"></span>
+            <span>Resize summary</span>
+          </div>
+        </div>
+        <div class="smx-card-body">
+          {% if resize_info %}
+            <p class="smx-side-note-text">
+              Here is a quick view of what was produced from your last run. You can download the resized CSV
+              and pass it straight into your modelling workflow.
+            </p>
+            <ul class="meta-list">
+              <li><strong>Original rows:</strong> {{ resize_info.rows_in }}</li>
+              <li><strong>Resized rows:</strong> {{ resize_info.rows_out }}</li>
+              <li><strong>Target size:</strong> {{ "%.1f"|format(resize_info.pct) }}&nbsp;%</li>
+              {% if resize_info.used_strat and resize_info.strat_col %}
+                <li><strong>Stratified by:</strong> {{ resize_info.strat_col }}</li>
+              {% endif %}
+            </ul>
+            <a href="{{ url_for('download_resized_dataset') }}" class="download-link">
+              Download resized CSV
+            </a>
+          {% else %}
+            <p class="smx-side-note-title">No resized dataset yet</p>
+            <p class="smx-side-note-text">
+              Once you upload a file and choose a percentage, this panel will display the row counts and a download
+              button for the resized sample.
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById("advToggle");
+      const box = document.getElementById("advanced-box");
+      if (!toggle || !box) return;
+
+      let open = false;
+      const labelSpan = toggle.querySelector("span:nth-child(2)");
+      const arrowSpan = toggle.querySelector("span:nth-child(1)");
+
+      function refresh() {
+        box.style.display = open ? "block" : "none";
+        if (labelSpan) {
+          labelSpan.textContent = open ? "Hide advanced options" : "Show advanced options";
+        }
+        if (arrowSpan) {
+          arrowSpan.textContent = open ? "▾" : "▸";
+        }
+      }
+
+      toggle.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        open = !open;
+        refresh();
+      });
+
+      refresh();
+    })();
+  </script>
+</body>
+</html>
