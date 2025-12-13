@@ -1,0 +1,574 @@
+#
+# sonar-tools
+# Copyright (C) 2019-2025 Olivier Korach
+# mailto:olivier.korach AT gmail DOT com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+"""
+
+Abstraction of the SonarQube "quality gate" concept
+
+"""
+
+from __future__ import annotations
+from typing import Union, Optional, Any
+
+import json
+
+import sonar.logging as log
+import sonar.sqobject as sq
+import sonar.platform as pf
+from sonar.util import types, cache, constants as c
+from sonar import measures, exceptions, projects
+import sonar.permissions.qualitygate_permissions as permissions
+import sonar.utilities as util
+
+from sonar.audit.rules import get_rule, RuleId
+from sonar.audit.problem import Problem
+from sonar.util import common_json_helper
+
+
+__MAX_ISSUES_SHOULD_BE_ZERO = "Any numeric threshold on number of issues should be 0 or should be removed from QG conditions"
+__THRESHOLD_ON_OVERALL_CODE = "Threshold on overall code should not be too strict or passing the QG will often be impossible"
+__RATING_A = "Any rating other than A would let vulnerabilities slip through in new code"
+
+GOOD_QG_CONDITIONS = {
+    "new_reliability_rating": (1, 1, __RATING_A),
+    "new_reliability_rating_with_aica": (1, 1, __RATING_A),
+    "new_software_quality_reliability_rating": (1, 1, __RATING_A),
+    "new_software_quality_maintainability_rating": (1, 1, __RATING_A),
+    "new_software_quality_security_rating": (1, 1, __RATING_A),
+    "new_security_rating": (1, 1, __RATING_A),
+    "new_security_rating_with_aica": (1, 1, __RATING_A),
+    "new_maintainability_rating": (1, 1, "Expectation is that code smells density on new code is low enough to get A rating"),
+    "new_coverage": (20, 90, "Coverage below 20% is a too low bar, above 90% is overkill"),
+    "new_duplicated_lines_density": (1, 5, "Duplication on new code of less than 1% is overkill, more than 5% is too relaxed"),
+    "new_vulnerabilities": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_bugs": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_code_smells": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_security_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_reliability_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_maintainability_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_blocker_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_critical_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_major_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_minor_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_security_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_reliability_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_maintainability_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_blocker_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_high_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_medium_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_low_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_software_quality_maintainability_debt_ratio": (1.0, 20.0, "Maintainability debt ratio should be between 1% and 20% to be acceptable"),
+    "new_security_hotspots": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_security_hotspots_reviewed": (100, 100, "All hotspots on new code must be reviewed, any other condition than 100% make little sense"),
+    "security_rating": (4, 4, __THRESHOLD_ON_OVERALL_CODE),
+    "reliability_rating": (4, 4, __THRESHOLD_ON_OVERALL_CODE),
+    "software_quality_security_rating": (3, 4, __THRESHOLD_ON_OVERALL_CODE),
+    "software_quality_reliability_rating": (3, 4, __THRESHOLD_ON_OVERALL_CODE),
+    "sca_severity_licensing": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "sca_severity_vulnerability": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_sca_severity_licensing": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_sca_severity_any_issue": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "new_sca_severity_vulnerability": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "blocker_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "critical_violations": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "software_quality_blocker_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "software_quality_high_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+    "prioritized_rule_issues": (0, 0, __MAX_ISSUES_SHOULD_BE_ZERO),
+}
+
+_IMPORTABLE_PROPERTIES = ("name", "isDefault", "isBuiltIn", "conditions", "permissions")
+
+
+class QualityGate(sq.SqObject):
+    """
+    Abstraction of the Sonar Quality Gate concept
+    """
+
+    API = {
+        c.CREATE: "qualitygates/create",
+        c.GET: "qualitygates/show",
+        c.DELETE: "qualitygates/destroy",
+        c.LIST: "qualitygates/list",
+        c.RENAME: "qualitygates/rename",
+        "get_projects": "qualitygates/search",
+    }
+    CACHE = cache.Cache()
+
+    def __init__(self, endpoint: pf.Platform, name: str, data: types.ApiPayload) -> None:
+        """Constructor, don't use directly, use class methods instead"""
+        super().__init__(endpoint=endpoint, key=name)
+        self.name = name  #: Object name
+        log.debug("Loading %s with data %s", self, util.json_dump(data))
+        self.is_built_in = False  #: Whether the quality gate is built in
+        self.is_default = False  #: Whether the quality gate is the default
+        self._conditions: Optional[dict[str, str]] = None  #: Quality gate conditions
+        self._permissions: Optional[object] = None  #: Quality gate permissions
+        self._projects: Optional[dict[str, projects.Project]] = None  #: Projects using this quality profile
+        self.sq_json = data
+        self.name = data.get("name")
+        self.key = data.get("id", self.name)
+        self.is_default = data.get("isDefault", False)
+        self.is_built_in = data.get("isBuiltIn", False)
+        self.conditions()
+        self.permissions()
+        log.debug("Created %s with uuid %d id %x", str(self), hash(self), id(self))
+        QualityGate.CACHE.put(self)
+
+    @classmethod
+    def get_object(cls, endpoint: pf.Platform, name: str) -> QualityGate:
+        """Reads a quality gate from SonarQube
+
+        :param endpoint: Reference to the SonarQube platform
+        :param name: Quality gate
+        :return: the QualityGate object or None if not found
+        """
+        o = QualityGate.CACHE.get(name, endpoint.local_url)
+        if o:
+            return o
+        data = search_by_name(endpoint, name)
+        if not data:
+            raise exceptions.ObjectNotFound(name, f"Quality gate '{name}' not found")
+        return cls.load(endpoint, data)
+
+    @classmethod
+    def load(cls, endpoint: pf.Platform, data: types.ApiPayload) -> QualityGate:
+        """Creates a quality gate from returned API data
+        :return: the QualityGate object
+        """
+        # SonarQube 10 compatibility: "id" field dropped, replaced by "name"
+        o = QualityGate.CACHE.get(data["name"], endpoint.local_url)
+        if not o:
+            o = cls(endpoint, data["name"], data=data)
+        log.debug("Loading 2 %s QG from %s", o.name, util.json_dump(data))
+        o.sq_json = data
+        o.is_default = data.get("isDefault", False)
+        o.is_built_in = data.get("isBuiltIn", False)
+        return o
+
+    @classmethod
+    def create(cls, endpoint: pf.Platform, name: str) -> Union[QualityGate, None]:
+        """Creates an empty quality gate"""
+        endpoint.post(QualityGate.API[c.CREATE], params={"name": name})
+        return cls.get_object(endpoint, name)
+
+    def __str__(self) -> str:
+        """
+        :return: String formatting of the object
+        :rtype: str
+        """
+        return f"quality gate '{self.name}'"
+
+    def __hash__(self) -> int:
+        """Default UUID for SQ objects"""
+        return hash((self.name, self.base_url()))
+
+    def url(self) -> str:
+        """
+        :return: The object permalink
+        :rtype: str
+        """
+        return f"{self.base_url(local=False)}/quality_gates/show/{self.key}"
+
+    def projects(self) -> dict[str, projects.Project]:
+        """
+        :raises ObjectNotFound: If Quality gate not found
+        :return: The list of projects using this quality gate
+        """
+        if self._projects is not None:
+            return self._projects
+        params = {"ps": 500} | {"gateId": self.key} if self.endpoint.is_sonarcloud() else {"gateName": self.name}
+        page, nb_pages = 1, 1
+        self._projects = {}
+        while page <= nb_pages:
+            params["p"] = page
+            try:
+                resp = self.get(QualityGate.API["get_projects"], params=params)
+            except exceptions.ObjectNotFound:
+                QualityGate.CACHE.pop(self)
+                raise
+            data = json.loads(resp.text)
+            for prj in data["results"]:
+                key = prj["key"] if "key" in prj else prj["id"]
+                self._projects[key] = projects.Project.get_object(self.endpoint, key)
+            nb_pages = util.nbr_pages(data)
+            page += 1
+        return self._projects
+
+    def conditions(self, encoded: bool = False) -> list[str]:
+        """
+        :param encoded: Whether to encode the conditions or not, defaults to False
+        :type encoded: bool, optional
+        :return: The quality gate conditions, encoded (for simplication) or not
+        :rtype: list
+        """
+        if self._conditions is None:
+            self._conditions = []
+            data = json.loads(self.get(QualityGate.API[c.GET], params=self.api_params()).text)
+            log.debug("Loading %s with conditions %s", self, util.json_dump(data))
+            for cond in data.get("conditions", []):
+                self._conditions.append(cond)
+        if encoded:
+            return _encode_conditions(self._conditions)
+        return self._conditions
+
+    def clear_conditions(self) -> bool:
+        """Clears all quality gate conditions, if quality gate is not built-in
+        :return: Nothing
+        """
+        if self.is_built_in:
+            log.debug("Can't clear conditions of built-in %s", str(self))
+            return False
+        log.debug("Clearing conditions of %s", str(self))
+        for cond in self.conditions():
+            self.post("qualitygates/delete_condition", params={"id": cond["id"]})
+        self._conditions = []
+        return True
+
+    def set_conditions(self, conditions_list: list[str]) -> bool:
+        """Sets quality gate conditions (overriding any previous conditions) as encoded in sonar-config
+        :param list[str] conditions_list: List of conditions, encoded
+        :return: Whether the operation succeeded
+        """
+        if not conditions_list or len(conditions_list) == 0:
+            return True
+        if self.is_built_in:
+            log.debug("Can't set conditions of built-in %s", str(self))
+            return False
+        self.clear_conditions()
+        log.debug("Setting conditions of %s", str(self))
+        if self.endpoint.is_sonarcloud():
+            params = {"gateId": self.key}
+        else:
+            params = {"gateName": self.name}
+        ok = True
+        for cond in conditions_list:
+            (params["metric"], params["op"], params["error"]) = _decode_condition(cond)
+            try:
+                ok = ok and self.post("qualitygates/create_condition", params=params).ok
+            except exceptions.SonarException:
+                ok = False
+        self._conditions = None
+        self.conditions()
+        return ok
+
+    def permissions(self) -> permissions.QualityGatePermissions:
+        """
+        :return: The quality gate permissions
+        :rtype: QualityGatePermissions
+        """
+        if self._permissions is None:
+            self._permissions = permissions.QualityGatePermissions(self)
+        return self._permissions
+
+    def set_permissions(self, permissions_list: types.ObjectJsonRepr) -> bool:
+        """Sets quality gate permissions
+        :param permissions_list:
+        :type permissions_list: dict {"users": [<userlist>], "groups": [<grouplist>]}
+        :return: Whether the operation succeeded
+        """
+        return self.permissions().set(permissions_list)
+
+    def copy(self, new_qg_name: str) -> QualityGate:
+        """Copies the QG into another one with name new_qg_name"""
+        data = json.loads(self.post("qualitygates/copy", params={"sourceName": self.name, "name": new_qg_name}).text)
+        return QualityGate(self.endpoint, name=new_qg_name, data=data)
+
+    def set_as_default(self) -> bool:
+        """Sets the quality gate as the default
+        :return: Whether setting as default quality gate was successful
+        :rtype: bool
+        """
+        params = {"id": self.key} if self.endpoint.is_sonarcloud() else {"name": self.name}
+        try:
+            ok = self.post("qualitygates/set_as_default", params=params).ok
+            # Turn off default for all other quality gates except the current one
+            for qg in get_list(self.endpoint).values():
+                qg.is_default = qg.name == self.name
+        except exceptions.SonarException:
+            return False
+        else:
+            return ok
+
+    def update(self, **data) -> bool:
+        """Updates a quality gate
+        :param dict data: Considered keys: "name", "conditions", "permissions"
+        """
+        log.debug("Updating %s with data %s", str(self), util.json_dump(data))
+        if self.is_built_in:
+            log.debug("Can't update built-in %s", str(self))
+            return True
+        if "name" in data and data["name"] != self.name:
+            log.info("Renaming %s with %s", str(self), data["name"])
+            self.post(QualityGate.API[c.RENAME], params={"id": self.key, "name": data["name"]})
+            QualityGate.CACHE.pop(self)
+            self.name = data["name"]
+            self.key = data["name"]
+            QualityGate.CACHE.put(self)
+        ok = self.set_conditions(data.get("conditions", []))
+        ok = self.set_permissions(data.get("permissions", [])) and ok
+        if data.get("isDefault", False):
+            ok = self.set_as_default() and ok
+        return ok
+
+    def is_identical_to(self, other_qg: QualityGate) -> bool:
+        """Checks whether the quality gate is identical to another one
+        :param other_qg: The other quality gate to compare with
+        :return: True if identical, False otherwise
+        """
+        return sorted(self.conditions(encoded=True)) == sorted(other_qg.conditions(encoded=True))
+
+    def api_params(self, op: str = c.GET) -> types.ApiParams:
+        """Return params used to search/create/delete for that object"""
+        ops = {c.GET: {"name": self.name}}
+        return ops[op] if op in ops else ops[c.GET]
+
+    def __audit_conditions(self) -> list[Problem]:
+        problems = []
+        for cond in self.conditions():
+            m = cond["metric"]
+            if m not in GOOD_QG_CONDITIONS:
+                problems.append(Problem(get_rule(RuleId.QG_WRONG_METRIC), self, str(self), m))
+                continue
+            val = int(cond["error"])
+            (mini, maxi, precise_msg) = GOOD_QG_CONDITIONS[m]
+            log.info("Condition on metric '%s': Check that %d in range [%d - %d]", m, val, mini, maxi)
+            if val < mini or val > maxi:
+                rule = get_rule(RuleId.QG_WRONG_THRESHOLD)
+                problems.append(Problem(rule, self, str(self), val, m, mini, maxi, precise_msg))
+        return problems
+
+    def audit(self, audit_settings: types.ConfigSettings = None) -> list[Problem]:
+        """Audits a quality gate, returns found problems"""
+        my_name = str(self)
+        log.debug("Auditing %s", my_name)
+        if self.is_built_in:
+            return []
+        problems = []
+        audit_settings = audit_settings or {}
+        max_cond = int(util.get_setting(audit_settings, "audit.qualitygates.maxConditions", 8))
+        nb_conditions = len(self.conditions())
+        log.debug("Auditing %s number of conditions (%d) is OK", my_name, nb_conditions)
+        if nb_conditions == 0:
+            problems.append(Problem(get_rule(RuleId.QG_NO_COND), self, my_name))
+        elif nb_conditions > max_cond:
+            problems.append(Problem(get_rule(RuleId.QG_TOO_MANY_COND), self, my_name, nb_conditions, max_cond))
+        problems += self.__audit_conditions()
+        problems += self.permissions().audit(audit_settings)
+        if not self.is_default and len(self.projects()) == 0:
+            problems.append(Problem(get_rule(RuleId.QG_NOT_USED), self, my_name))
+        return problems
+
+    def to_json(self, export_settings: types.ConfigSettings) -> types.ObjectJsonRepr:
+        """Returns JSON representation of object"""
+        json_data = self.sq_json
+        full = export_settings.get("FULL_EXPORT", False)
+        if not self.is_default and not full:
+            json_data.pop("isDefault", None)
+        if self.is_built_in:
+            if full:
+                json_data["_conditions"] = self.conditions(encoded=True)
+        else:
+            if not full:
+                json_data.pop("isBuiltIn", None)
+            json_data["conditions"] = self.conditions(encoded=True)
+            json_data["permissions"] = self.permissions().export(export_settings=export_settings)
+        return util.remove_nones(util.filter_export(json_data, _IMPORTABLE_PROPERTIES, full))
+
+
+def __audit_duplicates(qg_list: dict[str, QualityGate], audit_settings: types.ConfigSettings = None) -> list[Problem]:
+    """Audits for duplicate quality gates
+    :param qg_list: dict of QP indexed with their key
+    :param audit_settings: Audit settings to use
+    """
+    if not audit_settings.get("audit.qualityGates.duplicates", True):
+        return []
+    problems = []
+    pairs = {(key1, key2) if key1 < key2 else (key2, key1) for key1 in qg_list.keys() for key2 in qg_list.keys() if key1 != key2}
+    for key1, key2 in pairs:
+        qg1, qg2 = qg_list[key1], qg_list[key2]
+        log.debug("Comparing %s and %s", qg1, qg2)
+        if qg2.is_identical_to(qg1):
+            problems.append(Problem(get_rule(RuleId.QG_DUPLICATES), f"{qg1.endpoint.external_url}/quality_gates", qg1.name, qg2.name))
+    return problems
+
+
+def audit(endpoint: pf.Platform = None, audit_settings: types.ConfigSettings = None, **kwargs) -> list[Problem]:
+    """Audits Sonar platform quality gates, returns found problems"""
+    if not audit_settings.get("audit.qualityGates", True):
+        log.info("Auditing quality gates is disabled, audit skipped...")
+        return []
+    log.info("--- Auditing quality gates ---")
+    problems = []
+    all_qg = get_list(endpoint)
+    custom_qg = {k: qg for k, qg in all_qg.items() if not qg.is_built_in}
+    max_qg = util.get_setting(audit_settings, "audit.qualitygates.maxNumber", 5)
+    log.debug("Auditing that there are no more than %d quality gates", max_qg)
+    if (nb_qg := len(custom_qg)) > max_qg:
+        problems.append(Problem(get_rule(RuleId.QG_TOO_MANY_GATES), f"{endpoint.external_url}/quality_gates", nb_qg, max_qg))
+    for qg in custom_qg.values():
+        problems += qg.audit(audit_settings | {"audit.permissions.zeroPermissions": False})
+    problems += __audit_duplicates(custom_qg, audit_settings)
+    "write_q" in kwargs and kwargs["write_q"].put(problems)
+    return problems
+
+
+def get_list(endpoint: pf.Platform) -> dict[str, QualityGate]:
+    """
+    :return: The whole list of quality gates
+    :rtype: dict {<name>: <QualityGate>}
+    """
+    log.info("Getting quality gates")
+    data = json.loads(endpoint.get(QualityGate.API[c.LIST]).text)
+    qg_list = {}
+    for qg in data["qualitygates"]:
+        qg_obj = QualityGate.CACHE.get(qg["name"], endpoint.local_url)
+        if qg_obj is None:
+            qg_obj = QualityGate(endpoint=endpoint, name=qg["name"], data=qg.copy())
+        if endpoint.version() < (7, 9, 0) and "default" in data and data["default"] == qg["id"]:
+            qg_obj.is_default = True
+        else:
+            qg_obj.is_default = qg.get("isDefault", False)
+            qg_obj.is_built_in = qg.get("isBuiltIn", False)
+        qg_list[qg_obj.name] = qg_obj
+    return dict(sorted(qg_list.items()))
+
+
+def export(endpoint: pf.Platform, export_settings: types.ConfigSettings, **kwargs) -> types.ObjectJsonRepr:
+    """Exports quality gates as JSON
+
+    :param Platform endpoint: Reference to the Sonar platform
+    :param ConfigSetting export_settings: Options to use for export
+    :return: Quality gates representations as JSON
+    """
+    log.info("Exporting quality gates")
+    qg_list = [qg.to_json(export_settings) for qg in get_list(endpoint).values()]
+    write_q = kwargs.get("write_q", None)
+    if write_q:
+        write_q.put(qg_list)
+        write_q.put(util.WRITE_END)
+    return qg_list
+
+
+def import_config(endpoint: pf.Platform, config_data: types.ObjectJsonRepr, key_list: types.KeyList = None) -> bool:
+    """Imports quality gates in a SonarQube platform, fom sonar-config data
+    Quality gates already existing are updates with the provided configuration
+
+    :param Platform endpoint: Reference to the SonarQube platform
+    :param dict config_data: JSON representation of quality gates (as per export format)
+    :return: Whether the import succeeded
+    :rtype: bool
+    """
+    if "qualityGates" not in config_data:
+        log.info("No quality gates to import")
+        return True
+    log.info("Importing quality gates")
+    ok = True
+    converted_data = util.list_to_dict(config_data["qualityGates"], "name")
+    for name, data in converted_data.items():
+        try:
+            o = QualityGate.get_object(endpoint, name)
+            log.debug("Found existing %s", str(o))
+        except exceptions.ObjectNotFound:
+            log.debug("QG %s not found, creating it", name)
+            o = QualityGate.create(endpoint, name)
+        log.debug("Importing %s with %s", str(o), util.json_dump(data))
+        ok = o.update(**data) and ok
+    return ok
+
+
+def count(endpoint: pf.Platform) -> int:
+    """
+    :param Platform endpoint: Reference to the SonarQube platform
+    :return: Number of quality gates
+    :rtype: int
+    """
+    return len(get_list(endpoint))
+
+
+def exists(endpoint: pf.Platform, gate_name: str) -> bool:
+    """Returns whether a quality gate exists
+
+    :param Platform endpoint: Reference to the SonarQube platform
+    :param str gate_name: Quality gate name
+    :return: Whether the quality gate exists
+    :rtype: bool
+    """
+    try:
+        _ = QualityGate.get_object(endpoint, gate_name)
+        return True
+    except exceptions.ObjectNotFound:
+        return False
+
+
+def _encode_conditions(conds: list[dict[str, str]]) -> list[str]:
+    """Encode dict conditions in strings"""
+    simple_conds = []
+    for cond in conds:
+        simple_conds.append(_encode_condition(cond))
+    return simple_conds
+
+
+_PERCENTAGE_METRICS = ("density", "ratio", "percent", "security_hotspots_reviewed", "coverage")
+
+
+def _encode_condition(cond: dict[str, str]) -> str:
+    """Encode one dict conditions in a string"""
+    metric, op, val = cond["metric"], cond["op"], cond["error"]
+    if op == "GT":
+        op = ">="
+    elif op == "LT":
+        op = "<="
+    if "rating" in metric:
+        val = measures.get_rating_letter(val)
+    elif metric.startswith("sca_severity") and f"{val}" == "19":
+        val = "High"
+    if any(d in metric for d in _PERCENTAGE_METRICS):
+        val = f"{val}%"
+    return f"{metric} {op} {val}"
+
+
+def _decode_condition(cond: str) -> tuple[str, str, str]:
+    """Decodes a string condition in a tuple metric, op, value"""
+    (metric, op, val) = cond.strip().split(" ")
+    if op in (">", ">="):
+        op = "GT"
+    elif op in ("<", "<="):
+        op = "LT"
+    if "rating" in metric:
+        val = measures.get_rating_number(val)
+    elif metric.startswith("sca_severity") and val == "High":
+        val = 19
+    if any(d in metric for d in _PERCENTAGE_METRICS) and val.endswith("%"):
+        val = val[:-1]
+    return (metric, op, val)
+
+
+def search_by_name(endpoint: pf.Platform, name: str) -> dict[str, Any]:
+    """Searches quality gates matching name"""
+    return util.search_by_name(endpoint, name, QualityGate.API[c.LIST], "qualitygates")
+
+
+def convert_qgs_json(old_json: dict[str, Any]) -> list[dict[str, Any]]:
+    """Converts the sonar-config quality gates old JSON report format to the new one"""
+    old_json = common_json_helper.convert_common_fields(old_json, with_permissions=False)
+    for qg in [q for q in old_json.values() if "permissions" in q]:
+        for ptype in [p for p in ("users", "groups") if p in qg["permissions"]]:
+            qg["permissions"][ptype] = util.csv_to_list(qg["permissions"][ptype])
+    return util.dict_to_list(old_json, "name")
