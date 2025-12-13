@@ -1,0 +1,64 @@
+[tool.pytest.ini_options]
+pythonpath = ["src/basebender"]
+[project]
+name = "basebender"
+version = "0.1.6"
+description = "A Python module for rebaseing strings between different digit sets (positional number systems)."
+authors = [
+    {name = "by.a.mexc@gmail.com"}
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "toml (>=0.10.2,<0.11.0)",
+    "platformdirs (>=4.2.0,<5.0.0)",
+    "pyside6 (>=6.9.0,<7.0.0)",
+    "fastapi (>=0.115.12,<1.0.0)",
+    "uvicorn (>=0.34.3,<1.0.0)",
+    "poetry-core (>=2.0.0)"
+]
+[project.urls]
+Homepage = "https://github.com/meXc/BaseBender"
+Repository = "https://github.com/meXc/BaseBender.git"
+Issues = "https://github.com/meXc/BaseBender/issues"
+
+[tool.poetry]
+
+packages = [{ include = "basebender", from = "src" }]
+
+include = [
+    "src/basebender/rebaser/generated/app_resources_rc.py"
+]
+
+
+[tool.poetry.build]
+script = "bin/generate_resources.py"
+
+
+[tool.poetry.scripts]
+basebender = "basebender.cli:main"
+basebender-gui = "basebender.gui.main_window:run_gui"
+basebender-api = "basebender.api.main:start_api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.1"
+pylint = "^4.0.4"
+black = "^25.11.0"
+isort = "^7.0.0"
+pre-commit = "^4.5.0"
+twine = "^6.2.0"
+
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 80
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools.packages.find]
+where = ["src"]
