@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: Apache-2.0
+
+import multiprocessing
+import os
+import subprocess
+
+from cliff.command import Command
+from loguru import logger
+
+from osism.tasks import reconciler
+from osism import utils
+
+
+class Run(Command):
+    def take_action(self, parsed_args):
+        logger.info(
+            "The osism reconciler command is deprecated and will be removed. Use osism service reconciler."
+        )
+        # NOTE: use python interface in the future, works for the moment
+        default_concurrency = min(multiprocessing.cpu_count(), 4)
+        concurrency = int(
+            os.environ.get("OSISM_CELERY_CONCURRENCY", default_concurrency)
+        )
+        p = subprocess.Popen(
+            f"celery -A osism.tasks.reconciler worker -n reconciler --loglevel=INFO -Q reconciler -c {concurrency}",
+            shell=True,
+        )
+        p.wait()
+
+
+class Sync(Command):
+    def get_parser(self, prog_name):
+        parser = super(Sync, self).get_parser(prog_name)
+        parser.add_argument(
+            "--no-wait",
+            default=False,
+            help="Do not wait until the sync has been completed",
+            action="store_true",
+        )
+        parser.add_argument(
+            "--task-timeout",
+            default=os.environ.get("OSISM_TASK_TIMEOUT", 300),
+            type=int,
+            help="Timeout for a scheduled task that has not been executed yet",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        # Check if tasks are locked before proceeding
+        utils.check_task_lock_and_exit()
+
+        wait = not parsed_args.no_wait
+        task_timeout = parsed_args.task_timeout
+
+        t = reconciler.run.delay(publish=wait)
+        if wait:
+            logger.info(
+                f"Task {t.task_id} (sync inventory) is running in background. Output coming soon."
+            )
+            try:
+                return utils.fetch_task_output(t.id, timeout=task_timeout)
+            except TimeoutError:
+                logger.error(
+                    f"Timeout while waiting for further output of task {t.task_id} (sync inventory)"
+                )
+        else:
+            logger.info(
+                f"Task {t.task_id} (sync inventory) is running in background. No more output."
+            )
