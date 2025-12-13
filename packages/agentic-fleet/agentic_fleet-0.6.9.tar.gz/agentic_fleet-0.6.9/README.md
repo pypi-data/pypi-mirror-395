@@ -1,0 +1,281 @@
+<p align="center">
+  <img src="assets/banner.png" alt="AgenticFleet" width="100%"/>
+</p>
+
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
+  <a href="https://pepy.tech/projects/agentic-fleet"><img src="https://static.pepy.tech/personalized-badge/agentic-fleet?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=downloads" alt="PyPI Downloads"/></a>
+  <a href="https://deepwiki.com/qredence/agentic-fleet"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
+  <a href="https://pypi.org/project/agentic-fleet/"><img src="https://img.shields.io/pypi/v/agentic-fleet?color=blue" alt="PyPI Version"/></a>
+  <a href="https://pypi.org/project/agentic-fleet/"><img src="https://img.shields.io/pypi/pyversions/agentic-fleet" alt="Python Versions"/></a>
+</p>
+
+<h3 align="center">
+  <b>Self-Optimizing Multi-Agent Orchestration</b>
+</h3>
+
+<p align="center">
+  Intelligent task routing with <a href="https://github.com/stanfordnlp/dspy">DSPy</a> • Robust execution with <a href="https://github.com/microsoft/agent-framework">Microsoft Agent Framework</a>
+</p>
+
+---
+
+## ✨ What is AgenticFleet?
+
+AgenticFleet is a production-ready multi-agent orchestration system that **automatically routes tasks to specialized AI agents** and orchestrates their execution through a self-optimizing pipeline.
+
+```
+User Task → Analysis → Intelligent Routing → Agent Execution → Quality Check → Output
+```
+
+**Key Features:**
+
+- 🧠 **DSPy-Powered Routing** – Typed signatures with Pydantic validation for reliable structured outputs
+- 🔄 **5 Execution Modes** – Auto, Delegated, Sequential, Parallel, Handoff, and Discussion
+- 🎯 **6 Specialized Agents** – Researcher, Analyst, Writer, Reviewer, Coder, Planner
+- ⚡ **Smart Fast-Path** – Simple queries bypass multi-agent routing (<1s response)
+- 📊 **Built-in Evaluation** – Azure AI Evaluation integration for quality metrics
+- 🔍 **OpenTelemetry Tracing** – Full observability with Azure Monitor export
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Clone and install
+git clone https://github.com/Qredence/agentic-fleet.git && cd agentic-fleet
+uv sync  # or: pip install agentic-fleet
+
+# Configure environment
+cp .env.example .env
+# Set OPENAI_API_KEY (required)
+# Set TAVILY_API_KEY (optional, enables web search)
+```
+
+### Run
+
+```bash
+# Interactive CLI
+agentic-fleet
+
+# Single task
+agentic-fleet run -m "Research the latest advances in AI agents" --verbose
+
+# Development server (backend + frontend)
+agentic-fleet dev
+```
+
+## 📖 Usage
+
+### CLI
+
+```bash
+agentic-fleet                              # Interactive console
+agentic-fleet run -m "Your task"           # Execute a task
+agentic-fleet run -m "Query" --mode handoff  # Specific execution mode
+agentic-fleet list-agents                  # Show available agents
+agentic-fleet dev                          # Start dev servers
+```
+
+### Python API
+
+```python
+import asyncio
+from agentic_fleet.workflows import create_supervisor_workflow
+
+async def main():
+    workflow = await create_supervisor_workflow()
+    result = await workflow.run("Summarize the transformer architecture")
+    print(result["result"])
+
+asyncio.run(main())
+```
+
+### Web Interface
+
+```bash
+agentic-fleet dev  # Backend: http://localhost:8000, Frontend: http://localhost:5173
+```
+
+The web interface provides:
+
+- Real-time streaming responses with workflow visualization
+- Conversation history with persistence
+- Agent activity display and orchestration insights
+
+## 🤖 Agents & Execution Modes
+
+### Specialized Agents
+
+| Agent          | Expertise                                           |
+| -------------- | --------------------------------------------------- |
+| **Researcher** | Web search, information gathering, source synthesis |
+| **Analyst**    | Data analysis, code review, technical evaluation    |
+| **Writer**     | Content creation, documentation, summarization      |
+| **Reviewer**   | Quality assurance, fact-checking, critique          |
+| **Coder**      | Code generation, debugging, implementation          |
+| **Planner**    | Task decomposition, strategy, coordination          |
+
+### Execution Modes
+
+| Mode           | Description                         | Best For             |
+| -------------- | ----------------------------------- | -------------------- |
+| **Auto**       | DSPy selects optimal mode (default) | Most tasks           |
+| **Delegated**  | Single agent handles entire task    | Focused work         |
+| **Sequential** | Agents work in pipeline             | Multi-step tasks     |
+| **Parallel**   | Concurrent agent execution          | Independent subtasks |
+| **Handoff**    | Direct agent-to-agent transfers     | Specialized chains   |
+| **Discussion** | Multi-agent group chat              | Complex problems     |
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+```bash
+# Required
+OPENAI_API_KEY=sk-...
+
+# Optional
+TAVILY_API_KEY=tvly-...          # Web search capability
+DSPY_COMPILE=true                # Enable DSPy optimization
+ENABLE_OTEL=true                 # OpenTelemetry tracing
+OTLP_ENDPOINT=http://...         # Tracing endpoint
+```
+
+### Workflow Configuration
+
+All runtime settings are in `src/agentic_fleet/config/workflow_config.yaml`:
+
+```yaml
+dspy:
+  optimization:
+    use_typed_signatures: true # Pydantic-validated outputs
+    enable_routing_cache: true # Cache routing decisions
+    cache_ttl_seconds: 300 # Cache TTL
+
+models:
+  router: gpt-4o-mini # Fast routing decisions
+  agents: gpt-4o # Agent execution
+
+execution:
+  max_iterations: 10
+  quality_threshold: 0.8
+```
+
+## 🏗️ Architecture
+
+```
+src/agentic_fleet/
+├── agents/           # Agent definitions & AgentFactory
+├── workflows/        # Orchestration: supervisor, executors, strategies
+├── dspy_modules/     # DSPy signatures, typed models, assertions
+├── tools/            # Tavily, browser, MCP bridges, code interpreter
+├── app/              # FastAPI backend + SSE streaming
+├── cli/              # Typer CLI commands
+├── config/           # workflow_config.yaml (source of truth)
+└── utils/            # Helpers, caching, tracing
+
+src/frontend/         # React/Vite UI
+```
+
+**Key Design Principles:**
+
+1. **Config-Driven** – All models, agents, and thresholds in YAML
+2. **Offline Compilation** – DSPy modules compiled offline, never at runtime
+3. **Type Safety** – Pydantic models for all DSPy outputs
+4. **Assertion-Driven** – DSPy assertions for routing validation
+
+## 🧪 Development
+
+```bash
+make install           # Install dependencies
+make dev               # Run backend + frontend
+make test              # Run tests
+make check             # Lint + type-check (run before committing)
+make clear-cache       # Clear DSPy cache after module changes
+```
+
+## 📚 Documentation
+
+| Guide                                                               | Description                     |
+| ------------------------------------------------------------------- | ------------------------------- |
+| [Getting Started](docs/users/getting-started.md)                    | Installation and first steps    |
+| [Configuration](docs/users/configuration.md)                        | Environment and workflow config |
+| [Frontend Guide](docs/users/frontend.md)                            | Web interface usage             |
+| [Architecture](docs/developers/architecture.md)                     | System design and internals     |
+| [DSPy Integration](docs/guides/dspy-agent-framework-integration.md) | DSPy + Agent Framework patterns |
+| [Tracing](docs/guides/tracing.md)                                   | OpenTelemetry setup             |
+| [Troubleshooting](docs/users/troubleshooting.md)                    | Common issues and solutions     |
+
+## 🆕 What's New in v0.6.9
+
+- **Typed DSPy Signatures** – Pydantic models for validated, type-safe outputs
+- **DSPy Assertions** – Hard constraints and soft suggestions for routing validation
+- **Routing Cache** – TTL-based caching for routing decisions
+- **Task Type Detection** – Automatic classification (research/coding/analysis/writing)
+
+See [CHANGELOG.md](CHANGELOG.md) for full release history.
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/agentic-fleet.git
+cd agentic-fleet
+
+# Install dev dependencies
+uv sync
+
+# Create a branch
+git checkout -b feature/your-feature-name
+
+# Make changes, then run checks
+make check              # Lint + type-check
+make test               # Run tests
+
+# Submit a PR
+```
+
+**Guidelines:**
+
+- Follow the existing code style (Ruff formatting, type hints)
+- Add tests for new features
+- Update documentation as needed
+- Use [conventional commits](https://www.conventionalcommits.org/) (optional but appreciated)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+## 📄 License
+
+This project is licensed under the **MIT License** – you're free to use, modify, and distribute this software for any purpose.
+
+See the [LICENSE](LICENSE) file for the full text.
+
+## 🙏 Acknowledgments
+
+AgenticFleet stands on the shoulders of giants. Special thanks to:
+
+| Project                                                                   | Contribution                                   |
+| ------------------------------------------------------------------------- | ---------------------------------------------- |
+| [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Multi-agent runtime and orchestration patterns |
+| [DSPy](https://github.com/stanfordnlp/dspy)                               | Programmatic LLM pipelines and optimization    |
+| [Tavily](https://tavily.com)                                              | AI-native search API for research agents       |
+| [FastAPI](https://fastapi.tiangolo.com/)                                  | Modern async Python web framework              |
+| [Pydantic](https://docs.pydantic.dev/)                                    | Data validation and settings management        |
+| [OpenTelemetry](https://opentelemetry.io/)                                | Observability and distributed tracing          |
+
+And to all our [contributors](https://github.com/Qredence/agentic-fleet/graphs/contributors) who help make AgenticFleet better! 💜
+
+---
+
+<p align="center">
+  <a href="https://github.com/Qredence/agentic-fleet/issues/new?template=bug_report.md">🐛 Report Bug</a> •
+  <a href="https://github.com/Qredence/agentic-fleet/issues/new?template=feature_request.md">✨ Request Feature</a> •
+  <a href="https://github.com/Qredence/agentic-fleet/discussions">💬 Discussions</a>
+</p>
+
+<p align="center">
+  <sub>Made with ❤️ by <a href="https://qredence.ai">Qredence</a></sub>
+</p>
