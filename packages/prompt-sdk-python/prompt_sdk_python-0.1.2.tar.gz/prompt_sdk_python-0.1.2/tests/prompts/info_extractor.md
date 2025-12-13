@@ -1,0 +1,6 @@
+---
+name: foobar
+---
+# Examples
+
+{{data}}
