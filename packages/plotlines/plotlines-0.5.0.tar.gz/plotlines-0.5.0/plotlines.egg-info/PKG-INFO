@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: plotlines
+Version: 0.5.0
+Summary: Create and display Story structure.
+Author: D E Haynes
+Maintainer-email: Tundish <tundish@gigeconomy.org.uk>
+License-Expression: GPL-3.0-or-later
+Classifier: Topic :: Multimedia
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Environment :: Web Environment
+Classifier: Programming Language :: Python :: 3 :: Only
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: COPYING
+Dynamic: license-file
+
+Plotlines
+=========
+
+`Plotlines` is a tool to help create online choice-based narratives.
+
+Authors create a basic story structure in [Inkscape](https://inkscape.org/).
+Plotlines will read the SVG file and generate templates for HTML5 output.
+
+Works-in-progress can be saved in human-readable [TOML](https://toml.io/en/) files.
+This format is better suited to collaborative editing.
+
+Workflow
+--------
+
+Inkscape's *Connectors* tool makes it easy to design a branching narrative structure.
+
+![Story board](./plotlines/test/data/spiki-demo_n51.svg)
+
+You can capture ideas in the `title` and `description` fields of both nodes and edges using the *Object Properties*
+editor.
+
+When that phase is complete, you use **Plotlines** to save the structure as a `.toml` file where the serious process of writing and editing begins.
+
+Finally, you can export to a template tree ready for [Spiki](https://pypi.org/project/spiki/) to generate the HTML
+suitable for a static web site on the Internet.
+
+Features
+--------
+
+Plotlines can import SVG from either of these editors:
++ [Dunnart](https://github.com/mjwybrow/dunnart)
++ [Inkscape](https://inkscape.org/)
+
+Mode of use                                     | CLI options               |   Progress        |   Status
+------------------------------------------------|---------------------------|-------------------|-------
+Auto-generation of plot structures              | Omit `-i` option          |   Ongoing         | :x:
+Convert Dunnart files to TOML format            | `-i <file>.svg -o .toml`  |   Complete        | :ok:
+Convert Inkscape files to TOML format           | `-i <file>.svg -o .toml`  |   Complete        | :ok:
+Load and plot a file in TOML format             | `-i <file>.toml`          |   Complete        | :ok:
+Load file and generate a Spiki template tree    | `-i <file>.toml -o <dir>` |   Complete        | :ok:
+
+
+Usage
+-----
+
+```
+python3 -m plotlines.main --help
+usage: python -m plotlines.main [-h] [--debug] [-i INPUT] [-o OUTPUT] [--ending ENDING] [--limit LIMIT] [--exits EXITS]
+
+options:
+  -h, --help            show this help message and exit
+  --debug               Display debug information
+  -i, --input INPUT     Specify an input file
+  -o, --output OUTPUT   Specify an output file or directory
+  --ending ENDING       Set the number of endings [4].
+  --limit LIMIT         Limit the number of Nodes and Edges in the graph [100]
+  --exits EXITS         Fix the number of exiting Edges from each Node [4]
+```
