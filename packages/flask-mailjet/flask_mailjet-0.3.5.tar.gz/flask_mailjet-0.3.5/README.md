@@ -1,0 +1,196 @@
+# flask-mailjet
+
+A lightweight, secure, and production-ready Flask extension for sending
+emails through the **Mailjet API**, built on top of the official
+`mailjet-rest` library.
+
+------------------------------------------------------------------------
+
+## 🚀 Features
+
+-   Simple configuration via `MAILJET_API_KEY` and `MAILJET_API_SECRET`
+-   Straightforward email sending (HTML, multiple recipients)
+-   Built‑in support for file attachments
+-   Templating helper for rendering email templates
+-   Works with both eager app initialization and the Flask Factory
+    pattern
+-   Clean API fully aligned with Mailjet's expectations
+
+------------------------------------------------------------------------
+
+## 📦 Installation
+
+``` bash
+pip install flask-mailjet
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ Configuration
+
+Add the following to your Flask application configuration:
+
+``` python
+app.config["MAILJET_API_KEY"] = "YOUR_API_KEY"
+app.config["MAILJET_API_SECRET"] = "YOUR_API_SECRET"
+```
+
+  Variable               Description
+  ---------------------- -----------------------------
+  `MAILJET_API_KEY`      Your Mailjet API Public Key
+  `MAILJET_API_SECRET`   Your Mailjet API Secret Key
+
+------------------------------------------------------------------------
+
+## 🔧 Initialization
+
+### **Option 1: Eager Initialization**
+
+``` python
+from flask import Flask
+from flask_mailjet import Mailjet
+
+app = Flask(__name__)
+app.config["MAILJET_API_KEY"] = "YOUR_API_KEY"
+app.config["MAILJET_API_SECRET"] = "YOUR_API_SECRET"
+
+mailjet = Mailjet(app)
+```
+
+### **Option 2: Factory Pattern**
+
+``` python
+from flask_mailjet import Mailjet
+
+mailjet = Mailjet()
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_mapping(
+        MAILJET_API_KEY="YOUR_API_KEY",
+        MAILJET_API_SECRET="YOUR_API_SECRET",
+    )
+
+    mailjet.init_app(app)
+    return app
+```
+
+------------------------------------------------------------------------
+
+## ✉️ Sending Emails
+
+All mail‑sending methods expect the **sender** field as:
+
+``` python
+{"Email": "sender@example.com", "Name": "Sender Name"}
+```
+
+------------------------------------------------------------------------
+
+### **1. send_email --- Basic HTML Email**
+
+``` python
+from_user = {"Email": "alerts@app.com", "Name": "App Alerts"}
+to_user = ["user1@mail.com", "user2@mail.com"]
+
+mailjet.send_email(
+    sender=from_user,
+    recipients=to_user,
+    subject="Your Account Is Active",
+    html="<h1>Welcome!</h1><p>Your subscription is confirmed.</p>"
+)
+```
+
+------------------------------------------------------------------------
+
+### **2. send_email_with_attachment --- Email + File Attachment**
+
+``` python
+import os
+
+pdf_path = os.path.join(app.root_path, "static", "invoice.pdf")
+with open(pdf_path, "rb") as f:
+    pdf_bytes = f.read()
+
+mailjet.send_email_with_attachment(
+    sender={"Email": "billing@app.com"},
+    recipients="client@corp.com",
+    subject="Q4 Financial Report",
+    html="<p>Attached is the report.</p>",
+    filename="Q4_Report.pdf",
+    file_bytes=pdf_bytes,
+    content_type="application/pdf",
+)
+```
+
+------------------------------------------------------------------------
+
+## 🎨 Template Rendering (loader.py)
+
+You can render email templates stored in:
+
+    flask_mailjet/templates/mailjet/
+
+### **Example**
+
+``` python
+from flask_mailjet.loader import render_email_template
+
+email_html = render_email_template(
+    "welcome.html",
+    user_name="Tim",
+    link="https://app.example.com"
+)
+
+mailjet.send_email(
+    sender={"Email": "system@app.com"},
+    recipients="user@app.com",
+    subject="Welcome!",
+    html=email_html,
+)
+```
+
+------------------------------------------------------------------------
+
+## 📁 Project Structure Example
+
+    yourapp/
+    ├── app.py
+    ├── templates/
+    │   └── mailjet/
+    │       └── welcome.html
+    └── extensions/
+        └── mailjet.py
+
+------------------------------------------------------------------------
+
+## 🧪 Testing
+
+You can mock Mailjet easily using Python's builtin tools:
+
+``` python
+from unittest.mock import patch
+
+@patch("flask_mailjet.Mailjet.send_email")
+def test_send(mock_send):
+    mock_send.return_value = {"Status": "success"}
+```
+
+------------------------------------------------------------------------
+
+## 📜 License
+
+MIT License.
+
+------------------------------------------------------------------------
+
+## 🤝 Contributing
+
+Pull requests are welcome.\
+Please open an issue first to discuss major changes.
+
+------------------------------------------------------------------------
+
+## ⭐ Support
+
+If this extension helps you, consider starring the repository!
