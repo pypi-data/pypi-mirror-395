@@ -1,0 +1,228 @@
+{#
+Shadcn-style Input Components for FastAPI Shadcn Admin
+
+These macros render form inputs matching the Shadcn/UI design system
+using Tailwind CSS utility classes.
+#}
+
+{# Base input styling classes #}
+{% set input_base = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
+ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground
+focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+disabled:cursor-not-allowed disabled:opacity-50" %}
+
+{% set label_base = "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" %}
+
+{% set textarea_base = "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm
+ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2
+focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" %}
+
+{% set select_base = "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3
+py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring
+focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" %}
+
+{% set checkbox_base = "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background
+focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary
+data-[state=checked]:text-primary-foreground" %}
+
+{# Form field wrapper with label and error #}
+{% macro form_field(name, label, required=false, error=none, description=none) %}
+<div class="space-y-2">
+    <label for="{{ name }}" class="{{ label_base }} text-foreground">
+        {{ label }}
+        {% if required %}
+        <span class="text-destructive">*</span>
+        {% endif %}
+    </label>
+    {{ caller() }}
+    {% if description %}
+    <p class="text-sm text-muted-foreground">{{ description }}</p>
+    {% endif %}
+    {% if error %}
+    <p class="text-sm text-destructive">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Text input #}
+{% macro input(name, type="text", value="", placeholder="", required=false, readonly=false, disabled=false, class="") %}
+<input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}"
+    class="{{ input_base }} {{ class }}" {% if required %}required{% endif %} {% if readonly %}readonly{% endif %} {% if
+    disabled %}disabled{% endif %} />
+{% endmacro %}
+
+
+{# Textarea #}
+{% macro textarea(name, value="", placeholder="", rows=3, required=false, readonly=false, disabled=false, class="") %}
+<textarea id="{{ name }}" name="{{ name }}" placeholder="{{ placeholder }}" rows="{{ rows }}"
+    class="{{ textarea_base }} {{ class }}" {% if required %}required{% endif %} {% if readonly %}readonly{% endif %} {%
+    if disabled %}disabled{% endif %}>{{ value }}</textarea>
+{% endmacro %}
+
+
+{# Select dropdown #}
+{% macro select(name, options, value="", placeholder="Select...", required=false, disabled=false, class="",
+htmx_attrs=none) %}
+<select id="{{ name }}" name="{{ name }}" class="{{ select_base }} {{ class }}" {% if required %}required{% endif %} {%
+    if disabled %}disabled{% endif %} {% if htmx_attrs %} {% for key, val in htmx_attrs.items() %}{{ key }}="{{ val }}"
+    {% endfor %} {% endif %}>
+    {% if placeholder %}
+    <option value="" disabled {% if not value %}selected{% endif %}>{{ placeholder }}</option>
+    {% endif %}
+    {% for opt in options %}
+    <option value="{{ opt.value }}" {% if opt.value|string==value|string %}selected{% endif %}>
+        {{ opt.label }}
+    </option>
+    {% endfor %}
+</select>
+{% endmacro %}
+
+
+{# Polymorphic select with HTMX fragment swapping #}
+{% macro polymorphic_select(name, options, value="", fragment_url="", target_id="", model_name="", signer=none) %}
+<select id="{{ name }}" name="{{ name }}" class="{{ select_base }}" hx-get="{{ fragment_url }}"
+    hx-target="#{{ target_id }}" hx-swap="innerHTML" hx-trigger="change" hx-indicator=".htmx-indicator">
+    <option value="" disabled {% if not value %}selected{% endif %}>Select type...</option>
+    {% for opt in options %}
+    <option value="{{ opt.value }}" {% if opt.value|string==value|string %}selected{% endif %}>
+        {{ opt.label }}
+    </option>
+    {% endfor %}
+</select>
+{# Hidden container for dynamic form fields #}
+<div id="{{ target_id }}" class="mt-4 space-y-4">
+    {% if value %}
+    {# Initial content will be loaded via HTMX #}
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Checkbox #}
+{% macro checkbox(name, label, checked=false, required=false, disabled=false, class="") %}
+<div class="flex items-center space-x-2">
+    <input type="checkbox" id="{{ name }}" name="{{ name }}" class="{{ checkbox_base }} {{ class }}" {% if checked
+        %}checked{% endif %} {% if required %}required{% endif %} {% if disabled %}disabled{% endif %} />
+    <label for="{{ name }}" class="{{ label_base }} text-foreground cursor-pointer">
+        {{ label }}
+    </label>
+</div>
+{% endmacro %}
+
+
+{# Number input #}
+{% macro number_input(name, value="", min=none, max=none, step=1, placeholder="", required=false, disabled=false,
+class="") %}
+<input type="number" id="{{ name }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}"
+    class="{{ input_base }} {{ class }}" {% if min is not none %}min="{{ min }}" {% endif %} {% if max is not none
+    %}max="{{ max }}" {% endif %} step="{{ step }}" {% if required %}required{% endif %} {% if disabled %}disabled{%
+    endif %} />
+{% endmacro %}
+
+
+{# Hidden input #}
+{% macro hidden(name, value) %}
+<input type="hidden" id="{{ name }}" name="{{ name }}" value="{{ value }}" />
+{% endmacro %}
+
+
+{# Form error summary #}
+{% macro error_summary(errors) %}
+{% if errors %}
+<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+    <div class="flex items-center space-x-2">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h4 class="font-medium">There were errors with your submission</h4>
+    </div>
+    </ul>
+</div>
+{% endif %}
+{% endmacro %}
+
+
+{# Relationship Input (Smart Select) #}
+{% macro relationship_input(field, value=none, error=none) %}
+<div x-data="{
+    query: '',
+    results: [],
+    open: false,
+    selectedLabel: '',
+    value: '{{ value or '' }}',
+    targetModel: '{{ field.target_model }}',
+    
+    async search() {
+        if (this.query.length < 1) { this.results = []; return; }
+        let url = `/admin/api/search/${this.targetModel}?q=` + encodeURIComponent(this.query);
+        try {
+            let res = await fetch(url);
+            if (res.ok) {
+                this.results = await res.json();
+                this.open = true;
+            }
+        } catch (e) {
+            console.error('Search failed', e);
+        }
+    },
+    
+    select(item) {
+        this.value = item.id;
+        this.selectedLabel = item.label;
+        this.query = ''; 
+        this.open = false;
+    },
+    
+    init() {
+        if (this.value) {
+            this.selectedLabel = 'ID: ' + this.value; 
+            // TODO: Fetch label if possible
+        }
+    }
+}" class="relative w-full">
+
+    <label class="block mb-2">
+        <div class="flex items-center justify-between">
+            <span class="text-sm font-mono font-semibold text-emerald-400">
+                {{ field.title }}{% if field.required %}<span class="text-red-400 ml-1">*</span>{% endif %}
+            </span>
+        </div>
+    </label>
+
+    <!-- Hidden Actual Input -->
+    <input type="hidden" name="{{ field.name }}" x-model="value">
+
+    <!-- Search Input -->
+    <div class="relative">
+        <input type="text" x-model="query" @input.debounce.300ms="search()" @focus="open = true"
+            @click.outside="open = false"
+            class="w-full h-10 px-4 rounded-lg bg-black border border-emerald-500/20 text-emerald-100 font-mono text-sm placeholder:text-emerald-900 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+            :placeholder="selectedLabel || 'Search {{ field.title }}...'">
+
+        <!-- Clear Button -->
+        <button type="button" x-show="value" @click="value = ''; selectedLabel = ''"
+            class="absolute right-2 top-2 text-red-500 hover:text-red-400 text-xs p-1">
+            CLEAR
+        </button>
+    </div>
+
+    <!-- Dropdown -->
+    <div x-show="open && results.length > 0" x-transition
+        class="absolute z-50 w-full mt-1 bg-black border border-emerald-500/50 rounded shadow-[0_0_15px_rgba(0,255,65,0.2)] max-h-60 overflow-y-auto">
+        <template x-for="item in results" :key="item.id">
+            <div @click="select(item)"
+                class="p-2 cursor-pointer hover:bg-emerald-900/30 hover:text-emerald-400 text-emerald-600 text-sm border-b border-emerald-900/10 font-mono transition-colors">
+                <span x-text="item.label"></span>
+                <span class="text-xs text-emerald-800 float-right" x-text="'#' + item.id"></span>
+            </div>
+        </template>
+    </div>
+
+    {% if error %}
+    <p class="text-xs font-mono text-red-400 mt-1">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
