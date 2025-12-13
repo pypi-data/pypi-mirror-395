@@ -1,0 +1,62 @@
+# ziphttpd: serve Zip files over HTTP
+
+This runs a small web server that provides the contents of a Zip file.
+This only serves the files present in the archive,
+there is no auto-listing of directory contents.
+However, paths that end in `/` get appended with `index.html`,
+so if the Zip file contains that file, it gets served as directory path.
+In particular, path `/` maps to `index.html` if the Zip file contains
+a file thus named.
+
+## Install
+
+```sh
+pip install ziphttpd
+```
+
+## Example uses
+
+```sh
+ziphttpd archive.zip
+```
+
+Serves the contents of `archive.zip` over an automatically-selected ephemeral port,
+over the loopback interface (`localhost`).
+
+```sh
+ziphttpd -p 18888 archive.zip
+```
+
+Serves the file over the loopback interface, at port 18888.
+
+```sh
+ziphttpd -b 192.168.1.45 -p 18888 archive.zip
+```
+
+Serves the file over one's a network-exposed interface associated to one's
+IP address, port 18888.
+
+```sh
+python -m ziphttpd -B -b "" -p 18888 archive.zip
+```
+
+Serves over all of the host's network interfaces, port 18888, and skips starting
+a the host's web browser to `http://0.0.0.0:18888/`
+(path `/` at the server's location).
+Notice how one can use `python -m ziphttpd` as an alternative to short-form entry point.
+
+## Command line arguments
+
+Command line schema:
+
+```sh
+ziphttpd [options] ZIPFILE
+```
+
+| Argument | Description | Example |
+|----------|-------------|---------|
+| `ZIPFILE`                           | The file whose contents to distribute with this server.      | `myfile.zip` |
+| `-b ADDRESS`<br>`--address ADDRESS` | Address to the IP interface to which the server should bind. | `localhost`<br>`10.2.1.18`<br>`0.0.0.0` (all interfaces bound) |
+| `-p PORT`<br>`--port PORT`          | Port to which to bind the server.                            | `10080`<br>`80` (careful with [privileged ports](https://www.baeldung.com/linux/bind-process-privileged-port))<br>`0` (autochoose an ephemeral port) |
+| `-B`<br>`--no-browser`              | By default, once the web server is set up, Ziphttpd opens a web browser tab to the server's URL on the host. This option omits this browser action. | |
+| `-v`<br>`--verbose`                 | Increases the verbosity level of the server log. Use twice for debugging trace. | |
