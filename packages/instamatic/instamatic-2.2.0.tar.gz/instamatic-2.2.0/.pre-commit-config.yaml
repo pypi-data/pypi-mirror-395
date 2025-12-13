@@ -1,0 +1,39 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-docstring-first
+      - id: check-builtin-literals
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: double-quote-string-fixer
+    #   - id: check-json
+    #   - id: check-added-large-files
+  - repo: https://github.com/stefsmeets/nbcheckorder/
+    rev: v0.3.0
+    hooks:
+      - id: nbcheckorder
+        # This notebook is not executed at all, which fails the check
+        exclude: |
+          (?x)^(
+            docs/examples/montage_processing.ipynb
+          )$
+  - repo: https://github.com/myint/docformatter
+    rev: 'v1.7.7'
+    hooks:
+      - id: docformatter
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.11.10'
+    hooks:
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi, jupyter]
+      - id: ruff-format
+        types_or: [python, pyi]
