@@ -1,0 +1,64 @@
+from asyncio import get_running_loop
+from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
+from functools import partial, wraps
+from typing import ParamSpec, TypeVar
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def awaitify(
+    func: Callable[P, R],
+    /,
+    *,
+    executor: ThreadPoolExecutor | None = None,
+) -> Callable[P, Awaitable[R]]:
+    """Make ``func`` asynchronous.
+
+    Parameters
+    ----------
+    func : Callable[P, R]
+        Callable.
+
+    executor : ThreadPoolExecutor, optional
+        Executor.
+
+    Returns
+    -------
+    Callable[P, Awaitable[R]]
+        Callable.
+
+    Notes
+    -----
+    * If ``executor`` is :obj:`None`, then the default one is used (usually, a thread pool).
+
+    Examples
+    --------
+    >>> aprint = awaitify(print)
+    >>> await aprint("4 -> 23")
+    4 -> 23
+
+    See Also
+    --------
+    :meth:`asyncio.loop.run_in_executor`
+    """
+    if not callable(func):
+        detail = "'func' must be 'Callable'"
+        raise TypeError(detail)
+
+    if executor is not None and not isinstance(executor, ThreadPoolExecutor):
+        detail = "'executor' must be 'ThreadPoolExecutor' or 'None'"
+        raise TypeError(detail)
+
+    @wraps(func)
+    async def afunc(*args: P.args, **kwargs: P.kwargs) -> R:
+        """Run the function asynchronously."""
+        loop = get_running_loop()
+        context = copy_context()
+        execute = partial(context.run, func, *args, **kwargs)
+        return await loop.run_in_executor(executor, execute)
+
+    return afunc
