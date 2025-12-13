@@ -1,0 +1,64 @@
+Metadata-Version: 2.4
+Name: unix-at
+Version: 1.2.1
+Summary: Talk to the at(1) daemon, to schedule jobs for later
+Home-page: https://github.com/remram44/unix-at
+Author: Remi Rampin
+Author-email: remirampin@gmail.com
+Maintainer: Remi Rampin
+Maintainer-email: remirampin@gmail.com
+License: BSD-3-Clause
+Project-URL: Homepage, https://github.com/remram44/unix-at
+Project-URL: Documentation, https://unix-at.readthedocs.io/
+Project-URL: Source, https://github.com/remram44/unix-at
+Project-URL: Tracker, https://github.com/remram44/unix-at/issues
+Keywords: unix,at,atq,job,jobs,schedule,scheduling,later,delay,defer,deferred,queue,task
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Unix Shell
+Classifier: Topic :: Home Automation
+Classifier: Topic :: System
+Classifier: Topic :: Utilities
+License-File: LICENSE.txt
+Requires-Dist: python-dateutil
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: maintainer
+Dynamic: maintainer-email
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: summary
+
+unix-at
+=======
+
+This tiny library allows you to talk to the `at(1)` system, available on most UNIX machines, to schedule jobs to be run later.
+
+Using `at(1)` can be much more light-weight than running a full-fledged job-processing system such as `Celery <http://www.celeryproject.org/>`__ if you are running very few jobs, however the performance will be much lower if you are running a considerable amount of tasks.
+
+Example
+-------
+
+..  code-block:: python
+
+    import unix_at
+
+    job = unix_at.submit_shell_job(['touch', '/some/file'])
+    unix_at.cancel_job(job)
+    job = unix_at.submit_python_job(os.mkdir, 'now + 1 hour', '/some/dir')
+
+    for job in unix_at.list_jobs():
+        print(job.name, job.time)
