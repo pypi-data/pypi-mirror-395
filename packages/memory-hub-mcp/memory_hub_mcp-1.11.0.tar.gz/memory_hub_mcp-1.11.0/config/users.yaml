@@ -1,0 +1,58 @@
+# Memory Hub HTTP Server - User Authentication & Authorization Config
+#
+# User Configuration:
+#   - handle: Unique username (used in X-Memory-Hub-User header)
+#   - status: active | blocked | suspended
+#   - is_admin: true (access all paths/tools) | false (restricted access)
+#   - allowed_paths: Hierarchical path patterns with wildcard support
+#   - allowed_tools: List of allowed MCP tool names
+#
+# Path Pattern Examples:
+#   ["app"] - app-level only (no projects/tickets/runs)
+#   ["app", "*"] - app + all projects (no deeper)
+#   ["app", "proj", "*"] - app + project + all tickets (no runs)
+#   ["app", "proj", "ticket", "*"] - specific ticket + all runs
+#   ["app", "*", "*", "*"] - everything under app
+#
+# Admin Users:
+#   - Empty allowed_paths = access to all paths
+#   - Empty allowed_tools = access to all tools
+
+users:
+  # Example: Restricted user (Manis.im AutoStack agent)
+  manus:
+    status: active
+    is_admin: false
+    allowed_paths:
+      - ["manus-autostack", "buildout", "*", "*"]  # Everything in the manus-autostack app
+    allowed_tools:
+      - add_memory
+      - get_project_memories
+      - search_memories
+      - update_memory
+      - get_recent_memories
+      - get_hierarchy_overview
+      - get_scope_overview
+      - export_memories
+      - get_quick_start
+
+  # Example: Admin user (full access)
+  matt:
+    status: active
+    is_admin: true
+    allowed_paths: []  # Empty = all access
+    allowed_tools: []  # Empty = all tools
+
+  # Codex agent (full access for development)
+  codex:
+    status: active
+    is_admin: true
+    allowed_paths: []  # Empty = all access
+    allowed_tools: []  # Empty = all tools
+
+  # Claude Flow integration (full access)
+  claude-flow:
+    status: active
+    is_admin: true
+    allowed_paths: []  # Empty = all access
+    allowed_tools: []  # Empty = all tools

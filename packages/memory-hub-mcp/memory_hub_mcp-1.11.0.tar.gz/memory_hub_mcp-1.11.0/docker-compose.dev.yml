@@ -1,0 +1,25 @@
+# Development overrides for docker-compose.yml
+
+
+services:
+  memory-hub:
+    # Override command for hot reloading
+    command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    
+    # Use host user to avoid permission issues with file changes
+    user: "${UID:-1000}:${GID:-1000}"
+    
+    # Additional development environment variables
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1  # Don't create .pyc files
+      - PYTHONUNBUFFERED=1         # Force stdout/stderr to be unbuffered
+      - PYTHONPATH=/app
+      - DEBUG=true
+      
+    # Mount source code as read-write for development
+    volumes:
+      - ./:/app:rw  # Read-write instead of read-only
+      - ./assets:/app/assets:rw
+      
+    # Override restart policy for development
+    restart: "no" 
