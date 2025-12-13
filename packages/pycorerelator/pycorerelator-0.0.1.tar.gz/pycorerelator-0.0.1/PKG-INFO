@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: pycorerelator
+Version: 0.0.1
+Summary: A package for quantitative stratigraphic correlation across geological core and physical log data
+Home-page: https://github.com/GeoLarryLai/pyCoreRelator
+Author: Larry Syu-Heng Lai
+Author-email: Larry Syu-Heng Lai <larrysyuhenglai@gmail.com>
+License-Expression: AGPL-3.0-or-later
+Project-URL: Homepage, https://github.com/GeoLarryLai/pyCoreRelator
+Project-URL: Repository, https://github.com/GeoLarryLai/pyCoreRelator.git
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: matplotlib>=3.5.0
+Requires-Dist: Pillow>=8.3.0
+Requires-Dist: imageio>=2.9.0
+Requires-Dist: librosa>=0.9.0
+Requires-Dist: tqdm>=4.60.0
+Requires-Dist: joblib>=1.1.0
+Requires-Dist: IPython>=7.25.0
+Requires-Dist: psutil>=5.8.0
+Requires-Dist: pydicom>=2.3.0
+Requires-Dist: opencv-python>=4.5.0
+Requires-Dist: scikit-learn>=1.0.0
+Requires-Dist: xgboost>=1.6.0
+Requires-Dist: lightgbm>=3.3.0
+Provides-Extra: interactive
+Requires-Dist: ipympl>=0.9.0; extra == "interactive"
+Provides-Extra: advanced
+Requires-Dist: scikit-image>=0.18.0; extra == "advanced"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# pyCoreRelator
+
+**pyCoreRelator** is an open-source Python package designed for quantitative stratigraphic correlation across geological core and physical log data. The package performs segment-based (i.e., unit-based or bed-to-bed) correlation analysis by applying Dynamic Time Warping (DTW) algorithms for automated signal alignment, while honoring fundamental stratigraphic principles (e.g., superposition, age succession, pinchouts). The main tool computes multiple measures for assessing correlation quality, under the assumption that higher signal similarity indicates stronger correlation. These quality metrics can also be used to identify optimal correlation solutions. In addition, the package provides utility functions for preprocessing log data (e.g., cleaning, gap filling) and core image data (e.g., image stitching, clipping, converting color profiles or scans into digital logs) for use in correlation assessment.
+
+> [!Warning]
+> The **pyCoreRelator** package is still under development and has not been peer-reviewed. Please use with caution.
+
+## Installation
+
+Users can install **pyCoreRelator** directly from [PyPI](https://pypi.org/project/pycorerelator/) with `pip` command:
+```
+pip install pycorerelator
+```
+or from `conda-forge` repository with `conda`:
+```
+conda install pycorerelator
+```
+
+## Key Features
+
+- **Segment-Based DTW Correlation**: Divide cores into analyzable segments using user-picked or machine-learning based depth boundaries, enabling controls on stratigraphic pinchouts or forced correlation datums
+- **Interactive Core Datum Picking**: Manual stratigraphic boundary picking with real-time visualization, category-based classification, and CSV export for quality control
+- **Age Constraints Integration**: Apply chronostratigraphic constraints to search optimal correlation solutions
+- **Quality Assessment**: Compute metrics for the quality of correlation and optimal solution search
+- **Complete DTW Path Finding**: Identify correlation DTW paths spanning entire cores from top to bottom
+- **Null Hypothesis Testing**: Generate synthetic cores and test correlation significance with multi-parameter analysis
+- **Log Data Cleaning & Processing**: Convert core images (CT scans, RGB photos) to digital log data with automated brightness/color profile extraction, image alignment & stitching
+- **Machine Learning Data Imputation**: Advanced ML-based gap filling for core log data using ensemble methods (Random Forest, XGBoost, LightGBM) with configurable feature weighting and trend constraints
+- **Multi-dimensional Log Support**: Handle multiple log types simultaneously with dependent or independent multi-dimensional DTW approach
+- **Visualizations**: DTW cost matrix and paths, segment-wise core correlations, animated sequences, and statistical analysis for correlation solutions
+
+## Main Analysis Functions
+
+### 1. Segment-Based DTW Correlation Analysis
+
+```python
+from pycorerelator.analysis import run_comprehensive_dtw_analysis
+```
+
+The **dtw_core.py** module performs segment-based (i.e., unit-based or bed-to-bed) correlation analysis by applying Dynamic Time Warping (DTW) algorithms for automated signal alignment, while honoring fundamental stratigraphic principles such as superposition, age succession, and pinchouts. The main function `run_comprehensive_dtw_analysis()` computes multiple measures for assessing correlation quality, under the assumption that higher signal similarity indicates stronger correlation. These quality metrics include Normalized DTW Distance, DTW Warping Ratio, DTW Warping Efficiency, Correlation Coefficient, Diagonality Percentage, and Age Overlap Percentage when chronostratigraphic constraints are applied. The module also provides visualization tools for DTW cost matrices, correlation paths, and segment-wise correlations overlaid on log plots.
+
+### 2. Complete DTW Path Finding
+
+```python
+from pycorerelator.analysis import find_complete_core_paths
+```
+
+The **path_finding.py** module identifies correlation DTW paths spanning entire cores from top to bottom using advanced algorithms with memory optimization. This function is essential for finding all possible correlation solutions that connect the top and bottom of core pairs, considering stratigraphic constraints and user-picked boundaries. The module includes tools for analyzing connectivity gaps, diagnosing chain breaks, and combining multiple path segments into complete correlation solutions.
+
+### 3. Synthetic Stratigraphy Generation
+
+```python
+from pycorerelator.analysis import create_synthetic_core_pair, synthetic_correlation_quality
+```
+
+The **syn_strat.py** module generates synthetic cores from segment pools for null hypothesis testing. The synthetic stratigraphy generation allows users to test the significance of observed correlations by comparing them against synthetic cores with known properties. The module includes functions for creating segment pools from real data, generating synthetic core pairs, and conducting multi-parameter analysis to assess correlation quality distributions. This method has been applied in stratigraphic correlation studies to evaluate the robustness of correlation solutions and identify optimal parameter combinations.
+
+### 4. Interactive Stratigraphic Boundary Picking
+
+```python
+from pycorerelator.preprocessing import pick_stratigraphic_levels
+```
+
+The **datum_picker.py** module provides interactive manual stratigraphic boundary picking with real-time visualization and category-based classification. Users can pick stratigraphic boundaries on core logs, assign categories (e.g., turbidite bases, facies transitions), and export the results to CSV files for quality control and further analysis. The module supports multiple log types and includes tools for visualizing picked boundaries alongside core images and log data.
+
+### 5. Machine Learning Data Imputation
+
+```python
+from pycorerelator.preprocessing import process_and_fill_logs
+```
+
+The **gap_filling.py** module performs advanced ML-based gap filling for core log data using ensemble methods (Random Forest, XGBoost, LightGBM) with configurable feature weighting and trend constraints. The module preprocesses core data, trains machine learning models on non-missing values, and fills gaps while maintaining statistical properties and trends in the data. This method has been applied in core log analysis to handle data gaps caused by core recovery issues, measurement artifacts, or missing sections.
+
+### 6. Core Image Processing
+
+```python
+from pycorerelator.preprocessing import ct_process_and_stitch, rgb_process_and_stitch
+```
+
+The **ct_processing.py** and **rgb_processing.py** modules provide complete workflows for processing CT scan images and RGB core photographs, respectively. These modules include functions for image alignment, stitching, brightness/color profile extraction, and conversion to digital log format. The CT processing module handles DICOM files and extracts brightness logs from CT scans, while the RGB processing module extracts color profiles (RGB, grayscale, hue, saturation, value) from core photographs. Both modules support multi-segment processing and optional CSV export for integration with correlation analysis workflows.
+
+## Correlation Quality Assessment
+
+The package computes comprehensive quality indicators for each correlation with enhanced statistical analysis:
+
+### Core Quality Metrics
+- **Correlation Coefficient**: [Default] Pearson's r between DTW aligned sequences (higher values indicate better correlation)
+- **Normalized DTW Distance**: [Default] Normalized DTW cost per alignment (lower values indicate better correlation)
+- **DTW Warping Ratio**: DTW distance relative to Euclidean distance (values closer to 1 indicate less warping)
+- **DTW Warping Efficiency**: Efficiency measure combining DTW path length and alignment quality
+- **Diagonality Percentage**: Percentage of diagonal steps in DTW path (100% = perfect diagonal alignment)
+- **Age Overlap Percentage**: Chronostratigraphic compatibility when age constraints applied
+
+## Requirements
+For **pyCoreRelator** package:
+* Python >= 3.9
+* `numpy` >= 1.20.0
+* `pandas` >= 1.3.0
+* `scipy` >= 1.7.0
+* `matplotlib` >= 3.5.0
+* `Pillow` >= 8.3.0
+* `imageio` >= 2.9.0
+* `librosa` >= 0.9.0
+* `tqdm` >= 4.60.0
+* `joblib` >= 1.1.0
+* `IPython` >= 7.25.0
+* `psutil` >= 5.8.0
+* `pydicom` >= 2.3.0
+* `opencv-python` >= 4.5.0
+* `scikit-learn` >= 1.0.0
+* `xgboost` >= 1.6.0
+* `lightgbm` >= 3.3.0
+
+### Optional Dependencies
+* `ipympl` >= 0.9.0 (for interactive matplotlib widgets in Jupyter notebooks)
+* `scikit-image` >= 0.18.0 (for advanced image processing features)
+
+## Example Applications
+
+The package includes several Jupyter notebooks demonstrating real-world applications with marine sediment cores from the Cascadia Margin:
+
+### Correlation Analysis
+- **pyCoreRelator_5_core_pair_analysis.ipynb**: Comprehensive workflow showing full analysis pipeline for core pair correlation
+- **pyCoreRelator_6_synthetic_strat.ipynb**: Synthetic data generation examples for null hypothesis testing
+- **pyCoreRelator_7_compare2syn.ipynb**: Comparison against synthetic cores with multi-parameter analysis
+
+### Log Data Processing
+- **pyCoreRelator_1_RGBimg2log.ipynb**: Processing, stitching, and converting RGB core images into RGB color logs
+- **pyCoreRelator_2_CTimg2log.ipynb**: Processing, stitching, and converting CT scan images into CT intensity (brightness) logs
+- **pyCoreRelator_3_data_gap_fill.ipynb**: Machine learning-based data processing and gap filling for core log data
+- **pyCoreRelator_4_datum_picker.ipynb**: Interactive stratigraphic boundary picking with real-time visualization
+
+## Documentation
+
+Detailed function documentation is available in the package repository at [FUNCTION_DOCUMENTATION.md](https://github.com/GeoLarryLai/pyCoreRelator/blob/main/FUNCTION_DOCUMENTATION.md).
+
+## License
+**pyCoreRelator** is licensed under the [GNU Affero General Public License v3.0](LICENSE). This means that if you modify and distribute this software, or use it to provide a network service, you must make your modified source code available under the same license. See the LICENSE file for full terms and conditions.
+
