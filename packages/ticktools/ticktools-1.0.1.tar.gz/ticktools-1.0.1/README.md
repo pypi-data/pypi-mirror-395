@@ -1,0 +1,55 @@
+# ChronoKit
+
+A stopwatch/timer utillity
+
+## Installation
+
+```bash
+pip install chronokit
+```
+
+## Importing
+
+```python
+from chronokit import *
+```
+
+## Functions
+
+```python
+stopwatch("START")
+wait(1000)
+stopwatch("STOP")
+from_start()
+```
+
+## Usage
+
+### stopwatch()
+
+The function stopwatch() takes one argument: "START" or "STOP". "START" starts the stopwatch and "STOP" stops it and returns how many milliseconds has elapsed since you started the stopwatch using stopwatch("START"). "START" works with any capitalization:
+
+```python
+stopwatch("StaRt")
+stopwatch("start")
+stopwatch("Start")
+stopwatch("StOP")
+stopwatch("stop")
+stopwatch("Stop")
+```
+
+### wait()
+
+The function wait() takes one argument: the amout of time to wait in milliseconds.
+
+```python
+wait(1000)
+```
+
+### from_start()
+
+The function from_start() doesn't take any arguments. When you call the function, it returns the time elapsed since the module was imported
+
+```python
+from_start()
+```
