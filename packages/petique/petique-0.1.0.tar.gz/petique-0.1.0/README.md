@@ -1,0 +1,42 @@
+# petique
+
+petique adjusts nice, ionice and OOM adjust score of processes based on custom rules defined in a config file.
+
+## Configuration
+
+Configuration is a TOML file consisting of independant rules:
+
+```toml
+[vlc]  # rule name, name is only significant to you
+name = "vlc"  # regular expression, matches process name
+nice = 10  # when rule is matched, sets nice of process to 10
+
+# nice can go from -20 (most prioritary) to 19 (least prioritary)
+# though only root can set negative values
+# see `nice(1)` manual page
+
+[borg]
+exe = "/usr/bin/borg"  # regular expression, matches binary path
+ionice = "idle"  # when rule is matched, sets ionice of process to "idle" mode
+
+# ionice values can be "b1" to "b7" (best-effort, from more prioritary to least prioritary)
+# or "idle" (even less prioritary than b7) or "rt" (real-time, high-priority, only for root user)
+# see `ionice(1)` manual page
+
+[firefox_tab]
+cmdline = ".*firefox -contentproc.*"  # regular expression, matches full command line with args
+oom_adj = 1000  # when rule is matched, sets oom adjust of process to 1000
+
+# oom_adj can be from -1000 (immune against OOM-killer) to 1000 (more likely to be killed)
+# see `choom(1)` manual page
+```
+
+Rules match processes based on their process name, binary or full command-line, and adjust `nice`, `ionice` or `oom-adjust` score.
+
+Run `petique --list` to see all processes and their `name`, `exe`, `cmdline`. This is handy for writing rules patterns.
+
+## Usage
+
+```
+petique [-n | --dry-run] [-v | --verbose] [--rule NAME] [--config FILE]
+```
