@@ -1,0 +1,44 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Unit tests
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: '3.12'
+
+      - name: Install project dependencies
+        run: uv sync --extra web-backend --extra dev
+
+      - name: Verify Docker installation
+        run: docker --version
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Run pytest-argus-reporter tests
+        run: |
+          cd pytest-argus-reporter
+          uv sync --all-extras
+          uv run nox
