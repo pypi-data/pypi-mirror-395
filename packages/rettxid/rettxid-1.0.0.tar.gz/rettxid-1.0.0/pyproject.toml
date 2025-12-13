@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rettxid"
+version = "1.0.0"
+description = "Generate, validate, and normalize rettX IDs for the Rett Syndrome Europe ecosystem"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+  { name="Pedro Rocha", email="procha@rettsyndrome.eu" },
+]
+keywords = ["rettx", "patient-id", "pseudonymous", "identifier"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
+# Zero runtime dependencies per constitution
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+    "mypy>=1.0",
+    "ruff>=0.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/rett-europe/rettxid"
+Documentation = "https://github.com/rett-europe/rettxid#readme"
+Repository = "https://github.com/rett-europe/rettxid"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rettxid"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/rettxid"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+fail_under = 95
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+python_version = "3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = []
