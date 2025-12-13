@@ -1,0 +1,294 @@
+Metadata-Version: 2.4
+Name: lm-cloud-sync
+Version: 2.0.2
+Summary: Multi-cloud automation tool for LogicMonitor integrations. GCP support in v2.0, AWS/Azure coming soon.
+Project-URL: Homepage, https://github.com/ryanmat/lm-cloud-sync
+Project-URL: Repository, https://github.com/ryanmat/lm-cloud-sync
+Project-URL: Issues, https://github.com/ryanmat/lm-cloud-sync/issues
+Author-email: Ryan Matuszewski <rmmatuszewski@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: automation,aws,azure,cloud,gcp,logicmonitor,monitoring
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Monitoring
+Requires-Python: >=3.11
+Requires-Dist: azure-identity>=1.15.0
+Requires-Dist: azure-mgmt-subscription>=3.1.0
+Requires-Dist: boto3>=1.34.0
+Requires-Dist: click>=8.1.0
+Requires-Dist: google-auth>=2.20.0
+Requires-Dist: google-cloud-resource-manager>=1.10.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: moto[organizations]>=5.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.10.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest-httpx>=0.30.0; extra == 'dev'
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.4.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# LM Cloud Sync
+
+Multi-cloud automation tool for LogicMonitor integrations.
+
+Automatically discover and sync cloud resources (AWS accounts, Azure subscriptions, GCP projects) to LogicMonitor as device groups.
+
+## Features
+
+- **GCP Support** (v2.0.0): Full support for Google Cloud Platform
+  - Auto-discovery using Resource Manager API
+  - Project-level integration management
+  - Dry-run mode and orphan detection
+- **Coming Soon**: AWS and Azure support (in development)
+- **CLI & Terraform**: Deploy via command line or infrastructure-as-code
+- **Flexible Authentication**: Bearer token or LMv1 auth
+
+## Requirements
+
+- **Python 3.11 or higher** (check with `python3 --version`)
+- LogicMonitor API credentials (Bearer token or LMv1)
+- Cloud provider credentials (GCP service account for v2.0.0)
+
+## Installation
+
+### Recommended: Using uv or pipx
+
+These tools handle Python version management and avoid system conflicts:
+
+```bash
+# Using uv (recommended)
+uv tool install lm-cloud-sync
+
+# Or using pipx
+pipx install lm-cloud-sync
+```
+
+### Alternative: Using pip
+
+If using pip directly, a virtual environment is recommended:
+
+```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install
+pip install lm-cloud-sync
+```
+
+> **Note for macOS users:** Direct `pip install` may fail with "externally-managed-environment" error. Use `uv tool install` or `pipx install` instead.
+
+### From Source (For Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/ryanmat/lm-cloud-sync.git
+cd lm-cloud-sync
+
+# Option 1: Run directly with uv
+uv run lm-cloud-sync --help
+
+# Option 2: Install in virtual environment
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e .
+lm-cloud-sync --help
+
+# Option 3: Install as a tool globally
+uv tool install --editable .
+lm-cloud-sync --help
+```
+
+## Quick Start
+
+### 1. Set Up Environment Variables
+
+Create a `.env` file in your project root (or set environment variables):
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env with your credentials
+# LogicMonitor (required for all providers)
+LM_COMPANY=your-company-name
+LM_BEARER_TOKEN=your-bearer-token
+
+# GCP (if using GCP provider)
+GCP_SA_KEY_PATH=/path/to/service-account.json
+
+# AWS (if using AWS provider)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+
+# Azure (if using Azure provider)
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+```
+
+### 2. Discover GCP Projects
+
+```bash
+# Discover GCP projects
+lm-cloud-sync gcp discover
+
+# With auto-discovery (org-level)
+lm-cloud-sync gcp discover --auto-discover
+```
+
+### 3. Check Sync Status
+
+```bash
+# Check what's already synced vs what needs to be added
+lm-cloud-sync gcp status
+```
+
+### 4. Preview Changes (Dry Run)
+
+```bash
+# See what would be created without making changes
+lm-cloud-sync gcp sync --dry-run
+```
+
+### 5. Execute Sync
+
+```bash
+# Create integrations in LogicMonitor
+lm-cloud-sync gcp sync --yes
+```
+
+## CLI Commands
+
+```
+lm-cloud-sync
+├── gcp               # GCP support (v2.0.0)
+│   ├── discover      # List GCP projects
+│   ├── status        # Show sync status
+│   ├── sync          # Sync projects to LM
+│   └── delete        # Delete an integration
+├── aws               # Coming in v2.1.0
+├── azure             # Coming in v2.2.0
+├── all               # Multi-cloud sync (future)
+└── config
+    ├── init          # Create config file
+    └── validate      # Validate config
+```
+
+### Common Options
+
+```bash
+# Discover with auto-discovery (org-level)
+lm-cloud-sync gcp discover --auto-discover
+
+# Sync with dry-run
+lm-cloud-sync gcp sync --dry-run
+
+# Sync to a specific LogicMonitor parent group
+lm-cloud-sync gcp sync --parent-group-id 123 --yes
+
+# Sync and delete orphaned integrations
+lm-cloud-sync gcp sync --delete-orphans --yes
+
+# Check status with orphan detection
+lm-cloud-sync gcp status --show-orphans
+```
+
+## Configuration
+
+### Environment Variables (v2.0.0)
+
+**Required:**
+| Variable | Description |
+|----------|-------------|
+| `LM_COMPANY` | LogicMonitor portal name |
+| `LM_BEARER_TOKEN` | Bearer token for auth* |
+| `GCP_SA_KEY_PATH` | Path to GCP service account JSON |
+
+*Or use `LM_ACCESS_ID` and `LM_ACCESS_KEY` for LMv1 authentication.
+
+See [.env.example](.env.example) for additional configuration options and future provider support (AWS, Azure).
+
+### Configuration File
+
+Create a config file with `lm-cloud-sync config init`:
+
+```yaml
+logicmonitor:
+  company: "your-company"
+
+gcp:
+  enabled: true
+  filters:
+    exclude_patterns: ["sys-*", "test-*"]
+  regions:
+    - us-central1
+    - us-east1
+  services:
+    - COMPUTEENGINE
+    - CLOUDSQL
+
+sync:
+  dry_run: false
+  delete_orphans: false
+  custom_properties:
+    "lm.cloud.managed_by": "lm-cloud-sync"
+```
+
+## Terraform
+
+See [terraform/](./terraform/) for Terraform modules.
+
+```hcl
+module "gcp_integration" {
+  source = "github.com/ryanmat/lm-cloud-sync//terraform/modules/gcp"
+
+  lm_company    = "your-company"
+  lm_bearer_token = var.lm_bearer_token
+  gcp_project_id  = "my-project"
+  gcp_sa_key_path = "/path/to/key.json"
+}
+```
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/ryanmat/lm-cloud-sync.git
+cd lm-cloud-sync
+
+# Install dependencies
+uv sync --all-extras
+
+# Run tests
+uv run pytest
+
+# Run linting
+uv run ruff check src/
+
+# Run the CLI
+uv run lm-cloud-sync --help
+```
+
+## Roadmap
+
+- [x] **v2.0.0**: GCP support (current release)
+- [ ] **v2.1.0**: AWS support with Organizations discovery
+- [ ] **v2.2.0**: Azure support with Management API discovery
+- [ ] **v3.0.0**: Multi-cloud sync (`lm-cloud-sync all`)
+
+## License
+
+MIT License - see [LICENSE](./LICENSE) for details.
