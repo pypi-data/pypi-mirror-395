@@ -1,0 +1,44 @@
+{% set show_site_op_in_footer = False %}
+{% set show_printed_time = False %}
+
+{%- extends "weasyprint/base.weasy.html" -%}
+{%- block pagesize %}portrait{%- endblock %}
+
+{%- block main %}
+
+<h1>{{obj}}</h1>
+
+<table class="preamble">
+<tr>
+<td>
+  {{obj.user}}
+</td>
+<td>
+{{_("Date")}}: {{fdl(obj.start_date)}}
+</td></tr></table>
+
+{% if obj.description %}
+<div style="height:2mm;"></div>
+{{obj.description}}
+<div style="height:2mm;"></div>
+{% else %}
+<div style="height:10mm;"></div>
+{% endif %}
+
+
+<div>
+{% block body %}
+{%- for item in obj.items_by_meeting.order_by('seqno') -%}
+  <p>
+  {%- if item.description -%}
+    <b>{{escape(item.title)}}</b></p><p>
+    {{item.description}}
+  {% else %}
+    {{escape(item.title)}}
+  {% endif %}
+  </p>
+{%- endfor -%}
+</div>
+
+{%- endblock body %}
+{%- endblock main %}

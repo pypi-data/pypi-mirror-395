@@ -1,0 +1,140 @@
+{%- extends "accounting/voucher_base.weasy.html" -%}
+
+{%- block main %}
+
+<h1>{{babelattr(obj.journal, 'printed_name')}}</h1>
+
+<table class="preamble">
+<tr>
+<td>
+{{_("Period from {} to {}").format(obj.invoicing_min_date, obj.invoicing_max_date)}}
+<br>{{_("Recipient")}}: {{obj.recipient}}
+</td>
+<td>
+{{_("Date")}}: {{fdl(obj.voucher_date)}}
+<br>{{_("Our reference")}}: {{obj}} ({{obj.partner.id}}) {{language}}
+</td></tr></table>
+
+{% if obj.intro %}
+<div style="height:2mm;"></div>
+{% if obj.intro.startswith("<") %}
+{{obj.intro}}
+{% else %}
+{{restify(obj.intro)}}
+{% endif %}
+<div style="height:2mm;"></div>
+{% else %}
+<div style="height:10mm;"></div>
+{% endif %}
+
+
+<div>
+{% block body %}
+<table border="1" width="100%">
+<tr>
+<th>{{_("Description")}}</th>
+<th>{{_("Product")}}</th>
+<th>{{_("Quantity")}}</th>
+</tr>
+{%- set sums_by_product = SumCollector() -%}
+{%- set sums_by_ticket = SumCollector() -%}
+{%- set sums_by_ticket_product = SumCollector() -%}
+{%- for item in obj.items.order_by('seqno') -%}
+  {{- sums_by_product.collect(item.product, item.qty) or '' -}}
+  {{- sums_by_ticket.collect(item.invoiceable.ticket, item.qty) or '' -}}
+  {{- sums_by_ticket_product.collect((item.invoiceable.ticket, item.product), item.qty) or '' -}}
+  <tr>
+  <td>
+  <p>
+  {%- if item.description -%}
+    <b>{{item.title}}</b></p><p>
+    {% if item.description.startswith("<") %}
+      {{item.description}}
+    {% else %}
+      {{restify(item.description)}}
+    {% endif %}
+  {% else %}
+    {{item.title}}
+  {% endif %}
+  {%- if item.invoiceable -%}
+  {{item.invoiceable.summary|escape}}
+  {% endif %}
+  </p>
+  </td>
+  <td>{% if item.invoiceable %}{{item.invoiceable.get_invoiceable_product()}}{% endif %}</td>
+  <td class="number-cell">{{item.qty}}</td>
+  </tr>
+{%- endfor -%}
+</table>
+
+<div style="height:2mm;"></div>
+
+<h3>{{_("Work by ticket")}}</h3>
+<table>
+<tr>
+  <th>{{_("Ticket")}}</th>
+  {%- for product in sums_by_product.keys() -%}
+  <th>{{product}}</th>
+  {%- endfor -%}
+  {%- if len(sums_by_product) > 1 -%}
+  <th>{{_("Total")}}</th>
+  {%- endif -%}
+</tr>
+{%- for ticket, qty in sums_by_ticket.items() -%}
+<tr>
+  <td>{% if ticket %}#{{ticket.id}} {{ticket.summary|escape}}{% else %}{{_("N/A")}}{% endif %}</td>
+  {%- for product in sums_by_product.keys() -%}
+  <td class="number-cell">{{sums_by_ticket_product[ticket, product] or ""}}</td>
+  {%- endfor -%}
+  {%- if len(sums_by_product) > 1 -%}
+  <td class="number-cell">{{qty or ""}}</td>
+  {%- endif -%}
+</tr>
+{%- endfor -%}
+{%- if len(sums_by_ticket) > 1 -%}
+<tr>
+  <td>{{_("Total")}}</td>
+  {%- for product in sums_by_product.keys() -%}
+  <td class="number-cell">{{sums_by_product[product] or ""}}</td>
+  {%- endfor -%}
+  {%- if len(sums_by_product) > 1 -%}
+  <td class="number-cell">{{sums_by_product.total() or ""}}</td>
+  {%- endif -%}
+</tr>
+{%- endif -%}
+</table>
+
+<div style="height:2mm;"></div>
+
+<h3>{{_("Total quantities")}}</h3>
+<table>
+<tr>
+  <th>{{_("Product")}}</th>
+  <th>{{_("Before")}}</th>
+  <th>{{_("This report")}}</th>
+  <th>{{_("After")}}</th>
+</tr>
+{%- for product, qty in sums_by_product.items() -%}
+<tr>
+  <td>{{product}} ({{product.delivery_unit}})</td>
+  <td class="number-cell">{{obj.get_provision('purchased', product, True)}}</td>
+  <td class="number-cell">{{qty}}</td>
+  <td class="number-cell">{{obj.get_provision('purchased', product, False)}}</td>
+</tr>
+{%- endfor -%}
+</table>
+
+{%- endblock -%}
+</div>
+
+<div style="height:5mm;"></div>
+
+<div style="page-break-inside: avoid;">
+{% block payment %}
+{% endblock payment %}
+<div style="clear:right;"></div>
+{% block ending %}
+{% endblock ending %}
+</div>
+
+{%- endblock main %}
