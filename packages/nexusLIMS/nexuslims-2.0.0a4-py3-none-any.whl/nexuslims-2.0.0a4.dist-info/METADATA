@@ -1,0 +1,215 @@
+Metadata-Version: 2.4
+Name: nexusLIMS
+Version: 2.0.0a4
+Summary: Electron Microscopy Nexus LIMS project (Datasophos fork)
+Project-URL: Homepage, https://github.com/datasophos/NexusLIMS
+Project-URL: Repository, https://github.com/datasophos/NexusLIMS.git
+Project-URL: Documentation, https://github.com/datasophos/NexusLIMS
+Project-URL: Original-NIST-Repository, https://github.com/usnistgov/NexusLIMS.git
+Author-email: Joshua Taillon <josh@datasophos.co>
+Maintainer-email: Joshua Taillon <josh@datasophos.co>
+License: MIT
+License-File: LICENSE
+Keywords: LIMS,electron-microscopy,materials,microscopy
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: <3.13,>=3.11
+Requires-Dist: click>=8.1.8
+Requires-Dist: defusedxml<1.0.0,>=0.7.1
+Requires-Dist: email-validator>=2.3.0
+Requires-Dist: exspy>=0.3.2
+Requires-Dist: filelock>=3.0.0
+Requires-Dist: hyperspy[speed]<3.0.0,>=2.1.0
+Requires-Dist: lxml<5.0.0,>=4.9.2
+Requires-Dist: pixstem>=0.4.0
+Requires-Dist: pydantic-settings>=2.12.0
+Requires-Dist: pydantic[email]>=2.12.0
+Requires-Dist: python-dotenv<1.0.0,>=0.21.0
+Requires-Dist: pytz>=2022.7
+Requires-Dist: pyxem>=0.21.0
+Requires-Dist: requests-ntlm<2.0.0,>=1.1.0
+Requires-Dist: requests<3.0.0,>=2.28.1
+Requires-Dist: rich>=13.0.0
+Requires-Dist: scikit-learn<2.0.0,>=1.2.0
+Description-Content-Type: text/markdown
+
+# NexusLIMS - Automated Laboratory Information Management for Electron Microscopy
+
+[![Documentation](https://img.shields.io/badge/📖%20docs-stable-blue)](https://datasophos.github.io/NexusLIMS)
+[![Python 3.11+](https://img.shields.io/badge/🐍%20python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Maintained by Datasophos](https://img.shields.io/badge/🏢%20maintained%20by-datasophos%20LLC-blue)](https://datasophos.co)
+
+> **⚠️ Notice**: This is a fork of the original NexusLIMS project, created after the lead developer (@jat255) left NIST and founded [Datasophos](https://datasophos.co). This fork is maintained by Datasophos and is **not affiliated with NIST** in any way. For the official NIST version, please visit the [original repository](https://github.com/usnistgov/NexusLIMS).
+
+## What is NexusLIMS?
+
+**NexusLIMS automatically generates experimental records by extracting metadata from microscopy data files and harvesting information from laboratory calendar systems.**
+
+Originally developed by the NIST Office of Data and Informatics, NexusLIMS transforms raw microscopy data into structured, searchable experimental records without requiring manual data entry. By combining file metadata extraction with reservation calendar information, NexusLIMS creates comprehensive documentation of microscopy sessions automatically.
+
+### Key Features
+
+- **🔄 Automated Record Generation** - Builds XML experimental records conforming to the "[Nexus Experiment](https://doi.org/10.18434/M32245)" schema
+- **📊 Multi-Format Metadata Extraction** - Supports `.dm3/.dm4` (DigitalMicrograph), `.tif` (FEI/Thermo), `.ser/.emi` (FEI TIA), and more
+- **📅 Calendar Integration** - Harvests experimental context from [NEMO](https://github.com/usnistgov/NEMO) laboratory management system
+- **🔍 Intelligent File Clustering** - Groups files into logical acquisition activities using temporal analysis
+- **🖼️ Preview Generation** - Automatically creates thumbnail images for quick visual reference
+- **🌐 Web Interface** - Integrates with [NexusLIMS CDCS](https://github.com/datasophos/NexusLIMS-CDCS) frontend for browsing and searching records
+
+### How It Works
+
+1. **Harvest** - Monitor NEMO for new/ended instrument reservations
+2. **Discover** - Find data files created during reservation windows
+3. **Extract** - Pull metadata from various microscopy file formats
+4. **Cluster** - Group files into logical acquisition activities
+5. **Build** - Generate structured XML records
+6. **Publish** - Upload to searchable web frontend
+
+For more details, see the [Record Building Workflow](https://datasophos.github.io/NexusLIMS/record_building.html) documentation.
+
+## Quick Start
+
+### Prerequisites
+
+Install [uv](https://docs.astral.sh/uv/) package manager (uv will automatically manage Python versions for you):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/datasophos/NexusLIMS.git
+cd NexusLIMS
+
+# Install dependencies
+uv sync
+```
+
+### Configuration
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your settings:
+   - CDCS frontend credentials and URL
+   - File paths for data storage
+   - NEMO API credentials (if using)
+   - Database path
+
+See [Configuration Documentation](https://datasophos.github.io/NexusLIMS/getting_started.html#configuration) for details.
+
+### Initialize Database
+
+```bash
+sqlite3 nexusLIMS.db < nexusLIMS/db/dev/NexusLIMS_db_creation_script.sql
+```
+
+Then add your instruments to the `instruments` table (see [Database Documentation](https://datasophos.github.io/NexusLIMS/database.html)).
+
+### Build Records
+
+```bash
+# Run the record builder
+uv run nexuslims-process-records
+
+# Or use the module directly
+uv run python -m nexusLIMS.builder.record_builder
+```
+
+## Documentation
+
+📚 **Full documentation**: https://datasophos.github.io/NexusLIMS
+
+- [Getting Started Guide](https://datasophos.github.io/NexusLIMS/getting_started.html)
+- [User Guide](https://datasophos.github.io/NexusLIMS/user_guide.html)
+- [Developer Guide](https://datasophos.github.io/NexusLIMS/dev_guide.html)
+- [API Reference](https://datasophos.github.io/NexusLIMS/reference.html)
+
+## System Requirements
+
+- **Backend**: Linux or macOS. Windows is not currently supported.
+- **Python**: 3.11 or 3.12
+- **Network Access**: Read-only access to centralized instrument data storage
+- **Calendar System**: NEMO instance (or custom harvester implementation)
+- **Frontend**: [NexusLIMS CDCS](https://github.com/datasophos/NexusLIMS-CDCS) instance for browsing and searching records (optional, but probably desired)
+
+## Current Limitations
+
+NexusLIMS was originally developed for internal NIST use. While we're actively working on generalization:
+
+- **File Format Support**: Currently supports specific electron microscopy formats. Custom extractors needed for other instruments.
+- **Calendar Integration**: Designed for NEMO. Other systems require custom harvester implementation.
+- **Platform Support**: Linux/macOS only. Windows support would require development effort.
+
+**Need help deploying at your institution?** Datasophos offers professional services for NexusLIMS deployment, customization, and support. Contact us at [josh@datasophos.co](mailto:josh@datasophos.co).
+
+## Development
+
+```bash
+# Install development dependencies
+uv sync --dev
+
+# Run tests
+./scripts/run_tests.sh
+
+# Run linting
+./scripts/run_lint.sh
+
+# Build documentation
+./scripts/build_docs.sh
+```
+
+See the [Developer Guide](https://datasophos.github.io/NexusLIMS/development.html) for detailed information about:
+- Architecture overview
+- Adding new file format extractors
+- Creating custom harvesters
+- Testing and CI/CD
+- Release process
+
+## Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests (100% coverage required)
+4. Submit a pull request to `main`
+
+See [Contributing Guidelines](https://datasophos.github.io/NexusLIMS/development.html#contributing) for more details.
+
+## About the Logo
+
+The NexusLIMS logo is inspired by Nobel Prize winner [Dan Shechtman's](https://www.nist.gov/content/nist-and-nobel/nobel-moment-dan-shechtman) groundbreaking work at NIST in the 1980s. Using transmission electron diffraction, Shechtman discovered [quasicrystals](https://en.wikipedia.org/wiki/Quasicrystal) - a new class of crystals that have regular structure and diffract, but are not periodic. This discovery overturned fundamental paradigms in crystallography.
+
+We chose Shechtman's [first published](https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.53.1951) quasicrystal diffraction pattern as inspiration due to its significance in electron microscopy and its storied NIST heritage.
+
+## License
+
+See [LICENSE](LICENSE) for details.
+
+## Support & Professional Services
+
+💼 **Need help with NexusLIMS?** Datasophos offers:
+
+- 🚀 **Deployment & Integration** - Expert configuration for your lab environment
+- 🔧 **Custom Development** - Custom extractors, harvesters, and workflow extensions
+- 🎓 **Training & Support** - Team onboarding and ongoing technical support
+
+**Contact**: [josh@datasophos.co](mailto:josh@datasophos.co) | [datasophos.co](https://datasophos.co)
+
+---
+
+**Links:**
+- 📖 [Documentation](https://datasophos.github.io/NexusLIMS)
+- 🐛 [Issue Tracker](https://github.com/datasophos/NexusLIMS/issues)
+- 🏢 [Datasophos](https://datasophos.co)
+- 📜 [Original NIST Repository](https://github.com/usnistgov/NexusLIMS)
