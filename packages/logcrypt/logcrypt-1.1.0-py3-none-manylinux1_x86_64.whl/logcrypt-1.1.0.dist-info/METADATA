@@ -1,0 +1,214 @@
+Metadata-Version: 2.4
+Name: logcrypt
+Version: 1.1.0
+Summary: Secure Python logging with RC4 encryption
+Author: dileatshicat
+Author-email: dileatshicat@atomicmail.io
+License: Apache License 2.0
+Description-Content-Type: text/markdown
+Requires-Dist: pycryptodome>=3.0.0
+Requires-Dist: colorama>=0.1.1
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: summary
+
+**Secure • Fast • Traceable** 
+A modern, high-performance Python logging library with **optional strong encryption** (RC4 or AES-256-CBC), structured JSON output, correlation IDs, redaction, async support, and tamper detection.
+
+Perfect for applications handling sensitive data — from fintech to healthcare.
+
+---
+
+## Key Features
+
+| Feature                        | Description |
+|-------------------------------|-----------|
+| **Dual Encryption Modes**     | Choose between **RC4** (default, ultra-fast) or **AES-256-CBC** (maximum security) |
+| **Automatic Algorithm Detection** | `decrypt_log()` tries both if you're unsure |
+| **Tamper-Proof Logs**         | Every line includes SHA-256 checksum — corrupted/modified lines are skipped |
+| **Custom Levels**             | `SUCCESS` (25) and `FAIL` (45) with `.success()` / `.fail()` methods |
+| **Colored Console**           | Beautiful ANSI colors for instant visual feedback |
+| **Correlation IDs**           | End-to-end request tracing with UUID or custom ID |
+| **JSON Logging**              | Structured logs ready for ELK, Splunk, Datadog, etc. |
+| **Async File Writing**        | Non-blocking via `QueueHandler` — zero performance impact |
+| **PII Redaction**             | Automatically redact emails, IPs, tokens, credit cards via regex |
+| **Smart Key Management**     | Load from file, validate, or auto-generate secure keys |
+| **Zero-Config Native Speed**  | Falls back to pure Python if native extensions unavailable |
+
+---
+
+## Installation
+
+```bash
+pip install logcrypt
+```
+
+> Dependencies: `colorama`, `pycryptodome`
+
+---
+
+## Quick Start
+
+### Basic Logging
+```python
+from logcrypt import Logger
+
+logger = Logger(file_name="app.log", correlation_id="req-123")
+logger.info("User logged in")
+logger.success("Payment confirmed")
+logger.close()
+```
+
+### Encrypted Logging (RC4 – default & fastest)
+```python
+logger = Logger(
+    file_name="secure.log",
+    encrypt_file=True,
+    key_file="secret.key"  
+)
+logger.error("Login failed for user 42")
+```
+
+### Maximum Security (AES-256-CBC)
+```python
+logger = Logger(
+    file_name="ultra_secure.log",
+    encrypt_file=True,
+    cipher_type="aes", 
+    key_file="secret.key",
+    # Can be any length — internally derived to 256-bit
+)
+logger.critical("PCI data accessed")
+```
+
+### JSON + Async + Redaction + AES
+```python
+logger = Logger(
+    file_name="events.json.log",
+    file_format="json",
+    encrypt_file=True,
+    cipher_type="aes",
+    async_logging=True,
+    redact_patterns=[
+        r"\b\d{16}\b",                            # Credit cards
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Emails
+    ]
+)
+
+logger.info("User john.doe@example.com paid with 4111111111111111")
+# → REDACTED + encrypted safely
+```
+
+---
+
+## Decrypting Logs
+
+```python
+from logcrypt import decrypt_log
+
+# Auto-detects RC4 or AES
+entries = decrypt_log("secure.log", key_from_file)
+
+for entry in entries:
+    print(f"[{entry['line_number']}] {entry['decrypted_line']}")
+
+# Or force algorithm (rarely needed)
+entries = decrypt_log("old.log", key, cipher_type="rc4")
+```
+
+Even if you forget the cipher type — it will try both and recover valid lines automatically.
+
+---
+
+## Console Output Example
+
+```
+This is an info message          (white)
+Operation completed successfully (green)
+Validation failed                (red)
+Database connection lost         (bright red)
+```
+
+## File Output (encrypted example)
+```
+a3f1c9...e4d2:UElDUk9T... (checksum:encrypted_payload)
+```
+
+Only readable with the correct key.
+
+---
+
+## Security Notes
+
+- Keys are **base64-encoded** and can be any length (AES derives proper 256-bit key via SHA-256)
+- Always protect your key file:
+  ```bash
+  chmod 600 secret.key
+  ```
+- Never commit keys to version control
+- Checksums prevent log tampering and injection attacks
+
+---
+
+## Package Structure
+
+```
+logcrypt/
+├── __init__.py
+├── core.py
+├── cryptography.py  
+├── cryptography.pyd      # Windows optimized RC4 + AES implementation
+├── cryptography.so       # Linux optimized RC4 + AES implementation
+├── key_manager.py
+├── filters.py
+├── formatters.py
+├── decrypt_log.py
+└── levels.py
+```
+
+## Performance Optimization
+
+To improve encryption and decryption speed, **logcrypt** includes precompiled native extensions:
+
+* **`cryptography.pyd`** – Windows  
+* **`cryptography.so`** – Linux  
+
+These modules automatically replace the pure Python `cryptography.py` implementation when available, delivering **faster RC4/AES operations** with lower CPU usage — especially beneficial in high-volume or multithreaded logging scenarios.
+
+No configuration needed. The package detects your platform and loads the optimized version seamlessly.
+
+> These extensions are compiled directly from the open `cryptography.py` source for transparency and trust.
+
+---
+
+## Notes & Security
+
+- **Key Security**: Protect your key file:  
+  ```bash
+  chmod 600 secret.key
+  ```
+  Anyone with the key can decrypt logs.
+- **Tamper Protection**: SHA-256 checksum ensures only valid entries are decrypted.
+
+---
+
+## License
+
+MIT License
+
+---
+
+## Dependencies
+
+- Python ≥ 3.8
+- `colorama >= 0.1.1`
+- `pycryptodome >= 3.0.0`
+
+---
+
+**LogCrypt** — Secure. Fast. Traceable.  
+Built for developers who care about privacy and performance.
