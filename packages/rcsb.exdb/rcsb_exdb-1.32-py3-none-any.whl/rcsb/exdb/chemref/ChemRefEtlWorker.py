@@ -1,0 +1,118 @@
+##
+# File: ChemRefEtlWorker.py
+# Date: 2-Jul-2018  jdw
+#
+# ETL utilities for processing chemical reference data and related data integration.
+#
+# Updates:
+#  9-Dec-2018  jdw add validation methods
+#  3-Sep-2019  jdw move to rcsb.exdb.chemref
+#  7-Aug-2025  dwp change target DB and collection from "drugbank_core" to "dw" and "core_drugbank" (as part of transition to DW);
+#                  make use of configuration file for loading drugbank collection and setting indexed fields
+#
+##
+__docformat__ = "google en"
+__author__ = "John Westbrook"
+__email__ = "jwest@rcsb.rutgers.edu"
+__license__ = "Apache 2.0"
+
+import logging
+
+from rcsb.db.mongo.DocumentLoader import DocumentLoader
+from rcsb.db.processors.DataExchangeStatus import DataExchangeStatus
+from rcsb.db.utils.SchemaProvider import SchemaProvider
+from rcsb.exdb.chemref.ChemRefExtractor import ChemRefExtractor
+from rcsb.utils.chemref.DrugBankProvider import DrugBankProvider
+
+
+logger = logging.getLogger(__name__)
+
+
+class ChemRefEtlWorker(object):
+    """Prepare and load chemical reference data collections."""
+
+    def __init__(self, cfgOb, cachePath, useCache=True, numProc=2, chunkSize=10, maxStepLength=2000, readBackCheck=False, documentLimit=None, verbose=False):
+        self.__cfgOb = cfgOb
+        self.__cachePath = cachePath
+        self.__useCache = useCache
+        self.__readBackCheck = readBackCheck
+        self.__numProc = numProc
+        self.__chunkSize = chunkSize
+        self.__maxStepLength = maxStepLength
+        self.__documentLimit = documentLimit
+        #
+        self.__resourceName = "MONGO_DB"
+        self.__verbose = verbose
+        self.__statusList = []
+        self.__schP = SchemaProvider(self.__cfgOb, self.__cachePath, useCache=self.__useCache)
+        #
+
+    def __updateStatus(self, updateId, databaseName, collectionName, status, startTimestamp):
+        try:
+            sFlag = "Y" if status else "N"
+            desp = DataExchangeStatus()
+            desp.setStartTime(tS=startTimestamp)
+            desp.setObject(databaseName, collectionName)
+            desp.setStatus(updateId=updateId, successFlag=sFlag)
+            desp.setEndTime()
+            self.__statusList.append(desp.getStatus())
+            return True
+        except Exception as e:
+            logger.exception("Failing with %s", str(e))
+        return False
+
+    def load(self, updateId, extResource, loadType="full"):
+        """Load chemical reference integrated data for the input external resource-"""
+        try:
+            self.__statusList = []
+            desp = DataExchangeStatus()
+            statusStartTimestamp = desp.setStartTime()
+            addValues = {}
+            collectionGroupName = "core_drugbank"
+            #
+            if extResource == "DrugBank":
+                databaseNameMongo = self.__schP.getDatabaseMongoName(collectionGroupName=collectionGroupName)
+                configName = self.__cfgOb.getDefaultSectionName()
+                user = self.__cfgOb.get("_DRUGBANK_AUTH_USERNAME", sectionName=configName)
+                pw = self.__cfgOb.get("_DRUGBANK_AUTH_PASSWORD", sectionName=configName)
+                #
+                dbP = DrugBankProvider(cachePath=self.__cachePath, useCache=self.__useCache, username=user, password=pw)
+                #
+                crExt = ChemRefExtractor(self.__cfgOb)
+                idD = crExt.getChemCompAccessionMapping(extResource)
+                dList = dbP.getDocuments(mapD=idD)
+                #
+                logger.info("Resource %r extracted mapped document length %d", extResource, len(dList))
+                logger.debug("Objects %r", dList[:2])
+                _, _, collectionList, docIndexD = self.__schP.getSchemaInfo(collectionGroupName=collectionGroupName)
+                collectionName = collectionList[0] if collectionList else "unassigned"
+                indexDL = docIndexD[collectionName] if collectionName in docIndexD else []
+                logger.info("Database %r collection %r index attributes %r", databaseNameMongo, collectionName, indexDL)
+                #
+                # For some reason, 'addValues' was being overwritten with an empty dict (https://github.com/rcsb/py-rcsb_exdb/commit/26bd79e9a2fffc97c034b4116dece9248d1c1f39)
+                # Will need to review this -- do we want to add the schema version values or not? (Also, see similar logic in UniProtCoreEtlWorker.py)
+                # collectionVersion = sD.getCollectionVersion(collectionName)
+                # addValues = {"_schema_version": collectionVersion}
+            #
+            dl = DocumentLoader(
+                self.__cfgOb,
+                self.__cachePath,
+                self.__resourceName,
+                numProc=self.__numProc,
+                chunkSize=self.__chunkSize,
+                maxStepLength=self.__maxStepLength,
+                documentLimit=self.__documentLimit,
+                verbose=self.__verbose,
+                readBackCheck=self.__readBackCheck,
+            )
+            #
+            ok = dl.load(databaseNameMongo, collectionName, loadType=loadType, documentList=dList, keyNames=None, addValues=addValues, indexDL=indexDL)
+            self.__updateStatus(updateId, databaseNameMongo, collectionName, ok, statusStartTimestamp)
+
+            return True
+        except Exception as e:
+            logger.exception("Failing with %s", str(e))
+        return False
+
+    def getLoadStatus(self):
+        return self.__statusList
