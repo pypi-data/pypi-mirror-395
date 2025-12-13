@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: baqup-schema
+Version: 0.0.1
+Summary: JSON Schema validation and environment variable loading for baqup agent configuration
+Project-URL: Homepage, https://github.com/baqupio/baqup
+Project-URL: Documentation, https://github.com/baqupio/baqup/blob/main/AGENT-CONTRACT-SPEC.md
+Project-URL: Repository, https://github.com/baqupio/baqup-schema-py
+Project-URL: Issues, https://github.com/baqupio/baqup/issues
+Author-email: baqupio <hello@baqup.io>
+License: Fair Source License, Version 1.0
+        
+        Copyright (c) 2025 baqupio
+        
+        Licensor: baqupio
+        Software: baqup-schema
+        
+        Use Limitation:
+        
+        You may use this software without a commercial license if:
+        
+        (a) Your organisation, together with all affiliates, has annual gross
+            revenue of less than USD $1,000,000 AND fewer than 10 employees; or
+        
+        (b) You are a registered non-profit organisation; or
+        
+        (c) You are an educational institution; or
+        
+        (d) Your use is for personal, non-commercial purposes.
+        
+        All other use requires a commercial license obtained from the Licensor.
+        
+        ---
+        
+        For the complete license text, see:
+        https://github.com/baqupio/baqup/blob/main/LICENSE
+        
+        For licensing FAQ and commercial licensing:
+        https://github.com/baqupio/baqup/blob/main/LICENSING.md
+License-File: LICENSE
+Keywords: backup,baqup,container,docker,json-schema,schema,validation
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Archiving :: Backup
+Classifier: Topic :: System :: Systems Administration
+Requires-Python: >=3.10
+Requires-Dist: jsonschema>=4.0.0
+Description-Content-Type: text/markdown
+
+# baqup-schema
+
+JSON Schema validation and environment variable loading for baqup agent configuration.
+
+> ⚠️ **This is a placeholder package.** Full implementation coming soon.
+
+## What is baqup?
+
+[baqup](https://github.com/baqupio/baqup) is a container-native backup orchestration system. It uses a controller-agent architecture where:
+
+- The **controller** discovers workloads via Docker labels
+- **Agents** perform backup/restore operations
+- Configuration is defined via JSON Schema
+
+This package provides schema validation for agent configuration, used by both:
+- Agents (to validate their own configuration at startup)
+- Controller (to pre-flight validate before spawning agents)
+
+## Planned Features
+
+- JSON Schema validation (draft-2020-12)
+- Environment variable loading with type coercion
+- Custom format validators (`path`, `hostname`, etc.)
+- Conditional validation support
+
+## Installation
+
+```bash
+pip install baqup-schema
+```
+
+## Usage (Preview API)
+
+```python
+from baqup_schema import load_from_env, validate
+
+# Load and validate from environment variables
+config = load_from_env("agent-schema.json")
+
+# Or validate an existing dict
+result = validate(schema, config_dict)
+if not result.valid:
+    for error in result.errors:
+        print(f"{error.path}: {error.message}")
+```
+
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| `baqup-schema` | Schema validation (this package) |
+| `baqup-agent` | Agent SDK for Python |
+
+## Links
+
+- [GitHub](https://github.com/baqupio/baqup)
+- [Documentation](https://github.com/baqupio/baqup/blob/main/AGENT-CONTRACT-SPEC.md)
+
+## License
+
+Fair Source License - see [LICENSE](./LICENSE) for details.
