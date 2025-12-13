@@ -1,0 +1,228 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sayna-client"
+version = "0.0.10"
+description = "Python SDK for Sayna server-side WebSocket connections"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Sayna Team"}
+]
+keywords = ["sayna", "websocket", "sdk", "server", "real-time"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "aiohttp>=3.9.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "ruff>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SaynaAi/saysdk"
+Repository = "https://github.com/SaynaAi/saysdk"
+Documentation = "https://github.com/SaynaAi/saysdk/tree/main/python-sdk"
+Issues = "https://github.com/SaynaAi/saysdk/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sayna_client*"]
+
+[tool.setuptools.package-data]
+sayna_client = ["py.typed"]
+
+# Ruff configuration - Modern Python linter and formatter
+# Following best practices for open-source Python libraries
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+indent-width = 4
+
+# Enable auto-fixing where safe
+fix = true
+show-fixes = true
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable comprehensive linting rules for library code quality
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "D",      # pydocstyle (docstrings)
+    "UP",     # pyupgrade (modernize Python code)
+    "B",      # flake8-bugbear (likely bugs and design problems)
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez (datetime best practices)
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "PGH",    # pygrep-hooks
+    "PL",     # pylint
+    "TRY",    # tryceratops
+    "RUF",    # ruff-specific rules
+]
+
+ignore = [
+    # Docstring rules that conflict
+    "D203",    # 1 blank line before class docstring (conflicts with D211)
+    "D213",    # Multi-line docstring should start at second line (conflicts with D212)
+    # Formatting conflicts
+    "E501",    # Line too long (enforced by formatter)
+    "ISC001",  # Implicit string concatenation (conflicts with formatter)
+    # Exception handling - allowing inline messages for better readability
+    "EM101",   # String literals in exceptions
+    "EM102",   # F-string literals in exceptions
+    "TRY003",  # Long messages in exceptions (informative error messages are valuable)
+    # Stylistic preferences
+    "TRY300",  # Prefer explicit return over else after try
+    # Logging - keeping exception parameter for context is acceptable
+    "TRY401",  # Redundant exception in logging.exception
+]
+
+# Minimal per-file ignores for specific use cases
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D",       # Docstrings not required in tests
+    "S101",    # Assert usage is expected in tests
+    "PLR2004", # Magic values are acceptable in test assertions
+]
+"**/__init__.py" = [
+    "D104",    # Missing docstring in public package
+    "F401",    # Unused imports (re-exports)
+]
+
+# Import sorting configuration
+[tool.ruff.lint.isort]
+known-first-party = ["sayna_client"]
+force-single-line = false
+lines-after-imports = 2
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+# Docstring configuration
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Use Google-style docstrings
+
+# pylint configuration
+[tool.ruff.lint.pylint]
+max-args = 10
+max-branches = 15
+max-returns = 6
+max-statements = 50
+
+# Formatter configuration
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 88
+
+# MyPy configuration - Static type checker
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=sayna_client",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/examples/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
