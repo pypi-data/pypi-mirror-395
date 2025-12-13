@@ -1,0 +1,89 @@
+[project]
+name = "dakora-instrumentation"
+version = "0.2.0"
+description = "OpenTelemetry instrumentation for LLM applications with Dakora observability"
+readme = "README.md"
+authors = [{ name = "Dakora Labs", email = "support@dakora.io" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+  "dakora~=0.2.0",   # Compatible version (0.1.x only)
+  "packaging>=21.0", # For robust version comparison
+]
+
+keywords = [
+  "opentelemetry",
+  "instrumentation",
+  "llm",
+  "observability",
+  "telemetry",
+  "tracing",
+  "agents",
+  "ai",
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Monitoring",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+# Framework integrations - batteries included
+# MAF already bundles OTEL (gRPC), we add HTTP exporter for Dakora API
+maf = [
+  "agent-framework-core>=1.0.0b251016",
+  "opentelemetry-exporter-otlp-proto-http>=1.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dakora-labs/dakora"
+Repository = "https://github.com/dakora-labs/dakora.git"
+Issues = "https://github.com/dakora-labs/dakora/issues"
+
+[tool.uv.sources]
+dakora = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Only include the actual package code in wheels (for end users)
+packages = ["dakora_instrumentation"]
+
+# Source distributions automatically include:
+# - All Python files (dakora_instrumentation/, tests/, examples/)
+# - README.md, LICENSE, pyproject.toml
+# This is the correct behavior for developer installations
+
+[dependency-groups]
+dev = ["pytest>=7.4.0", "pytest-asyncio>=0.21.0", "pytest-cov>=4.1.0"]
+# For running examples locally (not included in published package)
+examples = [
+  "opentelemetry-sdk>=1.24.0",
+  "opentelemetry-exporter-otlp-proto-http>=1.24.0",
+  "opentelemetry-instrumentation-openai>=0.1.0",
+  "opentelemetry-instrumentation-anthropic>=0.1.0",
+  "openai>=1.0.0",
+  "anthropic>=0.18.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["dakora_instrumentation"]
+exclude = ["tests"]
+reportMissingTypeStubs = false
+reportUnknownParameterType = false
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
