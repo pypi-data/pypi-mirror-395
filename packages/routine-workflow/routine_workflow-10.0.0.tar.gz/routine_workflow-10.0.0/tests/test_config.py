@@ -1,0 +1,153 @@
+# tests/test_config.py
+
+"""Unit tests for config.py."""
+
+from datetime import datetime
+from pathlib import Path
+import pytest
+from unittest.mock import patch, Mock
+
+import sys
+sys.path.insert(0, 'src')  # Ensure import
+
+from routine_workflow.config import WorkflowConfig
+from routine_workflow.defaults import default_exclude_patterns
+
+
+@patch('routine_workflow.config.default_exclude_patterns')
+@patch('routine_workflow.config.os.cpu_count', return_value=4)  # Mock for consistent default
+@patch.object(Path, 'mkdir')  # Avoid real FS in from_args
+@patch('pathlib.Path.resolve')  # Mock resolve for controlled return
+def test_from_args_with_defaults(mock_resolve, mock_mkdir: Mock, mock_cpu: Mock, mock_defaults: Mock, mock_args: Mock):
+    """Test config creation from args (triggers defaults)."""
+    # Setup required mock attrs
+    mock_args.project_root = Path('/tmp/test')
+    mock_args.log_dir = Path('/tmp/logs')
+    mock_args.lock_dir = Path('/tmp/lock')
+    mock_args.exclude_patterns = None  # Trigger default call
+    mock_args.dry_run = True
+    mock_args.yes = False
+    mock_args.fail_on_backup = False
+    mock_args.workers = None
+    mock_args.workflow_timeout = 0
+    mock_args.create_dump_run_cmd = None  # No override
+    mock_args.enable_security = False
+    mock_args.enable_dep_audit = False
+    mock_args.test_cov_threshold = 85
+    mock_args.git_push = False
+    mock_args.lock_ttl = 3600
+
+    mock_resolve.return_value = Path('/tmp/test/resolved')
+    mock_defaults.return_value = ['default/*']
+
+    cfg = WorkflowConfig.from_args(mock_args)
+
+    assert cfg.project_root == mock_resolve.return_value
+    assert cfg.dry_run is True
+    assert cfg.max_workers == 4  # min(8, mocked=4)
+    assert cfg.workflow_timeout == 0
+    assert cfg.exclude_patterns == ['default/*']
+    assert cfg.create_dump_run_cmd == ['create-dump', 'batch', 'run', '--dirs', '., packages, packages/platform_core, packages/telethon_adapter_kit, services, services/forwarder_bot']
+    assert cfg.create_dump_clean_cmd == ['create-dump', 'batch', 'clean']
+    mock_defaults.assert_called_once()
+    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    mock_resolve.assert_called_once()  # No args; instance call implicit
+
+
+@patch('routine_workflow.config.default_exclude_patterns')
+@patch.object(Path, 'mkdir')
+@patch('pathlib.Path.resolve')
+def test_from_args_with_override(mock_resolve, mock_mkdir: Mock, mock_defaults: Mock, mock_args: Mock):
+    """Test config creation with exclude_patterns override (no default call)."""
+    # Setup minimal mocks
+    mock_args.project_root = Path('.')
+    mock_args.log_dir = Path('.')
+    mock_args.lock_dir = Path('.')
+    mock_args.exclude_patterns = ['override/*']
+    mock_args.dry_run = False
+    mock_args.yes = True
+    mock_args.fail_on_backup = True
+    mock_args.workers = 6
+    mock_args.workflow_timeout = 3600
+    mock_args.create_dump_run_cmd = ['create-dump', 'batch', 'run', '--dirs', 'custom']
+    mock_args.enable_security = False
+    mock_args.enable_dep_audit = False
+    mock_args.test_cov_threshold = 85
+    mock_args.git_push = False
+    mock_args.lock_ttl = 3600
+    mock_defaults.return_value = []  # Ignored
+
+    mock_resolve.return_value = Path('/tmp/custom')
+
+    cfg = WorkflowConfig.from_args(mock_args)
+
+    assert cfg.project_root == mock_resolve.return_value
+    assert cfg.dry_run is False
+    assert cfg.auto_yes is True
+    assert cfg.fail_on_backup is True
+    assert cfg.max_workers == 6
+    assert cfg.workflow_timeout == 3600
+    assert cfg.exclude_patterns == ['override/*']
+    assert cfg.create_dump_run_cmd == mock_args.create_dump_run_cmd
+    mock_defaults.assert_not_called()
+    mock_resolve.assert_called_once()  # No args; instance call implicit
+
+
+def test_default_exclude_patterns():
+    """Test default patterns."""
+    patterns = default_exclude_patterns()
+    assert "venv/*" in patterns
+    assert len(patterns) == 17  # Matches source (17 items)
+
+
+def test_frozen_dataclass():
+    """Ensure frozen behavior (via real instance)."""
+    real_cfg = WorkflowConfig(
+        project_root=Path("."),
+        log_dir=Path("."),
+        log_file=Path("."),
+        lock_dir=Path("."),
+        dry_run=False
+    )
+    with pytest.raises(AttributeError, match="cannot assign"):
+        real_cfg.dry_run = True  # Immutable check
+
+
+@patch('routine_workflow.config.os.cpu_count', return_value=8)
+def test_max_workers_default(mock_cpu: Mock):
+    """Test default workers computation."""
+    cfg = WorkflowConfig(
+        project_root=Path("."),
+        log_dir=Path("."),
+        log_file=Path("."),
+        lock_dir=Path("."),
+    )
+    assert cfg.max_workers == 8  # min(8, 8)
+
+
+@patch('routine_workflow.config.os.cpu_count', return_value=2)
+@patch('pathlib.Path.resolve')
+def test_max_workers_override(mock_resolve, mock_cpu: Mock, mock_args: Mock):
+    """Test workers from args."""
+    # Setup minimal mocks
+    mock_args.project_root = Path('.')
+    mock_args.log_dir = Path('.')
+    mock_args.lock_dir = Path('.')
+    mock_args.exclude_patterns = None
+    mock_args.dry_run = False
+    mock_args.yes = False
+    mock_args.fail_on_backup = False
+    mock_args.workers = 2
+    mock_args.workflow_timeout = 0
+    mock_args.create_dump_run_cmd = None
+    mock_args.enable_security = False
+    mock_args.enable_dep_audit = False
+    mock_args.test_cov_threshold = 85
+    mock_args.git_push = False
+    mock_args.lock_ttl = 3600
+
+    mock_resolve.return_value = Path('/tmp/test')
+
+    cfg = WorkflowConfig.from_args(mock_args)
+    assert cfg.max_workers == 2  # Override takes precedence
+    mock_resolve.assert_called_once()  # No args; instance call implicit
