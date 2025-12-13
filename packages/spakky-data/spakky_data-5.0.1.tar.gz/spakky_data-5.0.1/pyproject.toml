@@ -1,0 +1,63 @@
+[project]
+name = "spakky-data"
+version = "5.0.1"
+description = "Data access layer for Spakky Framework (Repository implementations, ORM integration)"
+readme = "README.md"
+authors = [{ name = "Spakky", email = "sejong418@icloud.com" }]
+requires-python = ">=3.11"
+dependencies = ["spakky-domain>=5.0.1"]
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src"
+module-name = "spakky.data"
+
+[tool.pyrefly]
+python-version = "3.14"
+search_path = ["src", "."]
+project_excludes = ["**/__pycache__", "**/*.pyc"]
+
+[tool.ruff]
+builtins = ["_"]
+cache-dir = "~/.cache/ruff"
+
+[tool.pytest.ini_options]
+pythonpath = "src/spakky/data"
+testpaths = "tests"
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+addopts = """
+    --cov
+    --cov-report=term
+    --cov-report=xml
+    --no-cov-on-fail
+    --strict-markers
+    --dist=load
+    -p no:warnings
+    -n auto
+    -vv
+"""
+
+[tool.coverage.run]
+include = ["src/spakky/data/*"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+precision = 2
+fail_under = 90
+skip_empty = true
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "@(abc\\.)?abstractmethod",
+  "@(typing\\.)?overload",
+]
+
+[tool.uv.sources]
+spakky-domain = { workspace = true }
