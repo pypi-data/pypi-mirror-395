@@ -1,0 +1,321 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sqlobject.cache module &#8212; SQLObject 3.13.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css?v=5283bb3d" />
+    
+    <script src="../_static/documentation_options.js?v=ced7c45e"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.cache module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-sqlobject.cache">
+<span id="sqlobject-cache-module"></span><h1>sqlobject.cache module<a class="headerlink" href="#module-sqlobject.cache" title="Link to this heading">¶</a></h1>
+<p>This implements the instance caching in SQLObject.  Caching is
+relatively aggressive.  All objects are retained so long as they are
+in memory, by keeping weak references to objects.  We also keep other
+objects in a cache that doesn’t allow them to be garbage collected
+(unless caching is turned off).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.cache.</span></span><span class="sig-name descname"><span class="pre">CacheFactory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cullFrequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cullFraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>CacheFactory caches object creation.  Each object should be
+referenced by a single hashable ID (note tuples of hashable
+values are also hashable).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.allIDs">
+<span class="sig-name descname"><span class="pre">allIDs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.allIDs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.allIDs" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the IDs of all objects in the cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.clear" title="Link to this definition">¶</a></dt>
+<dd><p>Removes everything from the cache.  Warning!  This can cause
+duplicate objects in memory.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.created">
+<span class="sig-name descname"><span class="pre">created</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.created"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.created" title="Link to this definition">¶</a></dt>
+<dd><p>Inserts and object into the cache.  Should be used when no one
+else knows about the object yet, so there cannot be any object
+already in the cache.  After a database INSERT is an example
+of this situation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.cull">
+<span class="sig-name descname"><span class="pre">cull</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.cull"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.cull" title="Link to this definition">¶</a></dt>
+<dd><p>Runs through the cache and expires objects</p>
+<p>E.g., if <code class="docutils literal notranslate"><span class="pre">cullFraction</span></code> is 3, then every third object is moved to
+the ‘expired’ (aka weakref) cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.expire">
+<span class="sig-name descname"><span class="pre">expire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.expire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.expire" title="Link to this definition">¶</a></dt>
+<dd><p>Expires a single object.  Typically called after a delete.
+Doesn’t even keep a weakref.  (&#64;&#64;: bad name?)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.expireAll">
+<span class="sig-name descname"><span class="pre">expireAll</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.expireAll"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.expireAll" title="Link to this definition">¶</a></dt>
+<dd><p>Expires all objects, moving them all into the expired/weakref
+cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.finishPut">
+<span class="sig-name descname"><span class="pre">finishPut</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.finishPut"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.finishPut" title="Link to this definition">¶</a></dt>
+<dd><p>Releases the lock that is retained when .get() is called and
+returns None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.get" title="Link to this definition">¶</a></dt>
+<dd><p>This method can cause deadlocks!  tryGet is safer</p>
+<p>This returns the object found in cache, or None.  If None,
+then the cache will remain locked!  This is so that the
+calling function can create the object in a threadsafe manner
+before releasing the lock.  You should use this like (note
+that <code class="docutils literal notranslate"><span class="pre">cache</span></code> is actually a CacheSet object in this
+example):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">obj</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">some_id</span><span class="p">,</span> <span class="n">my_class</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">create_object</span><span class="p">(</span><span class="n">some_id</span><span class="p">)</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">some_id</span><span class="p">,</span> <span class="n">my_class</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">finishPut</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This method checks both the main cache (which retains
+references) and the ‘expired’ cache, which retains only weak
+references.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.getAll">
+<span class="sig-name descname"><span class="pre">getAll</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.getAll"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.getAll" title="Link to this definition">¶</a></dt>
+<dd><p>Return all the objects in the cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.put"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.put" title="Link to this definition">¶</a></dt>
+<dd><p>Puts an object into the cache.  Should only be called after
+.get(), so that duplicate objects don’t end up in the cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheFactory.tryGet">
+<span class="sig-name descname"><span class="pre">tryGet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheFactory.tryGet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheFactory.tryGet" title="Link to this definition">¶</a></dt>
+<dd><p>This returns None, or the object in cache.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.cache.</span></span><span class="sig-name descname"><span class="pre">CacheSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kw</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A CacheSet is used to collect and maintain a series of caches.  In
+SQLObject, there is one CacheSet per connection, and one Cache
+in the CacheSet for each class, since IDs are not unique across
+classes.  It contains methods similar to Cache, but that take
+a <code class="docutils literal notranslate"><span class="pre">cls</span></code> argument.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.allIDs">
+<span class="sig-name descname"><span class="pre">allIDs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.allIDs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.allIDs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.allSubCaches">
+<span class="sig-name descname"><span class="pre">allSubCaches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.allSubCaches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.allSubCaches" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.allSubCachesByClassNames">
+<span class="sig-name descname"><span class="pre">allSubCachesByClassNames</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.allSubCachesByClassNames"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.allSubCachesByClassNames" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.clear" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.created">
+<span class="sig-name descname"><span class="pre">created</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.created"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.created" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.expire">
+<span class="sig-name descname"><span class="pre">expire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.expire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.expire" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.finishPut">
+<span class="sig-name descname"><span class="pre">finishPut</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.finishPut"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.finishPut" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.get" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.getAll">
+<span class="sig-name descname"><span class="pre">getAll</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.getAll"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.getAll" title="Link to this definition">¶</a></dt>
+<dd><p>Returns all instances in the cache for the given class or all
+classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.put"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.put" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.tryGet">
+<span class="sig-name descname"><span class="pre">tryGet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.tryGet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.tryGet" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.tryGetByName">
+<span class="sig-name descname"><span class="pre">tryGetByName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clsname</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.tryGetByName"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.tryGetByName" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.cache.CacheSet.weakrefAll">
+<span class="sig-name descname"><span class="pre">weakrefAll</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/cache.html#CacheSet.weakrefAll"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.cache.CacheSet.weakrefAll" title="Link to this definition">¶</a></dt>
+<dd><p>Move all objects in the cls (or if not given, then in all
+classes) to the weakref dictionary, where they can be
+collected.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">sqlobject.cache module</a><ul>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory"><code class="docutils literal notranslate"><span class="pre">CacheFactory</span></code></a><ul>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.allIDs"><code class="docutils literal notranslate"><span class="pre">CacheFactory.allIDs()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.clear"><code class="docutils literal notranslate"><span class="pre">CacheFactory.clear()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.created"><code class="docutils literal notranslate"><span class="pre">CacheFactory.created()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.cull"><code class="docutils literal notranslate"><span class="pre">CacheFactory.cull()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.expire"><code class="docutils literal notranslate"><span class="pre">CacheFactory.expire()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.expireAll"><code class="docutils literal notranslate"><span class="pre">CacheFactory.expireAll()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.finishPut"><code class="docutils literal notranslate"><span class="pre">CacheFactory.finishPut()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.get"><code class="docutils literal notranslate"><span class="pre">CacheFactory.get()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.getAll"><code class="docutils literal notranslate"><span class="pre">CacheFactory.getAll()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.put"><code class="docutils literal notranslate"><span class="pre">CacheFactory.put()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheFactory.tryGet"><code class="docutils literal notranslate"><span class="pre">CacheFactory.tryGet()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet"><code class="docutils literal notranslate"><span class="pre">CacheSet</span></code></a><ul>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.allIDs"><code class="docutils literal notranslate"><span class="pre">CacheSet.allIDs()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.allSubCaches"><code class="docutils literal notranslate"><span class="pre">CacheSet.allSubCaches()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.allSubCachesByClassNames"><code class="docutils literal notranslate"><span class="pre">CacheSet.allSubCachesByClassNames()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.clear"><code class="docutils literal notranslate"><span class="pre">CacheSet.clear()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.created"><code class="docutils literal notranslate"><span class="pre">CacheSet.created()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.expire"><code class="docutils literal notranslate"><span class="pre">CacheSet.expire()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.finishPut"><code class="docutils literal notranslate"><span class="pre">CacheSet.finishPut()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.get"><code class="docutils literal notranslate"><span class="pre">CacheSet.get()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.getAll"><code class="docutils literal notranslate"><span class="pre">CacheSet.getAll()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.put"><code class="docutils literal notranslate"><span class="pre">CacheSet.put()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.tryGet"><code class="docutils literal notranslate"><span class="pre">CacheSet.tryGet()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.tryGetByName"><code class="docutils literal notranslate"><span class="pre">CacheSet.tryGetByName()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.cache.CacheSet.weakrefAll"><code class="docutils literal notranslate"><span class="pre">CacheSet.weakrefAll()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/sqlobject.cache.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.cache module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2004-2025, Ian Bicking and contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    </div>
+  </body>
+</html>

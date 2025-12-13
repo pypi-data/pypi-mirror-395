@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>TODO &#8212; SQLObject 3.13.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    
+    <script src="_static/documentation_options.js?v=ced7c45e"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Authors" href="Authors.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Authors.html" title="Authors"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">TODO</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="todo">
+<h1>TODO<a class="headerlink" href="#todo" title="Link to this heading">¶</a></h1>
+<ul>
+<li><p>Fix unicode problems with pyodbc.</p></li>
+<li><p>Resolve timeout problems with MSSQL.</p></li>
+<li><p>PyPy.</p></li>
+<li><p>Use <a class="reference external" href="https://pypi.org/project/psycopg2cffi/">https://pypi.org/project/psycopg2cffi/</a> to run SQLObject
+under PyPy.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/turbodbc/">https://pypi.org/project/turbodbc/</a></p></li>
+<li><p>PyODBC and PyPyODBC for linux and w32: SQLite (libsqliteodbc).</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/JayDeBeApi/">https://pypi.org/project/JayDeBeApi/</a></p></li>
+<li><p>Jython.</p></li>
+<li><p>Quote table/column names that are reserved keywords (order =&gt; “order”,
+values =&gt; <cite>values</cite> for MySQL).</p></li>
+<li><p>RelatedJoin.hasOther(otherObject[.id])</p></li>
+<li><p>createParamsPre/Post:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyTable</span><span class="p">(</span><span class="n">SQLObject</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">sqlmeta</span><span class="p">:</span>
+        <span class="n">createParamsPre</span> <span class="o">=</span> <span class="s1">&#39;TEMPORARY IF NOT EXISTS&#39;</span>
+        <span class="n">createParamsPre</span> <span class="o">=</span> <span class="p">{</span><span class="n">temporary</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="n">ifNotExists</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                           <span class="s1">&#39;postgres&#39;</span><span class="p">:</span> <span class="s1">&#39;LOCAL&#39;</span><span class="p">}</span>
+        <span class="n">createParamsPost</span> <span class="o">=</span> <span class="s1">&#39;ENGINE InnoDB&#39;</span>
+        <span class="n">createParamsPost</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mysql&#39;</span><span class="p">:</span> <span class="s1">&#39;ENGINE InnoDB&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;postgres&#39;</span><span class="p">:</span> <span class="s1">&#39;WITH OIDS&#39;</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p>SQLObject.fastInsert().</p></li>
+<li><p>IntervalCol</p></li>
+<li><p>TimedeltaCol</p></li>
+<li><p>Cached join results.</p></li>
+<li><p>Invert tests isinstance(obj, (tuple, list)) to not isinstance(obj,
+basestr) to allow any iterable.</p></li>
+<li><p>Always use .lazyIter().</p></li>
+<li><p>Optimize Iteration.next() - use cursor.fetchmany().</p></li>
+<li><p>Generators instead of loops (fetchall =&gt; fetchone).</p></li>
+<li><p>Cache columns in sqlmeta.getColumns(); reset the cache on add/del
+Column/Join.</p></li>
+<li><p>Make ConnectionHub a context manager instead of .doInTransaction().</p></li>
+<li><p>Make version_info a namedtuple.</p></li>
+<li><p>Expression columns - in SELECT but not in INSERT/UPDATE. Something like
+this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyClass</span><span class="p">(</span><span class="n">SQLObject</span><span class="p">):</span>
+    <span class="n">function1</span> <span class="o">=</span> <span class="n">ExpressionCol</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">my_function</span><span class="p">(</span><span class="n">MyClass</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">col1</span><span class="p">))</span>
+    <span class="n">function2</span> <span class="o">=</span> <span class="n">ExpressionCol</span><span class="p">(</span><span class="s1">&#39;sum(col2)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>A hierarchy of exceptions. SQLObject should translate exceptions from
+low-level drivers to a consistent set of high-level exceptions.</p></li>
+<li><p>Memcache.</p></li>
+<li><p>Refactor <code class="docutils literal notranslate"><span class="pre">DBConnection</span></code> to use parameterized queries instead of
+generating query strings.</p></li>
+<li><p>PREPARE/EXECUTE.</p></li>
+<li><p>Protect all .encode(), catch UnicodeEncode exceptions and reraise
+Invalid.</p></li>
+<li><p>More kinds of joins, and more powerful join results (closer to how
+<cite>select</cite> works).</p></li>
+<li><p>Better joins - automatic joins in .select() based on
+ForeignKey/MultipleJoin/RelatedJoin.</p></li>
+<li><p>Deprecate, then remove connectionForOldURI.</p></li>
+<li><p>Switch from setuptools to distribute.</p></li>
+<li><p>Support PyODBC driver for all backends.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/dbms/">dbms</a> is a DB API wrapper for DB
+API drivers for IBM DB2, Firebird, MSSQL Server, MySQL, Oracle,
+PostgreSQL, SQLite and ODBC.</p></li>
+<li><p>dict API: use getitem interface for column access instead of getattr;
+reserve getattr for internal attributes only; this helps to avoid
+collisions with internal attributes.</p></li>
+<li><p>Or move column values access to a separate namespace, e.g. .c:
+row.c.column.</p></li>
+<li><p>More documentation.</p></li>
+<li><p>RSS 2.0 and Atom news feeds.</p></li>
+<li><p>Use <a class="reference external" href="https://pypi.org/project/DBUtils/">DBUtils</a>, especially SolidConnection.</p></li>
+</ul>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_fromDatabase</span></code> currently doesn’t support IDs that don’t fit into the
+normal naming scheme.  It should do so.  You can still use <code class="docutils literal notranslate"><span class="pre">_idName</span></code>
+with <code class="docutils literal notranslate"><span class="pre">_fromDatabase</span></code>.</p></li>
+<li><p>More databases supported.  There has been interest and some work in the
+progress for Oracle. IWBN to have Informix and DB2 drivers.</p></li>
+<li><p>Better transaction support – right now you can use transactions for the
+database, but objects aren’t transaction-aware, so non-database
+persistence won’t be able to be rolled back.</p></li>
+<li><p>Optimistic locking and other techniques to handle concurrency.</p></li>
+<li><p>Profile of SQLObject performance to identify bottlenecks.</p></li>
+<li><p>Increase hooks with FormEncode validation and form generation package, so
+SQLObject classes (read: schemas) can be published for editing more
+directly and easily.  (First step: get Schema-generating method into
+sqlmeta class)</p></li>
+<li><p>Merge SQLObject.create*, .create*SQL methods with DBPI.create* methods.</p></li>
+<li><p>Made SQLObject unicode-based instead of just unicode-aware. All internal
+processing should be done with unicode strings, conversion to/from ascii
+strings should happen for non-unicode DB API drivers.</p></li>
+<li><p>Allow to override ConsoleWriter/LogWriter classes and makeDebugWriter
+function.</p></li>
+<li><p>Type annotations and mypy tests.</p></li>
+</ul>
+<a class="reference external image-reference" href="https://sourceforge.net/projects/sqlobject"><img alt="Get SQLObject at SourceForge.net. Fast, secure and Free Open Source software downloads" class="noborder align-center" src="https://sourceforge.net/sflogo.php?group_id=74338&amp;type=10" style="width: 80px; height: 15px;" />
+</a>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="Authors.html"
+                          title="previous chapter">Authors</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/TODO.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Authors.html" title="Authors"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">TODO</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2004-2025, Ian Bicking and contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    </div>
+  </body>
+</html>

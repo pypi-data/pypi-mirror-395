@@ -1,0 +1,331 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sqlobject.events module &#8212; SQLObject 3.13.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css?v=5283bb3d" />
+    
+    <script src="../_static/documentation_options.js?v=ced7c45e"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.events module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-sqlobject.events">
+<span id="sqlobject-events-module"></span><h1>sqlobject.events module<a class="headerlink" href="#module-sqlobject.events" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.AddColumnSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">AddColumnSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#AddColumnSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.AddColumnSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when a column is added to a class, with arguments <code class="docutils literal notranslate"><span class="pre">(cls,</span>
+<span class="pre">connection,</span> <span class="pre">column_name,</span> <span class="pre">column_definition,</span> <span class="pre">changeSchema,</span>
+<span class="pre">post_funcs)</span></code>.  This is called <em>after</em> the column has been added,
+and is called for each column after class creation.</p>
+<p>post_funcs are called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">so_column_obj)</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.ClassCreateSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">ClassCreateSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#ClassCreateSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.ClassCreateSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Signal raised after class creation.  The sender is the superclass
+(in case of multiple superclasses, the first superclass).  The
+arguments are <code class="docutils literal notranslate"><span class="pre">(new_class_name,</span> <span class="pre">bases,</span> <span class="pre">new_attrs,</span> <span class="pre">post_funcs,</span>
+<span class="pre">early_funcs)</span></code>.  <code class="docutils literal notranslate"><span class="pre">new_attrs</span></code> is a dictionary and may be modified
+(but <code class="docutils literal notranslate"><span class="pre">new_class_name</span></code> and <code class="docutils literal notranslate"><span class="pre">bases</span></code> are immutable).
+<code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> is an initially-empty list that can have callbacks
+appended to it.</p>
+<p>Note: at the time this event is called, the new class has not yet
+been created.  The functions in <code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> will be called
+after the class is created, with the single arguments of
+<code class="docutils literal notranslate"><span class="pre">(new_class)</span></code>.  Also, <code class="docutils literal notranslate"><span class="pre">early_funcs</span></code> will be called at the
+soonest possible time after class creation (<code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> is
+called after the class’s <code class="docutils literal notranslate"><span class="pre">__classinit__</span></code>).</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.CommitSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">CommitSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#CommitSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.CommitSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called on transaction commit</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.CreateTableSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">CreateTableSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#CreateTableSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.CreateTableSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when a table is created.  If <code class="docutils literal notranslate"><span class="pre">ifNotExists==True</span></code> and the
+table exists, this event is not called.</p>
+<p>Called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">connection,</span> <span class="pre">extra_sql,</span> <span class="pre">post_funcs)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">extra_sql</span></code> is a list (which can be appended to) of extra SQL
+statements to be run after the table is created.  <code class="docutils literal notranslate"><span class="pre">post_funcs</span></code>
+functions are called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">connection)</span></code> after the table
+has been created.  Those functions are <em>not</em> called simply when
+constructing the SQL.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.DeleteColumnSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">DeleteColumnSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#DeleteColumnSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.DeleteColumnSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when a column is removed from a class, with the arguments
+<code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">connection,</span> <span class="pre">column_name,</span> <span class="pre">so_column_obj,</span> <span class="pre">post_funcs)</span></code>.
+Like <code class="docutils literal notranslate"><span class="pre">AddColumnSignal</span></code> this is called after the action has been
+performed, and is called for subclassing (when a column is
+implicitly removed by setting it to <code class="docutils literal notranslate"><span class="pre">None</span></code>).</p>
+<p>post_funcs are called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">so_column_obj)</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.DropTableSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">DropTableSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#DropTableSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.DropTableSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when a table is dropped.  If <code class="docutils literal notranslate"><span class="pre">ifExists==True</span></code> and the
+table doesn’t exist, this event is not called.</p>
+<p>Called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">connection,</span> <span class="pre">extra_sql,</span> <span class="pre">post_funcs)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> functions are called with <code class="docutils literal notranslate"><span class="pre">(cls,</span> <span class="pre">connection)</span></code>
+after the table has been dropped.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RollbackSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RollbackSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RollbackSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RollbackSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called on transaction rollback</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowCreateSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowCreateSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowCreateSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowCreateSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called before an instance is created, with the class as the
+sender.  Called with the arguments <code class="docutils literal notranslate"><span class="pre">(instance,</span> <span class="pre">kwargs,</span> <span class="pre">post_funcs)</span></code>.
+There may be a <code class="docutils literal notranslate"><span class="pre">connection</span></code> argument.  <code class="docutils literal notranslate"><span class="pre">kwargs``may</span> <span class="pre">be</span> <span class="pre">usefully</span>
+<span class="pre">modified.</span>&#160; <span class="pre">``post_funcs</span></code> is a list of callbacks, intended to have
+functions appended to it, and are called with the arguments
+<code class="docutils literal notranslate"><span class="pre">(new_instance)</span></code>.</p>
+<p>Note: this is not called when an instance is created from an
+existing database row.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowCreatedSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowCreatedSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowCreatedSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowCreatedSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called after an instance is created, with the class as the
+sender.  Called with the arguments <code class="docutils literal notranslate"><span class="pre">(instance,</span> <span class="pre">kwargs,</span> <span class="pre">post_funcs)</span></code>.
+There may be a <code class="docutils literal notranslate"><span class="pre">connection</span></code> argument.  <code class="docutils literal notranslate"><span class="pre">kwargs``may</span> <span class="pre">be</span> <span class="pre">usefully</span>
+<span class="pre">modified.</span>&#160; <span class="pre">``post_funcs</span></code> is a list of callbacks, intended to have
+functions appended to it, and are called with the arguments
+<code class="docutils literal notranslate"><span class="pre">(new_instance)</span></code>.</p>
+<p>Note: this is not called when an instance is created from an
+existing database row.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowDestroySignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowDestroySignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowDestroySignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowDestroySignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called before an instance is deleted.  Sender is the instance’s
+class.  Arguments are <code class="docutils literal notranslate"><span class="pre">(instance,</span> <span class="pre">post_funcs)</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> is a list of callbacks, intended to have
+functions appended to it, and are called with arguments <code class="docutils literal notranslate"><span class="pre">(instance)</span></code>.
+If any of the post_funcs raises an exception, the deletion is only
+affected if this will prevent a commit.</p>
+<p>You cannot cancel the delete, but you can raise an exception (which will
+probably cancel the delete, but also cause an uncaught exception if not
+expected).</p>
+<p>Note: this is not called when an instance is destroyed through
+garbage collection.</p>
+<p>&#64;&#64;: Should this allow <code class="docutils literal notranslate"><span class="pre">instance</span></code> to be a primary key, so that a
+row can be deleted without first fetching it?</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowDestroyedSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowDestroyedSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowDestroyedSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowDestroyedSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called after an instance is deleted.  Sender is the instance’s
+class.  Arguments are <code class="docutils literal notranslate"><span class="pre">(instance)</span></code>.</p>
+<p>This is called before the post_funcs of RowDestroySignal</p>
+<p>Note: this is not called when an instance is destroyed through
+garbage collection.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowUpdateSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowUpdateSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowUpdateSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowUpdateSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when an instance is updated through a call to <code class="docutils literal notranslate"><span class="pre">.set()</span></code>
+(or a column attribute assignment).  The arguments are
+<code class="docutils literal notranslate"><span class="pre">(instance,</span> <span class="pre">kwargs)</span></code>.  <code class="docutils literal notranslate"><span class="pre">kwargs</span></code> can be modified.  This is run
+<em>before</em> the instance is updated; if you want to look at the
+current values, simply look at <code class="docutils literal notranslate"><span class="pre">instance</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.RowUpdatedSignal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">RowUpdatedSignal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#RowUpdatedSignal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.RowUpdatedSignal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#sqlobject.events.Signal" title="sqlobject.events.Signal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Signal</span></code></a></p>
+<p>Called when an instance is updated through a call to <code class="docutils literal notranslate"><span class="pre">.set()</span></code>
+(or a column attribute assignment).  The arguments are
+<code class="docutils literal notranslate"><span class="pre">(instance,</span> <span class="pre">post_funcs)</span></code>. <code class="docutils literal notranslate"><span class="pre">post_funcs</span></code> is a list of callbacks,
+intended to have functions appended to it, and are called with the
+arguments <code class="docutils literal notranslate"><span class="pre">(new_instance)</span></code>. This is run <em>after</em> the instance is
+updated; Works better with lazyUpdate = True.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.events.Signal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">Signal</span></span><a class="reference internal" href="../_modules/sqlobject/events.html#Signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.Signal" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base event for all SQLObject events.</p>
+<p>In general the sender for these methods is the class, not the
+instance.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sqlobject.events.listen">
+<span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">listen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">receiver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">soClass</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alsoSubclasses</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weak</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/events.html#listen"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.listen" title="Link to this definition">¶</a></dt>
+<dd><p>Listen for the given <code class="docutils literal notranslate"><span class="pre">signal</span></code> on the SQLObject subclass
+<code class="docutils literal notranslate"><span class="pre">soClass</span></code>, calling <code class="docutils literal notranslate"><span class="pre">receiver()</span></code> when <code class="docutils literal notranslate"><span class="pre">send(soClass,</span> <span class="pre">signal,</span>
+<span class="pre">...)</span></code> is called.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">alsoSubclasses</span></code> is true, receiver will also be called when
+an event is fired on any subclass.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sqlobject.events.send">
+<span class="sig-prename descclassname"><span class="pre">sqlobject.events.</span></span><span class="sig-name descname"><span class="pre">send</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sender</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Anonymous</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">arguments</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">named</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pydispatch/dispatcher.html#send"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.events.send" title="Link to this definition">¶</a></dt>
+<dd><p>Send signal from sender to all connected receivers.</p>
+<p>signal – (hashable) signal value, see connect for details</p>
+<p>sender – the sender of the signal</p>
+<blockquote>
+<div><p>if Any, only receivers registered for Any will receive
+the message.</p>
+<p>if Anonymous, only receivers registered to receive
+messages from Anonymous or Any will receive the message</p>
+<p>Otherwise can be any python object (normally one
+registered with a connect if you actually want
+something to occur).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>arguments – positional arguments which will be passed to</dt><dd><p><em>all</em> receivers. Note that this may raise TypeErrors
+if the receivers do not allow the particular arguments.
+Note also that arguments are applied before named
+arguments, so they should be used with care.</p>
+</dd>
+<dt>named – named arguments which will be filtered according</dt><dd><p>to the parameters of the receivers to only provide those
+acceptable to the receiver.</p>
+</dd>
+</dl>
+<p>Return a list of tuple pairs [(receiver, response), … ]</p>
+<p>if any receiver raises an error, the error propagates back
+through send, terminating the dispatch loop, so it is quite
+possible to not have all receivers called if a raises an
+error.</p>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">sqlobject.events module</a><ul>
+<li><a class="reference internal" href="#sqlobject.events.AddColumnSignal"><code class="docutils literal notranslate"><span class="pre">AddColumnSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.ClassCreateSignal"><code class="docutils literal notranslate"><span class="pre">ClassCreateSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.CommitSignal"><code class="docutils literal notranslate"><span class="pre">CommitSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.CreateTableSignal"><code class="docutils literal notranslate"><span class="pre">CreateTableSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.DeleteColumnSignal"><code class="docutils literal notranslate"><span class="pre">DeleteColumnSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.DropTableSignal"><code class="docutils literal notranslate"><span class="pre">DropTableSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RollbackSignal"><code class="docutils literal notranslate"><span class="pre">RollbackSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowCreateSignal"><code class="docutils literal notranslate"><span class="pre">RowCreateSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowCreatedSignal"><code class="docutils literal notranslate"><span class="pre">RowCreatedSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowDestroySignal"><code class="docutils literal notranslate"><span class="pre">RowDestroySignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowDestroyedSignal"><code class="docutils literal notranslate"><span class="pre">RowDestroyedSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowUpdateSignal"><code class="docutils literal notranslate"><span class="pre">RowUpdateSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.RowUpdatedSignal"><code class="docutils literal notranslate"><span class="pre">RowUpdatedSignal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.Signal"><code class="docutils literal notranslate"><span class="pre">Signal</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.listen"><code class="docutils literal notranslate"><span class="pre">listen()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.events.send"><code class="docutils literal notranslate"><span class="pre">send()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/sqlobject.events.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.events module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2004-2025, Ian Bicking and contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    </div>
+  </body>
+</html>

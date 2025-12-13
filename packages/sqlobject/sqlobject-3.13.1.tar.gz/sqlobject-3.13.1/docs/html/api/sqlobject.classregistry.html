@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sqlobject.classregistry module &#8212; SQLObject 3.13.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/bizstyle.css?v=5283bb3d" />
+    
+    <script src="../_static/documentation_options.js?v=ced7c45e"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.classregistry module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-sqlobject.classregistry">
+<span id="sqlobject-classregistry-module"></span><h1>sqlobject.classregistry module<a class="headerlink" href="#module-sqlobject.classregistry" title="Link to this heading">¶</a></h1>
+<dl class="simple">
+<dt>classresolver.py</dt><dd><p>2 February 2004, Ian Bicking &lt;<a class="reference external" href="mailto:ianb&#37;&#52;&#48;colorstudy&#46;com">ianb<span>&#64;</span>colorstudy<span>&#46;</span>com</a>&gt;</p>
+</dd>
+</dl>
+<p>Resolves strings to classes, and runs callbacks when referenced
+classes are created.</p>
+<p>Classes are referred to only by name, not by module.  So that
+identically-named classes can coexist, classes are put into individual
+registries, which are keyed on strings (names).  These registries are
+created on demand.</p>
+<p>Use like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">classregistry</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">registry</span> <span class="o">=</span> <span class="n">classregistry</span><span class="o">.</span><span class="n">registry</span><span class="p">(</span><span class="s1">&#39;MyModules&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">afterMyClassExists</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="gp">... </span>   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Class finally exists: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">cls</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">registry</span><span class="o">.</span><span class="n">addClassCallback</span><span class="p">(</span><span class="s1">&#39;MyClass&#39;</span><span class="p">,</span> <span class="n">afterMyClassExists</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MyClass</span><span class="p">:</span>
+<span class="gp">... </span>   <span class="k">pass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">registry</span><span class="o">.</span><span class="n">addClass</span><span class="p">(</span><span class="n">MyClass</span><span class="p">)</span>
+<span class="go">Class finally exists: MyClass</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sqlobject.classregistry.</span></span><span class="sig-name descname"><span class="pre">ClassRegistry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>We’ll be dealing with classes that reference each other, so
+class C1 may reference C2 (in a join), while C2 references
+C1 right back.  Since classes are created in an order, there
+will be a point when C1 exists but C2 doesn’t.  So we deal
+with classes by name, and after each class is created we
+try to fix up any references by replacing the names with
+actual classes.</p>
+<p>Here we keep a dictionaries of class names to classes – note
+that the classes might be spread among different modules, so
+since we pile them together names need to be globally unique,
+to just module unique.
+Like needSet below, the container dictionary is keyed by the
+class registry.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry.addCallback">
+<span class="sig-name descname"><span class="pre">addCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kw</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry.addCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry.addCallback" title="Link to this definition">¶</a></dt>
+<dd><p>This callback is called for all classes, not just specific
+ones (like addClassCallback).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry.addClass">
+<span class="sig-name descname"><span class="pre">addClass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry.addClass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry.addClass" title="Link to this definition">¶</a></dt>
+<dd><p>Everytime a class is created, we add it to the registry, so
+that other classes can find it by name.  We also call any
+callbacks that are waiting for the class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry.addClassCallback">
+<span class="sig-name descname"><span class="pre">addClassCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">className</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kw</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry.addClassCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry.addClassCallback" title="Link to this definition">¶</a></dt>
+<dd><p>Whenever a name is substituted for the class, you can register
+a callback that will be called when the needed class is
+created.  If it’s already been created, the callback will be
+called immediately.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry.allClasses">
+<span class="sig-name descname"><span class="pre">allClasses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry.allClasses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry.allClasses" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sqlobject.classregistry.ClassRegistry.getClass">
+<span class="sig-name descname"><span class="pre">getClass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">className</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#ClassRegistry.getClass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.ClassRegistry.getClass" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sqlobject.classregistry.findClass">
+<span class="sig-prename descclassname"><span class="pre">sqlobject.classregistry.</span></span><span class="sig-name descname"><span class="pre">findClass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_registry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sqlobject/classregistry.html#findClass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sqlobject.classregistry.findClass" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sqlobject.classregistry.registry">
+<span class="sig-prename descclassname"><span class="pre">sqlobject.classregistry.</span></span><span class="sig-name descname"><span class="pre">registry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sqlobject.classregistry.registry" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">sqlobject.classregistry module</a><ul>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry"><code class="docutils literal notranslate"><span class="pre">ClassRegistry</span></code></a><ul>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry.addCallback"><code class="docutils literal notranslate"><span class="pre">ClassRegistry.addCallback()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry.addClass"><code class="docutils literal notranslate"><span class="pre">ClassRegistry.addClass()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry.addClassCallback"><code class="docutils literal notranslate"><span class="pre">ClassRegistry.addClassCallback()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry.allClasses"><code class="docutils literal notranslate"><span class="pre">ClassRegistry.allClasses()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.classregistry.ClassRegistry.getClass"><code class="docutils literal notranslate"><span class="pre">ClassRegistry.getClass()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sqlobject.classregistry.findClass"><code class="docutils literal notranslate"><span class="pre">findClass()</span></code></a></li>
+<li><a class="reference internal" href="#sqlobject.classregistry.registry"><code class="docutils literal notranslate"><span class="pre">registry()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/sqlobject.classregistry.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">SQLObject 3.13.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sqlobject.classregistry module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2004-2025, Ian Bicking and contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    </div>
+  </body>
+</html>
