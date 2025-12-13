@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: fastapi-mongo-logger-mateoramos
+Version: 1.0.6
+Summary: FastAPI MongoDB logging package for endpoints and general logging
+License: MIT
+License-File: LICENSE
+Keywords: fastapi,mongodb,logging,middleware,async,jwt
+Author: Mateo Ramos
+Author-email: mateoramos1997@gmail.com
+Requires-Python: >=3.7,<4.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP :: HTTP Servers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Logging
+Requires-Dist: PyJWT (>=2.0.0)
+Requires-Dist: fastapi (>=0.68.0)
+Requires-Dist: motor (>=3.0.0)
+Requires-Dist: pydantic (>=1.8.0)
+Requires-Dist: pymongo (>=4.0.0)
+Project-URL: Bug Reports, https://github.com/mateoramos97/fastapi-mongo-logs/issues
+Project-URL: Homepage, https://github.com/mateoramos97/fastapi-mongo-logs
+Project-URL: Repository, https://github.com/mateoramos97/fastapi-mongo-logs
+Description-Content-Type: text/markdown
+
+# FastAPI MongoDB Logger
+
+A comprehensive logging package for FastAPI applications that stores endpoint logs and custom events in MongoDB.
+
+## Installation
+
+```bash
+pip install fastapi-mongo-logger-mateoramos
+```
+
+## Quick Start
+
+### 1. Basic Setup
+
+```python
+from fastapi import FastAPI
+from fastapi_mongo_logger import MongoLogger, LoggingMiddleware
+
+app = FastAPI()
+
+# Initialize logger
+logger = MongoLogger(
+    mongo_url="mongodb://localhost:27017",
+    database_name="my_app_logs",
+    collection_name="api_logs"
+)
+
+# Add middleware for automatic endpoint logging
+app.add_middleware(LoggingMiddleware, logger=logger)
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+```
+
+### 2. Manual Logging with Decorators
+
+```python
+from fastapi_mongo_logger import log_endpoint, log_function
+
+@log_endpoint(logger, user_type="admin")
+async def admin_function():
+    # Your code here
+    pass
+
+@log_function(logger, event_type="data_processing")
+def process_data():
+    # Your code here
+    pass
+```
+
+### 3. Custom Logging
+
+```python
+# Log custom events anywhere in your code
+await logger.log_custom("user_action", {
+    "user_id": "123",
+    "action": "login",
+    "ip_address": "192.168.1.1"
+})
+```
+
+## Features
+
+- **Automatic endpoint logging** via middleware
+- **Manual logging** with decorators
+- **Custom event logging** for any part of your application
+- **Comprehensive data capture**: request/response bodies, headers, timing, errors
+- **Async/sync function support**
+- **Flexible data storage** in MongoDB
+
+## Configuration Options
+
+- `log_request_body`: Enable/disable request body logging (default: True)
+- `log_response_body`: Enable/disable response body logging (default: False)
+- Custom fields can be added to any log entry
