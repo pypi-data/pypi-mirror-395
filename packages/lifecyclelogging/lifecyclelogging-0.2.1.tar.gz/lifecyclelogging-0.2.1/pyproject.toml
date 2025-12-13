@@ -1,0 +1,134 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lifecyclelogging"
+version = "0.2.1"
+description = "A comprehensive logging utility for managing application lifecycle logs"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["logging", "lifecycle", "debug"]
+authors = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+maintainers = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "rich>=13.0.0",
+    "extended-data-types>=2025.11.164",
+    "typing-extensions>=4.0.0; python_version < '3.10'",
+]
+
+[project.urls]
+Documentation = "https://github.com/jbcom/lifecyclelogging#readme"
+Issues = "https://github.com/jbcom/lifecyclelogging/issues"
+Source = "https://github.com/jbcom/lifecyclelogging"
+
+[project.optional-dependencies]
+tests = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.6.1",
+    "coverage[toml]>=7.6.0",
+    "hypothesis>=6.0.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinxawesome-theme>=5.2.0",
+    "sphinx-autodoc2>=0.5.0",
+    "myst-parser>=3.0.1",
+    "docutils>=0.17",
+]
+typing = ["mypy>=1.0.0"]
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+testpaths = "tests"
+xfail_strict = true
+filterwarnings = []
+
+[tool.coverage.paths]
+source = [
+    "src/lifecyclelogging",
+    ".tox/*/lib/python*/site-packages/lifecyclelogging",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["lifecyclelogging"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 75
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == '__main__':",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "raise ImportError",
+    "except ImportError:",
+    "pass",
+]
+
+[tool.ruff]
+src = ["lifecyclelogging", "tests"]
+exclude = ["docs"]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN", "C901", "COM", "D205", "D415", "E501", "TD", "FIX", "FBT", "TCH", "TRY"]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/conf.py" = ["D100", "INP001", "PTH100"]
+"src/lifecyclelogging/logging.py" = [
+    "A005", "SLF001", "PLR0912", "PLR0913", "PLR0915",
+    "FBT001", "FBT002", "C901", "PLW2901", "TRY003", "EM102",
+]
+"tests/*.py" = ["INP001", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+lines-between-types = 1
+lines-after-imports = 2
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+pretty = true
+show_error_codes = true
+enable_error_code = ["ignore-without-code"]
+ignore_missing_imports = true
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[tool.semantic_release]
+build_command = "uv build"
+commit_message = "chore(release): release v{version} [skip ci]"
+allow_zero_version = true
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/lifecyclelogging/__init__.py:__version__"]
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
