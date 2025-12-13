@@ -1,0 +1,26 @@
+"""Fantasy DotA2 scoring configuration."""
+
+FANTASY = {
+    'kills': 0.3,
+    'deaths': -0.3,
+    'assists': 0,
+    'last_hits': 0.003,
+    'gold_per_min': 0.002,
+    'xp_per_min': 0,
+    'tower_kills': 1,
+    'tower_damage': 0,
+    'hero_damage': 0,
+    'courier_kills': 0,
+    'observer_kills': 0,
+    'sentry_kills': 0,
+    'roshan_kills': 1,
+    'teamfight': 3,
+    'observer_placed': 0.5,
+    'sentry_placed': 0,
+    'camps_stacked': 0.5,
+    'runes_grabbed': 0.25,
+    'first_blood': 4,
+    'stuns': 0.05,
+    'hero_healing': 0,
+    'deaths_base': 3,
+}
