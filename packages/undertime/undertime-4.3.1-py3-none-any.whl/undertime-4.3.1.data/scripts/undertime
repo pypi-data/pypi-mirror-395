@@ -1,0 +1,1231 @@
+#!python
+# -*- coding: utf-8 -*-
+
+"""Shows all times of day for the given time zones.
+
+This helps to find a common meeting time across multiple time
+zones. It defaults to "now" but can look at other dates with the
+"WHEN" argument."""
+
+# Copyright (C) 2017 Antoine Beaupré
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import argparse
+import datetime
+import importlib
+import logging
+import logging.handlers
+import os
+import platform
+import re
+import sys
+from site import USER_BASE
+from typing import Any, Iterable, Optional, Sequence, Union
+
+# XXX: we *also* need pytz even though dateutil also ships time zone
+# info. pytz has the *list* of all time zones, which dateutil doesn't
+# ship, or at least not yet. This might eventually all get fixed in
+# the standard library, see: https://lwn.net/Articles/813691/
+import pytz
+
+# for tabulated data, i looked at other alternatives
+# humanfriendly has a tabulator: https://humanfriendly.readthedocs.io/en/latest/#module-humanfriendly.tables
+# tabulate is similar: https://pypi.python.org/pypi/tabulate
+# texttable as well: https://github.com/foutaise/texttable/
+# terminaltables is the full thing: https://robpol86.github.io/terminaltables/
+# "rich" has more features, but awkward interface: https://rich.readthedocs.io/en/stable/reference/table.html
+# ie. you need to add rows one at a time, not worth it
+#
+# originally, i was just centering thing with the .format()
+# handler. this was working okay except that it was too wide because i
+# was using the widest column as width everywhere because i'm lazy.
+#
+# i switched to tabulate because terminaltables has problems with
+# colors, see https://gitlab.com/anarcat/undertime/issues/9 and
+# https://github.com/Robpol86/terminaltables/issues/55
+import tabulate
+
+# also considered colorama and crayons
+# 1. colorama requires to send reset codes. annoying.
+# 2. crayons is a wrapper around colorama, not in debian
+import termcolor
+
+# also considered dateutil.tz.tzlocal() but that returns a rather
+# opaque tzinfo object that I haven't figured out how to use. by
+# contrast, tzlocal returns a more modern pytz object that actually
+# has a proper underlying tzinfo object. it's possible to extract a
+# timezone name out of dateutil, but it first needs a timestamp and we
+# can't do that because we need the zone to parse the time.
+import tzlocal
+import yaml
+from dateutil.relativedelta import relativedelta
+
+
+class ImportlibVersionAction(argparse._VersionAction):
+    """Version action with a default from importlib"""
+
+    @staticmethod
+    def _version():
+        # call importlib only if needed, it takes 20ms to load
+        try:
+            import importlib.metadata as importlib_metadata
+        except ImportError:
+            import importlib_metadata  # type:ignore
+
+        return importlib_metadata.version("undertime")
+
+    def __call__(self, *args, **kwargs):
+        self.version = self._version()
+        return super().__call__(*args, **kwargs)
+
+
+class NegateAction(argparse.Action):
+    """add a toggle flag to argparse
+
+    this is similar to 'store_true' or 'store_false', but allows
+    arguments prefixed with --no to disable the default. the default
+    is set depending on the first argument - if it starts with the
+    negative form (defined by default as '--no'), the default is False,
+    otherwise True.
+
+    originally written for the stressant project.
+    """
+
+    negative = "--no"
+
+    def __init__(self, option_strings, *args, **kwargs):
+        """set default depending on the first argument"""
+        kwargs["default"] = kwargs.get(
+            "default", option_strings[0].startswith(self.negative)
+        )
+        super(NegateAction, self).__init__(option_strings, *args, nargs=0, **kwargs)
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        ns: argparse.Namespace,
+        values: Optional[Union[str, Sequence[Any]]],
+        option_string: Optional[str] = None,
+    ) -> None:
+        """set the truth value depending on whether
+        it starts with the negative form"""
+        if option_string:
+            setattr(ns, self.dest, not option_string.startswith(self.negative))
+
+
+class ConfigAction(argparse._StoreAction):
+    """add configuration file to current defaults.
+
+    a *list* of default config files can be specified and will be
+    parsed when added by ConfigArgumentParser.
+
+    it was reported this might not work well with subparsers, patches
+    to fix that are welcome.
+    """
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        """the config action is a search path, so a list, so one or more argument"""
+        kwargs["nargs"] = 1
+        super().__init__(*args, **kwargs)
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        ns: argparse.Namespace,
+        values: Optional[Union[str, Sequence[Any]]],
+        option_string: Optional[str] = None,
+    ) -> None:
+        """change defaults for the namespace, still allows overriding
+        from commandline options"""
+        if values:
+            if not isinstance(values, Sequence):
+                values = [values]
+            for path in values:
+                try:
+                    # XXX: this is probably the bit that fails with
+                    # subparsers and groups
+                    parser.set_defaults(**self.parse_config(path))
+                except FileNotFoundError as e:
+                    logging.debug("config file %s not found: %s", path, e)
+                else:
+                    # stop processing once we find a valid configuration
+                    # file
+                    break
+        super().__call__(parser, ns, values, option_string)
+
+    def parse_config(self, path: str) -> dict:  # type: ignore[type-arg]
+        """abstract implementation of config file parsing, should be overridden in subclasses"""
+        raise NotImplementedError()
+
+
+class YamlConfigAction(ConfigAction):
+    """YAML config file parser action"""
+
+    def parse_config(self, path: str) -> dict:  # type: ignore[type-arg]
+        """This doesn't handle errors around open() and others, callers should
+        probably catch FileNotFoundError at least.
+        """
+        try:
+            with open(os.path.expanduser(path), "r") as handle:
+                logging.debug("parsing path %s as YAML" % path)
+                return yaml.safe_load(handle) or {}
+        except yaml.error.YAMLError as e:
+            raise argparse.ArgumentError(
+                self, "failed to parse YAML configuration: %s" % str(e)
+            )
+
+
+class ConfigArgumentParser(argparse.ArgumentParser):
+    """argument parser which supports parsing extra config files
+
+    Config files specified on the commandline through the
+    YamlConfigAction arguments modify the default values on the
+    spot. If a default is specified when adding an argument, it also
+    gets immediately loaded.
+
+    This will typically be used in a subclass, like this:
+
+            self.add_argument('--config', action=YamlConfigAction, default=self.default_config())
+
+    This shows how the configuration file overrides the default value
+    for an option:
+
+    >>> from tempfile import NamedTemporaryFile
+    >>> c = NamedTemporaryFile()
+    >>> c.write(b"foo: delayed\\n")
+    13
+    >>> c.flush()
+    >>> parser = ConfigArgumentParser()
+    >>> a = parser.add_argument('--foo', default='bar')
+    >>> a = parser.add_argument('--config', action=YamlConfigAction, default=[c.name])
+    >>> args = parser.parse_args([])
+    >>> args.config == [c.name]
+    True
+    >>> args.foo
+    'delayed'
+    >>> args = parser.parse_args(['--foo', 'quux'])
+    >>> args.foo
+    'quux'
+
+    This is the same test, but with `--config` called earlier, which
+    should still work:
+
+    >>> from tempfile import NamedTemporaryFile
+    >>> c = NamedTemporaryFile()
+    >>> c.write(b"foo: quux\\n")
+    10
+    >>> c.flush()
+    >>> parser = ConfigArgumentParser()
+    >>> a = parser.add_argument('--config', action=YamlConfigAction, default=[c.name])
+    >>> a = parser.add_argument('--foo', default='bar')
+    >>> args = parser.parse_args([])
+    >>> args.config == [c.name]
+    True
+    >>> args.foo
+    'quux'
+    >>> args = parser.parse_args(['--foo', 'baz'])
+    >>> args.foo
+    'baz'
+
+    This tests that you can override the config file defaults altogether:
+
+    >>> parser = ConfigArgumentParser()
+    >>> a = parser.add_argument('--config', action=YamlConfigAction, default=[c.name])
+    >>> a = parser.add_argument('--foo', default='bar')
+    >>> args = parser.parse_args(['--config', '/dev/null'])
+    >>> args.foo
+    'bar'
+    >>> args = parser.parse_args(['--config', '/dev/null', '--foo', 'baz'])
+    >>> args.foo
+    'baz'
+
+    This tests multiple search paths, first one should be loaded:
+
+    >>> from tempfile import NamedTemporaryFile
+    >>> d = NamedTemporaryFile()
+    >>> d.write(b"foo: argh\\n")
+    10
+    >>> d.flush()
+    >>> parser = ConfigArgumentParser()
+    >>> a = parser.add_argument('--config', action=YamlConfigAction, default=[d.name, c.name])
+    >>> a = parser.add_argument('--foo', default='bar')
+    >>> args = parser.parse_args([])
+    >>> args.foo
+    'argh'
+    >>> c.close()
+    >>> d.close()
+
+    There are actually many other implementations of this we might
+    want to consider instead of maintaining our own:
+
+    https://github.com/omni-us/jsonargparse
+    https://github.com/bw2/ConfigArgParse
+    https://github.com/omry/omegaconf
+
+    See this comment for a quick review:
+
+    https://github.com/borgbackup/borg/issues/6551#issuecomment-1094104453
+    """
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        super().__init__(*args, **kwargs)
+        # a list of actions to fire with their defaults if not fired
+        # during parsing
+        self._delayed_config_action = []
+
+    def _add_action(self, action: argparse.Action) -> argparse.Action:  # type: ignore[override]
+        # this overrides the add_argument() routine, which is where
+        # actions get registered in the argparse module.
+        #
+        # we do this so we can properly load the default config file
+        # before the the other arguments get set.
+        #
+        # now, of course, we do not fire the action here directly
+        # because that would make it impossible to *not* load the
+        # default action. so instead we register this as a
+        # "_delayed_config_action" which gets fired in `parse_args()`
+        # instead
+        action = super()._add_action(action)
+        if isinstance(action, ConfigAction) and action.default is not None:
+            self._delayed_config_action.append(action)
+        return action
+
+    def parse_args(  # type: ignore[override]
+        self,
+        args: Optional[Sequence[str]] = None,
+        namespace: Optional[argparse.Namespace] = None,
+    ) -> argparse.Namespace:
+        # we do a first failsafe pass on the commandline to find out
+        # if we have any "config" parameters specified, in which case
+        # we must *not* load the default config file
+        ns, _ = self.parse_known_args(args, namespace)
+
+        # load the default configuration file, if relevant
+        #
+        # this will parse the specified config files and load the
+        # values as defaults *before* the rest of the commandline gets
+        # parsed
+        #
+        # we do this instead of just loading the config file in the
+        # namespace precisely to make it possible to override the
+        # configuration file settings on the commandline
+        for action in self._delayed_config_action:
+            if action.dest in ns and action.default != getattr(ns, action.dest):
+                # do not load config default if specified on the commandline
+                logging.debug("not loading delayed action because of config override")
+                # action is already loaded, no need to parse it again
+                continue
+            logging.debug("searching config files: %s" % action.default)
+            action(self, ns, action.default, None)
+        # this will actually load the relevant config file when found
+        # on the commandline
+        #
+        # note that this will load the config file a second time
+        return super().parse_args(args, namespace)
+
+    def default_config(self) -> Iterable[str]:
+        """handy shortcut to detect commonly used config paths
+
+        This list is processed as a FIFO: if a file is found in there,
+        it will be parsed and the remaining ones will be ignored.
+        """
+        return [
+            os.path.join(
+                os.environ.get("XDG_CONFIG_HOME", "~/.config/"), self.prog + ".yml"
+            ),
+            os.path.join(USER_BASE or "/usr/local", "etc", self.prog + ".yml"),
+            os.path.join("/usr/local/etc", self.prog + ".yml"),
+            os.path.join("/etc", self.prog + ".yml"),
+        ]
+
+
+class LoggingAction(argparse.Action):
+    """change log level on the fly
+
+    The logging system should be initialized before this, using
+    `basicConfig`.
+    """
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        """setup the action parameters
+
+        This enforces a selection of logging levels. It also checks if
+        const is provided, in which case we assume it's an argument
+        like `--verbose` or `--debug` without an argument.
+        """
+        kwargs["choices"] = logging._nameToLevel.keys()
+        if "const" in kwargs:
+            kwargs["nargs"] = 0
+        super().__init__(*args, **kwargs)
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        ns: argparse.Namespace,
+        values: Optional[Union[str, Sequence[Any]]],
+        option_string: Optional[str] = None,
+    ) -> None:
+        """if const was specified it means argument-less parameters"""
+        if self.const:
+            logging.getLogger("").setLevel(self.const)
+        else:
+            values = str(values)
+            if values not in logging.getLevelNamesMapping().keys():
+                parser.error("invalid logging level: %s" % values)
+            logging.getLogger("").setLevel(values)
+        # cargo-culted from _StoreConstAction
+        setattr(ns, self.dest, self.const or values)
+
+
+class UndertimeArgumentParser(ConfigArgumentParser):
+    def __init__(self, *args, **kwargs):
+        """override constructor to setup our arguments and config files"""
+        kwargs["add_help"] = False
+        super().__init__(
+            description="pick a meeting time", epilog=__doc__, *args, **kwargs
+        )
+        # do not forget to change the manpage (undertime.1),
+        # configuration file (undertime.yml) and shell completion in
+        # extra/ when you change anything below, consider
+        # https://github.com/iterative/shtab
+        group = self.add_argument_group("time and date options")
+        group.add_argument(
+            "-d",
+            "--date",
+            default=None,
+            help=argparse.SUPPRESS,
+        )
+        group.add_argument(
+            "datelist",
+            default=None,
+            nargs="*",
+            metavar="WHEN",
+            help='target date for the meeting, for example "in two weeks", default: now',
+        )
+        group.add_argument(
+            "-t",
+            "--timezones",
+            nargs="+",
+            default=[],
+            help="time zones to show, default: current time zone",
+        )
+        group.add_argument(
+            "-s",
+            "--start",
+            default=9,
+            type=int,
+            metavar="HOUR",
+            help="start of working day, in hours, default: %(default)s",
+        )
+        group.add_argument(
+            "-e",
+            "--end",
+            default=17,
+            type=int,
+            metavar="HOUR",
+            help="end of working day, in hours, default: %(default)s",
+        )
+        group = self.add_argument_group("display options")
+        group.add_argument(
+            "--no-colors",
+            "--colors",
+            action=NegateAction,
+            dest="colors",
+            default=sys.stdout.isatty()
+            and "NO_COLOR" not in os.environ
+            and "UNDERTIME_NO_COLOR" not in os.environ,
+            help="show colors, default: %(default)s",
+        )
+        group.add_argument(
+            "--no-default-zone",
+            "--default-zone",
+            action=NegateAction,
+            dest="default_zone",
+            help="show current time zone first, default: %(default)s",
+        )
+        group.add_argument(
+            "--no-unique",
+            "--unique",
+            action=NegateAction,
+            dest="unique",
+            help="deduplicate time zone offsets, default: %(default)s",
+        )
+        group.add_argument(
+            "--no-sort",
+            "--sort",
+            action=NegateAction,
+            dest="sort",
+            help="sort time zone offsets, default: %(default)s",
+        )
+        group.add_argument(
+            "--no-overlap",
+            "--overlap",
+            action=NegateAction,
+            dest="overlap",
+            help="show zones overlap, default: %(default)s",
+        )
+        group.add_argument(
+            "--overlap-min",
+            default=0,
+            type=int,
+            metavar="N",
+            help="minimum overlap between zones, default: %(default)s",
+        )
+        group.add_argument(
+            "--truncate",
+            "--no-truncate",
+            dest="truncate",
+            action=NegateAction,
+            help="short column headers, default: %(default)s",
+        )
+        # backwards-compatibility for config file and scripts
+        group.add_argument(
+            "--abbreviate",
+            "--no-abbreviate",
+            dest="truncate",
+            action=NegateAction,
+            help=argparse.SUPPRESS,
+        )
+        group.add_argument(
+            "--no-table",
+            "--table",
+            dest="table",
+            action=NegateAction,
+            help="hide/show the actual table, default: %(default)s",
+        )
+        group.add_argument(
+            "--no-time-details",
+            "--time-details",
+            dest="time_details",
+            action=NegateAction,
+            help="show/hide trailing time details like UTC, local, and equivalent times, default: %(default)s",
+        )
+        group.add_argument(
+            "-f",
+            "--format",
+            default="fancy_grid_nogap",
+            metavar="FORMAT",
+            choices=tabulate.tabulate_formats + ["fancy_grid_nogap"],
+            help="output format, default: %(default)s",
+        )
+        group.add_argument(
+            "--all-formats",
+            action="store_true",
+            help="show all table formats, implies --table --no-time-details",
+        )
+        # START HACK
+        #
+        # ConfigAction doesn't support subparsers and argument groups
+        # correctly. so we add this argument directly, which will end
+        # up in the first, default "optional arguments" group. Then,
+        # below, we hack at that group to coerce it in what we want.
+        self.add_argument(
+            "--config",
+            action=YamlConfigAction,
+            default=self.default_config(),
+            help="configuration file, default: first of %s"
+            % " ".join(self.default_config()),
+        )
+        self.add_argument(
+            "-v",
+            "--verbose",
+            action=LoggingAction,
+            const="INFO",
+            help="enable verbose messages",
+        )
+        self.add_argument(
+            "--debug",
+            action=LoggingAction,
+            const="DEBUG",
+            help="enable debugging messages",
+        )
+        # this takes the default "optional arguments" group and throws
+        # it at the end of the list
+        #
+        # HACK: index 1 is a magic number, because self _optionals is
+        # defined right after self._positionals
+        default_group = self._action_groups.pop(1)
+        # change the title to something more consistent with the other groups
+        default_group.title = "other options"
+        # add it back at the end of the list
+        self._action_groups.append(default_group)
+        # END HACK
+
+        group = self.add_argument_group("commands")
+        group.add_argument(
+            "-l",
+            "--list-zones",
+            action="store_true",
+            help="show valid time zones and exit",
+        )
+        group.add_argument(
+            "-V",
+            "--version",
+            action=ImportlibVersionAction,
+            help="print version number and exit",
+        )
+        group.add_argument(
+            "-h",
+            "--help",
+            action="help",
+            help="show this help message and exit",
+        )
+        # do not forget to change the manpage and shell completion in
+        # extra/ when you change anything above
+
+    def parse_args(self, args=None, namespace=None):
+        """override argument parser to properly interpret dates
+
+        This is mostly a remnant of when this was a option like
+        --date. Now we take all remaining commandline arguments and
+        treat them as a space-separated date.
+        """
+        ns = super().parse_args(args, namespace)
+        if ns.datelist and ns.date:
+            self.error("date specified as an argument an option, aborting")
+        if ns.datelist and not ns.date:
+            ns.date = " ".join(ns.datelist)
+        if ns.all_formats:
+            ns.table = True
+            ns.time_details = False
+        if not ns.time_details and not ns.table:
+            logging.warning(
+                "select --table or --time-details otherwise undertime does nothing, falling back to --time-details"
+            )
+            ns.time_details = True
+        for h in ("start", "end"):
+            if getattr(ns, h) < 0:
+                # this should probably never happen as it's probably
+                # impossible to pass negative integers through
+                # argparse, but you never know...
+                self.error(
+                    "invalid %s hour (%s), should be a positive integer"
+                    % (h, getattr(ns, h))
+                )
+            if getattr(ns, h) > 24:
+                self.error(
+                    "invalid %s hour (%s), should be less than 24 (midnight)"
+                    % (h, getattr(ns, h))
+                )
+        return ns
+
+
+class OffsetZone(pytz._FixedOffset):
+    """Parse an offset from a human-readable string
+
+    This asserts the string is like UTC+X or UTC-X (see the `regex`
+    below for the exact pattern). It will also raise a ValueError for
+    invalid offsets.
+    """
+
+    regex = re.compile(r"^(?:UTC|GMT)(?P<sign>[-+])(?P<hours>\d+)(:(?P<minutes>\d+))?$")
+
+    def __init__(self, zone):
+        match = self.regex.match(zone)
+        assert match
+        sign = match.group("sign")
+        minutes = 0
+        strmin = match.group("minutes")
+        try:
+            hours = int(match.group("hours"))
+            if strmin is not None:
+                minutes = int(strmin)
+        except ValueError as e:  # pragma: no cover
+            # this probably will never get triggered because of the regex
+            raise ValueError("Invalid offset: %s, skipping zone: %s" % (e, zone))
+
+        assert hours >= 0
+        assert minutes >= 0
+        if hours > 12:
+            raise ValueError("Hours cannot be bigger than 12: %s" % hours)
+        if minutes >= 60:
+            raise ValueError("Minute cannot be bigger than 59: %s" % minutes)
+
+        total = hours * 60 + minutes
+        if sign == "-":
+            total *= -1
+
+        self._zone = zone
+        super().__init__(total)
+
+    def __str__(self):
+        return self._zone
+
+
+def time_in_range(hour: int, start: int, end: int) -> bool:
+    """check that the given hour is in the given range
+
+    This seemingly trivial question is in its own function because it
+    turns out clever people think they should be able to work night
+    shifts and have a range that goes backwards. Since we reuse those
+    checks in a bunch of places, it makes the code much cleaner to
+    have this separate.
+
+    Sorry.
+
+    >>> time_in_range(12, 9, 17)
+    True
+    >>> time_in_range(0, 9, 17)
+    False
+    >>> time_in_range(0, 17, 9)
+    True
+
+    """
+    if start == end:
+        logging.debug(
+            "empty range, always out of range: %s == %s (<> %s)", start, end, hour
+        )
+        return False
+    if start < end:
+        # normal case, say "nine to five", where the start time is
+        # before the end time
+        logging.debug("normal case: start before end: %s <= %s <= %s", start, hour, end)
+        return start <= hour <= end
+    else:
+        # end < start, unusual case, say "five to nine". presume the
+        # caller meant to wrap around midnight. see
+        # https://gitlab.com/anarcat/undertime/-/issues/29
+        logging.debug(
+            "unusual case: end before start: %s <= %s < 24 || 0 <= %s < %s",
+            start,
+            hour,
+            hour,
+            end,
+        )
+        # here we reverse the logic. instead of checking we're inside
+        # the range, we check that we are *outside* the range, namely
+        # that we are between the start time and midnight ("24"), and
+        # between midnight (now "0") and the end time.
+        return (start <= hour < 24) or (0 <= hour <= end)
+
+
+def fmt_time_colored(dt: datetime.datetime, in_range: bool, now: bool) -> str:
+    """format given datetime in color
+
+    This uses the termcolor module to color it "yellow" if it's
+    between "start" and "end" and will make it bold if "now" is true.
+    """
+    string = "{0:%H:%M}".format(dt.timetz())
+    attrs = []
+    if now:
+        attrs.append("bold")
+    if in_range:
+        return termcolor.colored(string, "yellow", attrs=attrs)
+    else:
+        return termcolor.colored(string, attrs=attrs)
+
+
+def fmt_time_ascii(dt: datetime.datetime, in_range: int, now: int) -> str:
+    """format given datetime using plain ascii (no colors)
+
+    This will add a star ("*") if "now" is true and an underscode
+    ("_") if between "start" and "end".
+    """
+    string = "{0:%H:%M}".format(dt.timetz())
+    if now:
+        return string + "*"
+    if in_range:
+        return string + "_"
+    return string
+
+
+# default to colored output
+fmt_time = fmt_time_colored
+
+
+def parse_date(date, local_zone):
+    """date parsing stub
+
+    This function delegates the parsing to an underlying module. Each
+    module is wrapped around by a stub function which hides all the
+    business logic behind that module's particular date parser.
+
+    This is split out in stubs this way so that we don't pay the
+    upfront "import" cost for all those modules if only one ends up
+    being used.
+
+    The parsers should therefore be ordered by load time cost.
+
+    Each stub is expected to handle exceptions from its own module,
+    and return False if it fails to import the module, or None if it
+    fails to parse the date.
+
+    A correctly parsed date should be returned as a datetime object.
+
+    When a new parser is added here, make sure to also report its
+    version in sysinfo().
+
+    Note that all date parsers fail in some way, each function details
+    the known failures.
+    """
+    now = None
+    if date is None:
+        return datetime.datetime.now(local_zone)
+    logging.debug("trying to parse date '%s' with dateparser module", date)
+    now = parse_date_dateparser(date, local_zone)
+    if now:
+        return now
+    logging.debug("trying to parse date '%s' with parsedatetime module", date)
+    now = parse_date_parsedatetime(date, local_zone)
+    if now:
+        return now
+    logging.debug("trying to parse date '%s' with arrow module", date)
+    now = parse_date_arrow(date)
+    if not now:
+        logging.error("date provided cannot be parsed: '%s'", date)
+    return now
+
+
+def parse_date_dateparser(date, local_zone):
+    """parse date with the dateparser module
+
+    This can't parse things like "Next tuesday":
+
+    https://github.com/scrapinghub/dateparser/issues/573
+
+    It's also very slow, 300ms just on import:
+
+    https://github.com/scrapinghub/dateparser/issues/1051
+    """
+    try:
+        import dateparser
+    except ImportError:
+        return False
+    return dateparser.parse(
+        date,
+        settings={"TIMEZONE": str(local_zone), "RETURN_AS_TIMEZONE_AWARE": True},
+    )
+
+
+def parse_date_parsedatetime(date, local_zone):
+    """parse the given date with the parsedatetime module
+
+    This is fast, but doesn't parse timezones provided by the user:
+
+    https://github.com/bear/parsedatetime/issues/281
+
+    It's also a little bit *too* tolerate on date formats: if you pass
+    garbage alongside something that even looks like a valid date, it
+    will happily return you whatever it thinks is the date you
+    want. For example this works:
+
+    str(parsedatetime.Calendar().parseDT("garbled2022")[0]) == '2022-03-24 14:15:32'
+
+    ... and should probably just fail instead.
+    """
+    try:
+        import parsedatetime
+    except ImportError:
+        return False
+    cal = parsedatetime.Calendar()
+    now, parse_status = cal.parseDT(datetimeString=date, tzinfo=local_zone)
+    if not parse_status:
+        return None
+    else:
+        return now
+
+
+def parse_date_arrow(date):
+    """parse the given date with the arrrow module
+
+    This should be very rarely used, as dateparser can actually parse
+    most if not all the dates arrow can.
+
+    It does not support things like "next tuesday":
+
+    https://github.com/arrow-py/arrow/issues/1100
+
+    It also can't parse more "regular" date timestamps
+    (e.g. "2022-03-02"). The `get()` function can do that, but then
+    you need to specify a format, it can't guess.
+
+    For now it's just an ultimate fallback that could be useful if
+    someone is running without having installed the dateparser
+    dependency *and* happens to have arrow installed.
+
+    .. TODO:: arrow can handle a lot more things like relative date,
+    pytz and so on, so we could depend *only* on this instead of this
+    plethora of third-party modules we have right now...
+    """
+    try:
+        import arrow
+    except ImportError:
+        return False
+
+    if getattr(arrow, "dehumanize", False):  # 1.1.0 and later
+        logging.debug("parsing date with arrow module")
+        try:
+            return arrow.utcnow().dehumanize(date).datetime
+        except ValueError as e:
+            logging.debug("arrow failed to parsed date: %s", e)
+            return None
+    else:
+        logging.debug("arrow is to old to support the dehumanize method")
+        return False
+
+
+def flush_logging_handlers():
+    """empty all buffered memory handler and yield their messages
+
+    This is used in the test suite."""
+    for handler in logging.getLogger().handlers:
+        # BufferingHandler or pytest.LogCaptureHandler
+        buffer = getattr(handler, "buffer", []) or getattr(handler, "records", [])
+        # too bad that is necessary, seems to me pytest should have
+        # implemented a BufferingHandler as well...
+
+        for r in buffer:
+            yield r.getMessage()
+        handler.flush()
+
+
+def print_all_zones_with_offsets():
+    """print all zones with offsets"""
+    for zone in pytz.all_timezones:
+        offset = pytz.timezone(zone).utcoffset(datetime.datetime.now())
+        print(zone, offset.total_seconds() / (60 * 60))
+
+
+def main(args):
+    """Main entry point.
+
+    Tests for the two corner cases in America/New_York in 2020. We don't
+    really want to test *all* of those corner cases here, but the
+    first one of those caused me problems at that time and I wanted to
+    have a good handle on it."""
+    if args.list_zones:
+        return print_all_zones_with_offsets()
+
+    if not args.colors:
+        global fmt_time
+        fmt_time = fmt_time_ascii
+
+    # find the local timezone
+    default_zone = tzlocal.get_localzone()
+    logging.debug("local zone: %s", default_zone)
+    # make an educated guess at what the user meant by passing that time zone to parse_date
+    then_local = parse_date(args.date, default_zone)
+    if not then_local:
+        sys.exit(1)
+    # round off microseconds to cleanup display, in case we use "now"
+    # which *will* have microseconds. (other parsed times will most
+    # likely not have microseconds, and who cares about *those*
+    # anyways... that shouldn't matter, right? .... RIGHT?)
+    then_local = then_local.replace(microsecond=0)
+    # convert that time to UTC again
+    then_utc = then_local.astimezone(datetime.timezone.utc)
+
+    timezones = []
+    if args.default_zone:
+        timezones.append(default_zone)
+    timezones += filter(None, [guess_zone(z) for z in args.timezones])
+    if args.unique:
+        timezones = list(uniq_zones(timezones, then_utc))
+
+    if not timezones:
+        logging.error("No valid time zone found.")
+        sys.exit(1)
+
+    if args.sort:
+        timezones = sorted(
+            timezones, key=lambda x: x.utcoffset(then_utc.replace(tzinfo=None))
+        )
+
+    if args.table:
+        rows = compute_table(
+            then_local,
+            timezones,
+            args.start,
+            args.end,
+            overlap_min=args.overlap_min,
+            overlap_show=args.overlap,
+            truncate=args.truncate,
+        )
+        if args.all_formats:
+            for fmt in tabulate.tabulate_formats + ["fancy_grid_nogap"]:
+                print("format:", fmt)
+                print(format_table(rows, fmt))
+        else:
+            print(format_table(rows, args.format))
+    if args.time_details:
+        times = []
+        for zone in timezones:
+            other_zone_day = "{0:%Y-%m-%d}".format(then_local.astimezone(tz=zone))
+            local_zone_day = "{0:%Y-%m-%d}".format(then_local)
+            if local_zone_day != other_zone_day:
+                logging.debug(
+                    "different day: local (%s) is %s other (%s) is %s",
+                    default_zone,
+                    local_zone_day,
+                    zone,
+                    other_zone_day,
+                )
+                ts = "{0:%Y-%m-%d %H:%M} {1}".format(
+                    then_local.astimezone(tz=zone), zone
+                )
+            else:
+                ts = "{0:%H:%M} {1}".format(
+                    then_local.astimezone(tz=zone).timetz(), zone
+                )
+            times.append(ts)
+        print("UTC time: {}".format(then_utc))
+        print("local time: {}".format(then_local))
+        print("equivalent to:")
+        for t in times:
+            print("-", t)
+
+
+def guess_zone(zone):
+    """
+    guess a zone from a string, based on pytz
+
+    >>> str(guess_zone('Toronto'))
+    'America/Toronto'
+    >>> str(guess_zone('La Paz'))
+    'America/La_Paz'
+    >>> str(guess_zone('Los Angeles'))
+    'America/Los_Angeles'
+    >>> str(guess_zone('Port au prince'))
+    'America/Port-au-Prince'
+    >>> str(guess_zone('EDT'))
+    'EST5EDT'
+    >>> str(guess_zone("UTC-4"))
+    'UTC-4'
+    >>> guess_zone("UTC-X") is None
+    True
+    >>> assert 'unknown zone, skipping: UTC-X' in flush_logging_handlers()
+    >>> guess_zone("UTC-25") is None
+    True
+    """
+    try:
+        return OffsetZone(zone)
+    except AssertionError:
+        # not an offset, ignore
+        pass
+    except ValueError as e:
+        logging.warning(str(e))
+        return
+
+    for zone in (zone, zone.replace(" ", "_"), zone.replace(" ", "-")):
+        try:
+            # match just the zone name, according to pytz rules
+            return pytz.timezone(zone)
+        except pytz.UnknownTimeZoneError:
+            # case insensitive substring match over all zones
+            for z in pytz.all_timezones:
+                if zone.upper() in z.upper():
+                    return pytz.timezone(z)
+
+    logging.warning("unknown zone, skipping: %s", zone)
+
+
+def uniq_zones(timezones, now):
+    """uniquify time zones provided, based on the given current time
+
+    >>> local_zone = datetime.timezone(datetime.timedelta(days=-1, seconds=72000), 'EDT')
+    >>> now = parse_date('2020-03-08 22:30', local_zone=local_zone)
+    >>> zones = [guess_zone('Toronto'), guess_zone('New_York')]
+    >>> list(uniq_zones(zones, now))
+    [<DstTzInfo 'America/Toronto' LMT-1 day, 18:42:00 STD>]
+    """
+    # XXX: what does this do again?
+    now = now.replace(tzinfo=None)
+    offsets = set()
+    for zone in timezones:
+        offset = zone.utcoffset(now)
+        if offset in offsets:
+            sign = ""
+            if offset < datetime.timedelta(0):
+                offset = -offset
+                sign = "-"
+            logging.warning(
+                "skipping zone %s with existing offset %s%s", zone, sign, offset
+            )
+        else:
+            offsets.add(offset)
+            yield zone
+
+
+def compute_table(
+    now_local, timezones, start, end, overlap_min=0, overlap_show=True, truncate=False
+):
+    # compute the earlier local midnight
+    nearest_midnight = now_local + relativedelta(
+        hour=0, minute=0, seconds=0, microseconds=0
+    )
+    logging.debug("nearest midnight is %s", nearest_midnight)
+
+    # start at midnight, but track UTC because otherwise math is insane
+    start_time = current_time = nearest_midnight.astimezone(datetime.timezone.utc)
+
+    now_utc = now_local.astimezone(datetime.timezone.utc)
+
+    # the table is a list of rows, which are themselves a list of cells
+    rows = []
+
+    # the first line is the list of time zones
+    line = []
+    for t in timezones:
+        if truncate:
+            try:
+                prefix, suffix = str(t).split("/", 1)
+            except ValueError:
+                suffix = str(t)
+            line.append(suffix)
+        else:
+            line.append(str(t))
+    if overlap_show:
+        if truncate:
+            line.append("n")
+        else:
+            line.append("overlap")
+    rows.append(line)
+
+    while current_time < start_time + relativedelta(hours=+24):
+        n = 0
+        line = []
+        for t in [current_time.astimezone(tz=zone) for zone in timezones]:
+            line.append(
+                fmt_time(t, time_in_range(t.hour, start, end), current_time == now_utc)
+            )
+            n += 1 if time_in_range(t.hour, start, end) else 0
+        if overlap_show:
+            line.append(str(n))
+        if n >= overlap_min:
+            rows.append(line)
+        # show the current time on a separate line, in bold
+        if current_time < now_utc < current_time + relativedelta(hours=+1):
+            line = []
+            n = 0
+            for t in [now_utc.astimezone(tz=zone) for zone in timezones]:
+                line.append(fmt_time(t, time_in_range(t.hour, start, end), True))
+                n += 1 if time_in_range(t.hour, start, end) else 0
+            if overlap_show:
+                line.append(str(n))
+            if n >= overlap_min:
+                rows.append(line)
+        current_time += relativedelta(hours=+1)
+    return rows
+
+
+def format_table(rows, fmt):
+    # reproduce the terminaltables DoubleTable output in tabulate:
+    # https://github.com/cmck/python-tabulate/issues/1
+    if fmt == "fancy_grid_nogap":
+        fmt = tabulate.TableFormat(
+            lineabove=tabulate.Line("╔", "═", "╤", "╗"),
+            linebelowheader=tabulate.Line("╠", "═", "╪", "╣"),
+            linebetweenrows=None,
+            linebelow=tabulate.Line("╚", "═", "╧", "╝"),
+            headerrow=tabulate.DataRow("║", "│", "║"),
+            datarow=tabulate.DataRow("║", "│", "║"),
+            padding=1,
+            with_header_hide=None,
+        )
+    return tabulate.tabulate(rows, tablefmt=fmt, headers="firstrow", stralign="center")
+
+
+def sysinfo(callback=logging.debug):  # pragma: nocover
+    """dump a lot of system information to help with support
+
+    A more elaborate and possibly more complete implementation of this
+    is https://github.com/banesullivan/scooby
+    """
+    callback("file: %s", __file__)
+    callback("command: %r", sys.argv)
+    callback("version: %s", ImportlibVersionAction._version())
+    callback(
+        "%s: %s (%s %s)",
+        platform.python_implementation(),
+        platform.python_version(),
+        platform.python_compiler(),
+        " ".join(platform.python_build()),
+    )
+    callback("kernel: %s", " ".join(platform.uname()))
+    if "linux" in platform.system().lower():
+        try:
+            distribution = platform.freedesktop_os_release()["PRETTY_NAME"]
+        except AttributeError:
+            # Python < 3.10 poor man's freedesktop_os_release(). we
+            # don't vendor the thing in here because it's too big
+            try:
+                with open("/etc/os-release") as fp:
+                    for line in fp.readlines():
+                        if line.startswith("PRETTY_NAME"):
+                            distribution = line.split("=")[1].strip().strip('"')
+                            break
+                    else:
+                        distribution = ""
+            except Exception as e:
+                distribution = "failed to find distribution: %s" % e
+    else:
+        distribution = ""
+    callback("operating system: %s (%s)", platform.system(), distribution)
+    # we import from in the global import, reimport to access the version
+    import dateutil
+
+    for mod in (
+        dateutil,
+        pytz,
+        tabulate,
+        termcolor,
+        yaml,
+    ):
+        version = getattr(mod, "__version__", None) or getattr(mod, "VERSION", None)
+        # termcolor likes their versions as tuples of integers, argh.
+        if type(version) is tuple:
+            version = ".".join([str(x) for x in version])
+        callback(
+            "module %s-%s from '%s'",
+            mod.__name__,
+            version,
+            mod.__file__,
+        )
+
+    for dateparser in ("dateparser", "parsedatetime", "arrow"):
+        try:
+            mod = importlib.import_module(dateparser)
+        except ModuleNotFoundError:
+            callback("module %s not found", dateparser)
+            continue
+        callback(
+            "module %s-%s from '%s'",
+            mod.__name__,
+            getattr(mod, "__version__", None),
+            mod.__file__,
+        )
+
+    callback("timezone database version: %s", pytz.OLSON_VERSION)
+
+
+if __name__ == "__main__":  # pragma: nocover
+    logging.basicConfig(format="%(levelname)s: %(message)s", level="WARNING")
+    parser = UndertimeArgumentParser()
+    args = parser.parse_args()
+
+    sysinfo(callback=logging.debug)
+    try:
+        main(args)
+    except Exception as e:
+        logging.error("unexpected error: %s", e)
+        if args.debug:
+            logging.warning('starting debugger, type "c" and enter to continue')
+            import pdb
+            import traceback
+
+            traceback.print_exc()
+            pdb.post_mortem()
+            sys.exit(1)
+        raise e
