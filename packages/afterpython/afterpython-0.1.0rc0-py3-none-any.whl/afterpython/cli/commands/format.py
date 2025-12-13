@@ -1,0 +1,28 @@
+import subprocess
+
+import click
+from click.exceptions import Exit
+
+
+@click.command(
+    add_help_option=False,  # disable click's --help option so that ruff format --help can work
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+    ),
+)
+@click.pass_context
+def format(ctx):
+    """Run ruff formatter"""
+    from afterpython.utils import handle_passthrough_help
+
+    # Show both our options and ruff's help and exit
+    handle_passthrough_help(
+        ctx,
+        ["ruff", "format"],
+        show_underlying=True,
+    )
+
+    result = subprocess.run(["ruff", "format", *ctx.args], check=False)
+    if result.returncode != 0:
+        raise Exit(result.returncode)
