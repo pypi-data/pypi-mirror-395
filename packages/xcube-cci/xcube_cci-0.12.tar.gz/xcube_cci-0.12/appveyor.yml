@@ -1,0 +1,62 @@
+version: '{build}'
+
+image:
+  - Ubuntu2204
+  - macOS
+
+configuration: Release
+
+platform:
+  - x64
+
+# Do not build feature branch with open Pull Requests.
+# Note that a feature branch build may still occur on the first push to
+# the branch -- see
+# https://help.appveyor.com/discussions/questions/18437-skip_branch_with_pr-setting-doesnt-work
+skip_branch_with_pr: true
+
+for:
+-
+  matrix:
+    only:
+      - image: macOS
+  install:
+    - curl -Ls https://micro.mamba.pm/api/micromamba/osx-64/latest | tar -xvj bin/micromamba
+    - mv bin/micromamba ./micromamba
+-
+  matrix:
+    only:
+      - image: Ubuntu2204
+  install:
+    - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    - mv bin/micromamba ./micromamba
+
+build_script:
+  # Diagnostics
+  - echo $PLATFORM
+  - echo $APPVEYOR_BUILD_WORKER_IMAGE
+  - echo $APPVEYOR_BUILD_FOLDER
+  - uname -a
+  - pwd
+  - ls
+
+  # Set up micromamba
+  - ./micromamba shell init -s bash --root-prefix ~/micromamba
+  - source ~/.bashrc
+  - source ~/.profile
+  - hash -r
+  - mkdir -p ~/micromamba/pkgs/
+  - export MAMBA_ROOT_PREFIX=~/micromamba
+  - export MAMBA_EXE=$(pwd)/micromamba
+  - . $MAMBA_ROOT_PREFIX/etc/profile.d/mamba.sh
+
+  - micromamba create --name xcube-cci --file $APPVEYOR_BUILD_FOLDER/environment.yml
+  - micromamba activate xcube-cci
+  - cd $APPVEYOR_BUILD_FOLDER
+  - pip install --no-deps .
+
+  - git status
+  - micromamba list
+
+  # Run the test suite
+  - pytest -v --cov=xcube_cci
