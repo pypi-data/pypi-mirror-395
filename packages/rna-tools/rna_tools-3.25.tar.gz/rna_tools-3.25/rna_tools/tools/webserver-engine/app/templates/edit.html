@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block content %}
+<title>rna-tools.online</title>
+
+<style>
+ .hint {color:#808080;font-size:12px;}
+
+.dz {
+    border: dashed !important;
+    background-color: white !important;
+    border-radius: 10px !important;
+}
+
+.dz:hover {
+    background-color: aliceblue !important;
+}
+</style>
+
+<script src="{{ STATIC_URL }}app/jsmol/JSmol.min.js"></script>
+<script>
+ var jmolApplet0; // set up in HTML table, below
+ // logic is set by indicating order of USE -- default is HTML5 for this test page, though
+ var use = "HTML5" // JAVA HTML5 WEBGL IMAGE  are all otions
+
+ jmol_isReady = function(applet) {
+     Jmol._getElement(applet, "appletdiv").style.border="" //1px solid black
+ }		
+
+ script = 'h2oOn=true;'
+	 +'set errorCallback "myCallback";'
+	 +'set defaultloadscript "isDssp = false;set defaultVDW babel;if(!h2oOn){display !water}";'
+	 +'set zoomlarge true;set echo top left;refresh;'
+	 +'spacefill off;spin off;wireframe off;cartoons on;'
+
+ var Info = {
+     spinRateX: 0.2,
+     spinRateY: 0.5,
+     spinFPS: 20,
+     spin:true,
+
+     width: 600,
+     height: 600,
+     debug: false,
+     color: "white",
+     addSelectionOptions: false,
+     serverURL: "http://chemapps.stolaf.edu/jmol/jsmol/php/jsmol.php",
+     use: "HTML5",
+     j2sPath: "{{ STATIC_URL }}app/jsmol/j2s",
+     reagdyFunction: jmol_isReady,
+     script: script,
+     disableJ2SLoadMonitor: true,
+     disableInitialConsole: true
+ }
+</script>
+
+<script>
+    var progress_interval;
+
+    $(document).ready( function(){
+        progress_interval = setInterval(checkProgress, 500);
+    });
+
+    function checkProgress() {
+        $.ajax({
+            url: "{% url 'ajax_job_status' job_id=j.job_id tool='edit' %}",
+            success: function(d) {
+		if ($('#log_txt').html().length != d['log'].length ) {
+                    $("#log_txt").html(d['log']);}
+                if (d['reload']==true){
+		    location.href="/tools/{{ tool }}/{{ j.job_id }}";
+                }
+            }
+    })
+    };
+
+    function fetch() {
+        $.ajax({
+            url: "/fetch/{{ j.job_id }}",
+	    data: { 
+		    fetch: $("#fetch").val(),
+		  },
+        }
+	      )
+             };
+
+  function demo(){
+        $("#edit").val('A:1-10>C:1-10')      
+        $.ajax({
+            url: "/demo/{{ tool }}/{{ j.job_id }}",
+	})
+    };
+
+    function analyze() {
+        $.ajax({
+            url: "/run/seq/{{ j.job_id }}",
+            success: function(d) {
+                $("#log_txt").html(d['log']);
+                if (d['reload']==true){
+                    window.location.reload()
+                }
+            }
+        })
+    };
+
+  function rm(){
+        $.ajax({
+            url: "/run/clear/{{ j.job_id }}",
+	})
+    };
+
+    function go() {
+      if ($('#edit').val())
+	{
+        $('#go').prop('disabled', true);
+        $.ajax({
+            url: "/run/edit/{{ j.job_id }}",
+	    data: { edit: $("#edit").val() }
+	})
+      }
+    };
+
+</script>
+
+<h2>Edit PDB files</h2>
+
+<div align="right">
+  <button onclick="demo()" class="btn btn-small btn-ok">Load demo</button>
+  <button onclick="rm()" class="btn btn-small btn-ok">Remove All Files</button>
+  <button onclick="javascript:location.reload();" class="btn btn-small btn-ok">Reset</button>  
+</div>
+
+<p>
+ <button onclick="fetch()" class="btn btn-small" size="height:12px">Fetch</button> files from another job <input id="fetch" type="text" class="form-control" style="font-family:Monospace;width:150px;height:13px;" name="xxx" placeholder="" value=""></a><small class="hint"> e.g., 614e0a1b</small>
+    <!--http://rna-tools.online/tools/seq/614e0a1b or-->
+</p>
+
+<label for="comment">RNA structure (in the PDB format)<span style="color:red"></br>Please, remove all spaces and non-standard characters in filenames, we're working on a fix to do it automatically for you</span></label>
+
+<form enctype='multipart/form-data' action="/upload/{{ j.job_id }}" method='POST' class="dropzone dz" id="my-dropzone" >
+  {% csrf_token %}
+  <input type="hidden" id="job_id" name="job_id" value="{{ j.job_id }}" />
+    <div class="fallback">
+      <input name="file" type="file" multiple />
+    </div>
+</form>
+
+<form id="submit" ACTION="/tools/{{ tool }}/{{ j.job_id }}" METHOD="Post" enctype="multipart/form-data" data-role="acknowledge-input">
+{% csrf_token %}
+
+<div class="form-group" style="width: 100%;">
+    <label for="comment">Edit:</label>
+    <input type="text" class="form-control" style="font-family:Monospace;" required id="edit" name="xxx" placeholder="" value=""></textarea>
+    <small class="hint">Example: A:1-10>C:1-10</small>
+</div>
+
+    <div id="log_txt" class='log'>{{ log | safe }}</div>
+
+<p>
+<!--
+{%if j.get_status == 'finished' %}
+<span class="badge badge-success">done</span>
+{% endif %}
+{%if j.get_status == 'running' %}
+<span class="badge badge-warning">running</span>
+{% endif %}
+{%if j.get_status == 'waiting' %}
+<span class="badge badge-info">waiting</span>
+{% endif %}
+-->
+</p>
+
+<p>
+  <button type="submit" id="go" onclick="go()" class="btn btn-success">Run</button></form>
+</p>
+<p>
+  <button onclick="analyze()" class="btn">Analyze</button>
+
+</p>
+															       
+<p>The raw output files for each step of the pipeline can be found  <a href="https://rna-tools.online/media/jobs/{{ j.job_id }}/">here</a> and downloaded as a ZIP file <a href="{% url 'download_project_dir' job_id=j.job_id %}">here</a>.</p>
+
+<small class="hint">
+  <p>
+    <h5>Documentation</h5>
+  </p>
+<p>The output are files with "_edit.pdb".</p>
+<p>
+Load the demo and change the beginning of the chain A into chain C, with "A:1-10>C:1-10".
+<pre>
+# yC_5lj3_Exon_Intron_rpr_edit
+>C:1-10
+UAAGUGAUCU
+>A:11-16
+AGAAAG
+>B:1-33
+</pre>
+</p>
+
+      This is <a href="https://rna-tools.readthedocs.io/en/latest/main.html#edit">https://rna-tools.readthedocs.io/en/latest/main.html#edit</a> --edit EDIT functionality.
+
+    </small>
+
+{% endblock %}
