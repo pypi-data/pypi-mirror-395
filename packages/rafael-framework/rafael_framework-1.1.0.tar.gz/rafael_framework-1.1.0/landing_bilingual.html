@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RAFAEL Framework - Resilience-Adaptive Framework for Autonomous Evolution and Learning">
+    <meta name="keywords" content="RAFAEL, resilience, antifragile, autonomous, evolution, framework">
+    <title>RAFAEL Framework - Autonomous Resilience</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e27;
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .bg-animated {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2a1f3a 100%);
+        }
+        
+        .bg-animated::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveGrid 20s linear infinite;
+        }
+        
+        @keyframes moveGrid {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Language Switcher */
+        .lang-switcher {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 100;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 0.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .lang-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .lang-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Header */
+        header {
+            text-align: center;
+            padding: 4rem 2rem 2rem;
+            position: relative;
+        }
+        
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            animation: glow 3s ease-in-out infinite;
+            text-shadow: 0 0 40px rgba(139, 92, 246, 0.5);
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5)); }
+            50% { filter: drop-shadow(0 0 40px rgba(118, 75, 162, 0.8)); }
+        }
+        
+        .tagline {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+            font-weight: 300;
+            color: #a78bfa;
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.7;
+            max-width: 900px;
+            margin: 0 auto 3rem;
+            line-height: 1.8;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: rgba(139, 92, 246, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Subdomain Links */
+        .subdomains {
+            margin: 4rem 0;
+        }
+        
+        .subdomains h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subdomain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .subdomain-card {
+            background: rgba(139, 92, 246, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .subdomain-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .subdomain-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(139, 92, 246, 0.6);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
+        }
+        
+        .subdomain-card:hover::before {
+            opacity: 1;
+        }
+        
+        .subdomain-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .subdomain-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .subdomain-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: #8b5cf6;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .subdomain-card p {
+            opacity: 0.8;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        
+        .subdomain-link {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .subdomain-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Features */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+        
+        .feature-card {
+            background: rgba(139, 92, 246, 0.05);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(139, 92, 246, 0.6);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+        }
+        
+        .feature-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: #8b5cf6;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .feature-card p {
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        
+        /* Status */
+        .status {
+            margin: 4rem 0;
+            padding: 2rem;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .stat-item {
+            padding: 1.5rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #8b5cf6;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .stat-label {
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            opacity: 0.6;
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
+            margin-top: 4rem;
+        }
+        
+        footer a {
+            color: #8b5cf6;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        footer a:hover {
+            color: #a78bfa;
+        }
+        
+        /* Language Content */
+        [data-lang] {
+            display: none;
+        }
+        
+        [data-lang].active {
+            display: block;
+        }
+        
+        [data-lang-inline] {
+            display: none;
+        }
+        
+        [data-lang-inline].active {
+            display: inline;
+        }
+        
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 3rem;
+            }
+            
+            .tagline {
+                font-size: 1.3rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .subdomain-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .lang-switcher {
+                top: 1rem;
+                right: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animated"></div>
+    
+    <!-- Language Switcher -->
+    <div class="lang-switcher">
+        <button class="lang-btn active" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" onclick="setLanguage('id')">ID</button>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">🔱 RAFAEL</div>
+            <div class="tagline" data-lang="en" class="active">
+                Resilience-Adaptive Framework for Autonomous Evolution and Learning
+            </div>
+            <div class="tagline" data-lang="id">
+                Framework Adaptif-Resiliensi untuk Evolusi dan Pembelajaran Otonom
+            </div>
+            <div class="subtitle" data-lang="en" class="active">
+                Make your systems antifragile. RAFAEL treats resilience like DNA - 
+                strategies that mutate and evolve based on real failures.
+            </div>
+            <div class="subtitle" data-lang="id">
+                Buat sistem Anda antifragile. RAFAEL memperlakukan resiliensi seperti DNA - 
+                strategi yang bermutasi dan berevolusi berdasarkan kegagalan nyata.
+            </div>
+        </header>
+        
+        <div class="hero">
+            <div class="hero-content">
+                <h2 data-lang="en" class="active">What Doesn't Kill Your System, Makes It Smarter</h2>
+                <h2 data-lang="id">Apa Yang Tidak Membunuh Sistem Anda, Membuatnya Lebih Pintar</h2>
+                <p data-lang="en" class="active">
+                    Traditional systems break under stress. RAFAEL systems <strong>evolve</strong>. 
+                    With one decorator, your code becomes antifragile - learning from failures 
+                    and evolving automatically. No manual fixes. Just autonomous resilience.
+                </p>
+                <p data-lang="id">
+                    Sistem tradisional rusak di bawah tekanan. Sistem RAFAEL <strong>berevolusi</strong>. 
+                    Dengan satu decorator, kode Anda menjadi antifragile - belajar dari kegagalan 
+                    dan berevolusi secara otomatis. Tanpa perbaikan manual. Hanya resiliensi otonom.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Subdomains Section -->
+        <div class="subdomains">
+            <h2 data-lang="en" class="active">🌐 Explore RAFAEL Ecosystem</h2>
+            <h2 data-lang="id">🌐 Jelajahi Ekosistem RAFAEL</h2>
+            
+            <div class="subdomain-grid">
+                <!-- Dashboard -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">📊</div>
+                        <h3>Dashboard</h3>
+                        <p data-lang="en" class="active">
+                            Real-time monitoring interface. Track module health, fitness scores, 
+                            and system evolution in a beautiful web interface.
+                        </p>
+                        <p data-lang="id">
+                            Interface monitoring real-time. Lacak kesehatan modul, skor fitness, 
+                            dan evolusi sistem dalam interface web yang indah.
+                        </p>
+                        <a href="https://dashboard.rafaelabs.xyz" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">Visit Dashboard</span>
+                            <span data-lang-inline="id">Kunjungi Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- API Documentation -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">🔌</div>
+                        <h3>API Documentation</h3>
+                        <p data-lang="en" class="active">
+                            Complete API reference with interactive examples. Test endpoints 
+                            directly from the documentation page.
+                        </p>
+                        <p data-lang="id">
+                            Referensi API lengkap dengan contoh interaktif. Test endpoint 
+                            langsung dari halaman dokumentasi.
+                        </p>
+                        <a href="https://api.rafaelabs.xyz" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">View API Docs</span>
+                            <span data-lang-inline="id">Lihat Dokumentasi API</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Interactive Demo -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">🎮</div>
+                        <h3 data-lang="en" class="active">Interactive Demo</h3>
+                        <h3 data-lang="id">Demo Interaktif</h3>
+                        <p data-lang="en" class="active">
+                            Experience RAFAEL in action. Simulate chaos attacks, evolve modules, 
+                            and watch the system adapt in real-time.
+                        </p>
+                        <p data-lang="id">
+                            Rasakan RAFAEL beraksi. Simulasikan serangan chaos, evolusikan modul, 
+                            dan saksikan sistem beradaptasi secara real-time.
+                        </p>
+                        <a href="https://demo.rafaelabs.xyz" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">Try Demo</span>
+                            <span data-lang-inline="id">Coba Demo</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Beta Program -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">🚀</div>
+                        <h3 data-lang="en" class="active">Beta Program</h3>
+                        <h3 data-lang="id">Program Beta</h3>
+                        <p data-lang="en" class="active">
+                            Join the early adopters program. Get exclusive access, direct support, 
+                            and shape the future of RAFAEL.
+                        </p>
+                        <p data-lang="id">
+                            Bergabung dengan program early adopters. Dapatkan akses eksklusif, dukungan langsung, 
+                            dan bentuk masa depan RAFAEL.
+                        </p>
+                        <a href="https://beta.rafaelabs.xyz" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">Join Beta</span>
+                            <span data-lang-inline="id">Gabung Beta</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- GitHub -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">💻</div>
+                        <h3>GitHub</h3>
+                        <p data-lang="en" class="active">
+                            Explore the source code, contribute to the project, 
+                            and join the community of developers.
+                        </p>
+                        <p data-lang="id">
+                            Jelajahi source code, kontribusi ke proyek, 
+                            dan bergabung dengan komunitas developer.
+                        </p>
+                        <a href="https://github.com/Rafael2022-prog/rafael" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">View on GitHub</span>
+                            <span data-lang-inline="id">Lihat di GitHub</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- PyPI -->
+                <div class="subdomain-card">
+                    <div class="subdomain-content">
+                        <div class="subdomain-icon">📦</div>
+                        <h3>PyPI Package</h3>
+                        <p data-lang="en" class="active">
+                            Install RAFAEL Framework with pip. Get started in minutes 
+                            with our Python package.
+                        </p>
+                        <p data-lang="id">
+                            Install RAFAEL Framework dengan pip. Mulai dalam hitungan menit 
+                            dengan package Python kami.
+                        </p>
+                        <a href="https://pypi.org/project/rafael-framework/" class="subdomain-link" target="_blank">
+                            <span data-lang-inline="en" class="active">View on PyPI</span>
+                            <span data-lang-inline="id">Lihat di PyPI</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features -->
+        <div class="features">
+            <div class="feature-card">
+                <h3>🧬 <span data-lang-inline="en" class="active">Adaptive Resilience Genome</span><span data-lang-inline="id">Genom Resiliensi Adaptif</span></h3>
+                <p data-lang="en" class="active">
+                    Resilience strategies encoded as genes that mutate and evolve based on 
+                    real-world performance. Your system's DNA adapts to threats.
+                </p>
+                <p data-lang="id">
+                    Strategi resiliensi dikodekan sebagai gen yang bermutasi dan berevolusi berdasarkan 
+                    performa dunia nyata. DNA sistem Anda beradaptasi dengan ancaman.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>⚡ Chaos Forge</h3>
+                <p data-lang="en" class="active">
+                    Simulate adaptive attacks that learn from your defenses. Test resilience 
+                    against evolving threats before they happen in production.
+                </p>
+                <p data-lang="id">
+                    Simulasikan serangan adaptif yang belajar dari pertahanan Anda. Test resiliensi 
+                    terhadap ancaman yang berevolusi sebelum terjadi di production.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🛡️ Guardian Layer</h3>
+                <p data-lang="en" class="active">
+                    Human-in-the-loop approval for critical mutations. Full audit trail 
+                    and compliance checking for regulated industries.
+                </p>
+                <p data-lang="id">
+                    Persetujuan human-in-the-loop untuk mutasi kritis. Audit trail lengkap 
+                    dan pengecekan compliance untuk industri teregulasi.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📚 <span data-lang-inline="en" class="active">Resilience Vault</span><span data-lang-inline="id">Vault Resiliensi</span></h3>
+                <p data-lang="en" class="active">
+                    Crowdsourced library of battle-tested resilience patterns. 
+                    Learn from the community's collective experience.
+                </p>
+                <p data-lang="id">
+                    Library crowdsourced dari pattern resiliensi yang teruji. 
+                    Belajar dari pengalaman kolektif komunitas.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🎯 <span data-lang-inline="en" class="active">One Decorator</span><span data-lang-inline="id">Satu Decorator</span></h3>
+                <p data-lang="en" class="active">
+                    Add @AntiFragile to any function. Automatic retries, fallbacks, 
+                    circuit breakers, and rate limiting with zero configuration.
+                </p>
+                <p data-lang="id">
+                    Tambahkan @AntiFragile ke fungsi apapun. Retry otomatis, fallback, 
+                    circuit breaker, dan rate limiting tanpa konfigurasi.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📊 <span data-lang-inline="en" class="active">Real-time Dashboard</span><span data-lang-inline="id">Dashboard Real-time</span></h3>
+                <p data-lang="en" class="active">
+                    Monitor resilience evolution in real-time. Track fitness scores, 
+                    mutations, and system health from a beautiful web interface.
+                </p>
+                <p data-lang="id">
+                    Monitor evolusi resiliensi secara real-time. Lacak skor fitness, 
+                    mutasi, dan kesehatan sistem dari interface web yang indah.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Status -->
+        <div class="status">
+            <div class="status-badge">
+                ✅ <span data-lang-inline="en" class="active">Production Ready</span><span data-lang-inline="id">Siap Production</span>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">1.1.0</div>
+                    <div class="stat-label" data-lang="en" class="active">Version</div>
+                    <div class="stat-label" data-lang="id">Versi</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">Python 3.8+</div>
+                    <div class="stat-label" data-lang="en" class="active">Requires</div>
+                    <div class="stat-label" data-lang="id">Membutuhkan</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">Proprietary</div>
+                    <div class="stat-label" data-lang="en" class="active">License</div>
+                    <div class="stat-label" data-lang="id">Lisensi</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">rafaelabs.xyz</div>
+                    <div class="stat-label">Domain</div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p data-lang="en" class="active">&copy; 2025 RAFAEL Framework. Built with ❤️ for resilient systems.</p>
+            <p data-lang="id">&copy; 2025 RAFAEL Framework. Dibuat dengan ❤️ untuk sistem yang resilient.</p>
+            <p style="margin-top: 1rem;">
+                <a href="https://dashboard.rafaelabs.xyz">Dashboard</a> |
+                <a href="https://api.rafaelabs.xyz">API</a> |
+                <a href="https://demo.rafaelabs.xyz">Demo</a> |
+                <a href="https://beta.rafaelabs.xyz">Beta</a> |
+                <a href="https://github.com/Rafael2022-prog/rafael">GitHub</a>
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        function setLanguage(lang) {
+            // Update active language button
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Hide all language content
+            document.querySelectorAll('[data-lang]').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('[data-lang-inline]').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected language content
+            document.querySelectorAll(`[data-lang="${lang}"]`).forEach(el => {
+                el.classList.add('active');
+            });
+            document.querySelectorAll(`[data-lang-inline="${lang}"]`).forEach(el => {
+                el.classList.add('active');
+            });
+            
+            // Save preference
+            localStorage.setItem('preferred-language', lang);
+        }
+        
+        // Load saved language preference
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('preferred-language');
+            if (savedLang && savedLang !== 'en') {
+                // Trigger language change
+                const langBtn = document.querySelector(`.lang-btn[onclick="setLanguage('${savedLang}')"]`);
+                if (langBtn) {
+                    langBtn.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

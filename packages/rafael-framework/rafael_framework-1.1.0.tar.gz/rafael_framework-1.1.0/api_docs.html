@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAFAEL API Documentation</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2a1f3a 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+            margin-bottom: 3rem;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            color: #8b5cf6;
+        }
+        
+        .endpoint-section {
+            margin-bottom: 3rem;
+        }
+        
+        .endpoint-section h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #8b5cf6;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+        
+        .endpoint {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .endpoint:hover {
+            border-color: rgba(139, 92, 246, 0.6);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.2);
+        }
+        
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .method {
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .method.get {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+        
+        .method.post {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid #3b82f6;
+        }
+        
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            color: #a78bfa;
+            font-size: 1.1rem;
+        }
+        
+        .endpoint-description {
+            margin-bottom: 1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 5px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+        
+        .try-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .try-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .response-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 5px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .response-box.show {
+            display: block;
+        }
+        
+        .base-url {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .base-url h3 {
+            color: #8b5cf6;
+            margin-bottom: 0.5rem;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .base-url code {
+            font-size: 1.1rem;
+            color: #a78bfa;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(139, 92, 246, 0.3);
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔱 RAFAEL API</h1>
+            <p class="tagline">RESTful API for Autonomous Resilience Management</p>
+        </header>
+        
+        <div class="base-url">
+            <h3>Base URL</h3>
+            <code>https://api.rafaelabs.xyz</code>
+        </div>
+        
+        <!-- System Status -->
+        <div class="endpoint-section">
+            <h2>System Status</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/status</span>
+                </div>
+                <p class="endpoint-description">
+                    Get current system status including module health, pending approvals, and vault patterns.
+                </p>
+                <div class="code-block">
+                    <pre>curl https://api.rafaelabs.xyz/api/status</pre>
+                </div>
+                <button class="try-button" onclick="tryEndpoint('/api/status', 'status-response')">Try it now</button>
+                <div id="status-response" class="response-box"></div>
+            </div>
+        </div>
+        
+        <!-- Module Management -->
+        <div class="endpoint-section">
+            <h2>Module Management</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/modules</span>
+                </div>
+                <p class="endpoint-description">
+                    List all registered modules with their health status and fitness scores.
+                </p>
+                <div class="code-block">
+                    <pre>curl https://api.rafaelabs.xyz/api/modules</pre>
+                </div>
+                <button class="try-button" onclick="tryEndpoint('/api/modules', 'modules-response')">Try it now</button>
+                <div id="modules-response" class="response-box"></div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/modules/:id/evolve</span>
+                </div>
+                <p class="endpoint-description">
+                    Trigger evolution for a specific module. The system will mutate and test new resilience strategies.
+                </p>
+                <div class="code-block">
+                    <pre>curl -X POST https://api.rafaelabs.xyz/api/modules/payment-service/evolve</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chaos Testing -->
+        <div class="endpoint-section">
+            <h2>Chaos Testing</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/chaos/simulate</span>
+                </div>
+                <p class="endpoint-description">
+                    Simulate chaos scenarios to test system resilience under various attack conditions.
+                </p>
+                <div class="code-block">
+                    <pre>curl -X POST https://api.rafaelabs.xyz/api/chaos/simulate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "module_id": "payment-service",
+    "threat_type": "ddos_attack",
+    "severity": "high",
+    "duration": 10
+  }'</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pattern Library -->
+        <div class="endpoint-section">
+            <h2>Pattern Library</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/vault/patterns</span>
+                </div>
+                <p class="endpoint-description">
+                    Get all resilience patterns from the vault.
+                </p>
+                <div class="code-block">
+                    <pre>curl https://api.rafaelabs.xyz/api/vault/patterns</pre>
+                </div>
+                <button class="try-button" onclick="tryEndpoint('/api/vault/patterns', 'patterns-response')">Try it now</button>
+                <div id="patterns-response" class="response-box"></div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/vault/patterns/search</span>
+                </div>
+                <p class="endpoint-description">
+                    Search for patterns by technology stack, category, or keywords.
+                </p>
+                <div class="code-block">
+                    <pre>curl -X POST https://api.rafaelabs.xyz/api/vault/patterns/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tech_stack": "python",
+    "category": "retry"
+  }'</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Guardian Approvals -->
+        <div class="endpoint-section">
+            <h2>Guardian Approvals</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/guardian/approvals</span>
+                </div>
+                <p class="endpoint-description">
+                    Get all pending approval requests for system mutations.
+                </p>
+                <div class="code-block">
+                    <pre>curl https://api.rafaelabs.xyz/api/guardian/approvals</pre>
+                </div>
+                <button class="try-button" onclick="tryEndpoint('/api/guardian/approvals', 'approvals-response')">Try it now</button>
+                <div id="approvals-response" class="response-box"></div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/guardian/approvals/:id/approve</span>
+                </div>
+                <p class="endpoint-description">
+                    Approve a pending mutation request.
+                </p>
+                <div class="code-block">
+                    <pre>curl -X POST https://api.rafaelabs.xyz/api/guardian/approvals/abc123/approve \
+  -H "Content-Type: application/json" \
+  -d '{"approver": "admin"}'</pre>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/guardian/approvals/:id/reject</span>
+                </div>
+                <p class="endpoint-description">
+                    Reject a pending mutation request.
+                </p>
+                <div class="code-block">
+                    <pre>curl -X POST https://api.rafaelabs.xyz/api/guardian/approvals/abc123/reject \
+  -H "Content-Type: application/json" \
+  -d '{"rejector": "admin", "reason": "Too risky"}'</pre>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 RAFAEL Framework. API v1.0.0</p>
+            <p style="margin-top: 0.5rem;">
+                <a href="https://rafaelabs.xyz" style="color: #8b5cf6; text-decoration: none;">Main Site</a> |
+                <a href="https://dashboard.rafaelabs.xyz" style="color: #8b5cf6; text-decoration: none;">Dashboard</a> |
+                <a href="https://beta.rafaelabs.xyz" style="color: #8b5cf6; text-decoration: none;">Beta Program</a>
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        async function tryEndpoint(path, responseId) {
+            const responseBox = document.getElementById(responseId);
+            responseBox.innerHTML = '<p style="color: #fbbf24;">Loading...</p>';
+            responseBox.classList.add('show');
+            
+            try {
+                const response = await fetch(`https://api.rafaelabs.xyz${path}`);
+                const data = await response.json();
+                responseBox.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                responseBox.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+            } catch (error) {
+                responseBox.innerHTML = `<p style="color: #ef4444;">Error: ${error.message}</p>`;
+                responseBox.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+            }
+        }
+    </script>
+</body>
+</html>
