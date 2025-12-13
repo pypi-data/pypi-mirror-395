@@ -1,0 +1,738 @@
+Metadata-Version: 2.1
+Name: rattata
+Version: 0.1.0
+Summary: Convert between Polars schemas and Python data structures (dataclasses, TypedDicts, namedtuples)
+Author-email: Odos Matthews <odosmatthews@gmail.com>
+License: MIT
+Keywords: polars,dataclass,typeddict,namedtuple,schema,conversion
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: polars>=0.19.0
+Requires-Dist: typing-extensions>=4.0.0; python_version < "3.9"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
+# Rattata
+
+**R**ecursive **A**nd **T**ype **T**ransformation **A**utomation for **T**ype **A**nnotations
+
+[![PyPI version](https://badge.fury.io/py/rattata.svg)](https://badge.fury.io/py/rattata)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-ruff-black)](https://github.com/astral-sh/ruff)
+
+**Convert between Polars schemas and Python data structures (dataclasses, TypedDicts, namedtuples) with ease.**
+
+Rattata provides simple, bidirectional conversion functions to transform schemas between Polars and Python's type-annotated structures, supporting all complex types including nested structures and arrays.
+
+## ✨ Key Features
+
+* **Bidirectional Conversion**: Convert schemas in both directions (Polars ↔ Python)
+* **Multiple Schema Formats**: Supports `pl.Schema`, `dict[str, pl.DataType]`, and `Iterable[tuple[str, pl.DataType]]`
+* **Native Polars Integration**: Returns `pl.Schema` objects from `from_*` functions for seamless DataFrame integration
+* **Comprehensive Type Support**: Supports all primitive and complex Polars types
+* **Nested Structures**: Handles deeply nested structs and arrays recursively
+* **Type Safety**: Clear error messages with custom exceptions for unsupported types
+* **Simple API**: Functional, stateless functions - easy to use and understand
+* **Multiple Output Formats**: Support for dataclasses, TypedDicts, and NamedTuples
+* **Python 3.8+ Compatible**: Works with Python 3.8, 3.9, 3.10, 3.11, and 3.12
+
+## 📦 Installation
+
+```bash
+pip install rattata
+```
+
+## 📋 Requirements
+
+* Python >= 3.8
+* polars >= 0.19.0
+
+## 🚀 Quick Start
+
+### Converting Polars Schema to Dataclass
+
+Rattata supports **three Polars schema formats** - use whichever is most convenient:
+
+```python
+import polars as pl
+from rattata import to_dataclass
+
+# Format 1: Dictionary
+polars_schema_dict = {
+    "name": pl.String,
+    "age": pl.Int32,
+    "score": pl.Float64,
+    "tags": pl.List(pl.String),
+}
+
+# Format 2: pl.Schema object
+polars_schema_schema = pl.Schema({
+    "name": pl.String,
+    "age": pl.Int32,
+    "score": pl.Float64,
+    "tags": pl.List(pl.String),
+})
+
+# Format 3: List of tuples
+polars_schema_list = [
+    ("name", pl.String),
+    ("age", pl.Int32),
+    ("score", pl.Float64),
+    ("tags", pl.List(pl.String)),
+]
+
+# All three formats work identically!
+Person = to_dataclass(polars_schema_dict, class_name="Person")
+# or: to_dataclass(polars_schema_schema, class_name="Person")
+# or: to_dataclass(polars_schema_list, class_name="Person")
+
+# Use the dataclass
+person = Person(name="Alice", age=30, score=95.5, tags=["python", "data"])
+print(person.name)
+# Output: Alice
+
+print(person)
+# Output: Person(name='Alice', age=30, score=95.5, tags=['python', 'data'])
+```
+
+### Converting Polars Schema to TypedDict
+
+```python
+import polars as pl
+from rattata import to_typeddict
+
+# Define a Polars schema
+polars_schema = {
+    "name": pl.String,
+    "age": pl.Int32,
+    "scores": pl.List(pl.Float64),
+}
+
+# Convert to TypedDict
+PersonDict = to_typeddict(polars_schema, dict_name="PersonDict")
+
+# Use the TypedDict with type checking
+person: PersonDict = {
+    "name": "Bob",
+    "age": 25,
+    "scores": [88.5, 92.0, 85.5]
+}
+
+print(person["name"])
+# Output: Bob
+```
+
+### Converting Polars Schema to NamedTuple
+
+```python
+import polars as pl
+from rattata import to_namedtuple
+
+# Define a Polars schema
+polars_schema = {
+    "name": pl.String,
+    "age": pl.Int32,
+    "active": pl.Boolean,
+}
+
+# Convert to NamedTuple
+Person = to_namedtuple(polars_schema, tuple_name="Person")
+
+# Use the NamedTuple
+person = Person(name="Charlie", age=28, active=True)
+print(person.name)  # Charlie
+print(person[0])    # Charlie (also supports indexing)
+```
+
+### Converting Dataclass to Polars Schema
+
+```python
+from dataclasses import dataclass
+from typing import List, Optional
+from rattata import from_dataclass
+import polars as pl
+
+@dataclass
+class Product:
+    name: str
+    price: float
+    tags: List[str]
+    description: Optional[str] = None
+
+# Convert to Polars schema (returns pl.Schema)
+polars_schema = from_dataclass(Product)
+print(polars_schema)
+# Output: Schema([('name', String), ('price', Float64), ('tags', List(String)), ('description', String)])
+
+print(type(polars_schema))
+# Output: <class 'polars.schema.Schema'>
+
+# Access fields like a dictionary
+print(polars_schema["name"])
+# Output: String
+
+# Use directly with Polars DataFrames
+df = pl.DataFrame(
+    {
+        "name": ["Widget"],
+        "price": [19.99],
+        "tags": [["electronics", "gadgets"]],
+        "description": ["A useful widget"]
+    },
+    schema=polars_schema
+)
+print(df)
+# Output:
+# shape: (1, 4)
+# ┌────────┬───────┬────────────────────────────┬─────────────────┐
+# │ name   ┆ price ┆ tags                       ┆ description     │
+# │ ---    ┆ ---   ┆ ---                        ┆ ---             │
+# │ str    ┆ f64   ┆ list[str]                  ┆ str             │
+# ╞════════╪═══════╪════════════════════════════╪═════════════════╡
+# │ Widget ┆ 19.99 ┆ ["electronics", "gadgets"] ┆ A useful widget │
+# └────────┴───────┴────────────────────────────┴─────────────────┘
+```
+
+### Converting TypedDict to Polars Schema
+
+```python
+from typing import TypedDict, List
+from rattata import from_typeddict
+import polars as pl
+
+class BookDict(TypedDict):
+    title: str
+    author: str
+    pages: int
+    genres: List[str]
+
+# Convert to Polars schema (returns pl.Schema)
+polars_schema = from_typeddict(BookDict)
+print(polars_schema)
+# Output: Schema([('title', String), ('author', String), ('pages', Int64), ('genres', List(String))])
+
+print(type(polars_schema))
+# Output: <class 'polars.schema.Schema'>
+
+# Access fields like a dictionary
+print(polars_schema["title"])
+# Output: String
+```
+
+### Converting NamedTuple to Polars Schema
+
+```python
+from typing import NamedTuple
+from rattata import from_namedtuple
+import polars as pl
+
+class Point(NamedTuple):
+    x: float
+    y: float
+    z: float
+
+# Convert to Polars schema (returns pl.Schema)
+polars_schema = from_namedtuple(Point)
+print(polars_schema)
+# Output: Schema([('x', Float64), ('y', Float64), ('z', Float64)])
+
+print(type(polars_schema))
+# Output: <class 'polars.schema.Schema'>
+
+# Access fields like a dictionary
+print(polars_schema["x"])
+# Output: Float64
+```
+
+## 💡 Use Cases
+
+Rattata is perfect for:
+
+* **Schema Definition**: Define your data structure once as a Polars schema, then generate Python classes
+* **Type-Safe Data Processing**: Convert Polars schemas to dataclasses for type-safe data manipulation
+* **API Development**: Generate TypedDicts from Polars schemas for API request/response validation
+* **Data Pipeline Integration**: Seamlessly convert between Polars DataFrames and Python objects
+* **Testing**: Generate test fixtures from Polars schemas
+* **Documentation**: Automatically generate Python type definitions from Polars schemas
+
+## 📚 Advanced Examples
+
+### Nested Structures
+
+Rattata handles deeply nested structures automatically:
+
+```python
+import polars as pl
+from rattata import to_dataclass
+
+# Define a nested Polars schema
+polars_schema = {
+    "user": pl.Struct([
+        pl.Field("name", pl.String),
+        pl.Field("address", pl.Struct([
+            pl.Field("street", pl.String),
+            pl.Field("city", pl.String),
+            pl.Field("zip", pl.Int32),
+        ])),
+    ]),
+}
+
+User = to_dataclass(polars_schema, class_name="User")
+
+# Access nested struct classes dynamically
+UserStruct = User.UserStruct
+AddressStruct = User.UserStructStruct
+
+# Use nested structure
+user = User(
+    user=UserStruct(
+        name="Alice",
+        address=AddressStruct(
+            street="123 Main St",
+            city="Springfield",
+            zip=12345
+        )
+    )
+)
+
+print(user.user.name)
+# Output: Alice
+
+print(user.user.address.city)
+# Output: Springfield
+```
+
+### Arrays with Nested Types
+
+```python
+import polars as pl
+from rattata import to_typeddict
+
+# Nested arrays
+polars_schema = {
+    "matrix": pl.List(pl.List(pl.Float64)),
+    "tags": pl.List(pl.String),
+}
+
+MatrixDict = to_typeddict(polars_schema, dict_name="MatrixDict")
+
+# MatrixDict is a TypedDict with nested list types
+print(type(MatrixDict))
+# Output: <class 'typing._TypedDictMeta'>
+
+print(MatrixDict.__annotations__)
+# Output: {'matrix': typing.List[typing.List[typing.Union[float, NoneType]]], 'tags': typing.List[typing.Union[str, NoneType]]}
+```
+
+### Round-Trip Conversion
+
+Convert from Polars schema → Python class → Polars schema:
+
+```python
+import polars as pl
+from dataclasses import dataclass
+from typing import List
+from rattata import to_dataclass, from_dataclass
+
+# Start with Polars schema
+original = {
+    "name": pl.String,
+    "age": pl.Int32,
+    "scores": pl.List(pl.Float64),
+}
+
+# Convert to dataclass and back
+Person = to_dataclass(original, class_name="Person")
+converted_back = from_dataclass(Person)  # Returns pl.Schema
+
+# Verify types match (with some flexibility for Optional/nullability)
+print(f"Original: {original}")
+# Output: Original: {'name': String, 'age': Int32, 'scores': List(Float64)}
+
+print(f"Converted back: {converted_back}")
+# Output: Converted back: Schema([('name', String), ('age', Int64), ('scores', List(Float64))])
+
+print(f"Type: {type(converted_back)}")
+# Output: Type: <class 'polars.schema.Schema'>
+
+assert converted_back["name"] == original["name"]
+# Note: Int32 converts to Int64 (Python int defaults to Int64)
+
+# converted_back is a pl.Schema, so you can use it directly with Polars
+df = pl.DataFrame(
+    {"name": ["Alice"], "age": [30], "scores": [[88.5, 92.0]]},
+    schema=converted_back
+)
+print(df)
+# Output:
+# shape: (1, 3)
+# ┌───────┬─────┬──────────────┐
+# │ name  ┆ age ┆ scores       │
+# │ ---   ┆ --- ┆ ---          │
+# │ str   ┆ i64 ┆ list[f64]    │
+# ╞═══════╪═════╪══════════════╡
+# │ Alice ┆ 30  ┆ [88.5, 92.0] │
+# └───────┴─────┴──────────────┘
+```
+
+### Date and Time Types
+
+```python
+import polars as pl
+from datetime import date, datetime
+from decimal import Decimal
+from rattata import to_dataclass
+
+polars_schema = {
+    "event_date": pl.Date,
+    "timestamp": pl.Datetime(time_unit="us"),
+    "price": pl.Decimal(precision=10, scale=2),
+}
+
+Event = to_dataclass(polars_schema, class_name="Event")
+
+event = Event(
+    event_date=date(2024, 1, 15),
+    timestamp=datetime(2024, 1, 15, 10, 30, 0),
+    price=Decimal("99.99")
+)
+```
+
+## 🔧 Error Handling
+
+Rattata provides clear, actionable error messages through custom exceptions:
+
+```python
+from rattata import ConversionError, UnsupportedTypeError, SchemaError, to_dataclass
+import polars as pl
+
+try:
+    # Invalid: not a valid Python identifier
+    schema = to_dataclass({"name": pl.String}, class_name="123invalid")
+except SchemaError as e:
+    print(f"Invalid name: {e}")
+    # Output: Invalid name: class_name '123invalid' is not a valid Python identifier
+
+try:
+    # Invalid: Python keyword as class name
+    schema = to_dataclass({"name": pl.String}, class_name="class")
+except SchemaError as e:
+    print(f"Invalid name: {e}")
+    # Output: Invalid name: class_name 'class' is a Python keyword and cannot be used
+```
+
+## 📖 API Reference
+
+### `to_dataclass(polars_schema, class_name="DataClass")`
+
+Convert a Polars schema to a dataclass.
+
+**Parameters:**
+
+* `polars_schema`: Polars schema in any supported format:
+  * `pl.Schema`: Polars Schema object
+  * `dict[str, pl.DataType]`: Dictionary mapping field names to types
+  * `Iterable[tuple[str, pl.DataType]]`: Iterable of (field_name, type) tuples (e.g., `[("name", pl.String), ...]`)
+* `class_name` (str): Name for the generated dataclass (must be a valid Python identifier)
+
+**Returns:**
+
+* `type`: A dataclass type
+
+**Raises:**
+
+* `SchemaError`: If the schema structure is invalid or class_name is invalid
+* `UnsupportedTypeError`: If a type cannot be converted
+* `ConversionError`: If conversion fails
+
+### `to_typeddict(polars_schema, dict_name="TypedDict")`
+
+Convert a Polars schema to a TypedDict.
+
+**Parameters:**
+
+* `polars_schema`: Polars schema in any supported format (same as `to_dataclass`)
+* `dict_name` (str): Name for the generated TypedDict (must be a valid Python identifier)
+
+**Returns:**
+
+* `type`: A TypedDict type
+
+**Raises:**
+
+* `SchemaError`: If the schema structure is invalid or dict_name is invalid
+* `UnsupportedTypeError`: If a type cannot be converted
+* `ConversionError`: If conversion fails
+
+### `to_namedtuple(polars_schema, tuple_name="NamedTuple")`
+
+Convert a Polars schema to a NamedTuple.
+
+**Parameters:**
+
+* `polars_schema`: Polars schema in any supported format (same as `to_dataclass`)
+* `tuple_name` (str): Name for the generated NamedTuple (must be a valid Python identifier)
+
+**Returns:**
+
+* `type`: A NamedTuple type (typing.NamedTuple preferred, collections.namedtuple as fallback)
+
+**Raises:**
+
+* `SchemaError`: If the schema structure is invalid or tuple_name is invalid
+* `UnsupportedTypeError`: If a type cannot be converted
+* `ConversionError`: If conversion fails
+
+### `from_dataclass(dataclass_cls)`
+
+Convert a dataclass to a Polars schema.
+
+**Parameters:**
+
+* `dataclass_cls` (type): A dataclass type
+
+**Returns:**
+
+* `pl.Schema`: Polars Schema object mapping field names to Polars types
+
+**Raises:**
+
+* `SchemaError`: If the input is not a dataclass
+* `ConversionError`: If conversion fails
+* `UnsupportedTypeError`: If a type cannot be converted
+
+### `from_typeddict(typeddict_cls)`
+
+Convert a TypedDict to a Polars schema.
+
+**Parameters:**
+
+* `typeddict_cls` (type): A TypedDict type
+
+**Returns:**
+
+* `pl.Schema`: Polars Schema object mapping field names to Polars types
+
+**Raises:**
+
+* `SchemaError`: If the input is not a TypedDict
+* `ConversionError`: If conversion fails
+* `UnsupportedTypeError`: If a type cannot be converted
+
+### `from_namedtuple(namedtuple_cls)`
+
+Convert a NamedTuple to a Polars schema.
+
+**Parameters:**
+
+* `namedtuple_cls` (type): A NamedTuple type (typing.NamedTuple or collections.namedtuple)
+
+**Returns:**
+
+* `pl.Schema`: Polars Schema object mapping field names to Polars types
+
+**Raises:**
+
+* `SchemaError`: If the input is not a NamedTuple
+* `ConversionError`: If conversion fails
+* `UnsupportedTypeError`: If a type cannot be converted
+
+## 🎯 Supported Types
+
+### Primitive Types
+
+| Polars        | Python              |
+| ------------- | ------------------- |
+| Int8          | int                 |
+| Int16         | int                 |
+| Int32         | int                 |
+| Int64         | int                 |
+| UInt8         | int                 |
+| UInt16        | int                 |
+| UInt32        | int                 |
+| UInt64        | int                 |
+| Float32       | float               |
+| Float64       | float               |
+| Boolean       | bool                |
+| String / Utf8 | str                 |
+| Date          | date                |
+| Datetime      | datetime            |
+| Decimal       | Decimal             |
+| Binary        | bytes               |
+| Null          | None                |
+| Categorical   | str                 |
+| Enum          | str                 |
+
+### Complex Types
+
+* **Arrays/Lists**: Fully supported with nested arrays (`List[List[T]]`, etc.)
+* **Structs**: Fully supported with nested structs (converts to nested dataclasses/TypedDicts)
+* **Dicts**: Python `Dict[str, T]` converts to Polars `Struct` with `key` and `value` fields
+
+## ⚠️ Limitations
+
+### Type Conversions with Information Loss
+
+Some type conversions result in information loss or semantic changes:
+
+* **UInt64 → int**: Python's `int` type can represent unsigned 64-bit integers, but the semantic meaning is lost
+* **Decimal precision/scale**: When converting from Python `Decimal` to Polars `Decimal`, defaults to precision=38, scale=10. Specific precision/scale from Polars schemas are preserved when converting to Python
+* **Datetime time units**: When converting from Python `datetime` to Polars `Datetime`, defaults to `time_unit="ns"`. Specific time units from Polars schemas are preserved when converting to Python
+* **Dict → Struct**: Python `Dict[str, T]` is converted to Polars `Struct` with `key` (String) and `value` (T) fields
+
+### Nullability
+
+* **Polars → Python**: All fields are created with `Optional[...]` to handle nullability, as Polars schemas don't explicitly track nullability at the schema definition level
+* **Python → Polars**: The `Optional` attribute from Python type annotations is handled, but all Polars fields can contain nulls by default
+
+### NamedTuple Limitations
+
+* Nested structures in NamedTuples are converted to `Dict[str, Any]` due to NamedTuple's limitations with complex nested types
+* `collections.namedtuple` (without type annotations) loses type information during conversion
+
+### Input Validation
+
+Rattata validates schemas before conversion:
+
+* **Duplicate field names**: Raises `SchemaError` if duplicate field names are detected
+* **Empty field names**: Raises `SchemaError` if any field name is an empty string
+* **Invalid field types**: Raises `SchemaError` if field types are `None`
+* **Invalid field name types**: Raises `SchemaError` if field names are not strings
+* **Invalid class/dict/tuple names**: Raises `SchemaError` if provided names are not valid Python identifiers or are Python keywords
+
+### Schema Format Support
+
+Rattata accepts Polars schemas in three formats:
+
+1. **`pl.Schema` objects**: Native Polars Schema objects
+   ```python
+   schema = pl.Schema({"name": pl.String, "age": pl.Int32})
+   ```
+
+2. **`dict[str, pl.DataType]`**: Dictionary mapping field names to types
+   ```python
+   schema = {"name": pl.String, "age": pl.Int32}
+   ```
+
+3. **`Iterable[tuple[str, pl.DataType]]`**: Iterable of (field_name, type) tuples
+   ```python
+   schema = [("name", pl.String), ("age", pl.Int32)]
+   schema = (("name", pl.String), ("age", pl.Int32))  # Also works
+   ```
+
+All three formats work with `to_dataclass`, `to_typeddict`, and `to_namedtuple`.
+
+## 🛠️ Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/eddiethedean/rattata.git
+cd rattata
+
+# Install in development mode with dev dependencies
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=rattata --cov-report=html
+
+# Run specific test file
+pytest tests/test_converters.py
+
+# Run with verbose output
+pytest -v
+```
+
+### Code Quality
+
+```bash
+# Format code
+ruff format .
+
+# Lint code
+ruff check .
+
+# Type check
+mypy rattata/
+```
+
+### Testing Across Python Versions
+
+The project is tested across Python 3.8, 3.9, 3.10, 3.11, and 3.12. Use `pyenv` or `tox` to test locally:
+
+```bash
+# Example with pyenv
+pyenv local 3.8 3.9 3.10 3.11 3.12
+for version in 3.8 3.9 3.10 3.11 3.12; do
+    pyenv local $version
+    python -m pytest
+done
+```
+
+### Project Structure
+
+```
+rattata/
+├── rattata/
+│   ├── __init__.py          # Public API
+│   ├── converters.py         # Core conversion functions
+│   ├── type_mappings.py      # Type mapping dictionaries and utilities
+│   └── errors.py             # Custom exceptions
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py           # Shared fixtures and test utilities
+│   ├── test_converters.py    # Conversion function tests
+│   ├── test_type_mappings.py # Type mapping tests
+│   ├── test_integration.py   # Integration tests with Polars DataFrames
+│   └── test_edge_cases.py    # Edge case and error handling tests
+├── pyproject.toml            # Package configuration
+├── LICENSE                   # MIT License
+└── README.md                 # This file
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 🙏 Inspiration
+
+This project is inspired by [charmander](https://github.com/eddiethedean/charmander), which provides similar functionality for converting between Polars schemas and PySpark schemas.
+
+## 📧 Contact
+
+**Odos Matthews**
+* Email: odosmatthews@gmail.com
+* GitHub: [@eddiethedean](https://github.com/eddiethedean)
