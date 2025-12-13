@@ -1,0 +1,45 @@
+import uuid
+from typing import cast
+
+from ape_pie import APIClient
+
+from openklant_client._resources.base import ResourceMixin
+from openklant_client.types.pagination import PaginatedResponseBody
+from openklant_client.types.resources.betrokkene import (
+    Betrokkene,
+    BetrokkeneCreateData,
+    BetrokkeneRetrieveParams,
+)
+
+
+class BetrokkeneResource(ResourceMixin):
+    http_client: APIClient
+    base_path: str = "betrokkenen"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.list_iter = self._make_list_iter(self.list)
+
+    def create(
+        self,
+        *,
+        data: BetrokkeneCreateData,
+    ) -> Betrokkene:
+        response = self._post(self.base_path, data=data)
+        return cast(Betrokkene, self.process_response(response))
+
+    def retrieve(
+        self,
+        /,
+        uuid: str | uuid.UUID,
+        params: BetrokkeneRetrieveParams | None = None,
+    ) -> Betrokkene:
+        response = self._get(f"{self.base_path}/{str(uuid)}")
+        return cast(Betrokkene, self.process_response(response))
+
+    def list(self) -> PaginatedResponseBody[Betrokkene]:
+        response = self._get(f"{self.base_path}")
+        return cast(
+            PaginatedResponseBody[Betrokkene],
+            self.process_response(response),
+        )
