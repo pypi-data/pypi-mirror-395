@@ -1,0 +1,89 @@
+#!/bin/bash
+set -e -u -x
+
+subid="$1"
+{% if processing_level == 'session' %}
+sesid="$2"
+{% endif %}
+{% for input_ds in input_datasets|selectattr('is_zipped') %}
+{{ input_ds['name'].upper() }}_ZIP="${{ loop.index + (2 if processing_level == 'session' else 1) }}"
+{% endfor %}
+
+{% set steps_with_filter = processed_steps | selectattr('flag_filterfile') | list %}
+{% if steps_with_filter %}
+# Create a filter file that only allows this session
+filterfile="${PWD}/${sesid}_filter.json"
+{% raw %}{{% endraw %}
+    echo "{"
+    echo "'fmap': {'datatype': 'fmap'},"
+{% set first_filter_step = steps_with_filter[0] %}
+{% if 'fmriprep' in first_filter_step['container_name'].lower() %}
+    echo "'bold': {'datatype': 'func', 'session': '$sesid', 'suffix': 'bold'},"
+{% elif 'qsiprep' in first_filter_step['container_name'].lower() %}
+    echo "'dwi': {'datatype': 'dwi', 'session': '$sesid', 'suffix': 'dwi'},"
+{% endif %}
+    echo "'sbref': {'datatype': 'func', 'session': '$sesid', 'suffix': 'sbref'},"
+    echo "'flair': {'datatype': 'anat', 'session': '$sesid', 'suffix': 'FLAIR'},"
+    echo "'t2w': {'datatype': 'anat', 'session': '$sesid', 'suffix': 'T2w'},"
+    echo "'t1w': {'datatype': 'anat', 'session': '$sesid', 'suffix': 'T1w'},"
+    echo "'roi': {'datatype': 'anat', 'session': '$sesid', 'suffix': 'roi'}"
+    echo "}"
+{% raw %}}{% endraw %} > "${filterfile}"
+
+# remove ses and get valid json
+sed -i "s/'/\"/g" "${filterfile}"
+sed -i "s/ses-//g" "${filterfile}"
+
+{% endif %}
+
+{% if cmd_unzip_inputds %}
+{{ cmd_unzip_inputds }}
+{% endif %}
+mkdir -p "${PWD}/.git/tmp/wkdir"
+{% if templateflow_home_on_disk %}
+mkdir -p {{ templateflow_home_on_disk }}
+{% endif %}
+
+{% for step in processed_steps %}
+echo "# Running step: {{ step['container_name'] }}"
+{% if step['bids_app_output_dir'] != step['bids_app_input_dir'] %}
+mkdir -p "{{ step['bids_app_output_dir'] }}"
+{% endif %}
+
+singularity run \
+    -B "${PWD}" \
+{% if templateflow_home_on_disk %}
+    -B "{{ templateflow_home_on_disk }}":"{{ templateflow_in_container }}" \
+    --env "TEMPLATEFLOW_HOME={{ templateflow_in_container }}" \
+{% endif %}
+{% if step['flag_fs_license'] %}
+    -B "{{ step['path_fs_license'] }}":"{{ PATH_FS_LICENSE_IN_CONTAINER }}" \
+{% endif %}
+{% for singularity_flag in step['singularity_flags'] %}
+    {{ singularity_flag }} \
+{% endfor %}
+    "{{ step['container_path_relToAnalysis'] }}" \
+        "${PWD}/{{ step['bids_app_input_dir'] }}" \
+        "${PWD}/{{ step['bids_app_output_dir'] }}" \
+        participant \
+{% if step['flag_filterfile'] %}
+        --bids-filter-file "${filterfile}" \
+{% endif %}
+{% for bids_app_arg in step['bids_app_args'] %}
+{% if bids_app_arg %}
+        {{ bids_app_arg }} \
+{% endif %}
+{% endfor %}
+        {{ step['subject_selection_flag'] }} "${subid}"
+
+{% if step.get('inter_step_cmds') %}
+{{ step['inter_step_cmds'] }}
+{% endif %}
+
+{% endfor %}
+
+{{ cmd_zip }}
+rm -rf {{ OUTPUT_MAIN_FOLDERNAME }} .git/tmp/wkdir
+{% if steps_with_filter %}
+rm -f "${filterfile}"
+{% endif %}
