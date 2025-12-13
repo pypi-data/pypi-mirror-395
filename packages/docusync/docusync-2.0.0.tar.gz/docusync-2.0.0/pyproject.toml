@@ -1,0 +1,76 @@
+[project]
+name = "docusync"
+version = "2.0.0"
+description = "CLI tool for syncing documentation from multiple repositories for Docusaurus"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Roman Myhun", email = "roman.myhun@example.com" }
+]
+keywords = ["docusaurus", "documentation", "sync", "cli", "git"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "click>=8.1.0",
+    "pydantic-settings>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Roman505050/docusync"
+Repository = "https://github.com/Roman505050/docusync"
+Issues = "https://github.com/Roman505050/docusync/issues"
+
+[project.scripts]
+docusync = "docusync.cli:cli"
+
+[dependency-groups]
+lint = [
+    "black>=25.1.0",
+    "flake8>=7.2.0",
+    "flake8-comprehensions>=3.16.0",
+    "flake8-mutable>=1.2.0",
+    "isort>=6.0.1",
+    "mypy>=1.15.0",
+]
+
+[tool.mypy]
+mypy_path = "src"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+explicit_package_bases = true
+check_untyped_defs = true
+follow_untyped_imports = true
+exclude = [
+    "tests/unit/test_utils.py",
+    "tests/unit/test_base_swap.py",
+    "^DEBUG/",
+]
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+include_trailing_comma = true
+lines_after_imports = 2
+line_length = 79
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/docusync"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
