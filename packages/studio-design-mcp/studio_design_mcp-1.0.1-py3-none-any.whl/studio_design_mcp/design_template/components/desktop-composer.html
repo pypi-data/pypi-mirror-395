@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desktop Composer Component</title>
+    <style>
+        /* Fluent Icons as SVG backgrounds */
+        .fluent-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .fluent-icon[data-fluent-icon="copilot-24-regular"] {
+            background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Microsoft_Copilot_Icon.svg/280px-Microsoft_Copilot_Icon.svg.png');
+            background-size: 24px 24px;
+        }
+        
+        .fluent-icon[data-fluent-icon="sparkle-24-regular"] {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%230078d4" d="M9.813 2.938a.75.75 0 0 1 1.374 0l1.063 2.25 2.25 1.063a.75.75 0 0 1 0 1.374l-2.25 1.063-1.063 2.25a.75.75 0 0 1-1.374 0L8.75 8.688 6.5 7.625a.75.75 0 0 1 0-1.374l2.25-1.063L9.813 2.938Zm8.937 6.437a.5.5 0 0 1 .916 0l.585 1.25 1.25.585a.5.5 0 0 1 0 .916l-1.25.585-.585 1.25a.5.5 0 0 1-.916 0l-.585-1.25-1.25-.585a.5.5 0 0 1 0-.916l1.25-.585.585-1.25Zm-11.5 7a.5.5 0 0 1 .916 0l.585 1.25 1.25.585a.5.5 0 0 1 0 .916l-1.25.585-.585 1.25a.5.5 0 0 1-.916 0l-.585-1.25-1.25-.585a.5.5 0 0 1 0-.916l1.25-.585.585-1.25Z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="bot-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%230078d4" d="M17.753 14A2.25 2.25 0 0 1 16 15.75v2.5c0 .966-.784 1.75-1.75 1.75h-4.5A1.75 1.75 0 0 1 8 18.25v-2.5A2.25 2.25 0 0 1 6.247 14H4.25A2.25 2.25 0 0 1 2 11.75v-5.5A2.25 2.25 0 0 1 4.25 4h15.5A2.25 2.25 0 0 1 22 6.25v5.5A2.25 2.25 0 0 1 19.75 14h-1.997ZM9.5 18.25c0 .138.112.25.25.25h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 0 .75-.75v-5.5A.75.75 0 0 0 19.75 5.5H4.25a.75.75 0 0 0-.75.75v5.5c0 .414.336.75.75.75h2.5a.75.75 0 0 1 .75.75v2.5ZM7 8a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm8 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm-5.5 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5Z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="eye-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="mic-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>');
+        }
+        
+        /* FontAwesome Icons */
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F8F4F1;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding: 0 16px 20px;
+        }
+        
+        /* Desktop Composer Component */
+        .desktop-composer {
+            width: 650px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .outer-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 6px;
+            background: rgba(250, 244, 239, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 32px;
+            box-shadow: 
+                0px 16px 48px 0px rgba(244, 190, 146, 0.18),
+                0px 16px 24px 0px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(60px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gradient-outer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 114px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 32px 32px 0 0;
+            pointer-events: none;
+        }
+        
+        .inner-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 26px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 8px;
+            border-radius: 32px;
+        }
+        
+        .text-input {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+        }
+
+        .placeholder-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 410;
+            font-size: 17px;
+            line-height: 1.53em;
+            color: #635C57;
+            opacity: 0.9;
+            flex: 1;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0px 10px 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .copilot-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 6px;
+        }
+        
+        .copilot-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .mode-button {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 6px;
+            background: rgba(0, 0, 0, 0);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            height: 36px;
+        }
+        
+        .button-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 2px;
+        }
+        
+        .text-padding {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 4px;
+        }
+        
+        .button-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 410;
+            font-size: 14px;
+            line-height: 1.43em;
+            color: #272320;
+            text-align: center;
+        }
+        
+        .chevron-padding {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2px;
+        }
+        
+        .chevron {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4.5px 2px 3px;
+        }
+        
+        .chevron-icon {
+            width: 8px;
+            height: 4.5px;
+            background: #272320;
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+        }
+        
+        .vision-button,
+        .mic-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0);
+            border-radius: 16px;
+            cursor: pointer;
+        }
+        
+        .vision-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mic-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="desktop-composer">
+        <div class="outer-container">
+            <div class="gradient-outer"></div>
+            <div class="inner-container">
+                <div class="input-section">
+                    <div class="text-input">
+                        <div class="placeholder-text">Message Copilot</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <div class="copilot-logo">
+                            <i class="fluent-icon copilot-icon" data-fluent-icon="copilot-24-regular"></i>
+                        </div>
+                        
+                        <div class="mode-button">
+                            <div class="button">
+                                <div class="button-content">
+                                    <div class="text-padding">
+                                        <div class="button-text">Quick response</div>
+                                    </div>
+                                    <div class="chevron-padding">
+                                        <div class="chevron">
+                                            <div class="chevron-icon"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="vision-button">
+                            <i class="fluent-icon vision-icon" data-fluent-icon="eye-24-regular"></i>
+                        </div>
+                        
+                        <div class="mic-button">
+                            <i class="fluent-icon mic-icon" data-fluent-icon="mic-24-regular"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
