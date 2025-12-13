@@ -1,0 +1,210 @@
+# =============================================================================
+# Site Information
+# =============================================================================
+site_name: lbx - Lock Box
+site_description: A lightweight secret storage vault with CLI and Python API. Stores secrets in encrypted files with master password secured via OS keychain.
+site_author: Jitesh Sahani (JD)
+site_url: https://jd-35656.github.io/lbx/
+copyright: "© 2025 Jitesh Sahani (JD) | Licensed under MIT"
+
+# =============================================================================
+# Repository Information
+# =============================================================================
+repo_name: lbx
+repo_url: https://github.com/jd-35656/lbx/
+edit_uri: edit/main/docs/
+remote_branch: gh-pages
+remote_name: origin
+
+# =============================================================================
+# Navigation
+# =============================================================================
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - User Guide:
+      - CLI Reference: user-guide/cli.md
+  - API Reference:
+      - Overview: api/index.md
+  - Contributing:
+      - Overview: contributing/index.md
+      - Development Setup: contributing/development.md
+      - Testing: contributing/testing.md
+      - Releasing: contributing/releasing.md
+  - Changelog: changelog.md
+
+# =============================================================================
+# Theme Configuration
+# =============================================================================
+theme:
+  name: material
+  language: en
+
+  # Fallback to default theme if material is not available
+  # Uncomment the line below and comment out 'name: material' to use default theme
+  # name: mkdocs
+
+  icon:
+    repo: fontawesome/brands/github
+
+  features:
+    # Announcements
+    - announce.dismiss
+
+    # Content
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+
+    # Navigation
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+
+    # Search
+    - search.suggest
+
+    # Table of Contents
+    - toc.follow
+
+  palette:
+    # Light mode - defaults to system preference
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark mode - defaults to system preference
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep-purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  # Uncomment when assets are available
+  # logo: assets/logo.png
+  # favicon: assets/favicon.ico
+
+# =============================================================================
+# Extra Configuration
+# =============================================================================
+extra:
+  # Version provider for mike
+  version:
+    provider: !ENV [MIKE_VERSION_PROVIDER, null]
+
+  # Social links
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jd-35656/lbx
+      name: GitHub Repository
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/lbx/
+      name: PyPI Package
+
+# =============================================================================
+# Plugins
+# =============================================================================
+
+plugins:
+  # Search functionality
+  - search
+
+  # Version management
+  - mike
+
+  # Macro support
+  - macros
+
+  # Cross-references
+  - autorefs
+
+  # API documentation generation
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            # Member ordering and filtering
+            members_order: source
+            filters:
+              - "!^_"
+              - "!^__"
+
+            # Docstring configuration
+            docstring_style: google
+            docstring_section_style: table
+            docstring_options:
+              ignore_init_summary: true
+
+            # Signature options
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+
+            # Inheritance options
+            show_bases: true
+            show_inheritance_diagram: true
+            merge_init_into_class: true
+
+            # Display options
+            group_by_category: true
+            show_category_heading: true
+            show_source: false
+            show_if_no_docstring: false
+
+  # Dynamic file generation
+  - gen-files:
+      scripts:
+        - scripts/gen_cli_docs.py
+
+# =============================================================================
+# Markdown Extensions
+# =============================================================================
+markdown_extensions:
+  # Standard extensions
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+
+  # Table of Contents
+  - toc:
+      permalink: true
+
+  # PyMdown Extensions - Code
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg

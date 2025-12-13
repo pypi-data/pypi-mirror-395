@@ -1,0 +1,338 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+  pull_request:
+    types: [closed]
+
+  schedule:
+    # Quarterly minor releases on the 1st of Jan, Apr, Jul, Oct at 09:00 UTC
+    - cron: "0 9 1 1,4,7,10 *"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+env:
+  DEFAULT_PYTHON: "3.13"
+  MIKE_VERSION_PROVIDER: mike
+
+jobs:
+  prepare:
+    name: Prepare Release
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_sha: ${{ steps.commit.outputs.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            type="${{ github.event.inputs.release_type }}"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            type="minor"
+            echo "Quarterly minor release triggered by schedule"
+          else
+            labels='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+            if echo "$labels" | grep -q "release:major"; then
+              type="major"
+            elif echo "$labels" | grep -q "release:minor"; then
+              type="minor"
+            elif echo "$labels" | grep -q "release:patch"; then
+              type="patch"
+            else
+              echo "No valid release label found"
+              exit 1
+            fi
+          fi
+          echo "type=$type" >> $GITHUB_OUTPUT
+
+      - name: Calculate version
+        id: version
+        run: |
+          git fetch --tags
+          current=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || echo "v0.0.0")
+
+          IFS='.' read -r major minor patch <<< "${current#v}"
+          major=${major:-0}
+          minor=${minor:-0}
+          patch=${patch:-0}
+
+          case "${{ steps.release_type.outputs.type }}" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+
+          version="v$major.$minor.$patch"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Releasing: $current → $version"
+
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-release-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-release-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Generate changelog
+        run: nox -s changelog -- ${{ steps.version.outputs.version }}
+
+      - name: Extract release notes
+        run: |
+          python3 << 'EOF'
+          from pathlib import Path
+          import re
+
+          version = "${{ steps.version.outputs.version }}"
+          changelog = Path("docs/changelog.md")
+          output = Path("release_notes.md")
+
+          if not changelog.exists():
+              output.write_text(f"# Release {version}\n\nNo changelog available.\n")
+              exit(0)
+
+          content = changelog.read_text()
+          lines = content.splitlines(keepends=True)
+
+          in_section = False
+          notes = []
+
+          for line in lines:
+              if re.match(rf"^##\s+\[?{re.escape(version)}\]?", line.strip()):
+                  in_section = True
+                  notes.append(line)
+              elif re.match(r"^##\s+\[?v?\d+\.\d+\.\d+", line.strip()) and in_section:
+                  break
+              elif in_section:
+                  notes.append(line)
+
+          if notes:
+              output.write_text("".join(notes).strip() + "\n")
+          else:
+              output.write_text(f"# Release {version}\n\nNo release notes available.\n")
+          EOF
+
+      - name: Commit and tag
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: release ${{ steps.version.outputs.version }}"
+          fi
+
+          git tag -a "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin HEAD --follow-tags
+
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v5
+        with:
+          name: release-notes
+          path: release_notes.md
+          retention-days: 1
+
+  build:
+    name: Build Package
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout at release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.release_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-build-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-build-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Build distribution
+        run: nox -s build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@v6
+        with:
+          name: release-notes
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: ${{ needs.prepare.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+
+  publish:
+    name: Publish to PyPI
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v6
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: "dist/*"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+
+  docs:
+    name: Deploy Documentation
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.release_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+
+      - name: Install Nox
+        run: pip install nox
+
+      - name: Cache nox environments
+        uses: actions/cache@v4
+        with:
+          path: .nox
+          key: nox-docs-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('noxfile.py', 'pyproject.toml') }}
+          restore-keys: |
+            nox-docs-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Deploy documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          nox -s deploy_docs -- ${{ needs.prepare.outputs.version }} latest
+          git push origin gh-pages
+
+  status:
+    name: Release Status
+    if: always() && needs.prepare.result != 'skipped'
+    needs: [prepare, build, release, publish, docs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check release status
+        run: |
+          echo "### Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ needs.prepare.outputs.release_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build:** ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release:** ${{ needs.release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PyPI:** ${{ needs.publish.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docs:** ${{ needs.docs.result }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build.result }}" = "success" ] &&
+             [ "${{ needs.release.result }}" = "success" ] &&
+             [ "${{ needs.publish.result }}" = "success" ] &&
+             [ "${{ needs.docs.result }}" = "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Release completed successfully!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Release failed - check job logs**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

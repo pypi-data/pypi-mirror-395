@@ -1,0 +1,114 @@
+# lbx - Lock Box
+
+A lightweight secret storage vault with CLI and Python API. Stores secrets in encrypted files with master password secured via OS keychain.
+
+## Features
+
+- **Secure Encryption**: AES-256 encryption with master password protection
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **Dual Interface**: Both CLI and Python API available
+- **Keychain Integration**: Master password stored securely in OS keychain
+- **Simple Workflow**: Intuitive commands for daily use
+- **Minimal Dependencies**: Lightweight and secure
+
+## Installation
+
+```bash
+pipx install lbx
+```
+
+For additional installation methods, see the [Installation Guide](https://jd-35656.github.io/lbx/latest/getting-started/installation/).
+
+## Quick Start
+
+### CLI Usage
+
+```bash
+# Create a new vault
+lbx vault init
+
+# Add a secret
+lbx secret add github token --value ghp_xxxxxx
+
+# Retrieve a secret
+lbx secret get github token
+
+# Update a secret
+printf "new-value" | lbx secret update github token
+
+# List services and secrets
+lbx service list
+lbx secret list
+lbx secret list --service github
+
+# Rename or move secrets
+lbx secret rename github token api_key
+lbx secret move github api_key gitlab
+
+# Lock or delete the vault
+lbx vault lock
+lbx vault delete
+```
+
+### Python API
+
+```python
+from lbx import Lbx
+
+vault = Lbx()
+
+vault.add_secret("github", "token", "value")
+entry = vault.get_secret("github", "token")
+print(entry.value)
+
+vault.list_services()
+vault.list_secrets()
+```
+
+For complete examples and tutorials, see the [Quick Start Guide](https://jd-35656.github.io/lbx/latest/getting-started/quickstart/).
+
+## Use Cases
+
+- **Development Teams**: Store API keys, database credentials, and service tokens securely
+- **DevOps & CI/CD**: Manage secrets in deployment pipelines and infrastructure automation
+- **Personal Projects**: Keep sensitive configuration data encrypted and organized
+- **Security-Conscious Users**: Replace plain-text config files with encrypted secret storage
+
+## Documentation
+
+Complete documentation is available at: **[https://jd-35656.github.io/lbx/latest/](https://jd-35656.github.io/lbx/latest/)**
+
+- [Installation Guide](https://jd-35656.github.io/lbx/latest/getting-started/installation/) - Detailed installation instructions
+- [Quick Start](https://jd-35656.github.io/lbx/latest/getting-started/quickstart/) - Get started in minutes
+- [CLI Reference](https://jd-35656.github.io/lbx/latest/user-guide/cli/) - Complete command documentation
+- [API Reference](https://jd-35656.github.io/lbx/latest/api/) - Python API documentation
+- [Contributing](https://jd-35656.github.io/lbx/latest/contributing/) - How to contribute
+
+## Requirements
+
+- Python 3.10 or higher
+- Windows, macOS, or Linux
+- OS keychain support (automatic)
+
+## Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](https://jd-35656.github.io/lbx/latest/contributing/) for details on our development process, coding standards, and how to submit pull requests.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: [https://jd-35656.github.io/lbx/latest/](https://jd-35656.github.io/lbx/latest/)
+- **PyPI Package**: [pypi.org/project/lbx](https://pypi.org/project/lbx/)
+- **Bug Reports**: [GitHub Issues](https://github.com/jd-35656/lbx/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jd-35656/lbx/discussions)
+
+---
+
+© 2025 Jitesh Sahani (JD)  
+📧 <jitesh.sahani@outlook.com>
+
+*"Your secrets are safe, your mind at peace."*  
+🐺 Crafted by a dreamer, for dreamers 🐺
