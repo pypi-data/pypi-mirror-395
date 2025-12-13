@@ -1,0 +1,1 @@
+import"../chunks/DzJWYvWT.js";import"../chunks/CDFnLX1k.js";import{W as o}from"../chunks/B1N1rpRo.js";const l=({params:e})=>{const t=e.project_id??null;return{title:"Well Analysis",subtitle:t?`ID: ${t}`:void 0}},p=Object.freeze(Object.defineProperty({__proto__:null,load:l},Symbol.toStringTag,{value:"Module"}));function s(e){o(e,{})}export{s as component,p as universal};
