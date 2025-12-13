@@ -1,0 +1,50 @@
+[project]
+name = "sifenpy"
+version = "0.2.0-beta.1"
+description = "Biblioteca de Python para integración con la sifen"
+authors = [{ name = "tetotille", email = "jltilleriam@gmail.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0.0"
+
+dependencies = [
+    "pydantic[email] (>=2.12.5,<3.0.0)",
+    "requests>=2.32.5,<3.0.0",
+    "lxml>=6.0.2,<7.0.0",
+    "cryptography>=46.0.3,<47.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/tetotille/sifenpy"
+"Bug Tracker" = "https://github.com/tetotille/sifenpy/issues"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/sifenpy/__init__.py:__version__"]
+build_command = "pip install poetry && poetry build"
+commit_message = "chore(release): v{version} [skip ci]"
+
+# Configuración de Ramas
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "dev"
+prerelease = true
+prerelease_token = "beta"
+
+[dependency-groups]
+dev = ["pytest>=9.0.2,<10.0.0", "black>=25.11.0,<26.0.0", "basedpyright (>=1.35.0,<2.0.0)"]
