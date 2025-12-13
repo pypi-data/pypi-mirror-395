@@ -1,0 +1,1093 @@
+Metadata-Version: 2.4
+Name: bach-yt_api
+Version: 1.0.0
+Summary: MCP server for accessing Yt Api API
+Project-URL: Homepage, https://github.com/bachstudio/bach-yt_api
+Project-URL: Repository, https://github.com/bachstudio/bach-yt_api
+Project-URL: Documentation, https://github.com/bachstudio/bach-yt_api#readme
+Project-URL: Bug Tracker, https://github.com/bachstudio/bach-yt_api/issues
+Author: bachstudio
+License: MIT License
+        
+        Copyright (c) 2025 bachstudio
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: api,mcp,model-context-protocol,yt_api
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Yt Api MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Yt Api API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-yt_api`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Yt Api API。
+
+- **PyPI 包名**: `bach-yt_api`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-yt_api
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-yt_api bach_yt_api
+
+# 或指定版本
+uvx --from bach-yt_api@latest bach_yt_api
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-yt_api
+
+# 运行（命令名使用下划线）
+bach_yt_api
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-yt_api": {
+      "command": "uvx",
+      "args": ["--from", "bach-yt_api", "bach_yt_api"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-yt_api": {
+      "command": "uvx",
+      "args": ["--from", "bach-yt_api", "bach_yt_api"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `channel_videos_via_post`
+
+Get videos listing along with channel details Quota cost is 2 unit.
+
+**端点**: `POST /channel/videos`
+
+
+**参数**:
+
+- `id` (string): Example value: UCMhe8jmac-tWKU0Vj_OXDvA
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel videos. Available options: newest [default] oldest popular
+
+- `token` (string): Pagination token
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+
+
+---
+
+
+### `channel_videos`
+
+Get channel video listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/videos`
+
+
+**参数**:
+
+- `id` (string): Channel Id
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel videos. Available options: newest [default] popular oldest
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `channel_livestreams_via_post`
+
+Get livestreams listing along with channel details Quota cost is 2 unit.
+
+**端点**: `POST /channel/liveStreams`
+
+
+**参数**:
+
+- `id` (string): Example value: UCAuUUnT6oDeKwE6v1NGQxug
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel videos. Available options: newest [default] oldest popular
+
+- `token` (string): Pagination token
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+
+
+---
+
+
+### `channel_livestreams`
+
+Get live stream listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/liveStreams`
+
+
+**参数**:
+
+- `id` (string): Example value: UCAuUUnT6oDeKwE6v1NGQxug
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel's live streams. Available options: newest [default] popular oldest
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `channel_shorts_via_post`
+
+Get shorts listing along with channel details Quota cost is 2 unit.
+
+**端点**: `POST /channel/shorts`
+
+
+**参数**:
+
+- `id` (string): Example value: UCMhe8jmac-tWKU0Vj_OXDvA
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel videos. Available options: newest [default] oldest popular
+
+- `token` (string): Pagination token
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+
+
+---
+
+
+### `channel_shorts`
+
+Get shorts listing along with channel details Quota cost is 1 unit.
+
+**端点**: `GET /channel/shorts`
+
+
+**参数**:
+
+- `id` (string): Example value: UCMhe8jmac-tWKU0Vj_OXDvA
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `sort_by` (string): Sorts the channel videos. Available options: newest [default] oldest popular
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `local` (string): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `channel_home`
+
+Get Channel's Home Tab Listings. Quota cost is 1 unit.
+
+**端点**: `GET /channel/home`
+
+
+**参数**:
+
+- `id` (string): Channel Id
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `params` (string): Example value: 
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `screenshot`
+
+Get screenshot in JPG format. Quota Cost +4
+
+**端点**: `GET /video/screenshot`
+
+
+**参数**:
+
+- `id` (string) *必需*: Youtube video id
+
+- `timeStamp` (string) *必需*: Format must be HH:MM:SS
+
+
+
+---
+
+
+### `related_videos_or_playlists`
+
+Get related videos or playlists. Quota cost is 1 unit.
+
+**端点**: `GET /related`
+
+
+**参数**:
+
+- `id` (string) *必需*: Video id
+
+- `token` (string): Pagination token
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `metadata_update`
+
+Update viewCount, likeCount. Useful for Live videos. Quota Cost +1
+
+**端点**: `GET /updated_metadata`
+
+
+**参数**:
+
+- `id` (string) *必需*: Youtube video id or multiple ids separated by , For mutli id batch request, quota cost is +1 for each extra id. Note: Mutli id batch request is experimental.
+
+
+
+---
+
+
+### `transcript`
+
+Get Transcript. Quota Cost +1
+
+**端点**: `GET /get_transcript`
+
+
+**参数**:
+
+- `id` (string) *必需*: Youtube video id
+
+- `params` (string): Example value: 
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `video_details`
+
+Get all the details of the YouTube video. Quota cost is 1 unit.
+
+**端点**: `GET /video/info`
+
+
+**参数**:
+
+- `id` (string) *必需*: Youtube video id or multiple ids separated by , For mutli id batch request, quota cost is +1 for each extra id. Note: Mutli id batch request is experimental.
+
+- `extend` (string): Extend the results to include more details like related videos/playlist, comment count, etc. Available options: 1 = for likeCount, commentCount, subscriberCountText, relatedVideos, channelBadges, chapters, merchandise,extraMeta,videoAttribution (not supported for multi ids) 2 = for likeCount, commentCount, channelHandle Quota cost is +1
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `converttranslatedownload_subtitle`
+
+Convert, translate, download the subtitle.  To get the subtitle url, use `Video -\u003e Subtitles` endpoint or `Video -\u003e Details` endpoint Quota cost is 1 unit.
+
+**端点**: `GET /subtitle`
+
+
+**参数**:
+
+- `url` (string) *必需*: Provide the Subtitle url. Available in the Video -> Subtitles or Video -> Details endpoint response.
+
+- `format` (string): Subtitle format options: json3 [mime: json] srv1 [mime: xml] [default] srv2 [mime: xml] srv3 [mime: xml] ttml [mime: xml] vtt [mime: text] srt [mime: text]
+
+- `targetLang` (string): Translate to Language. Valid codes are in the translationLanguages param of the Video -> Subtitles or Video -> Info endpoint response. Or provide ISO-639 code of the language like es, zh-Hans, co, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `subtitles`
+
+Get the list of available subtitles for the video. Quota cost is 1 unit.
+
+**端点**: `GET /subtitles`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: arj7oStGLkU
+
+- `format` (string): Subtitle format options: json3 [mime: json] srv1 [mime: xml] [default] srv2 [mime: xml] srv3 [mime: xml] ttml [mime: xml] vtt [mime: text] srt [mime: text]
+
+- `X-CACHEBYPASS` (string): Example value: 
+
+
+
+---
+
+
+### `downloadstream`
+
+Stream or download info. Quota cost is 1 units.
+
+**端点**: `GET /dl`
+
+
+**参数**:
+
+- `id` (string) *必需*: Youtube Video Id or Shorts Id.
+
+- `cgeo` (string) *必需*: Country code in ISO 3166 format of the end user. Not providing cgeo param may cost +1 quota. It is important to provide geo of the end user to get the best speed and direct links. If links are used in the server, then cgeo will be the geo of the server. Not providing cgeo param may lead to 403 issue
+
+- `lang` (string): Language code for audio results based on availability. Like en, ru, hi, etc
+
+
+
+---
+
+
+### `channel_store`
+
+Get store product listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/store`
+
+
+**参数**:
+
+- `id` (string): Channel Id
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `query_suggestion__auto_completion`
+
+Query Suggestion / Auto-Completion.
+
+**端点**: `GET /suggest_queries`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: cat
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `about_channel`
+
+Get channel details. Quota cost is 2 unit.
+
+**端点**: `GET /channel/about`
+
+
+**参数**:
+
+- `id` (string) *必需*: Channel Id
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `forUsername` (string): Example value: 
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `post_details`
+
+Get post details. Quota cost is 1 unit.
+
+**端点**: `GET /post/info`
+
+
+**参数**:
+
+- `id` (string) *必需*: Post Id
+
+- `channelId` (string): Channel Id
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `shorts_sequence`
+
+Get Shorts sequence. Quota cost is 2 units.
+
+**端点**: `GET /shorts/sequence`
+
+
+**参数**:
+
+- `params` (string): Sequence param Provide either of these values: sequenceContiuation value from Shorts Info Endpoint's response for WHATTOWATCH continuation value from the previous request's response
+
+- `id` (string): If the params value is not available then Shorts Video Id may be provided. But it is not recommended.
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `shorts_details`
+
+Get Youtube Shorts video info or get **Suggested** Shorts video info. Quota cost is 1 unit for Shorts Video Info Quota cost is 2 units for suggested Shorts Video Info.
+
+**端点**: `GET /shorts/info`
+
+
+**参数**:
+
+- `id` (string) *必需*: Available options: Shorts Video Id to get info or WHATTOWATCH for suggested Shorts along with info.
+
+- `params` (string): Shorts video param
+
+- `extend` (string): Extend the results to include more details. The value must be 1 Quota cost is +1
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `trending`
+
+Get trending videos region-wise \u0026 niche-wise. Quota cost is 1 unit.
+
+**端点**: `GET /trending`
+
+
+**参数**:
+
+- `geo` (string) *必需*: ISO 3166-2 country code of the region for which you want the trending data. Like US (default), GB, CA, IN, etc.
+
+- `type` (string): Trending type: now music games movies Default is now
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `search`
+
+Search videos, playlists, channels, or all of them. Quota cost is 2 units.
+
+**端点**: `GET /search`
+
+
+**参数**:
+
+- `query` (string) *必需*: Search term
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `type` (string): Search type filter options: video channel playlist movie show shorts Sorting is not available in shorts
+
+- `duration` (string): Duration filter options: short - less than 4 min medium - 4 to 20 min long - more than 20 min
+
+- `features` (string): Video Features options: HD subtitles CCommons 3D Live Purchased 4K 360 Location HDR VR180 Multiple features could be joined by ',' For example: HD,subtitles
+
+- `upload_date` (string): Upload Date filter options: hour today week month year
+
+- `sort_by` (string): Results Sort options: relevance [default] rating date views
+
+- `local` (number): Get localized data, the value must be 1. Works with provided value of geo, if not provided then default is US. Quota Cost +1
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `comments`
+
+Get video's or shorts' comments/thread. Quota cost is 1 unit.
+
+**端点**: `GET /comments`
+
+
+**参数**:
+
+- `id` (string) *必需*: Video Id or Shorts Video Id
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `sort_by` (string): Available options: newest top [default]
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `playlist`
+
+Get playlist details and video listing. Quota cost is 1 unit.
+
+**端点**: `GET /playlist`
+
+
+**参数**:
+
+- `id` (string) *必需*: Playlist Id
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `home_feed`
+
+Get home feeds, region-wise \u0026 niche-wise. Quota cost is 1 unit.
+
+**端点**: `GET /home`
+
+
+**参数**:
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `hashtag`
+
+Get videos or Shorts listings related to any hashtag. Quota cost is 1 unit.
+
+**端点**: `GET /hashtag`
+
+
+**参数**:
+
+- `tag` (string) *必需*: Example value: viral
+
+- `type` (string): Available options are all for videos and shorts shorts for only shorts
+
+- `params` (string): Hashtag params
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `post_comments`
+
+Get post's comments or thread. Quota cost is 1 unit.
+
+**端点**: `GET /post/comments`
+
+
+**参数**:
+
+- `id` (string) *必需*: Post Id
+
+- `channelId` (string): Channel Id
+
+- `sort_by` (string): Available options: newest top [default]
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Locale/language for request. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `shorts_sound_attribution`
+
+Get the Shorts original sound attribution listing. Quota cost is 1 unit.
+
+**端点**: `GET /shorts/soundAttribution`
+
+
+**参数**:
+
+- `params` (string): Attribution param available in the Shorts info Endpoint: soundAttribution -> params
+
+- `id` (string): If the params value is not available then Shorts Video Id may be provided.
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `search_channels_videosplaylists`
+
+Search channel's videos and playlists, also get channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/search`
+
+
+**参数**:
+
+- `id` (string): Channel Id
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `query` (string) *必需*: Search query
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `channel_featured_channels`
+
+Get featured channel listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/channels`
+
+
+**参数**:
+
+- `id` (string): Channel Id
+
+- `forUsername` (string): If id not available then provide username. Quota cost +1.
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `channel_playlists`
+
+Get playlist listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/playlists`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: UCMhe8jmac-tWKU0Vj_OXDvA
+
+- `sort_by` (string): Sorts the channel playlists. Available options: date_added [default] last_video_added
+
+- `token` (string): Pagination token Alternatively, use X-TOKEN in header
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), GB, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `forUsername` (string): Example value: 
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-TOKEN` (string): Alternative way to pass Pagination token via headers. This will solve 414, URI too long issue.
+
+
+
+---
+
+
+### `resolve_url`
+
+Resolve URLs like handles, etc. Quota cost is 1 unit.
+
+**端点**: `GET /resolve`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://www.youtube.com/@TED
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+### `channel_community_posts`
+
+Get community post listing and channel details. Quota cost is 1 unit.
+
+**端点**: `GET /channel/community`
+
+
+**参数**:
+
+- `id` (string) *必需*: Channel Id
+
+- `token` (string): Pagination Token
+
+- `geo` (string): ISO 3166-2 country code of the region. Like US (default), UK, CA, IN, etc.
+
+- `lang` (string): Language code for localized results. Like en, gb, hi, etc
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+- `X-CACHEBYPASS` (string): Cache bypass, the value must be 1 Quota Cost +1
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
