@@ -1,0 +1,338 @@
+"""
+brmspy - Python interface to R's brms for Bayesian regression modeling
+
+Provides Pythonic access to the brms R package with proper parameter naming
+and seamless arviz integration. Uses brms with cmdstanr backend for optimal
+performance and Stan parameter naming.
+
+Key Features
+------------
+- **Pythonic API**: Snake_case parameters, Python types, pandas DataFrames
+- **ArviZ Integration**: Automatic conversion to InferenceData objects
+- **Type Safety**: Full type hints and IDE autocomplete support
+- **Flexible Priors**: Type-safe prior specification with `prior()` helper
+- **Multiple Backends**: Support for both cmdstanr (recommended) and rstan
+- **Prebuilt Binaries**: Fast installation with precompiled runtimes (50x faster)
+
+Installation
+------------
+Basic installation (requires R >= 4.2 and Python >= 3.8):
+
+```python
+pip install brmspy
+```
+
+Install R dependencies (traditional method, ~30 minutes):
+
+```python
+    from brmspy import brms
+    brms.install_brms()
+```
+Quick installation with prebuilt binaries (recommended, ~1 minute):
+
+```python
+    brms.install_brms(use_prebuilt=True)
+```
+Install specific brms version:
+
+```python
+    brms.install_brms(brms_version="2.23.0")
+```
+Quick Start
+-----------
+Basic Bayesian regression workflow:
+
+```python
+    from brmspy import brms
+    import arviz as az
+    
+    # Load example data
+    epilepsy = brms.get_brms_data("epilepsy")
+    
+    # Fit Poisson regression model
+    model = brms.fit(
+        formula="count ~ zAge + zBase * Trt + (1|patient)",
+        data=epilepsy,
+        family="poisson",
+        chains=4,
+        iter=2000
+    )
+    
+    # Analyze results with ArviZ
+    az.summary(model.idata)
+    az.plot_trace(model.idata)
+```
+
+Using custom priors:
+
+```
+from brmspy import brms, prior
+
+model = brms.fit(
+    formula="count ~ zAge + zBase * Trt + (1|patient)",
+    data=epilepsy,
+    priors=[
+        prior("normal(0, 0.5)", class_="b"),
+        prior("exponential(2)", class_="sd", group="patient")
+    ],
+    family="poisson",
+    chains=4
+)
+```
+Making predictions:
+
+```
+# Posterior predictive (with observation noise)
+preds = brms.posterior_predict(model, newdata=new_data)
+az.plot_ppc(preds.idata)
+
+# Expected values (without noise)
+epred = brms.posterior_epred(model, newdata=new_data)
+
+# Linear predictor
+linpred = brms.posterior_linpred(model, newdata=new_data)
+```
+
+Model comparison and diagnostics:
+
+```python
+# Model comparison with LOO-CV
+import arviz as az
+loo = az.loo(model.idata)
+print(loo)
+
+# Convergence diagnostics
+az.rhat(model.idata)
+az.ess(model.idata)
+
+# Posterior predictive checks
+az.plot_ppc(model.idata)
+```
+
+See Also
+--------
+- Documentation: https://brmspy.readthedocs.io
+- GitHub: https://github.com/kaitumisuuringute-keskus/brmspy
+- brms R package: https://paulbuerkner.com/brms/
+- ArviZ documentation: https://arviz-devs.github.io/arviz/
+
+Notes
+-----
+brmspy requires:
+
+- Python >= 3.10 (3.10-3.14 supported)
+- R >= 4.2
+- rpy2 for Python-R interface
+- Working C++ compiler for Stan models (g++ >= 9, clang >= 11, or Rtools on Windows)
+
+For optimal performance, use cmdstanr backend (default) over rstan. The cmdstanr
+backend provides proper Stan parameter naming and faster compilation.
+
+Examples
+--------
+Complete workflow with model diagnostics:
+
+```python
+    from brmspy import brms, prior
+    import arviz as az
+    import pandas as pd
+    
+    # Load data
+    data = brms.get_brms_data("kidney")
+    
+    # Define model with informative priors
+    model = brms.fit(
+        formula="time | cens(censored) ~ age + sex + disease + (1 + age | patient)",
+        data=data,
+        family="weibull",
+        priors=[
+            prior("normal(0, 1)", class_="b"),
+            prior("student_t(3, 0, 2.5)", class_="Intercept"),
+            prior("exponential(1)", class_="sd"),
+            prior("lkj(2)", class_="cor")
+        ],
+        chains=4,
+        iter=4000,
+        warmup=2000,
+        cores=4,
+        seed=42
+    )
+    
+    # Check convergence
+    print(az.summary(model.idata, var_names=["b"]))
+    assert all(az.rhat(model.idata) < 1.01)
+    
+    # Visualize results
+    az.plot_trace(model.idata, var_names=["b", "sd"])
+    az.plot_posterior(model.idata, var_names=["b"])
+    
+    # Make predictions
+    new_patients = pd.DataFrame({
+        "age": [50, 60, 70],
+        "sex": [0, 1, 0],
+        "disease": [1, 1, 2],
+        "patient": [999, 999, 999]
+    })
+    predictions = brms.posterior_predict(model, newdata=new_patients)
+    print(predictions.idata.posterior_predictive)
+```
+"""
+
+__version__ = "0.2.0"
+__author__ = "Remi Sebastian Kits, Adam Haber"
+__license__ = "Apache-2.0"
+
+def _initialise_r_safe() -> None:
+    """
+    Configure R for safer embedded execution.
+
+    - Force rpy2 ABI mode (must be set before importing rpy2)
+    - Disable fork-based R parallelism (future::multicore, mclapply)
+    - Use future::plan(sequential) if future is available
+    - Leave cmdstanr multi-core sampling alone
+    """
+    import os
+    import sys
+
+    import rpy2.robjects as ro
+
+    ro.r(
+        r"""
+        # Disable fork-based mechanisms that are unsafe in embedded R
+        options(
+          mc.cores = 1L,             # parallel::mclapply -> serial
+          future.fork.enable = FALSE, # disable future::multicore
+          loo.cores = 1L # deprecated but still respected, for now.
+        )
+
+        # If 'future' is installed, force sequential backend
+        if (requireNamespace("future", quietly = TRUE)) {
+          future::plan(future::sequential)
+        }
+        """
+    )
+
+
+_initialise_r_safe()
+
+# Import brms module for use as: from brmspy import brms
+from brmspy import brms
+from brmspy import runtime
+from brmspy.runtime import (
+    install_brms, install_runtime,
+    deactivate_runtime, activate_runtime,
+    find_local_runtime, get_active_runtime,
+    get_brms_version,
+)
+from brmspy.runtime._platform import system_fingerprint
+from brmspy.brms import (
+    get_brms_data,
+    get_data,
+    fit, brm,
+
+    formula, bf, set_nl, set_mecor, set_rescor,
+    lf, nlf, acformula,
+
+    make_stancode,
+    posterior_epred,
+    posterior_predict,
+    posterior_linpred,
+    log_lik,
+    summary, fixef, ranef,
+    prior_summary, posterior_summary, validate_newdata,
+    prior, get_prior, default_prior,
+
+    call,
+
+    save_rds, read_rds_fit, read_rds_raw,
+
+    FitResult,
+    PosteriorEpredResult,
+    PosteriorPredictResult,
+    PosteriorLinpredResult,
+    LogLikResult,
+    GenericResult,
+    FormulaResult,
+    IDLinpred,
+    IDEpred,
+    IDFit,
+    IDLogLik,
+    IDPredict,
+    PriorSpec,
+
+    install_rpackage
+)
+from brmspy.brms_functions.families import (
+    brmsfamily, family, student, bernoulli, beta_binomial, negbinomial,
+    negbinomial2, geometric, discrete_weibull, com_poisson, lognormal,
+    shifted_lognormal, skew_normal, exponential, weibull, frechet,
+    gen_extreme_value, exgaussian, wiener, Beta, xbeta, dirichlet,
+    dirichlet2, logistic_normal, von_mises, asym_laplace,
+    zero_inflated_asym_laplace, cox, hurdle_poisson, hurdle_negbinomial,
+    hurdle_gamma, hurdle_lognormal, hurdle_cumulative, zero_inflated_beta,
+    zero_one_inflated_beta, zero_inflated_poisson, zero_inflated_negbinomial,
+    zero_inflated_binomial, zero_inflated_beta_binomial, categorical,
+    multinomial, dirichlet_multinomial, cumulative, sratio, cratio, acat,
+    gaussian, poisson, binomial, Gamma, inverse_gaussian
+)
+__all__ = [
+    # R env
+    'install_brms', 'install_runtime', 'get_brms_version',  'deactivate_runtime', 'activate_runtime',
+    'find_local_runtime', 'get_active_runtime',
+
+    # IO
+    'get_brms_data', 'save_rds', 'read_rds_raw', 'read_rds_fit', 'get_data',
+
+    # brm
+    'fit', 'brm',
+
+    # formula
+    'formula', 'bf', 'set_mecor', 'set_rescor', 'set_nl',
+    'lf', 'nlf', 'acformula',
+
+    # priors
+    'prior', 'get_prior', 'default_prior',
+
+    # prediction
+    "posterior_predict", "posterior_epred", "posterior_linpred", "log_lik",
+
+    # families
+    "brmsfamily", "family", "student", "bernoulli", "beta_binomial", "negbinomial",
+    "negbinomial2", "geometric", "discrete_weibull", "com_poisson", "lognormal",
+    "shifted_lognormal", "skew_normal", "exponential", "weibull", "frechet",
+    "gen_extreme_value", "exgaussian", "wiener", "Beta", "xbeta", "dirichlet",
+    "dirichlet2", "logistic_normal", "von_mises", "asym_laplace",
+    "zero_inflated_asym_laplace", "cox", "hurdle_poisson", "hurdle_negbinomial",
+    "hurdle_gamma", "hurdle_lognormal", "hurdle_cumulative", "zero_inflated_beta",
+    "zero_one_inflated_beta", "zero_inflated_poisson", "zero_inflated_negbinomial",
+    "zero_inflated_binomial", "zero_inflated_beta_binomial", "categorical",
+    "multinomial", "dirichlet_multinomial", "cumulative", "sratio", "cratio", "acat",
+    "gaussian", "poisson", "binomial", "Gamma", "inverse_gaussian",
+
+    # diagnosis
+    'summary', 'fixef', 'ranef', 'prior_summary', 'posterior_summary',
+    'validate_newdata',
+
+    # generic helper
+    'call', 'install_rpackage',
+
+    # types
+    'FitResult', 'FormulaResult', 'PosteriorEpredResult', 'PosteriorPredictResult',
+    'PosteriorLinpredResult', 'LogLikResult', 'GenericResult',
+
+    'IDLinpred',
+    'IDEpred',
+    'IDFit',
+    'IDLogLik',
+    'IDPredict',
+    'PriorSpec',
+
+    # stan
+    'make_stancode',
+    
+    # Runtime API
+    'runtime',
+    'system_fingerprint',
+
+    "__version__",
+]
