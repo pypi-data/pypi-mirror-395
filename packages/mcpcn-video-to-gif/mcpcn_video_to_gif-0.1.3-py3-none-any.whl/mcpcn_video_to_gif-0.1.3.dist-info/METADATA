@@ -1,0 +1,143 @@
+Metadata-Version: 2.4
+Name: mcpcn-video-to-gif
+Version: 0.1.3
+Summary: MCP server for converting video to high-quality GIF using FFmpeg
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Keywords: animation,conversion,ffmpeg,gif,mcp,video
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Multimedia :: Video :: Conversion
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.12
+Requires-Dist: ffmpeg-python>=0.2.0
+Requires-Dist: mcp[cli]>=1.9.0
+Description-Content-Type: text/markdown
+
+# Video to GIF Converter MCP
+
+基于 MCP (Model Context Protocol) 的视频转 GIF 服务器，使用 FFmpeg 两遍调色板优化法生成高质量 GIF。
+
+## 功能特性
+
+- **两遍调色板优化**: palettegen/paletteuse 两遍法，生成高质量 GIF
+- **帧率控制**: 自定义 GIF 帧率
+- **尺寸调整**: 支持宽度/高度设置，保持或不保持宽高比
+- **时间裁剪**: 指定起始时间
+- **区域裁剪**: 指定裁剪区域 (x, y, w, h)
+- **调色算法**: 支持 floyd_steinberg、bayer、sierra2_4a 等
+- **颜色数控制**: 2-256 色调色板
+- **循环设置**: 无限循环或指定次数
+
+## 安装
+
+通过 uvx 安装（推荐）:
+
+```bash
+uvx mcpcn-video-to-gif
+```
+
+或通过 pip 安装:
+
+```bash
+pip install mcpcn-video-to-gif
+```
+
+## 使用方法
+
+启动 MCP 服务器:
+
+```bash
+mcpcn-video-to-gif
+```
+
+## 系统要求
+
+- Python >= 3.12
+- FFmpeg（需要系统安装）
+
+## 环境变量
+
+- `FFMPEG_BINARY`: 指定 FFmpeg 可执行文件路径
+- `FFPROBE_BINARY`: 指定 FFprobe 可执行文件路径
+
+## 工具说明
+
+### convert_video_to_gif
+
+将视频片段高质量导出为 GIF。
+
+**参数:**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| video_path | string | 是 | - | 输入视频路径 |
+| output_gif_path | string | 是 | - | 输出 GIF 路径（需以 .gif 结尾） |
+| fps | int | 否 | 8 | GIF 帧率，建议 8~20 |
+| width | int | 否 | None | 目标宽度 |
+| height | int | 否 | None | 目标高度 |
+| keep_aspect | bool | 否 | True | 是否保持纵横比 |
+| start_time | string/float | 否 | None | 起始时间（秒或 'HH:MM:SS'） |
+| dither | string | 否 | "floyd_steinberg" | 调色算法 |
+| max_colors | int | 否 | 256 | 调色板颜色数 (2-256) |
+| loop | int | 否 | 0 | 循环次数（0=无限循环） |
+| crop | dict | 否 | None | 裁剪参数 {"x":0,"y":0,"w":320,"h":240} |
+| scale_flags | string | 否 | "lanczos" | 缩放插值算法 |
+| bayer_scale | int | 否 | 3 | bayer 调色的缩放因子 (0-5) |
+| palette_stats_mode | string | 否 | "diff" | 调色板统计模式 |
+| use_reserve_transparent | bool | 否 | False | 是否保留透明色槽 |
+| alpha_threshold | int | 否 | 128 | 透明度阈值 (0-255) |
+
+**支持的调色算法 (dither):**
+
+| 算法 | 说明 |
+|------|------|
+| none | 不使用抖动 |
+| bayer | Bayer 有序抖动 |
+| floyd_steinberg | Floyd-Steinberg 误差扩散 (默认) |
+| sierra2_4a | Sierra-2-4A 抖动 |
+| burkes | Burkes 抖动 |
+
+**调色板统计模式 (palette_stats_mode):**
+
+| 模式 | 说明 |
+|------|------|
+| single | 单帧统计 |
+| diff | 差异帧统计 (默认，适合动画) |
+| full | 全帧统计 |
+
+## 使用示例
+
+```python
+# 基本转换
+convert_video_to_gif(
+    video_path="/path/to/video.mp4",
+    output_gif_path="/path/to/output.gif"
+)
+
+# 高质量设置
+convert_video_to_gif(
+    video_path="/path/to/video.mp4",
+    output_gif_path="/path/to/output.gif",
+    fps=15,
+    width=480,
+    max_colors=256,
+    dither="floyd_steinberg"
+)
+
+# 裁剪区域
+convert_video_to_gif(
+    video_path="/path/to/video.mp4",
+    output_gif_path="/path/to/output.gif",
+    crop={"x": 100, "y": 50, "w": 320, "h": 240},
+    start_time="00:00:05"
+)
+```
+
+## License
+
+MIT License
