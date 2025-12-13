@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2025 OpenSynergy Indonesia
+     Copyright 2025 PT. Simetri Sinergi Indonesia
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <record id="hr_employee_view_form" model="ir.ui.view">
+    <field name="name">hr.employee - Form</field>
+    <field name="model">hr.employee</field>
+    <field name="mode">extension</field>
+    <field name="inherit_id" ref="ssi_hr_payroll.hr_employee_view_form" />
+    <field name="arch" type="xml">
+        <data>
+            <xpath expr="//field[@name='salary_structure_id']" position="attributes">
+                <attribute
+                        name="attrs"
+                    >{'invisible':['|',('method','=', False),('method','=','manual')]}</attribute>
+            </xpath>
+            <xpath expr="//group[@name='payroll']" position="before">
+                <group name="setting" colspan="4" col="2">
+                    <field name="method" />
+                    <field
+                            name="manual_salary_structure_id"
+                            string="Salary Structure"
+                            attrs="{'invisible':['|',('method','=', False),('method','=','agreement')]}"
+                        />
+                </group>
+            </xpath>
+            <xpath expr="//group[@name='payroll']" position="after">
+                <group
+                        name="payroll_agreement"
+                        colspan="4"
+                        col="2"
+                        attrs="{'invisible':['|',('method','=', False),('method','=','manual')]}"
+                    >
+                    <field name="payroll_agreement_id" />
+                    <field name="payroll_agreement_ids" colspan="2" nolabel="1" />
+                </group>
+            </xpath>
+        </data>
+    </field>
+</record>
+</odoo>

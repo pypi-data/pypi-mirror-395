@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2025 OpenSynergy Indonesia
+     Copyright 2025 PT. Simetri Sinergi Indonesia
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+<record id="payroll_agreement_view_tree" model="ir.ui.view">
+    <field name="name">payroll_agreement tree</field>
+    <field name="model">payroll_agreement</field>
+    <field name="mode">primary</field>
+    <field name="inherit_id" ref="ssi_transaction_mixin.mixin_transaction_view_tree" />
+    <field name="arch" type="xml">
+        <data>
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field
+                        name="employee_id"
+                        string="Employee"
+                        widget="many2one_avatar_employee"
+                    />
+                <field name="department_id" optional="hide" />
+                <field
+                        name="manager_id"
+                        widget="many2one_avatar_employee"
+                        optional="hide"
+                    />
+                <field name="job_id" optional="hide" />
+                <field name="date" />
+            </xpath>
+        </data>
+    </field>
+</record>
+
+<record id="payroll_agreement_view_search" model="ir.ui.view">
+    <field name="name">payroll_agreement search</field>
+    <field name="model">payroll_agreement</field>
+    <field name="mode">primary</field>
+    <field
+            name="inherit_id"
+            ref="ssi_transaction_mixin.mixin_transaction_view_search"
+        />
+    <field name="arch" type="xml">
+        <data>
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter name="grp_date" string="Date" context="{'group_by':'date'}" />
+            </xpath>
+        </data>
+    </field>
+</record>
+
+<record id="payroll_agreement_view_form" model="ir.ui.view">
+    <field name="name">payroll_agreement form</field>
+    <field name="model">payroll_agreement</field>
+    <field name="mode">primary</field>
+    <field name="inherit_id" ref="ssi_transaction_mixin.mixin_transaction_view_form" />
+    <field name="priority">100</field>
+    <field name="arch" type="xml">
+        <data>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="employee_id" widget="many2one_avatar_employee" />
+                <field name="type_id" />
+                <field name="department_id" readonly="1" force_save="1" />
+                <field
+                        name="manager_id"
+                        widget="many2one_avatar_employee"
+                        readonly="1"
+                        force_save="1"
+                    />
+                <field name="job_id" readonly="1" force_save="1" />
+            </xpath>
+            <xpath expr="//group[@name='header_right']" position="inside">
+                <field name="date" />
+                <field name="reference" />
+            </xpath>
+            <xpath expr="//notebook" position="replace">
+                <notebook>
+                    <page name="rules" string="Rules">
+                        <group name="rules_1" colspan="4" col="2">
+                            <field name="salary_structure_id" />
+                            <button
+                                    name="action_populate_salary_rule_ids"
+                                    string="Populate"
+                                    type="object"
+                                    icon="fa-refresh"
+                                    class="oe_highlight"
+                                    attrs="{'invisible': [('state', '!=', 'draft')]}"
+                                />
+                            <field
+                                    name="salary_rule_ids"
+                                    style="pointer-events:none;"
+                                    colspan="2"
+                                    nolabel="1"
+                                >
+                                <tree>
+                                    <field name="code" />
+                                    <field name="category_id" />
+                                    <field name="name" />
+                                </tree>
+                            </field>
+                        </group>
+                    </page>
+                    <page name="input" string="Inputs">
+                        <group name="inputs_1" colspan="4" col="2">
+                            <field name="input_line_ids" colspan="2" nolabel="1" />
+                        </group>
+                    </page>
+                    <page name="note" string="Note">
+                        <field name="note" colspan="4" nolabel="1" />
+                    </page>
+                    <page name="policy" string="Policies">
+                        <group
+                                name="policy_1"
+                                colspan="4"
+                                col="2"
+                                groups="base.group_system"
+                            >
+                            <field name="policy_template_id" />
+                            <button
+                                    name="action_reload_policy_template"
+                                    type="object"
+                                    string="Reload Template Policy"
+                                    class="oe_highlight"
+                                    icon="fa-refresh"
+                                />
+
+                        </group>
+                        <group name="policy_2" colspan="4" col="2">
+                            <field name="restart_ok" order="98" />
+                            <field name="manual_number_ok" order="99" />
+                        </group>
+                    </page>
+                </notebook>
+          </xpath>
+        </data>
+    </field>
+</record>
+
+<record id="payroll_agreement_action" model="ir.actions.act_window">
+    <field name="name">Payroll Agreements</field>
+    <field name="res_model">payroll_agreement</field>
+    <field name="type">ir.actions.act_window</field>
+    <field name="view_mode">tree,form</field>
+</record>
+
+<menuitem
+        id="menu_payroll_agreement"
+        name="Agreements"
+        parent="ssi_hr_payroll.hr_payroll_root_menu"
+        groups="payroll_agreement_viewer_group"
+        action="payroll_agreement_action"
+        sequence="1"
+    />
+
+</odoo>
