@@ -1,0 +1,179 @@
+[project]
+name = "nexusLIMS"
+version = "2.0.0a4"
+description = "Electron Microscopy Nexus LIMS project (Datasophos fork)"
+authors = [
+    {name = "Joshua Taillon", email = "josh@datasophos.co"}
+]
+maintainers = [
+    {name = "Joshua Taillon", email = "josh@datasophos.co"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11,<3.13"
+keywords = ["microscopy", "LIMS", "materials", "electron-microscopy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "lxml>=4.9.2,<5.0.0",
+    "requests>=2.28.1,<3.0.0",
+    "requests-ntlm>=1.1.0,<2.0.0",
+    "pytz>=2022.7",
+    "hyperspy[speed]>=2.1.0,<3.0.0",
+    "scikit-learn>=1.2.0,<2.0.0",
+    "python-dotenv>=0.21.0,<1.0.0",
+    "defusedxml>=0.7.1,<1.0.0",
+    "exspy>=0.3.2",
+    "pyxem>=0.21.0",
+    "pixstem>=0.4.0",
+    "pydantic[email]>=2.12.0",
+    "pydantic-settings>=2.12.0",
+    "email-validator>=2.3.0",
+    "click>=8.1.8",
+    "rich>=13.0.0",
+    "filelock>=3.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.2",
+    "coverage>=7.0.0",
+    "pytest-mpl>=0.16.1",
+    "pytest-cov>=4.0.0",
+    "sphinx==8.2.3",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-design>=0.6.0",
+    "roman-numerals>=3.1.0",
+    "ruff>=0.0.259",
+    "sphinxcontrib-towncrier>=0.3.2a0",
+    "types-lxml>=2025.8.25",
+    "responses>=0.25.8",
+    "python-semantic-release>=10.5.2",
+    "freezegun>=1.5.5",
+    "autodoc-pydantic>=2.2.0",
+    "sphobjinv>=2.3.1.3",
+    "sphinx-autodoc-typehints>=3.5.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/datasophos/NexusLIMS"
+Repository = "https://github.com/datasophos/NexusLIMS.git"
+Documentation = "https://github.com/datasophos/NexusLIMS"
+"Original-NIST-Repository" = "https://github.com/usnistgov/NexusLIMS.git"
+
+[project.scripts]
+nexuslims-process-records = "nexusLIMS.cli.process_records:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nexusLIMS"]
+
+[tool.ruff]
+
+exclude = [
+    "nexusLIMS/dev_scripts",
+    "tests/dev",
+    "nexusLIMS/db/dev/migrate_db.py"
+]
+
+[tool.ruff.lint]
+select = [
+    "F", "E", "W", "I", "N", "D", "YTT", "UP", "S", "FBT", "B", "A", "COM", "C4",
+    "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI",
+    "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PL",
+    "TRY", "RUF"
+]
+ignore = ["N999", "UP006", "UP007", "UP035", "B905", "RUF007", "S603", "COM812"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "PLC0415"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+# Use Black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.towncrier]
+directory = "docs/changes"
+package = "nexusLIMS"
+package_dir = "nexusLIMS"
+title_format = "v{version} ({project_date})"
+filename = "docs/development_log.rst"
+issue_format = "`#{issue} <https://github.com/datasophos/NexusLIMS/issues/{issue}>`_"
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "New features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "enhancement"
+name = "Enhancements"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "doc"
+name = "Documentation improvements"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "misc"
+name = "Miscellaneous/Development changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removal"
+name = "Deprecations and/or Removals"
+showcontent = true
+
+[tool.coverage.run]
+relative_files = true
+omit = [
+    "nexusLIMS/dev_scripts/*",
+    "tests/dev/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "class _CustomEncoder",
+    "if TYPE_CHECKING:",
+    "@overload",
+]
+
+[tool.pytest.ini_options]
+log_cli = false
+log_cli_level = "DEBUG"
+filterwarnings = [
+    "ignore:Using Ntlm\\(\\) is deprecated:DeprecationWarning",
+    "ignore:Manually creating the cbt stuct:DeprecationWarning",
+    "ignore:Using or importing the ABCs from:DeprecationWarning",
+    "ignore:the imp module is deprecated in favour of:DeprecationWarning",
+    "ignore:Glyph .* missing from font:UserWarning",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
