@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nrobo"
+version = "2025.5.2"
+description = "A Pytest-powered Smart Test Runner CLI tool."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Panchdev Singh Chauhan", email = "erpanchdev@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+  "pytest>=7.0",
+  "pytest-playwright",
+  "pyyaml",
+  "typer>=0.9",
+  "rich",
+  "pytest-html>=4.0.0",
+  "allure-pytest>=2.13.5",
+  "colorlog>=6.8.2",
+  "selenium>=4.12.0",
+  "Appium-Python-Client>=2.11.1",
+  "webdriver-manager>=4.0.1",
+  "coverage",
+  "tomlkit>=0.13.3",
+  "termcolor>=3.2.0",
+  "pytest-cov",
+  "pytest-xdist>=3.8.0",
+  "pytest-mock>=3.15.1",
+  "flake8",
+  "platformdirs",
+  "psutil",
+  "pre-commit",
+]
+
+[project.scripts]
+nrobo = "nrobo.cli.main:main"
+#
+#[tool.setuptools]
+#include-package-data = true
+#
+#
+#[tool.setuptools.package-data]
+#"nrobo" = [
+#  "tepmpaltes/*",
+#  "templates/configs/*",     # Includes files in configs
+#  "templates/configs/.*",    # Includes hidden files like .nrobo_env
+#]
+#
+
+[project.entry-points.pytest11]
+nrobo = "nrobo.plugins.nrobo_plugin"
+
+[tool.bandit]
+skips = ["B607", "B101", "B603", "B404"]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+]
+
+# pyproject.toml
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[flake8]
+ignore = ["E501"]
+max-line-length = 120   # optional: bump limit instead of ignoring
+
+[tool.coverage.run]
+patch = ["subprocess"]
+branch = true
+source = ["."] # ["src/nrobo"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/settings/*",
+    "*/venv/*",
+    "manage.py",
+    "*/config/*",
+    "*/apps.py",
+    "*/__init__.py",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/node_modules/*",
+    "*/backup/*",
+    "*/selenium_wrappers/*",
+    "*/pypi_uploader.py",
+    "*/nrobo/services/*",
+    "*/network_utils.py"
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+precision = 2
+exclude_lines = [
+    "pragma: no cover",
+    "def __str__",
+    "if __name__ == '__main__':",
+    "raise NotImplementedError",
+    "except ImportError",
+    "@abstractmethod"
+]
+
+[tool.coverage.html]
+directory = "test_artifacts/coverage_reports/html"
+
+[tool.coverage.xml]
+output = "test_artifacts/coverage_reports/xml/coverage.xml"
