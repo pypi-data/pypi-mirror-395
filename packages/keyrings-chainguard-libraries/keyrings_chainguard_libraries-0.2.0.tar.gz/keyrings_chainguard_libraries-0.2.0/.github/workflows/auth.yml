@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request_target:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  auth:
+    name: CI test with auth
+    permissions:
+      contents: read
+      id-token: write # Needed to get auth
+    runs-on: ubuntu-latest
+
+    env:
+      CHAINGUARD_IDENTITY: ce2d1984a010471142503340d670612d63ffb9f6/04af60cc28fb08b7
+
+    steps:
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      with:
+        python-version: "3.x"
+
+    - name: Install keyring
+      run: python3 -m pip install .
+
+    - uses: chainguard-dev/setup-chainctl@be0acd273acf04bfdf91f51198327e719f6af978 # v0.4.0
+      with:
+        identity: ${{ env.CHAINGUARD_IDENTITY }}
+    - run: chainctl auth login --audience=libraries.cgr.dev --identity=${{ env.CHAINGUARD_IDENTITY }}
+
+    - name: Use keyring to install private packages
+      run: python3 -m pip install --index-url https://libraries.cgr.dev/python/simple/ ansi
