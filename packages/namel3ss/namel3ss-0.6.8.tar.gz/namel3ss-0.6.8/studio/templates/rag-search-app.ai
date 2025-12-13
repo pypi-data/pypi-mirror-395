@@ -1,0 +1,40 @@
+model "retriever":
+  provider "openai"
+
+ai "rewrite_query":
+  model "retriever"
+  input from "user_input"
+  description "Rewrite the query to be concise and retrieval-friendly."
+
+ai "fetch_context":
+  model "retriever"
+  input from "user_input"
+  description "Identify relevant snippets for the rewritten query."
+
+ai "compose_answer":
+  model "retriever"
+  input from "user_input"
+  description "Compose a short answer based on retrieved snippets."
+
+flow "rag_query_flow":
+  description "Rewrite the query, retrieve context, and compose an answer."
+  step "rewrite":
+    kind "ai"
+    target "rewrite_query"
+  step "retrieve":
+    kind "ai"
+    target "fetch_context"
+  step "compose":
+    kind "ai"
+    target "compose_answer"
+
+app "rag_search_app":
+  entry_page "search"
+  description "RAG pipeline answering questions over a small note."
+
+page "search":
+  route "/rag"
+  title "RAG Knowledge Search"
+  section "query":
+    component "text":
+      value "Ask questions against rag_query_flow to rewrite and answer."
