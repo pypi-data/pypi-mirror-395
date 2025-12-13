@@ -1,0 +1,129 @@
+[tool.poetry]
+name = "taguette"
+version = "1.5.2"
+description = "Free and open source qualitative research tool"
+
+license = "BSD-3-Clause"
+
+authors = [
+    "Remi Rampin <remi@rampin.org>",
+]
+
+readme = "README.rst"
+
+repository = "https://gitlab.com/remram44/taguette"
+homepage = "https://www.taguette.org/"
+
+keywords = ["qualitative", "document", "text", "tagging", "tags", "highlights", "notes"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: JavaScript",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Text Processing",
+]
+
+include = [
+    # Explicit 'format=' required because of https://github.com/python-poetry/poetry/issues/9691
+
+    { path = "CHANGELOG.md", format = "sdist" },
+    { path = "tests.py", format = "sdist" },
+    { path = "CITATION.txt", format = "sdist" },
+    # automatically included: LICENSE.txt README.rst
+
+    { path = "taguette/static/missing.png", format = ["sdist", "wheel"] },
+    { path = "taguette/static/favicon.png", format = ["sdist", "wheel"] },
+    { path = "taguette/static/css/*.css", format = ["sdist", "wheel"] },
+    { path = "taguette/static/*.css.map", format = ["sdist", "wheel"] },
+    { path = "taguette/static/js/*.js", format = ["sdist", "wheel"] },
+    { path = "taguette/static/js/*.js.map", format = ["sdist", "wheel"] },
+    { path = "taguette/static/webfonts/*", format = ["sdist", "wheel"] },
+    { path = "taguette/templates/*.html", format = ["sdist", "wheel"] },
+    { path = "taguette/templates/*.txt", format = ["sdist", "wheel"] },
+    { path = "taguette/templates/*.js", format = ["sdist", "wheel"] },
+    { path = "taguette/migrations/env.py", format = ["sdist", "wheel"] },
+    { path = "taguette/migrations/script.py.mako", format = ["sdist", "wheel"] },
+    { path = "taguette/migrations/versions/*.py", format = ["sdist", "wheel"] },
+    { path = "taguette/l10n/*/*/*.mo", format = ["sdist", "wheel"] },
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://gitlab.com/remram44/taguette/-/issues"
+"Documentation" = "https://www.taguette.org/getting-started.html"
+"Chat" = "https://app.element.io/#/room/#taguette:matrix.org"
+"User Mailing List" = "https://groups.io/g/taguette"
+"Open Collective" = "https://opencollective.com/taguette"
+
+[tool.poetry.dependencies]
+python = ">=3.7,<4"
+
+alembic = ">=1.6,<1.9"
+beautifulsoup4 = "*"
+bleach = ">=3,<6"
+chardet = ">=4,<6"
+html5lib = ">=1,<2"
+importlib-resources = "*"
+jinja2 = ">=3.1,<3.2"
+opentelemetry-api = ">=1.5,<1.11"
+prometheus-async = "*"
+prometheus-client = "*"
+redis = ">=3,<5"
+sentry-sdk = "*"
+SQLAlchemy = ">=1.4,<1.5"
+subtitle-parser = ">=1,<3"
+tornado = ">=6.1"
+XlsxWriter = ">=1.4,<4"
+
+opentelemetry-distro = {version = "*", optional = true, allow-prereleases = true}
+opentelemetry-instrumentation-sqlalchemy = {version = ">=0.24b0,<0.26", optional = true, allow-prereleases = true}
+opentelemetry-instrumentation-tornado = {version = ">=0.24b0,<0.26", optional = true, allow-prereleases = true}
+
+psycopg2 = {version = ">=2.8,<3", optional = true}
+pymysql = {version = ">=1.0,<2", optional = true}
+cryptography = {version = "*", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+coverage = "*"
+flake8 = "*"
+readme_renderer = "*"
+babel = ">=2.6,<3"
+bcrypt = ">=3.2.0,<4"
+aiohttp = ">=3.4,<4"
+selenium = ">=4.5,<4.6"
+
+[tool.poetry.group.i18n.dependencies]
+babel = ">=2.6,<3"
+
+[tool.poetry.group.pyinstaller]
+optional = true
+
+[tool.poetry.group.pyinstaller.dependencies]
+pyinstaller = "*"
+
+[tool.poetry.extras]
+otel = [
+    "opentelemetry-distro",
+    "opentelemetry-instrumentation-sqlalchemy",
+    "opentelemetry-instrumentation-tornado",
+]
+postgres = [
+    "psycopg2",
+]
+mysql = [
+    "pymysql",
+    "cryptography",
+]
+
+[tool.poetry.scripts]
+taguette = "taguette.main:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
