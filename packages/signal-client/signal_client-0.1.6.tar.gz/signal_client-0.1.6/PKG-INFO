@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: signal_client
+Version: 0.1.6
+Summary: Async Python framework for resilient Signal bots. Build fast on `bbernhard/signal-cli-rest-api` with typed helpers, resilient ingestion, and observability baked in.
+License: MIT
+License-File: LICENSE
+Keywords: Signal,Bot,Framework,Async,Python,Resilient,Observability,Messaging
+Author: cornellsh
+Requires-Python: >=3.10,<3.14
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: AsyncIO
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: APScheduler (>=3.11.0,<4.0.0)
+Requires-Dist: aiohttp (>=3.11.9,<4.0.0)
+Requires-Dist: aiosqlite (>=0.20.0,<1.0.0)
+Requires-Dist: eval-type-backport (>=0.2.0) ; python_version < "3.10"
+Requires-Dist: packaging (>=25.0,<26.0)
+Requires-Dist: phonenumbers (>=8.13.54,<9.0)
+Requires-Dist: prometheus-client (>=0.20.0,<1.0.0)
+Requires-Dist: pydantic (>=2.12.0,<2.13.0)
+Requires-Dist: pydantic-settings (>=2.11.0,<2.12.0)
+Requires-Dist: structlog (>=24.4.0,<24.5.0)
+Requires-Dist: websockets (>=14.1,<15.0)
+Project-URL: Bug Tracker, https://github.com/cornellsh/signal_client/issues
+Project-URL: Documentation, https://github.com/cornellsh/signal_client#readme
+Project-URL: Repository, https://github.com/cornellsh/signal_client
+Description-Content-Type: text/markdown
+
+# signal-client
+
+[![PyPI version](https://img.shields.io/pypi/v/signal-client)](https://pypi.org/project/signal-client/)
+[![Python versions](https://img.shields.io/pypi/pyversions/signal-client)](https://pypi.org/project/signal-client/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-latest-blue)](https://cornellsh.github.io/signal-client/)
+
+Async Python framework for resilient Signal bots. Build fast on [`bbernhard/signal-cli-rest-api`](https://github.com/bbernhard/signal-cli-rest-api) with typed helpers, resilient ingestion, and observability baked in.
+
+## Features
+
+- **Resilience First:** Backpressure, DLQ retries, and rate/circuit breakers keep handlers stable during bursts.
+- **Typed Context Helpers:** Replies, reactions, attachments, locks, and receipts all live on one ergonomic context.
+- **Operations Ready:** Health and metrics servers, structured logging with PII redaction, and storage options (memory, SQLite, Redis).
+
+## Quick Start
+
+### 1. Prerequisites
+
+- A Signal phone number registered with `signal-cli`.
+- A running [`bbernhard/signal-cli-rest-api`](https://github.com/bbernhard/signal-cli-rest-api) instance.
+- Export these environment variables:
+  ```bash
+  export SIGNAL_PHONE_NUMBER="+15551234567"
+  export SIGNAL_SERVICE_URL="http://localhost:8080"
+  export SIGNAL_API_URL="http://localhost:8080"
+  ```
+
+### 2. Install
+
+```bash
+# Using poetry
+poetry add signal_client
+
+# Using pip
+pip install signal-client
+```
+
+### 3. Create a Bot
+
+```python
+import asyncio
+from signal_client import SignalClient, command
+
+@command("!ping")
+async def ping(ctx):
+    await ctx.reply_text("pong")
+
+async def main():
+    bot = SignalClient()
+    bot.register(ping)
+    await bot.start()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### 4. Run It
+
+```bash
+python your_bot_file.py
+```
+
+## Documentation
+
+For full guides, examples, and API references, see the **[official docs site](https://cornellsh.github.io/signal-client/)**.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+- Set up your development environment with `poetry install`.
+- Activate pre-commit hooks with `poetry run pre-commit install`.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
