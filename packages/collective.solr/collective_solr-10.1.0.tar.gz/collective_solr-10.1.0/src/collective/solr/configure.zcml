@@ -1,0 +1,121 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="solr">
+
+  <five:registerPackage package="." />
+
+  <i18n:registerTranslations directory="locales" />
+
+  <include package="plone.browserlayer" />
+  <include package="plone.app.registry" />
+  <include package="plone.restapi" />
+
+  <include file="profiles.zcml" />
+  <include file="upgrades.zcml" />
+
+  <utility
+    factory=".search.Search"
+    provides=".interfaces.ISearch" />
+
+  <class class="Products.CMFPlone.CatalogTool.CatalogTool">
+    <implements interface=".interfaces.ICatalogTool" />
+  </class>
+
+  <include package=".browser" />
+
+    <adapter
+        for=".interfaces.ICatalogTool"
+        provides=".interfaces.ISearchDispatcher"
+        factory=".dispatcher.SearchDispatcher" />
+
+    <include package="plone.dexterity" file="meta.zcml" />
+    <include package="plone.dexterity"  />
+
+    <!-- Schema extender as behavior -->
+    <plone:behavior
+  title="Solr extension"
+  name="solr.fields"
+  description="Extra fields for Solr indexing"
+  provides=".behaviors.ISolrFields"
+  />
+
+    <!-- Adder adapter for Dexterity -->
+    <adapter
+  factory=".indexer.DefaultAdder"
+  for="plone.dexterity.interfaces.IDexterityContent"
+  name="default"
+  />
+
+    <adapter
+  factory=".indexer.DXFileBinaryAdder"
+  for="plone.dexterity.interfaces.IDexterityContent"
+  name="File"
+  />
+
+    <adapter
+  factory=".indexer.DXImageBinaryAdder"
+  for="plone.dexterity.interfaces.IDexterityContent"
+  name="Image"
+  />
+
+  <adapter
+      factory=".indexer.BaseIndexable"
+      provides="collective.solr.interfaces.ICheckIndexable" />
+
+  <adapter
+      factory=".flare.PloneFlare"
+      provides="collective.solr.interfaces.IFlare" />
+
+  <adapter
+      for="*
+           zope.publisher.interfaces.browser.IBrowserRequest
+           .flare.PloneFlare"
+         factory="plone.app.layout.icons.icons.CatalogBrainContentIcon"
+         provides="plone.app.layout.icons.interfaces.IContentIcon" />
+
+  <utility
+      factory=".vocabularies.SolrIndexes"
+      name="collective.solr.indexes" />
+
+  <utility
+      factory=".vocabularies.I18NFacetTitlesVocabularyFactory"
+      name="" />
+
+  <!-- Use the proper portal_types tool for type titles -->
+  <utility
+      component="plone.app.vocabularies.types.PortalTypesVocabularyFactory"
+      provides=".interfaces.IFacetTitleVocabularyFactory"
+      name="portal_type" />
+
+  <utility
+      component="plone.app.vocabularies.workflow.WorkflowStatesVocabularyFactory"
+      provides=".interfaces.IFacetTitleVocabularyFactory"
+      name="review_state" />
+
+  <adapter name="path_string" factory=".attributes.path_string" />
+  <adapter name="path_depth" factory=".attributes.path_depth" />
+  <adapter name="path_parents" factory=".attributes.path_parents" />
+
+  <adapter
+      factory="plone.app.contentlisting.contentlisting.ContentListing"
+      for="collective.solr.parser.SolrResponse"
+      />
+
+  <adapter
+      factory="collective.solr.contentlisting.FlareContentListingObject"
+      for="collective.solr.flare.PloneFlare"
+      />
+
+  <adapter
+    factory="collective.solr.serializer.LazySolrCatalogResultSerializer"
+    />
+
+  <include package="plone.behavior" file="meta.zcml" />
+
+</configure>

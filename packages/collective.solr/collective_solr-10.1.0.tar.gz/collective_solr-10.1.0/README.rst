@@ -1,0 +1,200 @@
+collective.solr - Solr integration for the Plone CMS
+====================================================
+
+.. image:: https://github.com/collective/collective.solr/workflows/collective.solr%20CI/badge.svg
+    :target: https://github.com/collective/collective.solr/actions?query=workflow%3A%22collective.solr+CI%22
+
+.. image:: https://coveralls.io/repos/collective/collective.solr/badge.svg?branch=master
+    :target: https://coveralls.io/r/collective/collective.solr
+
+.. image:: https://img.shields.io/pypi/v/collective.solr.svg
+    :target: https://pypi.org/project/collective.solr/
+    :alt: Latest Version
+
+.. image:: https://img.shields.io/pypi/status/collective.solr.svg
+    :target: https://pypi.org/project/collective.solr/
+    :alt: Egg Status
+
+.. image:: https://img.shields.io/pypi/l/collective.solr.svg
+    :target: https://pypi.org/project/collective.solr/
+    :alt: License
+
+.. contents::
+    :depth: 1
+
+
+``collective.solr`` integrates the `Solr`_ search engine with `Plone`_.
+
+Apache Solr is based on Lucene and is *the* enterprise open source search engine.
+It powers the search of sites like Twitter,
+the Apple and iTunes Stores, Wikipedia, Netflix and many more.
+
+Solr does not only scale to any level of content,
+but provides rich search functionality,
+like faceting, geospatial search, suggestions, spelling corrections, indexing of binary formats and a whole variety of powerful tools to configure custom search solutions.
+It has integrated clustering and load-balancing to provide a high level of robustness.
+
+``collective.solr`` comes with a default configuration and setup of Solr that makes it extremely easy to get started,
+yet provides a vastly superior search quality compared to Plone's integrated text search based on ``ZCTextIndex``.
+
+
+Features
+========
+
+Solr Features
+-------------
+
+* Schema and Schemaless Configuration
+* Information Retrieval System
+* Speed (in comparission to ZCTextIndex)
+
+
+Features of Solr Integration into Plone
+---------------------------------------
+
+Search Enhancements
+*******************
+
+* Facets
+* Indexing of binary documents
+* Spellchecking / suggestions
+* Wildcard searches
+* Exclude from search
+* Elevation
+
+
+Detailed Documentation
+======================
+
+A full Documentation of the Solr integration of Plone could be found on `collectivesolr.readthedocs.org`_.
+
+.. _`collectivesolr.readthedocs.org`: https://collectivesolr.readthedocs.org/en/latest/
+
+
+Installation & Configuration
+============================
+
+Download the latest default Solr configuration from github::
+
+  $ wget https://raw.githubusercontent.com/collective/collective.solr/master/solr-9.9.x.cfg
+
+.. note: Please do not extend your buildout directly with those files since they are likely to change over time.
+   Always fetch the files via wget to have a stable local copy.
+   In general you should never rely on extending buildout config files from servers that aren't under your control.
+
+Extend your buildout to use those files
+and make sure collective.solr is added to the eggs in your instance section.
+Your full buildout file should look something like this::
+
+  [buildout]
+  parts += instance
+  extends =
+      https://dist.plone.org/release/6.1.3/versions.cfg
+      solr-9.10.x.cfg
+
+  [instance]
+  recipe = plone.recipe.zope2instance
+  http-address = 8080
+  user = admin:admin
+  eggs =
+      Plone
+      collective.solr
+
+
+After saving this to let's say ``buildout.cfg``,
+the buildout can be run and the `Solr`_ server and `Plone`_ instance started::
+
+  $ python3 -m venv py3
+  $ py3/bin/pip install -r https://dist.plone.org/release/6.1.3/requirements.txt
+  $ py3/bin/buildout
+  ...
+  $ bin/solr-instance start
+  $ bin/instance start
+
+Next you should activate the ``collective.solr (site search)`` add-on in the add-on control panel of Plone.
+After activation you should review the settings in the new ``Solr Settings`` control panel.
+To index all your content in Solr you can call the provided maintenance view::
+
+  http://localhost:8080/plone/@@solr-maintenance/reindex
+
+
+Solr connection configuration in ZCML
+-------------------------------------
+
+The connections settings for Solr can be configured in ZCML and thus in buildout.
+This makes it easier when copying databases between multiple Zope instances with different Solr servers.
+
+Example::
+
+    zcml-additional =
+        <configure xmlns:solr="http://namespaces.plone.org/solr">
+            <solr:connection host="localhost" port="8983" base="/solr/plone"/>
+       </configure>
+
+Development build
+=================
+
+If you have a checkout of collective.solr, you can spin up a working installation with::
+
+  make all
+  bin/solr-start
+  bin/instance fg
+
+Instead of running ``bin/solr-start`` you may want to run ``bin/solr-foreground`` in a separate terminal so you can see what Solr is doing.
+
+Then:
+
+- Create a Plone site
+- In Site Setup >> Add-ons: install collective.solr
+- In Site Setup >> Solr settings: activate solr integration
+- In Site Setup >> Solr settings: open the "Solr Reindex" link ``@@solr-maintenance/reindex``
+
+You can verify Solr indexing worked by opening http://localhost:8983/solr/#/plone/query and hitting the button "Execute Query". In a vanilla Classic site with example content, that should show 6 results.
+
+
+Current Project Status
+======================
+
+The code is used in production in many sites and considered stable.
+This add-on can be installed in a `Plone`_ 4.3 (or later) site to enable indexing operations
+as well as searching (site and live search) using `Solr`_.
+Doing so will not only significantly improve search quality and performance -
+especially for a large number of indexed objects,
+but also reduce the memory footprint of your `Plone`_ instance
+by allowing you to remove the ``SearchableText``, ``Description`` and ``Title`` indexes from the catalog
+as well as the lexicons if no other indexes are using them.
+
+In large sites with 100000 content objects and more,
+searches using ``ZCTextIndex`` often taken 10 seconds or more
+and require a good deal of memory from ZODB caches.
+Solr will typically answer these requests in 10ms to 50ms
+at which point network latency and the rendering speed of Plone's page templates are a more dominant factor.
+
+Plone Compatibility
+===================
+
+collective.solr works with Plone 6. Use older versions of collective.solr if you're using an older Plone version.
+
+Python Compatibility
+====================
+
+collective.solr works with Python 3.10+.
+
+Solr Compatibility
+==================
+
+collective.solr works with Solr 9. Older versions might work as well but we do not test them.
+
+
+Bug Reporting & Development
+===========================
+
+Releases can be found on the Python Package Index at https://pypi.org/project/collective.solr.
+The code and issue trackers can be found on GitHub at https://github.com/collective/collective.solr.
+
+For outstanding issues and features remaining to be implemented please see the `issue tracker`__.
+
+  .. __: https://github.com/collective/collective.solr/issues
+
+  .. _`Solr`: https://lucene.apache.org/solr/
+  .. _`Plone`: https://www.plone.org/
