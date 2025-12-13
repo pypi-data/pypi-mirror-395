@@ -1,0 +1,2 @@
+class UnexpectedNamingPatternError(Exception):
+    pass

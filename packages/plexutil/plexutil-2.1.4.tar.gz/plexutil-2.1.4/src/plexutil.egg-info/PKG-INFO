@@ -1,0 +1,252 @@
+Metadata-Version: 2.4
+Name: plexutil
+Version: 2.1.4
+Author-email: Carlos Florez <carlos@florez.co.uk>
+Maintainer-email: Carlos Florez <carlos@florez.co.uk>
+License: MIT License
+        
+        Copyright (c) 2024 CARLOS FLOREZ
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Repository, https://github.com/florez-carlos/plexutil
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: PlexAPI==4.17.2
+Requires-Dist: alive-progress==3.3.0
+Requires-Dist: pyyaml==6.0.3
+Requires-Dist: toml==0.10.2
+Requires-Dist: pywin32==311; sys_platform == "win32"
+Requires-Dist: jsonschema==4.25.1
+Requires-Dist: peewee==3.18.3
+Requires-Dist: colorlog==6.10.1
+Requires-Dist: keyring==25.7.0
+Requires-Dist: cryptography==46.0.3
+Dynamic: license-file
+
+# Plexutil
+
+CLI tool with helpful functions to manage a Plex server.
+
+
+> [!NOTE]
+> Installation is supported only for the following: 
+> - Windows (amd64)
+> - Linux (amd64)
+>    - X11
+>    - Wayland
+
+> [!WARNING]
+> Plexutil utilizes the system keychain in order to store an encrypted copy of the Plex token
+
+
+
+## Table of Contents
+
+* [Installation](#installation)
+* [Configuration](#configuration)
+  * [Required](#required)
+  * [Optional](#optional)
+    * [TV Series Language Override](#tv-series-language-override)
+    * [Library Preferences](#library-preferences)
+    * [Server Setting Preferences](#server-setting-preferences)
+* [Usage](#usage)
+  * [Creating a media library](#creating-a-media-library)
+  * [Deleting a media library](#deleting-a-media-library)
+  * [Creating a Playlist](#creating-a-playlist)
+  * [Deleting a Playlist](#deleting-a-playlist)
+  * [Adding songs to a Playlist](#adding-songs-to-a-playlist)
+  * [Exporting/Importing Music Playlists](#exportingimporting-music-playlists)
+* [Development](#development)
+* [Config Location](#config-location)
+* [Log Location](#log-location)
+
+
+## Installation
+> [!NOTE]
+> - Requires Python 3.11+<br >
+> - Requires pip
+```bash
+pip install plexutil
+```
+
+## Configuration
+### Required
+Set the host, port, token of your plex server
+> [!CAUTION]
+> Plexutil only works on the same machine the media library is attached to.<br >
+
+```bash
+plexutil config -host <PLEX_SERVER_HOST> -port <PLEX_SERVER_PORT> -token <PLEX_SERVER_TOKEN>
+```
+### Optional
+#### TV Series Language Override
+To override the language of tv series, modify the tv_language_manifest.json file found in: [Config Location](#config-location) <br >
+The file can be modified like such:
+```bash
+{
+  "es-ES": [327417,396583,388477,292262,282670,274522],
+  "en-US": []
+}
+```
+Where the key is the language and the list contains the [TVDB](https://www.thetvdb.com/) ids of the desired series to be overriden <br >
+For a list of supported languages: [Language](./src/plexutil/enums/language.py)
+
+#### Library Preferences
+Libraries of type:
+- Movie
+- Music
+- TV
+
+Can have their preferences set in the following files:
+
+- movie_library_preferences.json
+- music_library_preferences.json
+- tv_library_preferences.json
+
+These files can be found here: [Config Location](#config-location) <br >
+These Preferences are set at library creation time <br >
+The files already include default preferences that can be removed/modified/added based on your needs <br >
+
+
+#### Server Setting Preferences
+These preferences modify the behavior of the server
+
+- plex_server_setting_preferences.json
+
+The file can be found here: [Config Location](#config-location) <br >
+For example:
+```json
+"ButlerStartHour": 23,
+```
+Starts scheduled tasks at 11:00PM local time, to modify this time to 1:00AM
+```json
+"ButlerStartHour": 1,
+```
+These modifications need to be set by doing:
+```bash
+plexutil set_server_settings
+```
+The file already includes default preferences that can be removed/modified/added based on your needs <br >
+
+---
+
+## Usage
+### Creating a media library:
+> [!NOTE]
+> If language is not supplied, the default is en-US
+```bash
+plexutil create_movie_library -libn <NAME_OF_THE_LIBRARY> -loc </PATH/TO/MEDIA/LOCATION> -l <LANGUAGE>
+```
+---
+
+### Deleting a media library:
+```bash
+plexutil delete_movie_library -libn <NAME_OF_THE_LIBRARY>
+```
+---
+
+### Creating a Playlist
+> [!NOTE]
+> Only Music Playlists are currently supported
+```bash
+plexutil create_music_playlist -libn <LIBRARY_NAME_WHERE_PLAYLIST_IS> -pn <NAME_OF_THE_PLAYLIST> -s /path/to/song.mp3 /path/to/another-song.mp3
+```
+> [!NOTE]
+> The paths passed to -s must match the location of the library <br >
+> Therefore, if the library has for location /media/music these song paths must be in /media/music/song.mp3
+
+---
+
+### Deleting a Playlist
+> [!NOTE]
+> Only Music Playlists are currently supported
+```bash
+plexutil delete_music_playlist -libn <LIBRARY_NAME_WHERE_PLAYLIST_IS> -pn <NAME_OF_THE_PLAYLIST>
+```
+
+---
+
+### Adding songs to a Playlist
+
+```bash
+plexutil add_songs_to_music_playlist -libn <LIBRARY_NAME_WHERE_PLAYLIST_IS> -pn <NAME_OF_THE_PLAYLIST> -s /path/to/song.mp3 /path/to/another-song.mp3
+```
+> [!NOTE]
+> The paths passed to -s must match the location of the library <br >
+> Therefore, if the library has for location /media/music these song paths must be in /media/music/song.mp3
+
+---
+
+### Exporting/Importing Music Playlists
+Music Playlists can be exported to a playlists.db file, this file can later be imported to another Plex server with plexutil
+```bash
+plexutil export_music_playlist -libn <LIBRARY_NAME_WHERE_PLAYLISTS_ARE>
+```
+This action will create a playlists.db file here: [Config Location](#config-location) <br >
+This file can then be used to recreate the playlists in another Plex Server with plexutil by doing
+```bash
+plexutil import_music_playlist -libn <LIBRARY_NAME_WHERE_PLAYLISTS_ARE>
+```
+> [!NOTE]
+> The songs in the Music Library of the importing server must match the songs in the exporting server
+
+---
+
+## Development
+> [!NOTE]
+> Development requires a fully configured [Dotfiles](https://github.com/florez-carlos/dotfiles) dev environment <br>
+```bash
+source init.sh
+```
+## Config Location
+The config directory of Plexutil is located:
+> [!NOTE]
+> Replace <YOUR_USER> with your Windows UserName
+- Windows
+```bash
+C:\Users\<YOUR_USER>\Documents\plexutil\config\
+```
+- Linux
+```bash
+$HOME/plexutil/config/
+```
+
+## Log Location
+The log directory of Plexutil is located:
+> [!NOTE]
+> Replace <YOUR_USER> with your Windows UserName
+- Windows
+```bash
+C:\Users\<YOUR_USER>\Documents\plexutil\log
+```
+- Linux
+```bash
+$HOME/plexutil/log
+```
+> [!NOTE]
+> Log files are archived based on date, such as yyyy-mm-dd.log
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
+
