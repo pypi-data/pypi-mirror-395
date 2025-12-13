@@ -1,0 +1,48 @@
+Command-line parsing
+====================
+
+An invalid argument causes a short error message
+
+    >>> from findimports import main
+    >>> exitcode = main(['findimports', '--nosuchargument'])
+    usage: findimports [action] [options] [filename|dirname ...]
+    findimports: error: unrecognized arguments: --nosuchargument
+
+    >>> exitcode
+    2
+
+Fails if both --packages and -pE, --package-externals are provided
+
+    >>> from findimports import main
+    >>> exitcode = main(['findimports', '-p', '-pE'])
+    usage: findimports [action] [options] [filename|dirname ...]
+    findimports: error: only one of -p and -pE can be provided
+
+    >>> exitcode
+    2
+
+
+You can ask for a help message
+
+    >>> exitcode = main(['findimports', '--help'])  # doctest: +ELLIPSIS
+    usage: findimports [action] [options] [filename|dirname ...]
+    <BLANKLINE>
+    FindImports is a script that processes Python module...
+    ...
+
+The default pathname is '.'
+
+    >>> import os
+    >>> os.chdir(sample_tree)
+    >>> exitcode = main(['findimports', '-pil1'])
+    apple:
+      os
+      sys
+    box:
+      decoy
+      gc
+    decoy:
+    <BLANKLINE>
+    orange:
+      gc
+

@@ -1,0 +1,34 @@
+Producing import graphs with graphviz
+=====================================
+
+findimports can produce graph descriptions in the dot language used by
+graphviz
+
+    >>> from findimports import main
+    >>> attributes = ['-A', 'rankdir=TB', '-A', 'label=Graph']
+    >>> exitcode = main(['findimports', '-d', sample_tree] + attributes)
+    digraph ModuleDependencies {
+      rankdir=TB
+      label=Graph
+      node[shape=box];
+      mod0[label="apple"];
+      mod1[label="box.__init__"];
+      mod2[label="box.cat"];
+      mod3[label="box.decoy"];
+      mod4[label="box.yarn"];
+      mod5[label="decoy"];
+      mod6[label="orange"];
+      node[style=dotted];
+      extmod0[label="gc"];
+      extmod1[label="os"];
+      extmod2[label="os.path"];
+      extmod3[label="sys"];
+      mod0 -> extmod1;
+      mod0 -> extmod2;
+      mod0 -> extmod3;
+      mod2 -> mod4;
+      mod2 -> mod5;
+      mod2 -> extmod0;
+      mod6 -> extmod0;
+    }
+
