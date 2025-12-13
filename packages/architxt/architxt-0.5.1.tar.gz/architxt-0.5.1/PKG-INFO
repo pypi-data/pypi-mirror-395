@@ -1,0 +1,181 @@
+Metadata-Version: 2.4
+Name: architxt
+Version: 0.5.1
+Summary: ArchiTXT is a tool for structuring textual data into a valid database model. It is guided by a meta-grammar and uses an iterative process of tree rewriting.
+License-Expression: GPL-3.0-only
+License-File: LICENSE
+Keywords: python,nlp,database,structuration,text mining,text analysis,data analysis
+Author: Jacques Chabin
+Author-email: jacques.chabin@univ-orleans.fr
+Maintainer: Nicolas Hiot
+Maintainer-email: nicolas.hiot@univ-orleans.fr
+Requires-Python: >=3.10,<3.13
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: Science/Research
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Database
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Typing :: Typed
+Provides-Extra: flair
+Provides-Extra: llm
+Provides-Extra: ui
+Requires-Dist: aiostream (>=0.7,<0.8)
+Requires-Dist: antlr4-python3-runtime (>=4.13,<5)
+Requires-Dist: anyio (>=4.9.0,<5.0.0)
+Requires-Dist: benepar
+Requires-Dist: cachetools (>=5.5.0,<6.0.0)
+Requires-Dist: click (<8.4.0)
+Requires-Dist: flair (>=0.15,<0.16) ; extra == "flair"
+Requires-Dist: googletrans (>=4.0.2,<5.0.0)
+Requires-Dist: json-repair (>=0.52,<0.53) ; extra == "llm"
+Requires-Dist: langchain (>=0.3,<0.4) ; extra == "llm"
+Requires-Dist: langchain-core ; extra == "llm"
+Requires-Dist: langchain-huggingface ; extra == "llm"
+Requires-Dist: levenshtein
+Requires-Dist: mlflow (>=3.1,<3.5)
+Requires-Dist: more-itertools
+Requires-Dist: neo4j (>=5.28.1,<6.0.0)
+Requires-Dist: nltk (>=3.9,<4.0)
+Requires-Dist: numpy (>=1.16,<2.0)
+Requires-Dist: pandas (>=2.3.0,<3.0.0)
+Requires-Dist: platformdirs (>=4.4.0,<5.0.0)
+Requires-Dist: plotly (<6.0)
+Requires-Dist: pybrat (>=0.1.7,<0.2.0)
+Requires-Dist: relstorage (>=4.1.1,<5.0.0)
+Requires-Dist: rich (>=13.9.4,<15.0.0)
+Requires-Dist: ruamel.yaml (>=0.18.0,<0.19.0)
+Requires-Dist: scikit-learn (>=1.7.0,<2.0.0)
+Requires-Dist: scipy (>=1.15.0,<2.0.0)
+Requires-Dist: scispacy (>=0.5.5,<0.6.0)
+Requires-Dist: spacy (>=3.7.0,<4.0.0)
+Requires-Dist: sqlalchemy (>=2.0.39,<3.0.0)
+Requires-Dist: streamlit (>=1.39.0) ; extra == "ui"
+Requires-Dist: streamlit-agraph ; extra == "ui"
+Requires-Dist: streamlit-tags ; extra == "ui"
+Requires-Dist: toml (>=0.10.0,<0.11.0)
+Requires-Dist: tqdm (>=4.60)
+Requires-Dist: typer (>=0.15.1,<0.18.0)
+Requires-Dist: typing-extensions
+Requires-Dist: unidecode
+Requires-Dist: xlrd (>=2.0.1,<3.0.0)
+Requires-Dist: xmltodict (>=0.14.2,<1.1.0)
+Requires-Dist: zodb (>=6.0,<7.0)
+Requires-Dist: zodburi (>=3.0,<3.1)
+Project-URL: Documentation, https://neplex.github.io/ArchiTXT
+Project-URL: Repository, https://github.com/neplex/ArchiTXT
+Project-URL: funding, https://github.com/Neplex/ArchiTXT?tab=readme-ov-file#sponsors
+Project-URL: issue, https://github.com/neplex/ArchiTXT/issues
+Description-Content-Type: text/markdown
+
+# ArchiTXT: Text-to-Database Structuring Tool
+
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+![PyPI - Status](https://img.shields.io/pypi/status/architxt)
+[![PyPI - Version](https://img.shields.io/pypi/v/architxt)](https://pypi.org/project/architxt/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/architxt)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/neplex/architxt/python-build.yml)](https://github.com/Neplex/ArchiTXT/actions)
+[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/Neplex/ArchiTXT/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/Neplex/ArchiTXT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15688157.svg)](https://doi.org/10.5281/zenodo.15688157)
+
+**ArchiTXT** is a robust tool designed to convert unstructured textual data into structured formats that are ready for
+database storage. It automates the generation of database schemas and creates corresponding data instances, simplifying
+the integration of text-based information into database systems.
+
+Working with unstructured text can be challenging when you need to store and query it in a structured database.
+**ArchiTXT** bridges this gap by transforming raw text into organized, query-friendly structures. By automating both
+schema generation and data instance creation, it streamlines the entire process of managing textual information in
+databases.
+
+## Installation
+
+To install **ArchiTXT**, make sure you have Python 3.10+ and pip installed. Then, run:
+
+```sh
+pip install architxt
+```
+
+For the development version, you can install it directly through GIT using
+
+```sh
+pip install git+https://github.com/Neplex/ArchiTXT.git
+```
+
+## Usage
+
+**ArchiTXT** is built to work seamlessly with BRAT-annotated corpora that includes pre-labeled named entities.
+It also requires access to a CoreNLP server, which you can set up using the Docker configuration available in
+the source repository.
+
+```sh
+$ architxt --help
+
+ Usage: architxt [OPTIONS] COMMAND [ARGS]...
+
+ ArchiTXT is a tool for structuring textual data into a valid database model.
+ It is guided by a meta-grammar and uses an iterative process of tree rewriting.
+
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion          Install completion for the current shell.                                        │
+│ --show-completion             Show completion for the current shell, to copy it or customize the installation. │
+│ --help                        Show this message and exit.                                                      │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ run   Extract a database schema form a corpus.                                                                 │
+│ ui    Launch the web-based UI.                                                                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+```sh
+$ architxt run --help
+
+ Usage: architxt run [OPTIONS] CORPUS_PATH
+
+ Extract a database schema form a corpus.
+
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    corpus_path      PATH  Path to the input corpus. [default: None] [required]                               │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --tau                            FLOAT    The similarity threshold. [default: 0.7]                             │
+│ --epoch                          INTEGER  Number of iteration for tree rewriting. [default: 100]               │
+│ --min-support                    INTEGER  Minimum support for tree patterns. [default: 20]                     │
+│ --corenlp-url                    TEXT     URL of the CoreNLP server. [default: http://localhost:9000]          │
+│ --gen-instances                  INTEGER  Number of synthetic instances to generate. [default: 0]              │
+│ --language                       TEXT     Language of the input corpus. [default: French]                      │
+│ --debug            --no-debug             Enable debug mode for more verbose output. [default: no-debug]       │
+│ --help                                    Show this message and exit.                                          │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+To deploy the CoreNLP server using the source repository, you can use Docker Compose with the following command:
+
+```sh
+docker compose up -d corenlp
+```
+
+## Sponsors
+
+This work has received support under the JUNON Program, with financial support from Région Centre-Val de Loire (France).
+
+<a href="https://www.junon-cvl.fr">
+  <img src="https://www.junon-cvl.fr/sites/websites/www.junon-cvl.fr/files/logos/2025-07/logo-junon-new.svg" width="200" alt="JUNON Program logo">
+</a>
+
+<a href="https://www.univ-orleans.fr">
+  <img src="https://ent.univ-orleans.fr/pages-locales-uo/images/logo_univ.svg" width="200" alt="UO logo">
+</a>
+
+<a href="https://www.univ-orleans.fr/lifo/">
+  <img src="https://www.univ-orleans.fr/lifo/themes/custom/bs5_lifo_theme/logo.svg" width="200" alt="LIFO logo">
+</a>
+
