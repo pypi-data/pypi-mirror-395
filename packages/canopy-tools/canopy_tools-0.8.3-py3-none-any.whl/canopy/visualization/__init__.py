@@ -1,0 +1,6 @@
+from canopy.visualization.map import make_simple_map, make_diff_map
+from canopy.visualization.time_series import make_time_series
+from canopy.visualization.static_plot import make_static_plot
+from canopy.visualization.distribution_plot import make_distribution_plot
+from canopy.visualization.taylor_diagram import make_taylor_diagram
+from canopy.visualization.plot_functions import multiple_figs
