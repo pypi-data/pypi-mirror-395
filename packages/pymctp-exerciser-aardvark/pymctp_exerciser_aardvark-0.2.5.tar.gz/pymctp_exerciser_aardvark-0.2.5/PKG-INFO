@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: pymctp-exerciser-aardvark
+Version: 0.2.5
+Summary: Total Phase Aardvark I2C exerciser for pymctp
+Project-URL: Documentation, https://github.com/jls5177/pymctp#readme
+Project-URL: Issues, https://github.com/jls5177/pymctp/issues
+Project-URL: Source, https://github.com/jls5177/pymctp
+Author-email: Justin Simon <justin@simonctl.com>
+License: MIT
+Keywords: aardvark,i2c,mctp,total-phase
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: System :: Hardware
+Requires-Python: >=3.8
+Requires-Dist: pyaardvark>=0.7.1
+Requires-Dist: pymctp>=0.2.5
+Description-Content-Type: text/markdown
+
+# pymctp-exerciser-aardvark
+
+Total Phase Aardvark I2C exerciser support for pymctp.
+
+This package provides an exerciser implementation for interfacing with Total Phase Aardvark I2C/SPI adapters to send and receive MCTP packets over I2C.
+
+## Installation
+
+```bash
+pip install pymctp-exerciser-aardvark
+```
+
+## Requirements
+
+- pymctp >= 0.1.0
+- pyaardvark >= 0.7.1
+- Total Phase Aardvark I2C/SPI adapter hardware
+
+## Usage
+
+```python
+from pymctp.exerciser import AardvarkI2CSocket
+
+# List available Aardvark devices
+AardvarkI2CSocket.list_devices()
+
+# Open a connection
+socket = AardvarkI2CSocket(
+    port=0,  # Device port number
+    addr=0x20,  # Target I2C address
+    bitrate=100  # I2C bitrate in kHz
+)
+
+# Send/receive MCTP packets
+from pymctp.layers.mctp import SmbusTransport
+
+pkt = SmbusTransport(...)
+socket.send(pkt)
+
+response = socket.recv()
+```
+
+## Auto-Registration
+
+This package automatically registers itself with pymctp when installed. You can access it through the exerciser registry:
+
+```python
+from pymctp.exerciser import get_exerciser
+
+AardvarkSocket = get_exerciser('aardvark')
+```
+
+## License
+
+MIT
