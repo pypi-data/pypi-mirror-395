@@ -1,0 +1,117 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "querygym"
+version = "0.1.5"
+description = "LLM-based Query Reformulation Toolkit"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [
+  {name = "Radin Hamidi Rad", email = "radin.h@gmail.com"},
+  {name = "Amin Bigdeli", email = "aminbigdeli97@gmail.com"},
+  {name = "Mert Incesu", email = "mert.incesu03@gmail.com"},
+  {name = "Negar Arabzadeh", email = "ngr.arabzadeh@gmail.com"}
+]
+keywords = ["information-retrieval", "query-reformulation", "llm", "nlp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+  "typer>=0.12.3",
+  "pyyaml>=6.0.1",
+  "openai>=1.40.0",
+  "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+# Data loading extras
+hf = ["datasets>=2.20.0"]
+beir = ["beir>=2.0.0"]
+pyserini = ["pyserini>=0.22.0"]
+
+# Development dependencies
+dev = [
+  # Testing
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "pytest-mock>=3.11.0",
+  
+  # Code quality
+  "black>=23.0.0",
+  "ruff>=0.1.0",
+  "mypy>=1.5.0",
+  
+  # Documentation
+  "mkdocs>=1.5.0",
+  "mkdocs-material>=9.0.0",
+  "mkdocstrings[python]>=0.23.0",
+]
+
+# All extras combined
+all = [
+  "datasets>=2.20.0",
+  "beir>=2.0.0",
+  "pyserini>=0.22.0",
+]
+
+[project.scripts]
+querygym = "querygym.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/ls3-lab/QueryGym"
+Documentation = "https://github.com/ls3-lab/QueryGym/blob/main/README.md"
+Repository = "https://github.com/ls3-lab/QueryGym"
+Issues = "https://github.com/ls3-lab/QueryGym/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["querygym*"]
+
+[tool.setuptools.package-data]
+querygym = ["prompt_bank.yaml", "config/*.yaml"]
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+include = '\.pyi?$'
+
+# Ruff configuration
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--cov=querygym",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
