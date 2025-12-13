@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gemini-cli-sdk-py"
+version = "0.1.0"
+description = "Fully-typed Python SDK that wraps the Gemini CLI (google-gemini/gemini-cli)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Tomas Roda", email = "dev@tomasroda.com"}]
+keywords = ["gemini", "cli", "sdk", "google", "mcp"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = [
+  "pydantic>=2.6.0,<3",
+  "typing-extensions>=4.9.0; python_version<'3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.6.0",
+  "mypy>=1.10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/google-gemini/gemini-cli"
+Source = "https://github.com/google-gemini/gemini-cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gemini_cli_sdk"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/gemini_cli_sdk",
+  "/tests",
+  "/README.md",
+  "/LICENSE",
+  "/AGENTS.md",
+  "/CLI_MAP.md",
+  "/pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+disallow_any_unimported = true
+no_implicit_optional = true

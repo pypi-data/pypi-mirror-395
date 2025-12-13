@@ -1,0 +1,130 @@
+# gemini-cli-sdk-py (Python)
+
+A fully-typed Python SDK that wraps the **Gemini CLI** (`google-gemini/gemini-cli`) by executing the installed `gemini` binary as a subprocess.
+
+## Key capabilities
+
+- Headless prompts (text / JSON / streaming JSONL events)
+- Strict typing + Pydantic models for structured outputs
+- CLI feature parity via:
+  - Typed options for common flags
+  - A generic `run()` escape hatch for new/unmodeled flags/commands
+- MCP server management (`gemini mcp add|list|remove`)
+- Session continuation via `--resume`
+
+## Prerequisites
+
+- Python 3.10+
+- Gemini CLI installed and available as `gemini` (or pass `executable=...`)
+
+Gemini CLI docs:
+- Headless mode and output formats: https://geminicli.com/docs/cli/headless/
+- Configuration and flags: https://geminicli.com/docs/get-started/configuration/
+- Session management (`--resume`): https://geminicli.com/docs/cli/session-management/
+- MCP servers: https://geminicli.com/docs/tools/mcp-server/
+
+## Install (local dev)
+
+```bash
+python -m pip install -e .[dev]
+```
+
+## Quickstart
+
+### Text output
+
+```python
+from gemini_cli_sdk import GeminiCLI
+
+cli = GeminiCLI()
+text = cli.prompt_text("What is the capital of France?")
+print(text)
+```
+
+### JSON output (`--output-format json`)
+
+```python
+from gemini_cli_sdk import GeminiCLI
+
+cli = GeminiCLI()
+resp = cli.prompt_json("What is the capital of France?")
+print(resp.response)
+print(resp.stats.models)
+```
+
+### Streaming JSON output (`--output-format stream-json`)
+
+```python
+from gemini_cli_sdk import GeminiCLI
+
+cli = GeminiCLI()
+
+for event in cli.prompt_stream_json("List files in this folder and summarize them"):
+    if event.type == "message" and event.role == "assistant":
+        # In stream mode, assistant messages can arrive as deltas
+        print(event.content or "", end="")
+```
+
+Event types are documented in the Gemini CLI headless docs.
+
+### Resume a previous session
+
+```python
+from gemini_cli_sdk import GeminiCLI, RunOptions
+
+cli = GeminiCLI(default_options=RunOptions(resume=True))  # resume latest
+print(cli.prompt_text("Continue where we left off. Summarize next steps."))
+```
+
+### MCP server management
+
+```python
+from gemini_cli_sdk import GeminiCLI
+from gemini_cli_sdk.mcp import McpAddRequest
+from gemini_cli_sdk.enums import McpTransport
+
+cli = GeminiCLI()
+
+# List
+servers = cli.mcp_list()
+print(servers)
+
+# Add an SSE server
+cli.mcp_add(McpAddRequest(
+    transport=McpTransport.SSE,
+    name="sse-server",
+    url="https://api.example.com/sse/",
+))
+
+# Remove (default scope is handled by Gemini CLI)
+cli.mcp_remove("sse-server")
+```
+
+## Settings model (`.gemini/settings.json`)
+
+```python
+from pathlib import Path
+from gemini_cli_sdk import GeminiSettings
+
+settings = GeminiSettings.load(Path(".gemini/settings.json"))
+print(settings.model_dump())
+```
+
+The CLI evolves quickly; this model is forward-compatible via `extra="allow"`.
+
+## CLI help/spec discovery
+
+```python
+from gemini_cli_sdk import GeminiCLI
+
+cli = GeminiCLI()
+spec = cli.help_spec()
+print(spec.usage)
+print([c.name for c in spec.commands])
+```
+
+## Testing
+
+```bash
+pytest -q
+```
