@@ -1,0 +1,28 @@
+name: Create release
+
+on:
+  push:
+    branches:
+      - main        # when you push to main, this runs
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed so gh can create tags/releases
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0    # full history so setuptools_scm & gh see all tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create new patch release
+        run: .github/scripts/release.py
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
