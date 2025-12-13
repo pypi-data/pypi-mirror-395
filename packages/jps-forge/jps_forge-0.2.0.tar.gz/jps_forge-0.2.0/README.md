@@ -1,0 +1,238 @@
+# jps-forge
+
+![Build](https://github.com/jai-python3/jps-forge/actions/workflows/test.yml/badge.svg)
+![Publish to PyPI](https://github.com/jai-python3/jps-forge/actions/workflows/publish-to-pypi.yml/badge.svg)
+[![codecov](https://codecov.io/gh/jai-python3/jps-forge/branch/main/graph/badge.svg)](https://codecov.io/gh/jai-python3/jps-forge)
+
+A 100% local, Ollama-powered coding agent that indexes your projects, answers questions about your codebase with RAG, and can autonomously run Git commands and other tools — no cloud, no API keys, no data ever leaves your machine.
+
+## 🚀 Overview
+
+**jps-forge** is a privacy-focused AI coding assistant that runs entirely on your local machine using Ollama. It combines retrieval-augmented generation (RAG) with autonomous tool execution to help you understand and work with your codebase without sending any data to external services.
+
+### Key Features
+
+- **🔒 100% Local & Private**: All processing happens on your machine using Ollama - no cloud APIs, no data leakage
+- **📚 Intelligent Code Search**: Uses FAISS vector store with sentence transformers for semantic code search
+- **🤖 Autonomous Agent**: Powered by LangGraph's ReAct agent that can use tools to answer questions
+- **🔧 Git Integration**: Built-in tools to check repository status and find uncommitted changes
+- **💬 Interactive Chat**: Rich terminal interface for conversational code exploration
+- **🎯 Context-Aware**: Retrieves relevant code snippets to provide accurate, contextual answers
+
+### How It Works
+
+1. **Index**: Scan your codebase and create vector embeddings of your code
+2. **Query**: Ask questions in natural language about your code
+3. **Retrieve**: Automatically fetch relevant code context using semantic search
+4. **Act**: Agent uses tools (git status, etc.) when needed to gather information
+5. **Answer**: Get AI-powered responses grounded in your actual codebase
+
+## 📦 Installation
+
+### Prerequisites
+
+- Python 3.10 or higher
+- [Ollama](https://ollama.ai/) installed and running
+- An Ollama model pulled (e.g., `ollama pull llama3.1:8b`)
+
+### Install from PyPI
+
+```bash
+pip install jps-forge
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/jai-python3/jps-forge.git
+cd jps-forge
+pip install -e .
+```
+
+## 🎯 Quick Start
+
+### 1. Configure Your Workspace
+
+Edit the configuration file at `~/.config/jps-forge/config.yaml` (or `src/jps_forge/conf/config.yaml` if running from source):
+
+```yaml
+workspace_roots:
+  - /path/to/your/project
+
+ollama_model: llama3.1:8b
+embedding_model: sentence-transformers/all-MiniLM-L6-v2
+```
+
+### 2. Index Your Codebase
+
+```bash
+jps-forge-index
+```
+
+This will:
+- Scan your specified workspace directories
+- Create vector embeddings of your code
+- Store the index in `~/.config/jps-forge/storage`
+
+### 3. Start the Interactive Chat
+
+```bash
+jps-forge-forge
+```
+
+### 4. Ask Questions!
+
+```
+you: what is the purpose of this project?
+forge: This project is jps-forge, a local AI coding assistant...
+
+you: show me the git status of the current repo
+🔧 Using tool: current_repo_status
+forge: The repository is on branch main with uncommitted changes...
+
+you: what files have been modified?
+forge: Based on the git status, the following files have been modified:
+- src/jps_forge/forge.py
+- README.md
+```
+
+## 🛠️ Configuration
+
+### Configuration File Location
+
+- Default: `~/.config/jps-forge/config.yaml`
+- Source install: `src/jps_forge/conf/config.yaml`
+
+### Configuration Options
+
+```yaml
+# Directories to index
+workspace_roots:
+  - /path/to/project1
+  - /path/to/project2
+
+# Patterns to ignore during indexing
+ignore_dirs:
+  - node_modules
+  - __pycache__
+  - .git
+  - venv
+  - .venv
+  - dist
+  - build
+
+# File types to index
+glob_patterns:
+  - "**/*.py"
+  - "**/*.md"
+  - "**/*.js"
+  - "**/*.ts"
+  # ... add more patterns as needed
+
+# Ollama model to use for chat
+ollama_model: llama3.1:8b
+
+# HuggingFace model for embeddings
+embedding_model: sentence-transformers/all-MiniLM-L6-v2
+```
+
+## 🧰 Available Tools
+
+The agent has access to the following tools:
+
+- **`list_dirty_repos()`**: Find all git repositories with uncommitted changes
+- **`current_repo_status()`**: Get git status of the current working directory
+- **`git_status(repo_path)`**: Get git status of a specific repository
+
+## 🧪 Development
+
+### Setup Development Environment
+
+```bash
+# Clone and install with dev dependencies
+git clone https://github.com/jai-python3/jps-forge.git
+cd jps-forge
+pip install -e '.[dev]'
+```
+
+### Run Tests
+
+```bash
+make test
+```
+
+### Code Quality
+
+```bash
+# Auto-fix imports and formatting
+make fix
+
+# Format code with black
+make format
+
+# Run linting
+make lint
+```
+
+### Pre-commit Hooks
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run manually on all files
+make precommit
+```
+
+## 📋 Requirements
+
+- Python 3.10+
+- Ollama (running locally)
+- Git
+- Required Python packages (installed automatically):
+  - langchain
+  - langchain-community
+  - langchain-huggingface
+  - langchain-ollama
+  - langgraph
+  - faiss-cpu
+  - sentence-transformers
+  - gitpython
+  - rich
+  - PyYAML
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📜 License
+
+MIT License © Jaideep Sundaram
+
+## 🙏 Acknowledgments
+
+- [Ollama](https://ollama.ai/) for local LLM inference
+- [LangChain](https://www.langchain.com/) for the agent framework
+- [LangGraph](https://langchain-ai.github.io/langgraph/) for the ReAct agent implementation
+- [FAISS](https://github.com/facebookresearch/faiss) for vector similarity search
+- [Sentence Transformers](https://www.sbert.net/) for text embeddings
+
+## 🔮 Roadmap
+
+- [ ] Add more development tools (run tests, search code, refactor, etc.)
+- [ ] Support for multiple programming languages
+- [ ] Code modification and file creation capabilities
+- [ ] Integration with more version control systems
+- [ ] Custom tool plugins
+- [ ] Web UI option
+- [ ] Multi-repo workspace management
+
+---
+
+**Note**: This tool requires Ollama to be running. Make sure you have Ollama installed and at least one model pulled before using jps-forge.
