@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "logdir": "./ilorest_logs",
+  "formatters": {
+    "standard": {
+      "format": "%(levelname)s\t: %(message)s"
+    },
+    "detailed": {
+      "format": "%(asctime)s [%(levelname)s]: %(message)s"
+    }
+  },
+  "filters": {
+    "info_filter": {
+      "()": "ilorest.rdmc_helper.InfoFilter"
+    }
+  },
+  "handlers": {
+    "stdout": {
+      "class": "logging.StreamHandler",
+      "level": "CRITICAL",
+      "formatter": "standard",
+      "stream": "ext://sys.stdout",
+      "filters": [
+        "info_filter"
+      ]
+    },
+    "stderr": {
+      "class": "logging.StreamHandler",
+      "level": "ERROR",
+      "formatter": "standard",
+      "stream": "ext://sys.stderr"
+    },
+    "file": {
+      "class": "logging.handlers.RotatingFileHandler",
+      "level": "INFO",
+      "formatter": "detailed",
+      "filename": "%(logdir)s/iLORest.log",
+      "maxBytes": 2097152,
+      "backupCount": 5
+    }
+  },
+  "loggers": {
+    "": {
+      "level": "INFO",
+      "handlers": [
+        "stdout",
+        "stderr",
+        "file"
+      ]
+    },
+    "rdmc_helper": {
+      "level": "INFO",
+      "propagate": true
+    }
+  }
+}
