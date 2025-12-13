@@ -1,0 +1,328 @@
+Metadata-Version: 2.4
+Name: blockypy
+Version: 0.2.5
+Summary: Official Python client library for the Blocky Crypto Exchange API
+Project-URL: Homepage, https://blocky.com.br
+Project-URL: Documentation, https://docs.blocky.com.br
+Project-URL: Repository, https://github.com/blocky/blockypy
+Project-URL: Issues, https://github.com/blocky/blockypy/issues
+Author-email: Blocky <support@blocky.com.br>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: api,bitcoin,blocky,crypto,cryptocurrency,exchange,trading
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Office/Business :: Financial
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.8
+Requires-Dist: requests>=2.25.0
+Provides-Extra: all
+Requires-Dist: httpx>=0.23.0; extra == 'all'
+Requires-Dist: mypy>=1.0.0; extra == 'all'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'all'
+Requires-Dist: pytest>=7.0.0; extra == 'all'
+Requires-Dist: ruff>=0.1.0; extra == 'all'
+Requires-Dist: websockets>=10.0; extra == 'all'
+Provides-Extra: async
+Requires-Dist: httpx>=0.23.0; extra == 'async'
+Provides-Extra: dev
+Requires-Dist: httpx>=0.23.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: websockets>=10.0; extra == 'dev'
+Provides-Extra: ws
+Requires-Dist: websockets>=10.0; extra == 'ws'
+Description-Content-Type: text/markdown
+
+# Blocky Python SDK
+
+Official Python client library for the [Blocky Crypto Exchange](https://blocky.com.br) API.
+
+## Features
+
+- 🔄 **Sync & Async Support** - Choose between synchronous (requests) or asynchronous (httpx) clients
+- 🌐 **WebSocket Streams** - Real-time orderbook and transaction updates
+- 🔒 **Type-Safe** - Full type annotations for better IDE support
+- ⚡ **Lightweight** - Minimal dependencies
+- 📚 **Well Documented** - Comprehensive docstrings and examples
+
+## Installation
+
+```bash
+# Basic installation (sync client only)
+pip install blockypy
+
+# With async support
+pip install blockypy[async]
+
+# With WebSocket support
+pip install blockypy[ws]
+
+# Full installation (async + websocket + dev tools)
+pip install blockypy[all]
+```
+
+
+## Quick Start
+
+### Synchronous Client
+
+```python
+from blocky import Blocky
+
+# Public API (no authentication required)
+client = Blocky()
+markets = client.get_markets()
+print(markets)
+
+# Private API (requires API key)
+client = Blocky(api_key="your-api-key")
+wallets = client.get_wallets()
+print(wallets)
+```
+
+### Asynchronous Client
+
+```python
+import asyncio
+from blocky import AsyncBlocky
+
+async def main():
+    # Using context manager (recommended)
+    async with AsyncBlocky(api_key="your-api-key") as client:
+        markets = await client.get_markets()
+        wallets = await client.get_wallets()
+        print(markets, wallets)
+
+asyncio.run(main())
+```
+
+### WebSocket Client
+
+```python
+import asyncio
+from blocky import BlockyWebSocket
+
+async def on_orderbook(data):
+    print(f"Orderbook spread: {data['spread']}")
+
+async def on_trade(data):
+    print(f"Trade: {data['price']} x {data['quantity']}")
+
+async def main():
+    async with BlockyWebSocket() as ws:
+        # Subscribe using convenience methods
+        await ws.subscribe_orderbook("xno_xbrl", on_orderbook)
+        await ws.subscribe_transactions("xno_xbrl", on_trade)
+        
+        # Or use generic subscribe with channel string
+        # await ws.subscribe("xno_xbrl:orderbook", on_orderbook)
+        
+        # Run until cancelled (Ctrl+C)
+        await ws.run_forever()
+
+asyncio.run(main())
+```
+
+## API Reference
+
+
+### Public Endpoints
+
+These endpoints don't require authentication:
+
+```python
+# Get all markets
+markets = client.get_markets(get_tickers=True)
+
+# Get specific market
+market = client.get_market("xno_xbrl")
+
+# Get 24h ticker
+ticker = client.get_ticker("xno_xbrl")
+
+# Get recent trades
+transactions = client.get_transactions("xno_xbrl", count=100)
+
+# Get orderbook
+orderbook = client.get_orderbook("xno_xbrl", depth=50)
+
+# Get OHLCV/candlestick data
+ohlcv = client.get_ohlcv("xno_xbrl", timeframe="1H")
+```
+
+### Private Endpoints
+
+These endpoints require an API key:
+
+#### Wallets
+
+```python
+# Get all wallets
+wallets = client.get_wallets()
+
+# Get specific wallet
+wallet = client.get_wallet("xbrl")
+
+# Get wallet with frozen balance
+wallet = client.get_wallet("xbrl", get_frozen=True)
+```
+
+#### Orders
+
+```python
+# Create limit order
+order = client.create_order(
+    type_="limit",
+    market="xno_xbrl",
+    side="buy",
+    price="100.00",
+    quantity="1.5"
+)
+
+# Create market order
+order = client.create_order(
+    type_="market",
+    market="xno_xbrl",
+    side="buy",
+    total="100.00"  # Amount to spend
+)
+
+# Get orders
+orders = client.get_orders(limit=50, statuses=["open"])
+
+# Cancel order
+client.cancel_order(order_id=123)
+
+# Cancel all orders
+client.cancel_orders()
+```
+
+#### Trades
+
+```python
+# Get trade history
+trades = client.get_trades(limit=100, markets=["xno_xbrl"])
+```
+
+#### Transfers
+
+```python
+# Transfer between sub-wallets
+transfer = client.create_transfer(
+    instrument="xbrl",
+    quantity="100",
+    source_sub_wallet_id=0,
+    destination_sub_wallet_id=1,
+    memo="Savings"
+)
+
+# Get transfer history
+transfers = client.get_transfers()
+```
+
+#### Deposits & Withdrawals
+
+```python
+# Get deposit history
+deposits = client.get_deposits(instruments=["xbrl"])
+
+# Get withdrawal history
+withdrawals = client.get_withdrawals()
+
+# Get combined history
+history = client.get_deposits_and_withdrawals()
+```
+
+## Error Handling
+
+The SDK provides custom exceptions for different error types:
+
+```python
+from blocky import (
+    Blocky,
+    BlockyError,
+    BlockyAPIError,
+    BlockyAuthenticationError,
+    BlockyNetworkError,
+    BlockyValidationError,
+)
+
+try:
+    client = Blocky(api_key="invalid-key")
+    client.get_wallets()
+except BlockyAuthenticationError as e:
+    print(f"Auth failed: {e}")
+except BlockyAPIError as e:
+    print(f"API error [{e.status_code}]: {e.message}")
+except BlockyNetworkError as e:
+    print(f"Network error: {e}")
+except BlockyValidationError as e:
+    print(f"Validation error: {e}")
+except BlockyError as e:
+    print(f"General error: {e}")
+```
+
+## Configuration
+
+### Custom Endpoint
+
+```python
+client = Blocky(
+    api_key="your-api-key",
+    endpoint="https://custom.blocky.com.br/api/v1"
+)
+```
+
+### Custom Timeout
+
+```python
+client = Blocky(
+    api_key="your-api-key",
+    timeout=60.0  # seconds
+)
+```
+
+## Timeframes
+
+For OHLCV data, the following timeframe strings are supported:
+
+| Timeframe | Description |
+|-----------|-------------|
+| `1m`      | 1 minute    |
+| `3m`      | 3 minutes   |
+| `5m`      | 5 minutes   |
+| `15m`     | 15 minutes  |
+| `30m`     | 30 minutes  |
+| `1H`      | 1 hour      |
+| `2H`      | 2 hours     |
+| `4H`      | 4 hours     |
+| `6H`      | 6 hours     |
+| `8H`      | 8 hours     |
+| `12H`     | 12 hours    |
+| `1D`      | 1 day       |
+| `3D`      | 3 days      |
+| `1W`      | 1 week      |
+| `1M`      | 1 month     |
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Links
+
+- [Blocky Exchange](https://blocky.com.br)
+- [API Documentation](https://docs.blocky.com.br)
+- [Issue Tracker](https://github.com/blocky/blockypy/issues)
