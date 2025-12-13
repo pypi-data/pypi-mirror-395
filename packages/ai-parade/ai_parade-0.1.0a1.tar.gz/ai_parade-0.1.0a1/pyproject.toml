@@ -1,0 +1,106 @@
+[project]
+name = "ai-parade"
+version = "0.1.0a1"
+requires-python = ">=3.10"
+dependencies = [
+	"pydantic",
+	"opencv-python>=4.11.0.86",
+	"numpy>=2.0.2",
+	"typer>=0.15.2",
+	"xmltodict>=0.14.2",
+	"uv>=0.9.0",
+	"micropipenv>=1.9.0",
+	# backports of newer python features, see _compat.py for details
+	"backports.strenum (>=1.3.1,<2.0) ; python_version < '3.11'",
+	'tomli ; python_version < "3.11"',
+]
+[project.scripts]
+ai-parade = "ai_parade._cli.ai_parade.main:app"
+ai-parade-puppet = "ai_parade._cli.ai_parade_puppet.main:main"
+
+[project.optional-dependencies]
+# check this: https://stackoverflow.com/questions/75490231/pip-pyproject-toml-can-optional-dependency-groups-require-other-optional-depend
+convert = ["ai-parade[convert-tf,convert-onnx,convert-ncnn,convert-pytorch]"]
+convert-tf = [
+	"nobuco",
+	"tf2onnx",
+	#"onnx-tf",
+	"onnx2tf",
+	"ai_edge_torch",
+]
+convert-pytorch = ["torch>=2.9", "executorch>=1.0"]
+convert-onnx = [
+	"onnxscript",
+	"onnxruntime",          # for ONNX quantization
+	"onnxconverter-common", # for ONNX float 16
+	"onnxslim",
+]
+convert-ncnn = [
+	"pnnx", # ncnn
+]
+
+inference = [
+	"ai-parade[inference-tf,inference-onnx,inference-ncnn,inference-pytorch]",
+]
+inference-onnx = ["onnxruntime"]
+inference-ncnn = ["ncnn"]
+inference-pytorch = ["torch"]
+inference-tf = ["tensorflow"]
+
+[dependency-groups]
+dev = [
+	"griffe-pydantic>=1.1.8",
+	"markdown-gfm-admonition>=0.3.0",
+	"mkdocs-include-markdown-plugin>=7.2.0",
+	"mkdocs-mermaid2-plugin>=1.2.3",
+	"mkdocs-shadcn>=0.9.7",
+	"mkdocs-typer2>=0.1.6",
+	"mkdocstrings-python>=1.18.2",
+	"pytest",
+	"pytest-asyncio>=1.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_parade"]
+
+[tool.ruff]
+extend-exclude = ["model_repositories"]
+[tool.ruff.format]
+indent-style = "tab"
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+
+[tool.pyright]
+include = ["src"]
+
+typeCheckingMode = "strict"
+
+# Relax:
+reportMissingTypeArgument = "information"
+reportMissingTypeStubs = "information"
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownLambdaType = false
+
+# Additions: 
+reportImplicitOverride = true
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportImportCycles = "warning"
+reportShadowedImports = "warning"
+reportUninitializedInstanceVariable = "warning"
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+pythonpath = "src"                    # todo: create editable install
+testpaths = ["tests"]
