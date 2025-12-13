@@ -1,0 +1,143 @@
+Metadata-Version: 2.4
+Name: nlweb-retrieval
+Version: 0.5.6
+Summary: Retrieval bundle for NLWeb - includes vector database clients for multiple providers
+Author: Microsoft Corporation
+License: MIT
+Project-URL: Homepage, https://github.com/microsoft/NLWeb_Core
+Project-URL: Repository, https://github.com/microsoft/NLWeb_Core
+Project-URL: Issues, https://github.com/microsoft/NLWeb_Core/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: nlweb-core>=0.5.5
+Requires-Dist: azure-core
+Requires-Dist: azure-search-documents>=11.4.0
+Requires-Dist: azure-identity>=1.12.0
+Requires-Dist: pymilvus>=1.1.0
+Requires-Dist: numpy
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: qdrant-client>=1.14.0
+Requires-Dist: elasticsearch[async]<9,>=8
+Requires-Dist: psycopg[binary]>=3.1.12
+Requires-Dist: psycopg[pool]>=3.2.0
+Requires-Dist: pgvector>=0.4.0
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: cloudflare>=4.3.1
+Requires-Dist: zon>=3.0.0
+Requires-Dist: markdown>=3.8.2
+Requires-Dist: beautifulsoup4>=4.13.4
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+
+# nlweb-retrieval
+
+Bundle package containing all retrieval providers for NLWeb.
+
+## Included Providers
+
+This package includes clients for:
+
+- **Azure AI Search** - Azure's vector search service with managed identity support
+- **Elasticsearch** - Popular open-source search and analytics engine
+- **Milvus** - Open-source vector database
+- **Qdrant** - Vector similarity search engine
+- **PostgreSQL** (pgvector) - PostgreSQL with vector extension
+- **OpenSearch** - Open-source search and analytics suite
+- **Snowflake Cortex Search** - Snowflake's vector search
+- **Shopify MCP** - Shopify Model Context Protocol
+- **Cloudflare AutoRAG** - Cloudflare's RAG service
+- **Bing Search** - Microsoft Bing web search
+
+## Installation
+
+```bash
+pip install nlweb-core nlweb-retrieval
+```
+
+## Configuration Example
+
+Create `config.yaml`:
+
+```yaml
+retrieval:
+  provider: elasticsearch
+  import_path: nlweb_retrieval.elasticsearch_client
+  class_name: ElasticsearchClient
+  api_endpoint_env: ELASTICSEARCH_URL
+  index_name: my_index
+  use_knn: true
+```
+
+### Azure AI Search Example
+
+```yaml
+retrieval:
+  provider: azure_ai_search
+  import_path: nlweb_retrieval.azure_search_client
+  class_name: AzureSearchClient
+  api_endpoint_env: AZURE_SEARCH_ENDPOINT
+  auth_method: azure_ad  # or api_key
+  index_name: my-search-index
+```
+
+### Qdrant Example
+
+```yaml
+retrieval:
+  provider: qdrant
+  import_path: nlweb_retrieval.qdrant
+  class_name: QdrantVectorClient
+  database_path: ./data/qdrant_db  # for local storage
+  # OR for remote:
+  # api_endpoint_env: QDRANT_URL
+  # api_key_env: QDRANT_API_KEY
+```
+
+## Usage
+
+```python
+import nlweb_core
+
+# Initialize with config
+nlweb_core.init(config_path="./config.yaml")
+
+# Use retrieval
+from nlweb_core import retriever
+
+# Search
+results = await retriever.search(
+    query="example query",
+    site="example.com",
+    num_results=10
+)
+```
+
+## Provider Import Paths
+
+Use these in your config file:
+
+| Provider | import_path | class_name |
+|----------|-------------|------------|
+| Azure AI Search | `nlweb_retrieval.azure_search_client` | `AzureSearchClient` |
+| Elasticsearch | `nlweb_retrieval.elasticsearch_client` | `ElasticsearchClient` |
+| Milvus | `nlweb_retrieval.milvus_client` | `MilvusVectorClient` |
+| Qdrant | `nlweb_retrieval.qdrant` | `QdrantVectorClient` |
+| PostgreSQL | `nlweb_retrieval.postgres_client` | `PgVectorClient` |
+| OpenSearch | `nlweb_retrieval.opensearch_client` | `OpenSearchClient` |
+| Snowflake | `nlweb_retrieval.snowflake_client` | `SnowflakeCortexSearchClient` |
+| Shopify MCP | `nlweb_retrieval.shopify_mcp` | `ShopifyMCPClient` |
+| Cloudflare | `nlweb_retrieval.cf_autorag_client` | `CloudflareAutoRAGClient` |
+| Bing Search | `nlweb_retrieval.bing_search_client` | `BingSearchClient` |
+
+## License
+
+MIT License - Copyright (c) 2025 Microsoft Corporation
