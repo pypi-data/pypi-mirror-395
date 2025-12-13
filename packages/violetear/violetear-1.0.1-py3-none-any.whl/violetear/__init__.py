@@ -1,0 +1,19 @@
+"""
+`violetear` is a minimalist CSS generator.
+
+You use Python to define CSS styles and automatically obtain a CSS stylesheet.
+Using a fluent API, you can quickly build complex styles programmatically
+and compose them into a fully-fledged design system.
+"""
+
+from .stylesheet import StyleSheet
+from .style import Style
+from .selector import Selector
+from .units import Unit
+from .color import Color
+
+# New Framework export (lazy import to avoid hard dependency errors if possible,
+# though our App class handles the check internally)
+from .app import App
+
+__version__ = "1.0.1"
