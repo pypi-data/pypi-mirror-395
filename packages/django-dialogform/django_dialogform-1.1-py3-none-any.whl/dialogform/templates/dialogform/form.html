@@ -1,0 +1,23 @@
+{# -*- mode:web -*- engine:django -*- #}
+{% comment %}
+
+Dialogform form rendering
+
+Parameters: form, dlgfrm_tags, dialogform_cssclass
+
+dialogform_cssclass may be optionally set by views using DialogFormMixin
+
+{% endcomment %}
+
+<form method="{{ form.method|default:"post" }}" class="dialogform {{ dialogform_cssclass }}">
+  {% csrf_token %}
+  {% if form.render_as == "table" %}<table>{% endif %}
+  {{ form.as_render_as }}
+  {% if form.render_as == "table" %}</table>{% endif %}
+  <div class="dialogform-buttons">
+    {% if form %}
+      <button class="dialogform" type="button" value="cancel">Cancel</button></td>
+    {% endif %}
+    <button class="dialogform" type="submit" value="confirm">OK</button>
+  </div>
+</form>

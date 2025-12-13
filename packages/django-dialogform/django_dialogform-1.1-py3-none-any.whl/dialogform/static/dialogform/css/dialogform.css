@@ -1,0 +1,119 @@
+/*
+  This file is part of a program "django-dialogform", a django app to load and open form views
+  within <dialog> html element popups.
+
+  Copyright (C) 2023, Zoltan Kemenczy
+
+  This program comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome
+  to redistribute it under conditions of the GPLv3 LICENSE included in this package
+  To use it, refer to the included README.rst
+*/
+
+/*
+ * Define dialogform css variables
+ */
+@media (prefers-color-scheme: light) {
+    :root {
+        /* Define these taking account of admin's variables as well, if defined */
+        --_dialog-background:       var(--dialog-background, var(--body-bg, #FEFDF4));
+        --_dialog-color:            var(--dialog-color,      var(--body-fg, #103050));
+        --_dialog-anchor-bg-hover:  var(--dialog-anchor-background-hover,   #FAF1DD);
+    }
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --_dialog-background:       var(--dialog-background, var(--body-bg, #0C1830));
+        --_dialog-color:            var(--dialog-color,      var(--body-fg, #FAEBD7));
+        --_dialog-anchor-bg-hover:  var(--dialog-anchor-background-hover,   #50585F);
+    }
+}
+
+:root  {
+    --_icon-size: var(--icon-size, 20px);
+    --_border-radius: var(--dialog-border-radius, 8px);
+}
+
+/*
+ * Dialog-anchor
+ *
+ * The element is either a <div> (for block style anchors) or a <span> (for
+ * inline anchors)
+ */
+
+.dialog-anchor {
+    display:    inline-block;
+    box-sizing: border-box;
+}
+
+.dialog-anchor span {
+    text-decoration: none;
+    &:hover {
+        text-decoration: underline;
+        text-underline-position: under;
+        text-underline-offset: 0.1em;
+        text-decoration-thickness: 1px;
+        background: var(--_dialog-anchor-bg-hover);
+    }
+}
+.dialog-anchor img {
+    height: var(--_icon-size);
+    width:  var(--_icon-size);
+    min-height: var(--_icon-size);
+    min-width:  var(--_icon-size);
+    transition: all 0.5s linear;
+    .hide  {
+        opacity: 0;
+    }
+    .hide:hover {
+        opacity: 1;
+    }
+}
+
+/*
+ * Dialogform elements
+ */
+
+.dialogform-dialog, dialog.dialogform-iframe {
+    margin: 0;
+    padding: 0;
+    opacity: 1.0;
+    background: var(--_dialog-background);
+    color:      var(--_dialog-color);
+    border-width:  1px;
+    border-top-width: 8px;
+    border-radius: var(--_border-radius);
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    height: fit-content;
+}
+
+dialog.dialogform-dialog, dialog.dialogform-iframe {
+    position: fixed;            /* exact location and size calculated on load */
+    overflow: auto;             /* if size reduced due to viewport size */
+    padding: 16px;
+    box-sizing: border-box;
+}
+div.dialogform-content,
+dialog.dialogform-iframe > iframe {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-sizing: border-box;
+}
+div.dialogform-content > * {
+    margin: 0;                  /* do not interfere with dialogform-dialog padding calc. */
+}
+form.dialogform {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    height: fit-content;
+}
+.dialogform-buttons button {
+    margin: 8px;
+    background: var(--_dialog-background); /* from dialogform */
+    color:      var(--_dialog-color);
+    border: revert;
+    border-radius: 4px;
+}
