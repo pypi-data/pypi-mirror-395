@@ -1,0 +1,56 @@
+"""Tests for __main__ module entry point."""
+
+import subprocess
+import sys
+
+import pytest
+
+
+def test_main_module_import():
+    """Test that __main__ module can be imported (for coverage)."""
+    # This test ensures the __main__ module is imported for coverage tracking
+    # The actual execution is tested via subprocess in other tests
+    import patterndb_yaml.__main__  # noqa: F401
+
+
+@pytest.mark.integration
+def test_main_module_execution(tmp_path):
+    """Test running patterndb-yaml as a module with python -m."""
+    # Create rules file
+    rules_file = tmp_path / "rules.yaml"
+    rules_file.write_text("rules: []")
+
+    # Create test file
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("\n".join([f"line{i}" for i in range(20)]) + "\n")
+
+    # Run as module
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "patterndb_yaml",
+            "--rules",
+            str(rules_file),
+            str(test_file),
+            "--quiet",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert len(result.stdout.strip()) > 0
+
+
+@pytest.mark.integration
+def test_main_module_help():
+    """Test python -m patterndb-yaml --help."""
+    result = subprocess.run(
+        [sys.executable, "-m", "patterndb_yaml", "--help"],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "normalize log lines" in result.stdout.lower()
