@@ -1,0 +1,175 @@
+# Changelog
+
+## v1.9.2
+* FIX: several fixes for numpy 2 by @wolfidan in https://github.com/MeteoSwiss/pyart/pull/43
+* Dev by @wolfidan in https://github.com/MeteoSwiss/pyart/pull/44
+
+
+**Full Changelog**: https://github.com/MeteoSwiss/pyart/compare/v1.9.0...v1.9.2
+
+## v1.9.0
+
+**Improvements**
+- [modification to odim reader writer to flip coordinates instead of data](https://github.com/MeteoSwiss/pyart/commit/9d38c2664d470c200589686b7d96461e7e4b4727)
+
+**Bug fixes**
+- [coerce bool to int in cfradial writer](https://github.com/MeteoSwiss/pyart/commit/bb196e74d194e355159ecc983d564e5496a8750c)
+
+
+## v1.8.9
+
+**Improvements**
+- [improvement in dealias_spectra to give priority to neg velocities](https://github.com/MeteoSwiss/pyart/commit/c94a3b72c8d0991e76b35e6f7b2c675401496500)
+- [updated output_to_geotiff.py to match ARM-DOE](https://github.com/MeteoSwiss/pyart/commit/dcf34c0fea5450860d2103c897d2babb4c454710)
+- [various improvemnets to odim reader/writer to make it consistent on read/write + unit test](https://github.com/MeteoSwiss/pyart/commit/7216227facd03eaf3d800cec6d8289988d450f0f)
+
+## v1.8.8
+
+**Bug fixes:**
+- [added metranet lib download in gh actions](https://github.com/MeteoSwiss/pyart/commit/c98a7a45bde215ef9e6131f4b5ec8fb7eafecd31)
+- [added bytes-info when reading with metranet c-reader](https://github.com/MeteoSwiss/pyart/commit/c7cf0b196f5209aac7339e84ca06f2c39a4d2a60)
+
+**New additions**
+- [add unit tests for metranet readers + possibility to read KE from cfg file](https://github.com/MeteoSwiss/pyart/commit/bfa8e1290abc1550073bcaf239f976c19d94251f)
+
+
+## v1.8.7
+
+**Bug fixes:**
+- [fixed python metranet reader to handle use of more than one byte in encoding](https://github.com/MeteoSwiss/pyart/commit/6f1e53276d6fc8d0eb09ace63a7f6980fc74ae05)
+- [accept 'c' argument instead of 'C' for metranet reader](https://github.com/MeteoSwiss/pyart/commit/af7eccf26408aed7d47870a3342d2314355d3b64)
+- [fixed typo in odim_h5_writer for sw_version](https://github.com/MeteoSwiss/pyart/commit/47da59ce54f1f0d2971d3117bfdf16555dc10703)
+- [fix bug in dealias_spectra that led to only the first timestep being processed](https://github.com/MeteoSwiss/pyart/commit/0a61933bd303665c5c63610cca4681ef585cec3f)
+- [Fixed issue in dealias_spectra with wrong output dtype](https://github.com/MeteoSwiss/pyart/commit/76b6263c55954559b3224eda2e8e2dd33758df4c)
+- [fix deprecation warning for scipy cumtrapz](https://github.com/MeteoSwiss/pyart/commit/5afc33f0a293ef23d2f76cd5af5ec45d32840688)
+
+**New additions**
+- [add info on celsius for temp field in hydro class](https://github.com/MeteoSwiss/pyart/commit/f390695055823c9441b01bfd352bf5189b368f11)
+- [added reader for Meteoswiss VAD products](https://github.com/MeteoSwiss/pyart/commit/7ffce16b3d880e9c60a0c8663e9d1904461fb068)
+- [add gecsx fields to default_config.py](https://github.com/MeteoSwiss/pyart/commit/57664ce7b27c27af03f631fcd0e92a2
+- 
+## v1.8.6
+
+**Bug fixes:**
+- [fixed argument warning in np.linalg.lstsq in wind.py](https://github.com/MeteoSwiss/pyart/commit/91d6f18b3ea35e9d409b77108ef5c72b76b6d58c)
+- [fix matplotlib deprecation warning in pyart/config.py](https://github.com/MeteoSwiss/pyart/commit/04828552b6de62fc9343bc19f1c596f49795f6f8)
+- [fixed error in bias_and_noise.py in case of missing radar.instrument_parameters](https://github.com/MeteoSwiss/pyart/commit/6d91a1f61c0a9decba458490ad316cc917a429f0)
+- [fixed error in attenuation.py in case of missing radar.instrument_parameters](https://github.com/MeteoSwiss/pyart/commit/f18c0c5d64ca269604acee8c38ec4a1575aad67a)
+
+## v1.8.5
+
+**Bug fixes:**
+- [fixes in gecsx for irregular azimuth angles in vol scan](https://github.com/MeteoSwiss/pyart/commit/792050b340b1f3180b19ceee7bc2385446b30777)
+- [correct reorder of data in odim](https://github.com/MeteoSwiss/pyart/commit/8378f1ad7ec79e6c9cb699f9977bc268e503b2a1)
+- [fix bug in time reading of metranet file](https://github.com/MeteoSwiss/pyart/commit/3809cdc6cdc1eafc237bfc5b3fc99144f5ae7aef)
+- [bug corrections in skyecho.py. Added function extract_sweeps_skyecho in skyecho.py](https://github.com/MeteoSwiss/pyart/commit/e7695a509ef370fd8d6089ccab9774742c76561f)
+
+**New additions**
+- [added file pyart/aux_io/knmi_h5.py with a reader of the KNMI H5 gridded radar data](https://github.com/MeteoSwiss/pyart/commit/3f612d5df06b56b93ef5c78c30f07179ec49e2f6)
+- [added reader for SkyEcho proprietary netcdf data](https://github.com/MeteoSwiss/pyart/commit/da4e205010d8059e241fb9ea03b48bb85122ca67)
+- [add reader for SwissBirdRadar spectral data](https://github.com/MeteoSwiss/pyart/commit/592cd85a6c5729328e42473a5b1d538f369e4a58)
+- [add dealias routine for Doppler spectrum](https://github.com/MeteoSwiss/pyart/commit/58b81d837e635e5e51a6cf6c6d95f36405bbdf0b)
+
+
+## v1.8.4
+
+**Bug fixes:**
+- [fix in odim h5 reader and writer](https://github.com/MeteoSwiss/pyart/commit/7737a66ba269b992aaba895e221ce2d86d930122)
+- [correct reorder of data in odim](https://github.com/MeteoSwiss/pyart/commit/8378f1ad7ec79e6c9cb699f9977bc268e503b2a1)
+
+**New additions**
+- [added windshear processing for lidar data](https://github.com/MeteoSwiss/pyart/commit/ffb78f672d4c3e9035e5d4a7cb439612de06b8d2)
+- [changed latlon plots to cross_section in GridMapDisplay, to be consistent with Py-ART ARM](https://github.com/MeteoSwiss/pyart/commit/b2c1da3ee26615fb4f4554d18825c7b4997dbb67)
+
+## v1.8.3
+
+**Bug fixes:**
+- [fix in _rsl_interface.pyx for Cython 3.0](https://github.com/MeteoSwiss/pyart/commit/84b0834d62a5ffe42750c9e216dd4e5e7334b5ba)
+
+**New additions:**
+- [added support for older python versions in pyart/testing](https://github.com/MeteoSwiss/pyart/commit/94fe908281d884399b58f8f73723c6791b73d092)
+
+## v1.8.2
+
+**Bug fixes:**
+- [update of metranet read_product code for new cartesian format](https://github.com/MeteoSwiss/pyart/commit/8560fbfd1f36ebaf0eb89bf2ac2cf336e64c9022)
+- [fixes for change in cython 3.0 behaviour](https://github.com/MeteoSwiss/pyart/commit/6968109da8c61057dbb8907fd4da84992d7fe385)
+- Various deprecation fixes (matplotlib, numpy)
+
+**New additions**
+- [added conv_strat_yuter function from ARM Py-ART](https://github.com/MeteoSwiss/pyart/commit/c9a620a23a333110cb1c78e321d60b488b3f83ee)
+- [Merge pull request](https://github.com/MeteoSwiss/pyart/commit/d58cb079dff559abfd595002075eadbf3ef1415a) https://github.com/MeteoSwiss/pyart/pull/21 [from juhi24/dataset-patch](https://github.com/MeteoSwiss/pyart/commit/d58cb079dff559abfd595002075eadbf3ef1415a)
+
+## v1.8.1
+
+**Bug fixes:**
+- [fix in radar_utils, replaced latitude by altitude as it was duplicated](https://github.com/MeteoSwiss/pyart/commit/af1769d5be122b54038d21fa48b535c1c5b59f5e)
+- [fix for deprecated matplotlib register_cmap](https://github.com/MeteoSwiss/pyart/commit/1b167e07ea79863d3a371117063d87be9baff31d)
+- [fix of a bug in gecsx that lead to always using raster oversampling](https://github.com/MeteoSwiss/pyart/commit/963b01f9cd54cc044bbd98182491e191ceab4091)
+- [fix scipy deprecation warning in ml.py](https://github.com/MeteoSwiss/pyart/commit/43d06bc1cdc0b6192be54a66d2c2d2d96718ec49)
+
+**New additions**
+- [added option coerce_angles in join_radars to account for antenna misposition](https://github.com/MeteoSwiss/pyart/commit/ac12ef8f6934bdc044632089578a4c3b9153672b)
+
+## v1.8
+
+**Bug fixes:**
+ - [improvement in colobar label of pyart/graph/gridmapdisplay.py](https://github.com/MeteoSwiss/pyart/commit/b46a45114913a81d17eb31be4152524b40d319eb)
+- [added _label_axes_latlon in class GridMapDisplay. Minor changes to improve grid plots](https://github.com/MeteoSwiss/pyart/commit/77628002f54c9ace0614dcd4df4ee40193251434) 
+- [update rad4alp_gif_reader.py for new imageio version](https://github.com/MeteoSwiss/pyart/commit/0c84b9ef8ec21856b1770aedcb9f99a316f2e22f)
+- [Fix in gecsx oversampling, nrows and ncols were flipped](https://github.com/MeteoSwiss/pyart/commit/05683b82a1ca7b1b1642d74f45df4d89a268b88a)
+
+**New additions:**
+- [improvements to vad.py, option for sign + multi-sweep Browning VAD](https://github.com/MeteoSwiss/pyart/commit/4a21d7af3602105a4cb6176d5f93e0ec6903441d)
+- [changed rad4alp gif lookup to make it agree with one of CPC](https://github.com/MeteoSwiss/pyart/commit/24ac020a009d3c3099666dfd565c7177eeb52b5a)
+
+## v1.7.1
+
+**Bug fixes:**
+- [bug correction when masking undetect and nodata in odim_h5 reader](https://github.com/MeteoSwiss/pyart/commit/b3a1b0f6102143be0049490f4f4dc90f5d4bad8c)
+
+## v1.7
+
+**New additions:**
+-  New plot function: _plot_xsection_ in _RadarDisplay_ which can be used to display a cross-section of polar data between arbitrary coordinates
+
+## v1.6.4
+
+### New additions
+
+**New additions:**
+- Support for new RainForest ODIM variable name
+
+## v1.6.3
+
+**Bug fixes:**
+- bug correction in compute_refl_time_avg in vpr.py: it was crashing when the elevation to average was not in the current scan
+- bug correction in vpr.py compute_refl_time_avg we set the radar_ou.time['data'] to np.zeros(nrays) to account for elevations to average not in the current radar
+
+**New additions:**
+-  VPR retrieval: better care of special case when melting layer peak has a value of 1
+- support for multi field Grid in odim h5 grid writer
+-  change of datatype for time from float32 to float in read_odim_h5
+- better support of OPERA guidelines in odim writer and reader
+- Added possibility to specify ODIM convention in ODIM writers
+
+## v1.6.2
+
+**Bug fixes:**
+  - Fixed an issue that was prohibiting ODIM grid files written by pyart to be read by pyart again
+
+## v1.6.1
+
+**Bug fixes**
+
+- fixed a bug in write_odim_grid that was using a time format different from the other pyart readers/writers
+
+## v1.6
+
+**Bug fixes:**
+- adaptation of the Cython codes of the RSL interface and 4DD to make them run with setuptools
+- rounding of the angles to a precision of 6 digits in the interpol_field code so we avoid floating point issues in the interpolation range (leads to northernmost ray being empty in some cases)
+
+**New additions:**
+-  new functions to accumulated gridded data and get data at multiple points in a grid
+-  addition of a new spatialized VPR function
