@@ -1,0 +1,62 @@
+[project]
+name = "cz_conventional_plus"
+description = "A commitizen plugin subclassing 'cz_conventional_commits', adding 'chore' and 'revert' commit types."
+authors = [
+    {name = "Adrien Bachelart", email = "hello@adrienbc.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "commitizen (>=4.10.0,<5.0.0)"
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/adbac/cz-conventional-plus"
+Issues = "https://github.com/adbac/cz-conventional-plus/issues"
+
+[tool.poetry]
+packages = [{ include = "cz_conventional_plus", from = "src" }]
+version = "1.0.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project.entry-points."commitizen.plugin"]
+cz_conventional_plus = "cz_conventional_plus:ConventionalPlusCz"
+
+[dependency-groups]
+dev = [
+    "python-semantic-release (>=10.5.2,<11.0.0)"
+]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:tool.poetry.version"]
+commit_parser = "conventional"
+build_command = "poetry build"
+upload_to_pypi = false
+upload_to_release = true
+branch = "main"
+repository_url = "https://github.com/adbac/cz-conventional-plus"
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = [
+    '''chore(?:\([^)]*?\))?: .+''',
+    '''ci(?:\([^)]*?\))?: .+''',
+    '''refactor(?:\([^)]*?\))?: .+''',
+    '''style(?:\([^)]*?\))?: .+''',
+    '''test(?:\([^)]*?\))?: .+''',
+    '''build\((?!deps\): .+)''',
+    '''[Ff]irst [Cc]ommit.*''',
+    '''[Ii]nitial [Cc]ommit.*''',
+]
+
+[tool.commitizen]
+name = "cz_conventional_plus"
+tag_format = "v$version"
+version_scheme = "pep440"
+version_provider = "poetry"
+major_version_zero = true
+
