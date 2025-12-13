@@ -1,0 +1,260 @@
+Metadata-Version: 2.2
+Name: PyMieSim
+Version: 3.9.1rc4
+Summary: A package for light scattering (Mie) computation.
+Keywords: mie,scattering,backscatter,sphere,cylinder,nanoparticle,phase function,efficiency,rayleigh,backscattering
+Author-Email: Martin Poinsinet de Sivry-Houle <martin.poinsinet.de.sivry@gmail.com>
+License: MIT License
+         
+         Copyright (c) 2020 Martin Poinsinet de Sivry-Houle
+         
+         Permission is hereby granted, free of charge, to any person obtaining a copy
+         of this software and associated documentation files (the "Software"), to deal
+         in the Software without restriction, including without limitation the rights
+         to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+         copies of the Software, and to permit persons to whom the Software is
+         furnished to do so, subject to the following conditions:
+         
+         The above copyright notice and this permission notice shall be included in all
+         copies or substantial portions of the Software.
+         
+         THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+         IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+         FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+         AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+         SOFTWARE.
+         
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Framework :: Jupyter
+Classifier: Framework :: Sphinx
+Project-URL: Documentation, https://martinpdes.github.io/PyMieSim/
+Project-URL: Repository, https://github.com/MartinPdeS/PyMieSim
+Requires-Python: >=3.10
+Requires-Dist: TypedUnit
+Requires-Dist: MPSPlots
+Requires-Dist: PyOptik
+Requires-Dist: setuptools_scm[toml]<10,>=8
+Requires-Dist: numpy==2.2.6
+Requires-Dist: matplotlib==3.10.7
+Requires-Dist: pydantic<2.13.0,>=2.9.2
+Requires-Dist: pint-pandas~=0.6
+Requires-Dist: pandas~=2.3.0
+Requires-Dist: tabulate~=0.9
+Requires-Dist: pyvista==0.45.3
+Provides-Extra: testing
+Requires-Dist: pytest>=0.6; extra == "testing"
+Requires-Dist: pytest-cov>=2.0; extra == "testing"
+Requires-Dist: pytest-json-report==1.5.0; extra == "testing"
+Requires-Dist: coverage==7.11.0; extra == "testing"
+Provides-Extra: documentation
+Requires-Dist: numpydoc==1.9.0; extra == "documentation"
+Requires-Dist: sphinx>=5.1.1; extra == "documentation"
+Requires-Dist: sphinx-rtd-theme==3.0.2; extra == "documentation"
+Requires-Dist: sphinx-gallery==0.19.0; extra == "documentation"
+Requires-Dist: sphinx_design==0.6.1; extra == "documentation"
+Requires-Dist: pydata-sphinx-theme==0.16.1; extra == "documentation"
+Provides-Extra: dev
+Requires-Dist: flake8==7.3.0; extra == "dev"
+Description-Content-Type: text/x-rst
+
+|logo|
+
+.. list-table::
+   :widths: 10 25 25 25
+   :header-rows: 0
+
+   * - Meta
+     - |python|
+     - |docs|
+     - |article|
+   * - Testing
+     - |ci/cd|
+     - |coverage|
+     - |colab|
+   * - PyPI
+     - |PyPI|
+     - |PyPI_download|
+     -
+   * - Anaconda
+     - |anaconda|
+     - |anaconda_download|
+     - |anaconda_date|
+
+PyMieSim
+========
+
+**PyMieSim** is an open-source Python package for fast and flexible Mie scattering simulations.
+It supports spherical, cylindrical and core--shell particles and provides helper classes for custom sources and detectors.
+The project targets both quick single-scatterer studies and large parametric experiments.
+
+Features
+--------
+- Solvers for spheres, cylinders and core--shell geometries.
+- Built-in models for plane wave and Gaussian sources.
+- Multiple detector types including photodiodes and coherent modes.
+- Simple data analysis with pandas DataFrame outputs.
+
+Installation
+------------
+PyMieSim is available on PyPI and Anaconda.  Install it with:
+
+.. code-block:: bash
+
+   pip install PyMieSim
+   conda install PyMieSim  --channels MartinPdeS
+
+See the `online documentation <https://martinpdes.github.io/PyMieSim/>`_ for detailed usage and additional examples.
+
+Quick example
+-------------
+Below is a short example computing the scattering efficiency of a sphere.
+
+.. code-block:: python
+
+   import numpy as np
+   from TypedUnit import ureg
+
+   from PyMieSim.experiment.scatterer import Sphere
+   from PyMieSim.experiment.source import Gaussian
+   from PyMieSim.experiment import Setup
+
+   source = Gaussian(
+       wavelength=np.linspace(400, 1000, 500) * ureg.nanometer,
+       polarization=0 * ureg.degree,
+       optical_power=1e-3 * ureg.watt,
+       NA=0.2 * ureg.AU,
+   )
+
+   scatterer = Sphere(
+       diameter=[200, 300] * ureg.nanometer,
+       property=[4] * ureg.RIU,
+       medium_property=1 * ureg.RIU,
+       source=source,
+   )
+
+   experiment = Setup(scatterer=scatterer, source=source)
+   df = experiment.get("Qsca")
+   df.plot(x="source:wavelength")
+
+.. image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/resonances.png
+    :width: 1000
+    :align: center
+    :alt: Scattering efficiency of a 200 nm sphere with refractive index 4.0.
+
+
+
+Code structure
+---------------
+Here is the architecture for a standard workflow using PyMieSim:
+
+.. image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/code_structure.png
+   :width: 1000
+   :align: center
+   :alt: Code structure of a standard workflow using PyMieSim.
+
+Building from source
+--------------------
+For development or manual compilation, clone the repository and run:
+
+.. code-block:: bash
+
+   git submodule update --init
+   mkdir build && cd build
+   cmake ../ -G"Unix Makefiles"
+   sudo make install
+   cd ..
+   python -m pip install .
+
+Testing
+-------
+Run the unit tests with:
+
+.. code-block:: bash
+
+   pip install PyMieSim[testing]
+   pytest
+
+Citing PyMieSim
+---------------
+If you use PyMieSim in academic work, please cite:
+
+.. code-block:: none
+
+   @article{PoinsinetdeSivry-Houle:23,
+       author = {Martin Poinsinet de Sivry-Houle and Nicolas Godbout and Caroline Boudoux},
+       journal = {Opt. Continuum},
+       title = {PyMieSim: an open-source library for fast and flexible far-field Mie scattering simulations},
+       volume = {2},
+       number = {3},
+       pages = {520--534},
+       year = {2023},
+       doi = {10.1364/OPTCON.473102},
+   }
+
+Contact
+-------
+For questions or contributions, contact `martin.poinsinet.de.sivry@gmail.com <mailto:martin.poinsinet.de.sivry@gmail.com>`_.
+
+.. |logo| image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/logo.png
+    :alt: PyOptik logo
+.. |python| image:: https://img.shields.io/pypi/pyversions/pymiesim.svg
+    :alt: Python
+    :target: https://www.python.org/
+.. |article| image:: https://img.shields.io/badge/Optics%20Continuum-PyMieSim-green.svg
+    :alt: Scientific article
+    :target: https://opg.optica.org/optcon/viewmedia.cfm?uri=optcon-2-3-520&html=true
+.. |colab| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :alt: Google Colab
+    :target: https://colab.research.google.com/github/MartinPdeS/PyMieSim/blob/master/notebook.ipynb
+.. |docs| image:: https://github.com/martinpdes/pymiesim/actions/workflows/deploy_documentation.yml/badge.svg
+    :target: https://martinpdes.github.io/PyMieSim/
+    :alt: Documentation Status
+.. |PyPI| image:: https://badge.fury.io/py/PyMieSim.svg
+    :alt: PyPI version
+    :target: https://badge.fury.io/py/PyMieSim
+.. |PyPI_download| image:: https://img.shields.io/pypi/dm/PyMieSim?style=plastic&label=PyPI%20downloads&labelColor=hex&color=hex
+    :alt: PyPI downloads
+    :target: https://pypistats.org/packages/pymiesim
+.. |coverage| image:: https://raw.githubusercontent.com/MartinPdeS/PyMieSim/python-coverage-comment-action-data/badge.svg
+    :alt: Unittest coverage
+    :target: https://htmlpreview.github.io/?https://github.com/MartinPdeS/PyMieSim/blob/python-coverage-comment-action-data/htmlcov/index.html
+.. |ci/cd| image:: https://github.com/martinpdes/pymiesim/actions/workflows/deploy_coverage.yml/badge.svg
+    :alt: Unittest Status
+.. |example_gui| image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/example_gui.png
+    :width: 800
+    :alt: Structure of the library
+.. |wikipedia_example| image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/wikipedia_example.png
+    :width: 800
+    :alt: Example wikipedia
+.. |example_plasmon| image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/plasmonic_resonances.png
+    :width: 800
+    :alt: Plasmonic resonances
+.. |example_qsca| image:: https://github.com/MartinPdeS/PyMieSim/raw/master/docs/images/Qsca_diameter.png
+    :width: 800
+    :alt: Qsca vs diameter
+.. |anaconda| image:: https://anaconda.org/martinpdes/pymiesim/badges/version.svg
+    :alt: Anaconda version
+    :target: https://anaconda.org/martinpdes/pymiesim
+.. |anaconda_download| image:: https://anaconda.org/martinpdes/pymiesim/badges/downloads.svg
+    :alt: Anaconda downloads
+    :target: https://anaconda.org/martinpdes/pymiesim
+.. |anaconda_date| image:: https://anaconda.org/martinpdes/pymiesim/badges/latest_release_relative_date.svg
+    :alt: Latest release date
+    :target: https://anaconda.org/martinpdes/pymiesim
