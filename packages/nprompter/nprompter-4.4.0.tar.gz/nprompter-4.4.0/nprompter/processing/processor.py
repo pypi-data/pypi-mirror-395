@@ -1,0 +1,231 @@
+import shutil
+from importlib.resources import files
+from pathlib import Path
+from typing import Dict, Optional, Union
+
+from jinja2 import Environment, PackageLoader, select_autoescape
+from slugify import slugify
+
+import nprompter
+from nprompter.api.notion_client import NotionClient
+from nprompter.cli.output import verbose, warning
+
+
+class HtmlNotionProcessor:
+    def __init__(
+        self, notion_client: NotionClient, output_folder: Union[str, Path], configuration: Optional[Dict] = None
+    ):
+        self.notion_client = notion_client
+        self.output_folder = Path(output_folder)
+        self.env = Environment(
+            loader=PackageLoader("nprompter", package_path="web/templates"), autoescape=select_autoescape()
+        )
+        self.assets_folder = Path(files("nprompter") / "web" / "assets")
+        self.user_assets_folder = (
+            Path(configuration["build"]["web_assets_folder"])
+            if configuration["build"].get("web_assets_folder")
+            else None
+        )
+
+        self.script_template = self.env.get_template("script.html")
+        self.index_template = self.env.get_template("database_index.html")
+        self.global_index_template = self.env.get_template("global_index.html")
+        self.configuration = configuration or {}
+        self.custom_css = []
+        self.extra_html = configuration.get("build", {}).get("extra_html", None)
+
+    def prepare_folder(self, configuration: Dict):
+        if not self.output_folder.exists():
+            self.output_folder.mkdir(parents=True)
+
+        js_template = self.env.get_template("settings.js")
+        css_template = self.env.get_template("nprompter.css")
+        manifest_template = self.env.get_template("manifest.json")
+        service_worker_template = self.env.get_template("service-worker.js")
+        with open(self.output_folder / "settings.js", "w", encoding="utf8") as writeable:
+            writeable.write(js_template.render(**configuration))
+
+        with open(self.output_folder / "nprompter.css", "w", encoding="utf8") as writeable:
+            writeable.write(css_template.render(**configuration))
+
+        with open(self.output_folder / "manifest.json", "w", encoding="utf8") as writeable:
+            writeable.write(manifest_template.render(**configuration))
+
+        with open(self.output_folder / "service-worker.js", "w", encoding="utf8") as writeable:
+            writeable.write(service_worker_template.render(**configuration, version=nprompter.__version__))
+
+        shutil.copytree(self.assets_folder, self.output_folder, dirs_exist_ok=True)
+        if self.user_assets_folder and self.user_assets_folder.exists():
+            shutil.copytree(self.user_assets_folder, self.output_folder, dirs_exist_ok=True)
+
+    def add_extra_style(self, path: Path):
+        self.custom_css.append(path.name)
+        shutil.copy(path, self.output_folder)
+
+    def process_databases(self, config):
+        processed_databases = []
+        for database in config["build"]["databases"]:
+            copy_database = config.copy()
+            copy_database["build"].update(database)
+            processed_db = self.process_database(database["database_id"], config=copy_database)
+            processed_databases.append(processed_db)
+
+        content = self.global_index_template.render(
+            databases=processed_databases,
+            version=nprompter.__version__,
+            custom_css=self.custom_css,
+            extra_html=self.extra_html,
+        )
+        file_name = Path(self.output_folder, "index.html")
+        with open(file_name, "w", encoding="utf8") as writeable:
+            writeable.write(content)
+
+    def process_database(self, database_id: str, config: Dict, index_at_root: bool = False):
+        db = self._process_single_database(database_id, config)
+
+        content = self.index_template.render(
+            database=db, version=nprompter.__version__, custom_css=self.custom_css, extra_html=self.extra_html
+        )
+        if index_at_root:
+            file_name = Path(self.output_folder, "index.html")
+        else:
+            file_name = Path(self.output_folder, database_id, "index.html")
+        file_name.parent.mkdir(exist_ok=True, parents=True)
+        with open(file_name, "w", encoding="utf8") as writeable:
+            writeable.write(content)
+
+        return db
+
+    def _process_single_database(self, database_id: str, config: Dict):
+        data_source = self.notion_client.get_data_source_from_database(database_id)
+        pages = self.notion_client.get_pages(
+            data_source_id=data_source["id"],
+            property_filter=config["build"]["filter"]["property"],
+            property_value=config["build"]["filter"]["value"],
+        )
+        # Create database folder
+        (self.output_folder / database_id).mkdir(exist_ok=True)
+        database_dict = {"id": database_id, "title": data_source["title"][0]["plain_text"], "scripts": []}
+
+        sort_property = config["build"]["sort"]["property"]
+        sort_property_definition = data_source["properties"][sort_property]
+        sort_property_type = sort_property_definition["type"]
+        if sort_property_type in ["title", "rich_text"]:
+            pages = sorted(
+                pages,
+                key=lambda x: x["properties"][sort_property][sort_property_type][0]["plain_text"],
+            )
+
+        for page in pages:
+            database_dict["scripts"].append(self.process_page(database_id, page))
+        return database_dict
+
+    def process_page(self, database_id: str, page: dict):
+        title = page["properties"]["Name"]["title"][0]["text"]["content"]
+        title_slug = slugify(title)
+        blocks = self.notion_client.get_blocks(page["id"])
+        block_contents = self.process_blocks(blocks)
+        content = self.script_template.render(
+            elements=block_contents, title=title, version=nprompter.__version__, custom_css=self.custom_css
+        )
+
+        file_name = Path(self.output_folder, database_id, title_slug, "index.html")
+        file_name.parent.mkdir(exist_ok=True, parents=True)
+        with open(file_name, "w", encoding="utf8") as writeable:
+            writeable.write(content)
+
+        from_root_path = f"/{database_id}/{title_slug}/index.html"
+        return {"title": title, "path": from_root_path}
+
+    def process_blocks(self, blocks):
+        block_contents = []
+
+        bulleted_list_item = False
+        numbered_list_item = False
+        for block in blocks:
+            block_type = block["type"]
+
+            # Control for lists
+            if block_type == "bulleted_list_item" and not bulleted_list_item:
+                block_contents.append("<ul>")
+                bulleted_list_item = True
+            elif block_type != "bulleted_list_item" and bulleted_list_item:
+                bulleted_list_item = False
+                block_contents.append("</ul>")
+
+            if block_type == "numbered_list_item" and not numbered_list_item:
+                block_contents.append("<ol>")
+                numbered_list_item = True
+            elif block_type != "numbered_list_item" and numbered_list_item:
+                numbered_list_item = False
+                block_contents.append("</ol>")
+
+            if block_type == "paragraph":
+                if data := self.process_paragraph(block, "paragraph", "p"):
+                    block_contents.append(data)
+            elif block_type == "quote" or block_type == "callout":
+                if data := self.process_paragraph(block, block_type, "blockquote"):
+                    block_contents.append(data)
+            elif block_type == "bulleted_list_item" or block_type == "numbered_list_item":
+                if data := self.process_paragraph(block, block_type, "li"):
+                    block_contents.append(data)
+            elif block_type.startswith("heading_"):
+                size = block_type[-1]
+                if data := self.process_paragraph(block, block_type, f"h{size}"):
+                    block_contents.append(data)
+            elif block_type == "equation":
+                expression = block["equation"]["expression"]
+                block_contents.append(f"<p>${expression}$</p>")
+            elif block_type == "divider":
+                if self.configuration["processor"]["skip_on_break"]:
+                    verbose("Found divider, stopping block processing")
+                    break
+                else:
+                    block_contents.append("<hr />")
+            elif block_type == "code":
+                if self.configuration["processor"]["render_code"] == "skip":
+                    verbose("Found code block, don't render")
+                elif self.configuration["processor"]["render_code"] == "placeholder":
+                    block_contents.append("<p>⚠ Code block ⚠</p>")
+                elif self.configuration["processor"]["render_code"] == "render":
+                    block_contents.append("<pre>")
+                    block_contents.append(block["code"]["rich_text"][0]["plain_text"])
+                    block_contents.append("</pre>")
+                else:
+                    warning("Invalid configuration for render_code")
+            else:
+                block_contents.append(f"<p>⚠ {block['type']} ⚠</p>")
+                block_contents.append(f"<!-- Block of type {block['type']} is not currently supported by Nprompter -->")
+                warning(f"Block of type {block['type']} is not currently supported by Nprompter")
+
+        return block_contents
+
+    def process_paragraph(self, block, block_type, tag_name):
+        notion_color = block[block_type].get("color", "default")
+        base_classes = [block_type, f"notion-{notion_color}"]
+        if notion_color != "default" and self.configuration["processor"]["hide_non_default_colors"]:
+            base_classes.append("notion-hide")
+        contents = block[block_type].get("text", block[block_type].get("rich_text", []))
+        paragraph_content_tags = []
+        for content in contents:
+            if text := content.get("text"):
+                text_content = text["content"].replace("\n", "<br />")
+                if (
+                    text_content.startswith("[")
+                    and text_content.endswith("]")
+                    and self.configuration["processor"]["skip_square_brackets"]
+                ):
+                    continue
+                annotations = content["annotations"]
+                annotations_tags = ["bold", "italic", "strikethrough", "underline", "code"]
+                classes = " ".join(base_classes + [tag for tag in annotations_tags if annotations.get(tag)])
+                if self.configuration["processor"]["replace_nbsp"]:
+                    text_content = text_content.replace(chr(160), " ")
+                tag = f'<span class="{classes}">{text_content}</span>'
+                paragraph_content_tags.append(tag)
+            elif equation := content.get("equation"):
+                paragraph_content_tags.append(f'${equation["expression"]}$')
+        if paragraph_content_tags:
+            paragraph_content = "".join(paragraph_content_tags)
+            return f'<{tag_name} class="nprompter-element">{paragraph_content}</{tag_name}>'
+        return None

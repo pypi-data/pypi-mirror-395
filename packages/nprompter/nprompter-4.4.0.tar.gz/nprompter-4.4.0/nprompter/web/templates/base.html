@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}{% endblock %} - Nprompter</title>
+        <link href="/nprompter.css" rel="stylesheet"/>
+        {% for css_file in custom_css %}<link href="/{{ css_file }}" rel="stylesheet"/>
+        {% endfor %}
+        <script>
+            MathJax = {
+              tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+              }
+            };
+        </script>
+        <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json">
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </head>
+    <body>
+        <div class="mirror mirrored" id="content">{% block content %}{% endblock %}</div>
+        <!-- Modal with help -->
+        <div class="modal mirror mirrored" id="modal">
+            <div class="modal-bg modal-exit"></div>
+            <div class="modal-container">
+                <h2>Help - v{{ version }}</h2>
+                <div style="width: 1000px">
+                    <div class="grid-container">
+                      <div class="grid-item">
+                        Font size
+                        <div class="key">Q</div>
+                        <div class="key">W</div>
+                      </div>
+                      <div class="grid-item">
+                        Padding
+                        <div class="key">A</div>
+                        <div class="key">S</div>
+                      </div>
+                      <div class="grid-item">
+                        Line height
+                        <div class="key">Z</div>
+                        <div class="key">X</div>
+                      </div>
+                      <div class="grid-item">
+                        Prompter speed
+                        <div class="key">←</div>
+                        <div class="key">→</div>
+                      </div>
+                      <div class="grid-item">
+                        Show help
+                        <div class="key">H</div>
+                      </div>
+                      <div class="grid-item">
+                        Mirror
+                        <div class="key">M</div>
+                      </div>
+                    </div>
+                  </div>
+            </div>
+        </div>
+        <div id="snackbar" class="mirror mirrored">Some text some message..</div>
+        <script src="/settings.js"></script>
+        <script src="/app.js"></script>
+        <script>
+          // Register service worker
+          if ('serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/service-worker.js')
+                      .then(registration => {
+                          console.log('ServiceWorker registration successful');
+                      })
+                      .catch(err => {
+                          console.log('ServiceWorker registration failed: ', err);
+                      });
+              });
+          }
+      </script>
+    </body>
+</html>
