@@ -1,0 +1,93 @@
+# Python Standards
+
+## Version and Style
+
+- Python 3.11+ required
+- Ruff for linting (100 char line length)
+- Type hints on public functions
+- Google-style docstrings
+
+## Imports
+
+```python
+# Standard library
+from __future__ import annotations
+from pathlib import Path
+from typing import Any
+
+# Third party
+import yaml
+from pydantic import BaseModel
+
+# Local
+from agentic_crew.core.loader import load_crew
+```
+
+## Type Hints
+
+```python
+# Good
+def load_config(path: Path) -> dict[str, Any]:
+    """Load configuration from path."""
+    ...
+
+# Bad - missing types
+def load_config(path):
+    ...
+```
+
+## Docstrings
+
+```python
+def run_crew(
+    package: str,
+    crew: str,
+    inputs: dict[str, Any] | None = None,
+) -> str:
+    """Run a crew from a package.
+
+    Args:
+        package: Package name containing the crew.
+        crew: Name of the crew to run.
+        inputs: Optional inputs to pass to the crew.
+
+    Returns:
+        The crew's output as a string.
+
+    Raises:
+        ValueError: If package or crew not found.
+    """
+```
+
+## Error Handling
+
+```python
+# Good - specific exceptions with context
+if package_name not in packages:
+    available = list(packages.keys())
+    raise ValueError(f"Package '{package_name}' not found. Available: {available}")
+
+# Bad - generic exception
+if package_name not in packages:
+    raise Exception("Not found")
+```
+
+## Testing
+
+```python
+class TestDiscovery:
+    """Tests for discovery module."""
+
+    def test_discovers_packages(self, tmp_path):
+        """Test that packages with .crewai/ are discovered."""
+        # Arrange
+        crewai_dir = tmp_path / "packages" / "test" / ".crewai"
+        crewai_dir.mkdir(parents=True)
+        (crewai_dir / "manifest.yaml").write_text("name: test")
+
+        # Act
+        packages = discover_packages(tmp_path)
+
+        # Assert
+        assert "test" in packages
+```

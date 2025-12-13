@@ -1,0 +1,57 @@
+# Architecture
+
+## Core Concept: Framework Decomposition
+
+agentic-crew enables **declare once, run anywhere** for AI crews.
+
+```
+manifest.yaml → Loader → Decomposer → Runner (CrewAI/LangGraph/Strands)
+```
+
+## Key Components
+
+### 1. Discovery (`core/discovery.py`)
+Finds `.crewai/` directories in packages.
+
+### 2. Loader (`core/loader.py`)
+Converts YAML configs to framework-agnostic crew representations.
+
+### 3. Decomposer (`core/decomposer.py`)
+Detects installed frameworks and selects the best runner.
+
+### 4. Runners (`runners/`)
+Framework-specific implementations that execute crews.
+
+## Framework Priority
+
+1. **CrewAI** - Default if installed (most features)
+2. **LangGraph** - If CrewAI unavailable (good for complex flows)
+3. **Strands** - If neither (lightweight, AWS-native)
+
+## Manifest Format
+
+```yaml
+name: package-name
+version: "1.0"
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+crews:
+  crew_name:
+    description: What it does
+    agents: crews/crew_name/agents.yaml
+    tasks: crews/crew_name/tasks.yaml
+    knowledge:
+      - knowledge/docs
+    preferred_framework: auto  # or crewai, langgraph, strands
+```
+
+## Adding a New Framework
+
+1. Create `runners/{framework}_runner.py`
+2. Implement `BaseRunner` interface
+3. Register in `decomposer.py` detection
+4. Add to framework priority list
+5. Test with existing crews
