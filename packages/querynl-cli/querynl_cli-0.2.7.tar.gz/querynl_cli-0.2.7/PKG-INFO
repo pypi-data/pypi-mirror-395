@@ -1,0 +1,308 @@
+Metadata-Version: 2.1
+Name: querynl_cli
+Version: 0.2.7
+Summary: AI-powered CLI for natural language database queries and automated test data generation
+Home-page: https://github.com/dushshantha/QueryNL
+Author: QueryNL Team
+Author-email: QueryNL Team <contact@querynl.io>
+License: MIT
+Project-URL: Homepage, https://github.com/dushshantha/QueryNL
+Project-URL: Documentation, https://github.com/dushshantha/QueryNL/blob/main/README.md
+Project-URL: Repository, https://github.com/dushshantha/QueryNL
+Project-URL: Issues, https://github.com/dushshantha/QueryNL/issues
+Keywords: database,sql,natural-language,cli,test-data,faker,llm,ai
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Utilities
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# QueryNL - Natural Language Database Queries from the Terminal
+
+Query your databases using plain English. No SQL required.
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## Features
+
+- **Natural Language Queries**: Ask questions in plain English, get SQL results
+- **AI-Powered**: Uses OpenAI GPT-4 or Anthropic Claude for intelligent query generation
+- **Multi-Database**: PostgreSQL, MySQL, SQLite, MongoDB support
+- **Schema Design**: Design database schemas through conversation
+- **Test Data Generation**: Automatically populate tables with realistic data
+- **Interactive REPL**: Tab completion, history, and context-aware queries
+- **Secure**: Credentials stored in OS keychain, SSL/TLS by default
+- **Safe**: Preview SQL before execution, confirmations for destructive operations
+
+## Installation
+
+### From PyPI (Coming Soon)
+
+```bash
+pip install querynl-cli
+```
+
+### From Source
+
+```bash
+pip install git+https://github.com/yourusername/QueryNL.git
+```
+
+### Prerequisites
+
+- Python 3.10 or higher
+- OpenAI or Anthropic API key (for AI features)
+
+## Quick Start
+
+### 1. Configure LLM Provider
+
+```bash
+# Using OpenAI
+querynl config llm --provider openai --test
+
+# Or using Anthropic Claude
+querynl config llm --provider anthropic --test
+```
+
+### 2. Add a Database Connection
+
+```bash
+querynl connect add mydb
+# Follow the interactive prompts
+```
+
+### 3. Start Querying
+
+```bash
+querynl repl
+
+querynl (mydb)> show me all users created this month
+querynl (mydb)> count orders by status
+querynl (mydb)> find top 10 products by revenue
+```
+
+## Usage Examples
+
+### Natural Language Queries
+
+```bash
+# In REPL mode
+querynl repl
+
+querynl> show me all active users
+querynl> count orders grouped by status
+querynl> find products with price > 100
+querynl> update user email where id = 5
+```
+
+### Schema Design
+
+Create database schemas through natural language conversation:
+
+```bash
+querynl> \schema design
+Schema Designer> I need a blog with users, posts, and comments
+Schema Designer> posts should have titles and content
+Schema Designer> users can comment on posts
+Schema Designer> finalize
+
+# Execute the generated schema
+querynl> \schema execute
+```
+
+### Test Data Generation
+
+Populate your tables with realistic test data:
+
+```bash
+querynl> add sample data
+querynl> add 100 users and 500 posts
+querynl> add e-commerce product data
+```
+
+### Command-Line Mode
+
+```bash
+# Execute a single query
+querynl query exec "count all users"
+
+# Output as JSON
+querynl query exec --format json "all active users"
+
+# Save to file
+querynl query exec --output data.csv --format csv "all orders"
+
+# Preview SQL without executing
+querynl query exec --explain "delete old records"
+```
+
+## Key Features
+
+### 🤖 AI-Powered Query Generation
+
+- Understands context and database schema
+- Generates optimized SQL queries
+- Supports complex joins, aggregations, and subqueries
+- Confidence scoring for query accuracy
+
+### 🔒 Security First
+
+- Credentials stored in OS keychain (macOS, Windows, Linux)
+- SSL/TLS enabled by default
+- Preview SQL before execution
+- Confirmation prompts for destructive operations (DELETE, DROP, etc.)
+- No credentials in config files or logs
+
+### 🎨 Beautiful Terminal UI
+
+- Syntax-highlighted SQL
+- Formatted table output
+- Progress bars for long operations
+- Tab completion for commands and tables
+- Persistent command history
+
+### 🌐 Multi-Database Support
+
+- **PostgreSQL** - Full support
+- **MySQL** - Full support
+- **SQLite** - Full support
+- **MongoDB** - Basic support
+
+### 📊 Schema Design & Test Data
+
+- Design schemas through natural language
+- Generate DDL for any database
+- View ER diagrams in terminal
+- Populate tables with realistic test data
+- Respects foreign keys and constraints
+
+## Configuration
+
+### Config File Locations
+
+- **macOS**: `~/Library/Application Support/querynl/config.yaml`
+- **Linux**: `~/.config/querynl/config.yaml`
+- **Windows**: `%APPDATA%\querynl\config.yaml`
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `QUERYNL_CONNECTION_STRING` | Database connection string |
+| `QUERYNL_KEYRING_PASSWORD` | Master password for headless servers |
+| `QUERYNL_CONFIG` | Custom config file path |
+| `QUERYNL_NO_COLOR` | Disable color output |
+
+## REPL Commands
+
+| Command | Description |
+|---------|-------------|
+| `\help` | Show available commands |
+| `\tables` | List all tables in database |
+| `\schema` | Display database schema |
+| `\schema design` | Start schema design mode |
+| `\schema execute` | Execute generated DDL |
+| `\history` | Show query history |
+| `\clear` | Clear screen |
+| `exit` or `\quit` | Exit REPL |
+
+## Examples
+
+### E-commerce Analytics
+
+```bash
+querynl> show top 10 customers by total order value
+querynl> count orders by status for last month
+querynl> find products with low inventory
+```
+
+### User Management
+
+```bash
+querynl> show users who signed up this week
+querynl> count active users by region
+querynl> find users with no recent activity
+```
+
+### Data Cleanup
+
+```bash
+querynl> delete records older than 90 days from logs
+querynl> update email domain from old.com to new.com
+querynl> remove duplicate entries from customers
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+```bash
+# Test your connection
+querynl connect test mydb
+
+# List all connections
+querynl connect list
+
+# Remove and re-add connection
+querynl connect remove mydb
+querynl connect add mydb
+```
+
+### Keychain Access (macOS)
+
+If you get "Permission denied to access keychain":
+
+1. Open **Keychain Access** app
+2. Search for "querynl"
+3. Right-click → Get Info → Access Control
+4. Add Terminal/iTerm to allowed applications
+
+### Headless Servers (Linux)
+
+```bash
+# Use encrypted file keyring
+export QUERYNL_KEYRING_PASSWORD="your-master-password"
+querynl connect add mydb
+```
+
+## Documentation
+
+- [LLM Setup Guide](LLM_SETUP.md)
+- [Schema Design Quickstart](SCHEMA_DESIGN_QUICKSTART.md)
+- [Developer Guide](DEV.md)
+- [API Documentation](docs/)
+
+## Support
+
+- 🐛 [Report Issues](https://github.com/yourusername/QueryNL/issues)
+- 💬 [Discussions](https://github.com/yourusername/QueryNL/discussions)
+- 📧 Email: support@querynl.com
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## Acknowledgments
+
+Built with:
+- [Click](https://click.palletsprojects.com/) - CLI framework
+- [Rich](https://rich.readthedocs.io/) - Terminal formatting
+- [LangChain](https://langchain.com/) - LLM orchestration
+- [SQLAlchemy](https://www.sqlalchemy.org/) - Database toolkit
+- [Faker](https://faker.readthedocs.io/) - Test data generation
+
+---
+
+**Made with ❤️ for developers who prefer English over SQL**
