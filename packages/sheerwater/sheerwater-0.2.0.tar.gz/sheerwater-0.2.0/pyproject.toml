@@ -1,0 +1,147 @@
+[project]
+name = "sheerwater"
+dynamic = ["version"]
+description = "Equitable weather and climate forecasting benchmarking package."
+readme = "README.md"
+requires-python = ">= 3.12"
+authors = [
+    { name = "Genevieve Flaspohler", email = "genevieve@rhizaresearch.org" },
+    { name = "Joshua Adkins", email = "josh@rhizaresearch.org" }
+]
+license = {text = "MIT"}
+dependencies = [
+    "dask",
+    "dask[complete]",
+    "click",
+    "numpy",
+    "httplib2",
+    "s3fs",
+    "gcsfs",
+    "google-api-python-client",
+    "proto-plus==1.24.0.dev1",
+    "google-cloud-storage",
+    "google-cloud-secret-manager",
+    "cryptography",
+    "xarray==2025.1.0",
+    "matplotlib",
+    "geopandas",
+    "rioxarray",
+    "zarr==2.18.3",
+    "h5py",
+    "netcdf4",
+    "h5netcdf",
+    "scipy",
+    "requests",
+    "ecmwf-api-client",
+    # Required for the CDS API beta
+    "cdsapi>=0.7.3",
+    "dateparser",
+    "bokeh",
+    "flox",
+    "scikit-learn",
+    "xarray-regrid",
+    "coiled>=1.76.1",
+    "opt-einsum>=3.4.0",
+    "plotly>=5.24.1",
+    "minio",
+    "huggingface_hub",
+    "py7zr",
+    "tqdm",
+    "numcodecs<0.16.0",
+    "pyzstd==0.16.2",
+    "properscoring",
+    "nuthatch",
+]
+
+[dependency-groups]
+dev = [
+    "pooch",
+    "gcsfs",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.1.0",
+    "jupyterlab",
+    "notebook",
+    "jupytext",
+    "jupyter-server-proxy",
+    "ipykernel",
+]
+
+[build-system]
+requires = ["hatchling==1.26.3", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build]
+# Necessary to include nuthatch.toml
+include = ["sheerwater/", "jobs/", "dashboard_data/"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["./sheerwater", "./jobs", "./dashboard_data"]
+
+[tool.uv]
+managed = true
+
+[tool.autopep8]
+max_line_length = 120
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+  ".dist",
+  ".env",
+  ".git",
+  ".git-rewrite",
+  ".github",
+  ".ipynb_checkpoints",
+  ".ruff_cache",
+  ".venv",
+  "__pycache__",
+  "__pypackages__",
+]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Enable the pycodestyle (`E`) and Pyflakes (`F`) rules by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+# Enable all `pydocstyle` rules, limiting to those that adhere to the
+# Google convention via `convention = "google"`, below.
+select = ["E", "F", "W", "D", "ARG"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.nuthatch]
+filesystem = "gs://sheerwater-datalake/caches"
+host = "postgres.sheerwater.rhizaresearch.org"
+port = 5432
+database = "postgres"
+username = "write"
+driver = "postgresql"
+raster_store = "gs://terracotta-files"
+
+[tool.nuthatch.filesystem_options]
+cache_timeout = 0
+
+[tool.nuthatch.local]
+filesystem = "~/.cache/nuthatch"
+
+[tool.nuthatch.mirror-public]
+filesystem = "gs://sheerwater-public-datalake/caches"
+[tool.nuthatch.mirror-public.filesystem_options]
+cache_timeout = 0
