@@ -1,0 +1,232 @@
+"""
+UniProt API Client
+Documentation: https://www.uniprot.org/help/api
+Base URL: https://rest.uniprot.org
+"""
+
+import asyncio
+import json
+
+from .base_client import BaseAPIClient
+
+
+class UniProtClient(BaseAPIClient):
+    """Client for interacting with the UniProt REST API"""
+
+    def __init__(self):
+        super().__init__(
+            base_url="https://rest.uniprot.org",
+            api_name="UniProt",
+            timeout=30.0,
+        )
+
+    def _extract_field_value(self, data: dict, field_path: str) -> any:
+        """
+        Safely extracts a nested field value from a dictionary using a dot-separated path.
+        e.g., _extract_field_value(data, "organism.scientificName")
+        """
+        keys = field_path.split('.')
+        value = data
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            elif isinstance(value, list) and key.isdigit():
+                try:
+                    index = int(key)
+                    if 0 <= index < len(value):
+                        value = value[index]
+                    else:
+                        return None
+                except ValueError:
+                    return None
+            else:
+                return None
+        return value
+
+
+    async def get_protein(
+        self, accession: str, format: str = "json", fields: list[str] | None = None
+    ) -> dict | str:
+        """
+        Get protein information by UniProt accession
+
+        Args:
+            accession: UniProt accession (e.g., 'P00520')
+            format: Response format ('json', 'fasta', 'xml', etc.)
+
+        Returns:
+            Dict for JSON format, str for text formats (fasta, xml, etc.)
+        """
+        if format == "json":
+            data = await self._request("GET", endpoint=f"/uniprotkb/{accession}")
+
+            if data and fields is not None:
+                default_fields = [
+                    "primaryAccession",
+                    "uniProtkbId",
+                    "organism.scientificName",
+                    "proteinDescription.recommendedName.fullName.value",
+                    "genes.0.geneName.value", # Assuming first gene name is often sufficient
+                ]
+                
+                # Use provided fields or default fields if none are specified
+                fields_to_extract = fields if fields else default_fields
+
+                filtered_data = {}
+                for field_path in fields_to_extract:
+                    value = self._extract_field_value(data, field_path)
+                    if value is not None:
+                        # Create a flat key for the filtered data
+                        flat_key = field_path.replace('.', '_')
+                        # Use the last part of the path as the key if it's descriptive enough
+                        if '.' in field_path:
+                            final_key_part = field_path.split('.')[-1]
+                            # Handle special case for '.value' at the end
+                            if final_key_part == 'value' and len(field_path.split('.')) > 1:
+                                flat_key = field_path.split('.')[-2]
+                            else:
+                                flat_key = final_key_part
+                        else:
+                            flat_key = field_path
+
+                        # Avoid potential key collisions if using just the last part
+                        # A more robust solution might involve a mapping or more complex key generation
+                        # For now, we'll try to use a relatively unique flattened key
+                        # if simple last part leads to collision or is not clear.
+                        # For the sake of this task, we assume simple key naming is acceptable.
+                        filtered_data[flat_key] = value
+
+                return self.format_response(filtered_data)
+            elif data:
+                return self.format_response(data)
+            else:
+                return self.format_response(None)
+
+        else:
+            url = f"{self.base_url}/uniprotkb/{accession}.{format}"
+            text = await self._request("GET", url=url, return_json=False)
+            return self.format_response(text)
+
+    async def search_proteins(
+        self, query: str, format: str = "json", limit: int = 25, offset: int = 0
+    ) -> dict | str:
+        """
+        Search proteins in UniProtKB
+
+        Args:
+            query: Search query (e.g., 'gene:BRCA1 AND organism_id:9606')
+            format: Response format ('json', 'tsv', 'fasta', etc.)
+            limit: Maximum number of results
+            offset: Offset for pagination
+
+        Returns:
+            Dict for JSON format (includes metadata), str for text formats
+        """
+        params = {"query": query, "size": limit, "from": offset}
+        if format == "json":
+            data = await self._request("GET", endpoint="/uniprotkb/search", params=params)
+            result_count = (
+                len(data.get("results", [])) if isinstance(data, dict) else None
+            )
+            metadata = {"results": result_count} if result_count is not None else None
+            return self.format_response(data, metadata)
+        else:
+            url = f"{self.base_url}/uniprotkb/search"
+            params["format"] = format
+            text = await self._request("GET", url=url, params=params, return_json=False)
+            return self.format_response(text)
+
+    async def get_protein_sequence(self, accession: str) -> str:
+        """
+        Get protein sequence in FASTA format
+
+        Args:
+            accession: UniProt accession
+
+        Returns:
+            FASTA sequence as string
+        """
+        url = f"{self.base_url}/uniprotkb/{accession}.fasta"
+        text = await self._request("GET", url=url, return_json=False)
+        return self.format_response(text)
+
+    async def get_disease_associations(self, accession: str) -> dict:
+        """
+        Get disease associations for a protein
+
+        Args:
+            accession: UniProt accession
+
+        Returns:
+            Dict with disease associations (includes metadata)
+        """
+        data = await self._request("GET", endpoint=f"/uniprotkb/{accession}")
+        # Extract disease information from the response
+        diseases = []
+        if "comments" in data:
+            for comment in data["comments"]:
+                if comment.get("commentType") == "DISEASE":
+                    diseases.append(comment)
+
+        # Format as dict for consistent response structure
+        diseases_data = {"diseases": diseases, "count": len(diseases)}
+        metadata = {"diseases": len(diseases)}
+        return self.format_response(diseases_data, metadata)
+
+    async def map_ids(self, from_db: str, to_db: str, ids: list[str]) -> dict | str:
+        """
+        Map identifiers between databases using UniProt ID mapping
+
+        Args:
+            from_db: Source database. Common values: 'UniProtKB_AC-ID', 'Gene_Name', 'Gene_Synonym', 'P_ENTREZGENEID'
+            to_db: Target database. Common values: 'UniProtKB', 'Ensembl', 'GeneID', 'RefSeq_Protein'
+            ids: List of identifiers to map
+
+        Returns:
+            Dict with mapping results (includes metadata) or str for errors/text responses
+        """
+        # UniProt ID mapping requires form-data, not JSON
+        payload = {"from": from_db, "to": to_db, "ids": ",".join(ids)}
+        response = await self._request("POST", endpoint="/idmapping/run", form_data=payload)
+
+        # Check if there's an error in the response
+        if "jobId" not in response:
+            error_msg = (
+                response.get("messages", [{}])[0].get("text", "Unknown error")
+                if response.get("messages")
+                else "Unknown error"
+            )
+            raise Exception(f"UniProt ID mapping error: {error_msg}")
+
+        job_id = response.get("jobId")
+
+        # Poll for results
+        result_url = f"{self.base_url}/idmapping/status/{job_id}"
+        for _ in range(30):  # Max 30 attempts
+            await asyncio.sleep(1)
+            status_text = await self._request("GET", url=result_url, return_json=False)
+            status = json.loads(status_text)
+
+            if status.get("results") or status.get("failedIds"):
+                # Get results
+                results_url = f"{self.base_url}/idmapping/stream/{job_id}"
+                results_text = await self._request("GET", url=results_url, return_json=False)
+
+                # Parse and count mappings
+                try:
+                    results_data = json.loads(results_text)
+                    mapping_count = (
+                        len(results_data.get("results", []))
+                        if isinstance(results_data, dict)
+                        else None
+                    )
+                    metadata = (
+                        {"mappings": mapping_count}
+                        if mapping_count is not None
+                        else None
+                    )
+                    return self.format_response(results_data, metadata)
+                except json.JSONDecodeError:
+                    return self.format_response(results_text)
+
+        return self.format_response("Error: Mapping job timed out after 30 seconds")

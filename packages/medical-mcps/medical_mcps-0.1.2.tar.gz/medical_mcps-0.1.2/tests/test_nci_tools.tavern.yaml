@@ -1,0 +1,125 @@
+---
+test_name: NCI Clinical Trials API Tools Test Suite
+
+marks:
+  - usefixtures:
+      - server_process
+      - nci_api_key
+
+stages:
+  # Test 1: search_trials by condition - Error Path (missing API key)
+  - name: Search NCI trials by condition (melanoma) - Missing API Key
+    request:
+      url: "http://localhost:8000/tools/nci/mcp"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json, text/event-stream"
+      json:
+        jsonrpc: "2.0"
+        id: 1
+        method: "tools/call"
+        params:
+          name: "nci_search_trials"
+          arguments:
+            conditions: ["melanoma"]
+            limit: 5
+    response:
+      status_code: 200
+      strict:
+        - json:off
+      json:
+        jsonrpc: "2.0"
+        id: 1
+        result:
+          error: !re_search "API key is missing|Access Denied"
+          isError: true
+
+  # Test 2: search_trials by condition - Happy Path (requires API key)
+  - name: Search NCI trials by condition (melanoma) - Happy Path
+    request:
+      url: "http://localhost:8000/tools/nci/mcp"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json, text/event-stream"
+      json:
+        jsonrpc: "2.0"
+        id: 2
+        method: "tools/call"
+        params:
+          name: "nci_search_trials"
+          arguments:
+            conditions: ["melanoma"]
+            limit: 5
+            api_key: ${NCI_API_KEY}
+    response:
+      status_code: 200
+      strict:
+        - json:off
+      json:
+        jsonrpc: "2.0"
+        id: 2
+        result:
+          content:
+            - type: "text"
+              text: !re_search "melanoma|trial|id|name"
+          isError: false
+
+  # Test 3: get_trial_details - Happy Path (requires API key)
+  - name: Get NCI trial details with valid ID - Happy Path
+    request:
+      url: "http://localhost:8000/tools/nci/mcp"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json, text/event-stream"
+      json:
+        jsonrpc: "2.0"
+        id: 3
+        method: "tools/call"
+        params:
+          name: "nci_get_trial_details"
+          arguments:
+            trial_id: "NCT00841061" # Example trial ID from ClinicalTrials.gov
+            api_key: ${NCI_API_KEY}
+    response:
+      status_code: 200
+      strict:
+        - json:off
+      json:
+        jsonrpc: "2.0"
+        id: 3
+        result:
+          content:
+            - type: "text"
+              text: !re_search "NCT00841061|title|description"
+          isError: false
+
+  # Test 4: get_trial_details - Error Path (invalid ID)
+  - name: Get NCI trial details with invalid ID
+    request:
+      url: "http://localhost:8000/tools/nci/mcp"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json, text/event-stream"
+      json:
+        jsonrpc: "2.0"
+        id: 4
+        method: "tools/call"
+        params:
+          name: "nci_get_trial_details"
+          arguments:
+            trial_id: "INVALID_NCT_ID"
+            api_key: ${NCI_API_KEY}
+    response:
+      status_code: 200
+      strict:
+        - json:off
+      json:
+        jsonrpc: "2.0"
+        id: 4
+        result:
+          error: !re_search "not found|Error|Invalid ID"
+          isError: true
