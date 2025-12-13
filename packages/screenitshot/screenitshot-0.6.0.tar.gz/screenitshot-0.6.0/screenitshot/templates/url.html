@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Renderer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: white;
+      overflow: hidden;
+    }
+    #container {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #url-container {
+      text-align: center;
+      padding: 40px;
+    }
+  </style>
+  <script type="module" crossorigin>(function(){const n=document.createElement("link").relList;if(n&&n.supports&&n.supports("modulepreload"))return;for(const e of document.querySelectorAll('link[rel="modulepreload"]'))i(e);new MutationObserver(e=>{for(const t of e)if(t.type==="childList")for(const s of t.addedNodes)s.tagName==="LINK"&&s.rel==="modulepreload"&&i(s)}).observe(document,{childList:!0,subtree:!0});function o(e){const t={};return e.integrity&&(t.integrity=e.integrity),e.referrerPolicy&&(t.referrerPolicy=e.referrerPolicy),e.crossOrigin==="use-credentials"?t.credentials="include":e.crossOrigin==="anonymous"?t.credentials="omit":t.credentials="same-origin",t}function i(e){if(e.ep)return;e.ep=!0;const t=o(e);fetch(e.href,t)}})();const l="FILE_BASE64_PLACEHOLDER",d=1;let c=globalThis.fileBase64||l,a=globalThis.pageNumber||d;function u(){const r=document.getElementById("url-container");if(!r)return;r.innerHTML=`
+    <div style="padding: 2rem; text-align: center;">
+      <h2>URL Screenshot</h2>
+      <p>Note: In production, URL screenshots are taken by navigating directly to the URL.</p>
+      <p>This is a local testing placeholder.</p>
+      <br>
+      <input type="url" id="url-input" placeholder="https://example.com" style="padding: 8px; width: 300px; margin: 1rem 0;">
+      <br>
+      <button id="screenshot-btn" style="padding: 8px 16px; cursor: pointer;">Preview URL</button>
+      <div id="preview" style="margin-top: 20px;"></div>
+    </div>
+  `;const n=document.getElementById("url-input"),o=document.getElementById("screenshot-btn"),i=document.getElementById("preview");o.addEventListener("click",()=>{const e=n.value;e&&(i.innerHTML=`<p>URL to screenshot: <a href="${e}" target="_blank">${e}</a></p>`)})}async function p(){try{const r=document.getElementById("url-container");if(!r)throw new Error("URL container element not found");if(c===l)return u(),{width:1280,height:960,pageCount:1,pageNumber:1,scale:1};const n=atob(c),o=new Uint8Array(n.length);for(let e=0;e<n.length;e++)o[e]=n.charCodeAt(e);const i=new TextDecoder("utf-8").decode(o).trim();return r.innerHTML=`
+      <p>URL to screenshot: ${i}</p>
+      <p>Note: URL screenshots should be handled by direct navigation.</p>
+    `,{width:1280,height:960,pageCount:1,pageNumber:a,scale:2}}catch(r){throw console.error("Error rendering URL:",r),r}}window.renderComplete=p();</script>
+</head>
+<body>
+  <div id="container">
+    <div id="url-container"></div>
+  </div>
+</body>
+</html>
