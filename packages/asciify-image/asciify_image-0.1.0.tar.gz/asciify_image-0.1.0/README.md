@@ -1,0 +1,154 @@
+# Asciify
+
+[![PyPI version](https://badge.fury.io/py/asciify-image.svg)](https://badge.fury.io/py/asciify-image)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A command-line tool and Python library that converts images into high-quality ASCII art with optional color, dithering, and brightness/contrast controls.
+
+## Features
+
+- **Multiple Character Sets**: Choose from simple, complex, braille blocks, or Unicode block elements
+- **Color Output**: Full ANSI 256-color support for colored ASCII art
+- **Floyd-Steinberg Dithering**: Optional dithering for improved detail representation
+- **Image Adjustments**: Control brightness and contrast
+- **Flexible Sizing**: Auto-fit to terminal width or specify custom dimensions
+- **Invert Mode**: Swap light and dark for different backgrounds
+
+## Installation
+
+### From PyPI
+
+```bash
+pip install asciify-image
+```
+
+### From Source
+
+```bash
+git clone https://github.com/visakhunnikrishnan/asciify.git
+cd asciify
+pip install -e .
+```
+
+## Usage
+
+### Command Line
+
+```bash
+# Basic usage
+asciify image.jpg
+
+# Specify width
+asciify image.jpg -W 80
+
+# Use complex character set with color
+asciify image.jpg -c complex --color
+
+# Enable dithering with custom brightness
+asciify image.jpg --dither -b 1.2
+
+# Save output to file
+asciify image.jpg -o output.txt
+
+# High contrast black and white
+asciify photo.png --contrast 1.5 --invert
+
+# Braille art (requires Unicode-capable terminal)
+asciify image.png -c blocks
+```
+
+### Python Library
+
+```python
+from asciify import ASCIIArtConverter
+
+# Basic conversion
+converter = ASCIIArtConverter()
+ascii_art = converter.convert("image.jpg", width=80)
+print(ascii_art)
+
+# With options
+converter = ASCIIArtConverter(
+    charset="complex",
+    colored=True,
+    dither=True,
+)
+ascii_art = converter.convert(
+    "image.jpg",
+    width=100,
+    brightness=1.2,
+    contrast=1.1,
+    invert=False,
+)
+
+# Convert PIL Image directly
+from PIL import Image
+
+img = Image.open("photo.png")
+ascii_art = converter.convert_image(img, width=80)
+```
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-W, --width` | Output width in characters |
+| `-H, --height` | Output height in characters |
+| `-c, --charset` | Character set: `simple`, `complex`, `blocks`, `symbols` |
+| `--color` | Enable colored output |
+| `--dither` | Enable Floyd-Steinberg dithering |
+| `--invert` | Invert the image colors |
+| `-b, --brightness` | Brightness adjustment (0.0-2.0, default: 1.0) |
+| `--contrast` | Contrast adjustment (0.0-2.0, default: 1.0) |
+| `-o, --output` | Save output to file |
+
+## Character Sets
+
+- **simple**: ` .:-=+*#%@` - Basic ASCII characters
+- **complex**: ` .",:;!~+-xmo*#W&8@` - Extended ASCII for more detail
+- **blocks**: Braille patterns for high-density output
+- **symbols**: Unicode block elements for solid fills
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/visakhunnikrishnan/asciify.git
+cd asciify
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Code Quality
+
+```bash
+ruff check src tests
+mypy src
+```
+
+## Requirements
+
+- Python 3.9+
+- Pillow
+- NumPy
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
