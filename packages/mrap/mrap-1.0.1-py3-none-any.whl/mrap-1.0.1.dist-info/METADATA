@@ -1,0 +1,105 @@
+Metadata-Version: 2.4
+Name: mrap
+Version: 1.0.1
+Summary: Machine-Readable Data Analysis Results with Function Wrappers
+Author-email: Olga Lezhnina <olga.lezhnina@tib.eu>, Manuel Prinz <manuel.prinz@tib.eu>, Markus Stocker <markus.stocker@tib.eu>
+Maintainer-email: Markus Stocker <markus.stocker@tib.eu>
+License: MIT
+Project-URL: Repository, https://gitlab.com/TIBHannover/orkg/dtreg-python
+Keywords: wrappers,schema,JSON-LD
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: dtreg
+Requires-Dist: pandas
+Requires-Dist: varname
+Dynamic: license-file
+
+# mrap
+<!-- badges: start -->
+[![PyPI version](https://badge.fury.io/py/mrap.svg?cache-control=no-cache)](https://badge.fury.io/py/mrap)
+![Python](https://img.shields.io/badge/python-3.8-blue.svg)
+![coverage](https://gitlab.com/TIBHannover/lki/knowledge-loom/mrap-python/badges/master/coverage.svg)
+<!-- badges: end -->
+
+**100% AI-free: we did not use any AI technologies in developing this package.**
+
+The goal of mrap is to provide wrapper functions to reduce the user's effort 
+in writing machine-readable data with the [dtreg library](https://pypi.org/project/dtreg/).
+All-in-one wrappers (such as ``scipy_f_oneway``) will cover functions from ``scipy`` and other widely used libraries.
+The ``mrap.analytic_instances`` module contains wrappers for analytical schemata used by [TIB Knowledge Loom](https://knowledgeloom.tib.eu/).
+
+To write the results of your data analysis as JSON-LD:
+* Select a wrapper from mrap, check the types of arguments it requires, and create an instance.
+* Modify the instance by setting or correcting its fields manually.
+* Write the finalised instance as a machine-readable JSON-LD file.        
+
+## Installation
+
+```sh
+## activate a virtual environment (optional)
+python3 -m venv .venv
+source .venv/bin/activate
+## install from PyPi:
+pip install mrap
+```
+
+## Example
+Let us assume you intend to report the classification performance of your_fancy_algorithm. 
+From the [help page](https://knowledgeloom.tib.eu/pages/help) you know that the wrapper of choice is 
+``algorithm_evaluation()``. The required arguments are:
+
+* ``code_list``: a string "N/A" if not given or a list of two strings -
+the library and the line of code used for implementing the analysis.
+* ``input_data``: a pd.DataFrame, a dictionary of pd.Series with names, or a string which is
+either the data URL or the file name. 
+* ``dictionary_results``: a dictionary with metrics names as keys.
+
+The wrapper writes information about the data, your results, your Python version, 
+the library version, etc. You can add or correct any information in relevant fields.  
+  
+```python
+from mrap.analytic_instances import algorithm_evaluation
+## run your analysis and write the results as a dictionary
+results_dict = {"F1": 0.46, "recall": 0.51}
+## create your instance with the wrapper
+eval_instance = algorithm_evaluation(["the_library", "the_line_of_code"], 
+                                   "my_URL", 
+                                   results_dict)
+## add information about the algorithm and the task                                   
+eval_instance.evaluates = "my_fancy_algorithm"
+eval_instance.evaluates_for = "Classification"
+```
+It is also possible to write the results of a few algorithms evaluated on the same data
+for the same task.
+```python
+from mrap.list_algorithm_evaluations import list_algorithm_evaluations
+## run your analysis and write a nested dictionary
+results_nested = {"ABC": {"F1": 0.46, "recall": 0.64},
+             "KLM": {"F1": 0.55, "recall": 0.38},
+             "XYZ": {"F1": 0.87, "recall": 0.78}}
+## create the list of instances
+eval_instance = list_algorithm_evaluations("N/A", "my URL", "Classification", my_results)
+## when manually modifying the instance, select an element of the list
+eval_instance[2].label = "XYZ evaluation"
+```
+You can include the evaluation instance in data analysis instance, 
+convert it into a machine-readable JSON-LD string,
+and write as a file.
+
+```python
+from mrap.analytic_instances import data_analysis
+from mrap.to_jsonld import to_jsonld
+da_instance = data_analysis(eval_instance)
+da_instance.is_implemented_by = "code_URL"
+my_json = to_jsonld(da_instance)
+with open('data_analysis.json', 'w') as f:
+    f.write(my_json)
+
+```
+
+For more information, please see the [help page](https://knowledgeloom.tib.eu/pages/help).
