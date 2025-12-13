@@ -1,0 +1,83 @@
+[tool.poetry]
+name = "gatorgrade"
+version = "0.8.2"
+description = "GatorGrade executes GatorGrader checks!"
+authors = ["Michael Abraham", "Jacob Allebach", "Liam Black", "Katherine Burgess", "Pallas-Athena Cain", "Yanqiao Chen", "Ochirsaikhan Davaajambal", "Tuguldurnemekh Gantulga", "Anthony Grant-Cook", "Dylan Holland", "Gregory M. Kapfhammer", "Peyton Kelly", "Luke Lacaria", "Douglas Luman", "Lauren Nevill", "Rebekah Rudd", "Titus Smith", "Molly Suppo", "Jack Turner", "Daniel Ullrich", "Garrison Vanzin", "Rian Watson"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+PyYAML = "^6.0"
+typer = "^0.20.0"
+rich = "^13.8.1"
+gatorgrader = "^1.1.2"
+click = "^8.3.0"
+
+[tool.poetry.group.dev.dependencies]
+taskipy = "^1.10.1"
+pytest = "^7.1.1"
+pytest-cov = "^3.0.0"
+pylint = "^2.13.4"
+black = "^22.3.0"
+pydocstyle = "^6.1.1"
+mkdocs = "^1.3.0"
+mkdocstrings = {extras = ["python"], version = "^0.18.1"}
+mkdocs-gen-files = "^0.3.4"
+mkdocs-typer = "^0.0.2"
+mkdocs-literate-nav = "^0.4.1"
+toml = "^0.10.2"
+pytest-sugar = "^0.9.5"
+pytest-randomly = "^3.12.0"
+pytest-clarity = "^1.0.1"
+isort = "^5.10.1"
+mkdocs-material = "^8.4.2"
+symbex = "^1.4"
+mypy = "^1.11.2"
+types-pyyaml = "^6.0.12.20240917"
+ruff = "^0.9.3"
+
+[tool.taskipy.variables]
+project = "gatorgrade"
+tests = "tests"
+check-command = { var = "ruff check {project} {tests}", recursive = true }
+coverage-test-command = "pytest -s --cov-context=test --cov-fail-under=90 --cov-report term-missing --cov-report json --cov --cov-branch"
+coverage-test-command-silent = "pytest -x --show-capture=no --cov-report term-missing --cov-report json --cov --cov-branch"
+developer-test-command = "pytest -x -s"
+developer-test-silent-command = "pytest -x --show-capture=no"
+fixformat-command = { var = "ruff format {project} {tests}", recursive = true }
+format-command = { var = "ruff format --check {project} {tests}", recursive = true }
+symbex-typed-command = {var = "symbex -s --untyped -d {project} --check", recursive = true}
+symbex-documented-command = {var = "symbex -s --undocumented -d {project} --check", recursive = true}
+mypy-command = {var = "mypy {project}", recursive = true}
+
+[tool.taskipy.tasks]
+all = "task lint && task test"
+lint = "task format && task check && task mypy"
+check = { cmd = "{check-command}", help = "Run the ruff linting checks", use_vars = true }
+format = { cmd = "{format-command}", help = "Run the ruff formatter on source code", use_vars = true }
+format-fix = { cmd = "{fixformat-command}", help = "Run the ruff formatter to fix source code", use_vars = true }
+mypy = { cmd = "{mypy-command}", help = "Run the mypy type checker for potential type errors", use_vars = true }
+symbex = "task symbex-typed && task symbex-documented"
+symbex-typed = { cmd = "{symbex-typed-command}", help = "Run symbex for fully typed functions", use_vars = true }
+symbex-documented = { cmd = "{symbex-documented-command}", help = "Run symbex for documentation", use_vars = true }
+test = { cmd = "pytest -x -s -vv", help = "Run the pytest test suite using order randomization and test distribution" }
+test-silent = { cmd = "pytest -x --show-capture=no -n auto", help = "Run the pytest test suite without showing output" }
+test-silent-not-randomly = { cmd = "pytest -x --show-capture=no -p no:randomly", help = "Run the pytest test suite without showing output and order randomization" }
+
+[tool.isort]
+include_trailing_comma = true
+force_single_line = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+gatorgrade = 'gatorgrade.main:app'
