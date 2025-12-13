@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "mkx"
+version = "0.2.0"
+description = "CLI for exploring IoT and network devices."
+authors = ["Henrique Sebastião <contato@henriquesebastiao.com>"]
+readme = "README.md"
+packages = [{include = "mkx"}]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Telecommunications Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Internet"
+]
+
+[tool.poetry.urls]
+"Repository" = "https://github.com/henriquesebastiao/mkx"
+"Bug Tracker" = "https://github.com/henriquesebastiao/mkx/issues"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+typer = "^0.20.0"
+pydantic = "^2.12.5"
+pysnmp = "^7.1.22"
+requests = "^2.32.5"
+upnpy = "^1.1.8"
+prompt-toolkit = "^3.0.52"
+
+
+[tool.poetry.group.dev.dependencies]
+taskipy = "^1.14.1"
+ruff = "^0.8.6"
+
+[tool.poetry.scripts]
+mkx = "mkx.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+preview = true
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+
+[tool.ruff.lint.per-file-ignores]
+"*.py" = ["F403", "E722", "PLW3201", "PLW0603", "PLW0602"]
+"snmp.py" = ["PLR2004", "PLR0912", "PLR0915"]
+"ddos.py" = ["PLR0913", "PLR0917"]
+"helps.py" = ["E501"]
+"kill_web_server.py" = ["E501"]
+"network.py" = ["PLR2004"]
+"upnp.py" = ["PLR2004", "E501", "PLR1702", "PLR0915", "PLR0912"]
+
+[tool.taskipy.tasks]
+lint = 'ruff check .; ruff check . --diff'
+format = 'ruff format .; ruff check . --fix'
