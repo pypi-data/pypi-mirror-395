@@ -1,0 +1,36 @@
+# This is my comment
+.context:
+  env: test
+  host: localhost
+  users: [alice, bob, charlie, michael]
+
+server:
+  description: "Environment: {{ env }}"
+  host: "{{ host }}"
+  .switch:
+    .expr: "{{ env }}"
+    .cases:
+      dev:
+        url: "http://{{ host }}:5000"
+      test:
+        url: "http://test.example.com"
+      prod:
+        url: "https://example.com"
+    .default:
+      url: "https://fallback.example.com"
+
+accounts:
+  .foreach:
+    .values: [user, "{{ users }}"]
+    .do:
+      name: "{{ user }}"
+      role: "user"
+
+features:
+  .if: 
+    .cond: "{{ env == 'dev' }}"
+    .then:
+        debug: true
+    .else:
+        debug: false
+

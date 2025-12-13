@@ -1,0 +1,134 @@
+Metadata-Version: 2.4
+Name: yamlpp-lang
+Version: 0.2.4
+Summary: YAMLpp: a macro language for dynamic YAML preprocessing
+Author: Laurent
+License: Copyright 2025 Laurent Franceschetti
+        
+        MIT License
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: hjson>=3.1.0
+Requires-Dist: jinja2>=3.1.6
+Requires-Dist: jsonschema>=4.25.1
+Requires-Dist: rich>=14.2.0
+Requires-Dist: ruamel-yaml>=0.18.16
+Requires-Dist: super-collections>=0.6.2
+Requires-Dist: tomlkit>=0.13.3
+Dynamic: license-file
+
+# YAML File Preprocessor (YAMLpp)
+
+## Problem
+YAML is an excellent file format but it is essentially static. Sometimes, the content of a YAML file must change according to circumstances (typically when the environment changes or when you have different
+configuratons for test or production, etc.).
+
+Manually maintaining different versions can be time-consuming and error-prone.
+
+
+## Introducing YAMLpp
+What if we had a way to generate a new YAML file (or more than one) according to a single pattern?
+
+The purpose of **YAML Preprocessor (YAMLpp)** is to help programmers prepare YAML files from a template, with rules that produce the YAML tree according to source data. It extends standard YAML with constructs for variable declaration, conditionals, iteration, functions, importing and exporting YAML files, and importing Python modules.
+
+YAMLpp is a macro language, since it manipulates the YAML tree on which it resides.
+
+
+Here is a simple example:
+
+**YAMLpp**:
+```yaml
+.context:
+  name: "Alice"
+
+message: "Hello, {{ name }}!"
+```
+**Output**:
+```yaml
+message: "Hello, Alice!"
+```
+
+
+### General principles
+
+The language is composed of **constructs**, which are denoted keys starting with a dot (`.`), such
+as `.context`, `.if`, `.switch`, etc.
+
+The YAMLpp preprocessor uses these constructs modify the tree, and the constructs disappear.
+
+The result is pure YAML.
+
+
+**YAMLpp obeys the rules of YAML syntax:**
+- It provides declarative constructs without breaking YAML syntax. 
+- It allows modular, reusable, and expressive constructs that create YAML files
+
+
+
+## 🚀 Quickstart
+
+### Installation
+```bash
+pip install yamlpp
+```
+
+### Command-line usage
+```bash
+yamlpp input.yaml -o output.yaml
+```
+- `input.yaml` → your YAML file with YAMLpp directives  
+- `output.yaml` → the fully expanded YAML after preprocessing  
+
+To consult the help:
+```sh
+yamlpp --help
+```
+
+
+### Python API
+```python
+from yamlpp import Interpreter
+
+FILENAME = 'my_file.yaml'
+i = Interpreter()
+
+# the initial (source) tree:
+initial_tree = i.load(FILENAME)
+
+# the destination (target) tree (pure YAML):
+tree = i.render()
+
+# print the resulting YAML
+print(i.yaml)
+```
+
+
+
+
+
+
+
+## 🔧 YAMLpp Constructs (Quick Reference)
+
+| Construct   | Purpose | Minimal Example |
+|-------------|---------|-----------------|
+| **`.context`** | Define local variables valid for siblings and descendants. | .context:<br>  name: "Alice"<br>message: "Hello {{ name }}" |
+| **`.do`** | Execute a sequence or map of instructions. | .do:<br>  - step: "Init"<br>  - step: "Run" |
+| **`.foreach`** | Iterate over values with a loop body. | .context:<br>  items: [1,2]<br>.foreach:<br>  .values: [x, items]<br>  .do:<br>    - val: "{{ x }}" |
+| **`.switch`** | Branch to a different node based on an expression and cases. | .switch:<br>  .expr: "{{ color }}"<br>  .cases:<br>    red: {msg: "Stop"}<br>  .default: {msg: "?"} |
+| **`.if`** | Conditional node creation with `then` and `else`. | .if:<br>  .cond: "{{ x>0 }}"<br>  .then: {res: "Pos"}<br>  .else: {res: "Neg"} |
+| **`.insert`** | Insert and preprocess another YAMLpp (or YAML) file. | .import: "other.yaml" |
+| **`.function`** | Define a reusable block with arguments and a body. | .function:<br>  .name: "greet"<br>  .args: ["n"]<br>  .do:<br>    - msg: "Hi {{ n }}" |
+| **`.call`** | Invoke a previously defined function with arguments. | .call:<br>  .name: "greet"<br>  .args: ["Bob"] |
+| **`.import`** | Import a Python module exposing functions, filters, and variables. | .module: "module.py" |
+| **`.export`** | Export a portion of the tree into an external file. | .export:<br>  .filename: "out.yaml"<br>  .do:<br>    - foo: "bar" |
+
+
+
