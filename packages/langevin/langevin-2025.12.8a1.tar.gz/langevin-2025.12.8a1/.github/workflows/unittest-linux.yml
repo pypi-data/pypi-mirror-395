@@ -1,0 +1,45 @@
+name: Linux
+
+on:
+  # release:
+  #   types: [published]
+  push:
+    branches:
+      - unittests
+
+permissions:
+  contents: read
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install langevin
+      - name: Check repo
+        run: |
+          ls -l $HOME/work/Langevin/Langevin
+      - name: Run unit tests
+        run: |
+          cd $HOME/work/Langevin/Langevin
+          ls -l .     
+          python -m unittest discover tests
+      - name: Run demo dp_mixed.py in Python
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          python dp_mixed.py
+      - name: Run DemoDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython DemoDP.ipynb
+      - name: Run SimulationDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython SimulationDP.ipynb
+
