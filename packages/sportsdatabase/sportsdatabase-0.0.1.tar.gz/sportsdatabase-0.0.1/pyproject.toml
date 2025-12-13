@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sportsdatabase"
+version = "0.0.1"
+description = "Official Python SDK for SportsDatabase.io"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "SportsDatabase.io" }]
+dependencies = ["httpx>=0.24.0"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["sportsdatabase"]
+
+[tool.hatch.envs.default]
+dependencies = [
+  "pytest",
+  "pytest-asyncio",
+  "ruff",
+  "mypy"
+]
+[tool.hatch.envs.default.scripts]
+test = "pytest"
+lint = "ruff check sportsdatabase"
+typecheck = "mypy sportsdatabase"
+
+[tool.hatch.envs.release]
+dependencies = ["build", "twine"]
+[tool.hatch.envs.release.scripts]
+build = "python -m build"
+publish = "twine upload dist/*"
+
+[tool.ruff]
+line-length = 120
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.hatch.metadata]
+allow-direct-references = true

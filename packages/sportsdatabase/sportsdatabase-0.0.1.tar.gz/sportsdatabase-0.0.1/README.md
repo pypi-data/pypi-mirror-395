@@ -1,0 +1,54 @@
+# SportsDatabase Python SDK
+
+Official Python client for SportsDatabase.io. Mirrors the TypeScript SDK design with typed endpoints for leagues, teams, events, schedules, and scores.
+
+## Installation
+
+```bash
+pip install sportsdatabase
+```
+
+## Quick Start
+
+```python
+from sportsdatabase import SportsDatabaseClient
+
+client = SportsDatabaseClient(
+    api_key="YOUR_API_KEY",
+    base_url="https://api.sportsdatabase.io/v1"
+)
+
+games = client.events.get_by_date(sport="soccer", date="2025-05-01")
+for event in games["data"]:
+    print(event["homeTeamId"], "vs", event["awayTeamId"])
+```
+
+## Structure
+
+```
+python-sdk/
+├── sportsdatabase/
+│   ├── client.py
+│   ├── config.py
+│   ├── errors.py
+│   ├── http.py
+│   ├── endpoints/
+│   │   ├── events.py
+│   │   ├── leagues.py
+│   │   ├── teams.py
+│   │   ├── schedules.py
+│   │   └── scores.py
+│   ├── types.py
+│   └── errors.py
+├── examples/
+│   ├── get_today_events.py
+│   └── smoke_test.py
+└── pyproject.toml
+```
+
+## Development
+
+```bash
+pip install -e .[dev]
+pytest
+```
