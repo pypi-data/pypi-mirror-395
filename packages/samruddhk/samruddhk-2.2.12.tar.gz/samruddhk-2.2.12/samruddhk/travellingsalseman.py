@@ -1,0 +1,36 @@
+print("****************************Traveling Salesman Problem (Brute Force)*****************************************")
+
+print("import math")
+print("import itertools\n")
+
+print("def distance(city1, city2):")
+print("    x1, y1 = city1")
+print("    x2, y2 = city2")
+print("    return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)\n")
+
+print("def total_distance(tour, cities):")
+print("    total = 0")
+print("    for i in range(len(tour) - 1):")
+print("        total += distance(cities[tour[i]], cities[tour[i + 1]])")
+print("    total += distance(cities[tour[-1]], cities[tour[0]])")
+print("    return total\n")
+
+print("def traveling_salesman_bruteforce(cities):")
+print("    num_cities = len(cities)")
+print("    all_tours = list(itertools.permutations(range(num_cities)))")
+print("    best_tour = None")
+print("    best_distance = float('inf')\n")
+
+print("    for tour in all_tours:")
+print("        tour_distance = total_distance(tour, cities)")
+print("        if tour_distance < best_distance:")
+print("            best_distance = tour_distance")
+print("            best_tour = tour")
+print("    return best_tour, best_distance\n")
+
+print("if __name__ == '__main__':")
+print("    cities = [(0, 0), (1, 2), (2, 4), (3, 1)]")
+print("    best_tour, best_distance = traveling_salesman_bruteforce(cities)")
+print("    print('Best Tour:', best_tour)")
+print("    print('Best Distance:', best_distance)")
+print("*********************************************************************************")
