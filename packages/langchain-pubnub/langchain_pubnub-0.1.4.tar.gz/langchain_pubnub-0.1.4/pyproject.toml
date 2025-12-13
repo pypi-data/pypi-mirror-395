@@ -1,0 +1,153 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-pubnub"
+version = "0.1.4"
+description = "LangChain integration for PubNub real-time messaging"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+keywords = [
+    "langchain",
+    "pubnub",
+    "real-time",
+    "messaging",
+    "pubsub",
+    "tools",
+    "ai",
+    "llm",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications :: Chat",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "langchain-core>=0.2.0,<1.0.0",
+    "pubnub>=10.0.0,<11.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "langchain-core>=0.2.0,<1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/langchain-pubnub"
+Documentation = "https://github.com/yourusername/langchain-pubnub#readme"
+Repository = "https://github.com/yourusername/langchain-pubnub"
+Changelog = "https://github.com/yourusername/langchain-pubnub/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+test = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.24.0,<1.0.0",
+    "pytest-cov>=4.0.0,<6.0.0",
+    "pytest-mock>=3.12.0,<4.0.0",
+    "langchain-tests>=0.3.0,<1.0.0",
+    "syrupy>=4.0.0,<5.0.0",
+]
+lint = [
+    "ruff>=0.5.0,<1.0.0",
+]
+typing = [
+    "mypy>=1.10.0,<2.0.0",
+]
+test_integration = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.24.0,<1.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["langchain_pubnub"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # flake8-unused-arguments
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "ARG001", # unused function argument
+    "ARG002", # unused method argument
+    "UP007",  # Use X | Y for type unions (not compatible with Python 3.9 runtime for Pydantic)
+    "UP045",  # Use X | None for optional types (not compatible with Python 3.9 runtime for Pydantic)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+    "S101",   # assert allowed in tests
+    "ARG",    # unused arguments allowed in tests
+    "FBT",    # booleans as positional arguments allowed in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["langchain_pubnub"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "requires: mark test as requiring specific dependencies",
+    "compile: mark test as a compile test",
+]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+
+[tool.coverage.run]
+source = ["langchain_pubnub"]
+branch = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
