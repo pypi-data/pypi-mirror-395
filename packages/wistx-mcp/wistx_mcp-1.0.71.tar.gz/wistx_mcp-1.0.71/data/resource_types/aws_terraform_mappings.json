@@ -1,0 +1,2380 @@
+{
+  "version": "2.0.0",
+  "description": "Comprehensive mapping between AWS CloudFormation resource types and Terraform resource types",
+  "last_updated": "2024-12-02",
+  "total_mappings": 215,
+  "mappings": {
+    "AWS::EC2::Instance": {
+      "terraform_type": "aws_instance",
+      "import_id_template": "{InstanceId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeInstances",
+      "dependencies": ["aws_vpc", "aws_subnet", "aws_security_group", "aws_iam_instance_profile"]
+    },
+    "AWS::EC2::VPC": {
+      "terraform_type": "aws_vpc",
+      "import_id_template": "{VpcId}",
+      "import_phase": "Foundation",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpcs",
+      "dependencies": []
+    },
+    "AWS::EC2::Subnet": {
+      "terraform_type": "aws_subnet",
+      "import_id_template": "{SubnetId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeSubnets",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::SecurityGroup": {
+      "terraform_type": "aws_security_group",
+      "import_id_template": "{GroupId}",
+      "import_phase": "Security",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "fallback_name_path": "GroupName",
+      "discovery_api": "ec2:DescribeSecurityGroups",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::SecurityGroupIngress": {
+      "terraform_type": "aws_security_group_rule",
+      "import_id_template": "{SecurityGroupId}_{Type}_{Protocol}_{FromPort}_{ToPort}_{Source}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "ec2:DescribeSecurityGroups",
+      "dependencies": ["aws_security_group"]
+    },
+    "AWS::EC2::InternetGateway": {
+      "terraform_type": "aws_internet_gateway",
+      "import_id_template": "{InternetGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeInternetGateways",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::EgressOnlyInternetGateway": {
+      "terraform_type": "aws_egress_only_internet_gateway",
+      "import_id_template": "{EgressOnlyInternetGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeEgressOnlyInternetGateways",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::NatGateway": {
+      "terraform_type": "aws_nat_gateway",
+      "import_id_template": "{NatGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeNatGateways",
+      "dependencies": ["aws_subnet", "aws_eip"]
+    },
+    "AWS::EC2::RouteTable": {
+      "terraform_type": "aws_route_table",
+      "import_id_template": "{RouteTableId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeRouteTables",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::Route": {
+      "terraform_type": "aws_route",
+      "import_id_template": "{RouteTableId}_{DestinationCidrBlock}",
+      "import_phase": "Networking",
+      "name_tag_path": null,
+      "discovery_api": "ec2:DescribeRouteTables",
+      "dependencies": ["aws_route_table"]
+    },
+    "AWS::EC2::SubnetRouteTableAssociation": {
+      "terraform_type": "aws_route_table_association",
+      "import_id_template": "{AssociationId}",
+      "import_phase": "Networking",
+      "name_tag_path": null,
+      "discovery_api": "ec2:DescribeRouteTables",
+      "dependencies": ["aws_subnet", "aws_route_table"]
+    },
+    "AWS::EC2::EIP": {
+      "terraform_type": "aws_eip",
+      "import_id_template": "{AllocationId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeAddresses",
+      "dependencies": []
+    },
+    "AWS::EC2::NetworkInterface": {
+      "terraform_type": "aws_network_interface",
+      "import_id_template": "{NetworkInterfaceId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeNetworkInterfaces",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::EC2::Volume": {
+      "terraform_type": "aws_ebs_volume",
+      "import_id_template": "{VolumeId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVolumes",
+      "dependencies": []
+    },
+    "AWS::EC2::Snapshot": {
+      "terraform_type": "aws_ebs_snapshot",
+      "import_id_template": "{SnapshotId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeSnapshots",
+      "dependencies": ["aws_ebs_volume"]
+    },
+    "AWS::EC2::KeyPair": {
+      "terraform_type": "aws_key_pair",
+      "import_id_template": "{KeyName}",
+      "import_phase": "Security",
+      "name_tag_path": "KeyName",
+      "discovery_api": "ec2:DescribeKeyPairs",
+      "dependencies": []
+    },
+    "AWS::EC2::LaunchTemplate": {
+      "terraform_type": "aws_launch_template",
+      "import_id_template": "{LaunchTemplateId}",
+      "import_phase": "Compute",
+      "name_tag_path": "LaunchTemplateName",
+      "discovery_api": "ec2:DescribeLaunchTemplates",
+      "dependencies": ["aws_security_group", "aws_iam_instance_profile"]
+    },
+    "AWS::EC2::PlacementGroup": {
+      "terraform_type": "aws_placement_group",
+      "import_id_template": "{GroupName}",
+      "import_phase": "Compute",
+      "name_tag_path": "GroupName",
+      "discovery_api": "ec2:DescribePlacementGroups",
+      "dependencies": []
+    },
+    "AWS::EC2::VPCPeeringConnection": {
+      "terraform_type": "aws_vpc_peering_connection",
+      "import_id_template": "{VpcPeeringConnectionId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpcPeeringConnections",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::VPNGateway": {
+      "terraform_type": "aws_vpn_gateway",
+      "import_id_template": "{VpnGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpnGateways",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::VPNConnection": {
+      "terraform_type": "aws_vpn_connection",
+      "import_id_template": "{VpnConnectionId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpnConnections",
+      "dependencies": ["aws_vpn_gateway", "aws_customer_gateway"]
+    },
+    "AWS::EC2::CustomerGateway": {
+      "terraform_type": "aws_customer_gateway",
+      "import_id_template": "{CustomerGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeCustomerGateways",
+      "dependencies": []
+    },
+    "AWS::EC2::VPCEndpoint": {
+      "terraform_type": "aws_vpc_endpoint",
+      "import_id_template": "{VpcEndpointId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpcEndpoints",
+      "dependencies": ["aws_vpc", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::EC2::VPCEndpointService": {
+      "terraform_type": "aws_vpc_endpoint_service",
+      "import_id_template": "{ServiceId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeVpcEndpointServices",
+      "dependencies": ["aws_lb"]
+    },
+    "AWS::EC2::NetworkAcl": {
+      "terraform_type": "aws_network_acl",
+      "import_id_template": "{NetworkAclId}",
+      "import_phase": "Security",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeNetworkAcls",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::EC2::FlowLog": {
+      "terraform_type": "aws_flow_log",
+      "import_id_template": "{FlowLogId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeFlowLogs",
+      "dependencies": ["aws_vpc", "aws_cloudwatch_log_group", "aws_iam_role"]
+    },
+    "AWS::EC2::DHCPOptions": {
+      "terraform_type": "aws_vpc_dhcp_options",
+      "import_id_template": "{DhcpOptionsId}",
+      "import_phase": "Foundation",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeDhcpOptions",
+      "dependencies": []
+    },
+    "AWS::EC2::TransitGateway": {
+      "terraform_type": "aws_ec2_transit_gateway",
+      "import_id_template": "{TransitGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeTransitGateways",
+      "dependencies": []
+    },
+    "AWS::EC2::TransitGatewayAttachment": {
+      "terraform_type": "aws_ec2_transit_gateway_vpc_attachment",
+      "import_id_template": "{TransitGatewayAttachmentId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeTransitGatewayAttachments",
+      "dependencies": ["aws_ec2_transit_gateway", "aws_vpc", "aws_subnet"]
+    },
+    "AWS::EC2::TransitGatewayRouteTable": {
+      "terraform_type": "aws_ec2_transit_gateway_route_table",
+      "import_id_template": "{TransitGatewayRouteTableId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeTransitGatewayRouteTables",
+      "dependencies": ["aws_ec2_transit_gateway"]
+    },
+    "AWS::EC2::PrefixList": {
+      "terraform_type": "aws_ec2_managed_prefix_list",
+      "import_id_template": "{PrefixListId}",
+      "import_phase": "Networking",
+      "name_tag_path": "PrefixListName",
+      "discovery_api": "ec2:DescribeManagedPrefixLists",
+      "dependencies": []
+    },
+    "AWS::EC2::Host": {
+      "terraform_type": "aws_ec2_host",
+      "import_id_template": "{HostId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeHosts",
+      "dependencies": []
+    },
+    "AWS::EC2::CapacityReservation": {
+      "terraform_type": "aws_ec2_capacity_reservation",
+      "import_id_template": "{CapacityReservationId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeCapacityReservations",
+      "dependencies": []
+    },
+    "AWS::EC2::Fleet": {
+      "terraform_type": "aws_ec2_fleet",
+      "import_id_template": "{FleetId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeFleets",
+      "dependencies": ["aws_launch_template"]
+    },
+    "AWS::EC2::SpotFleet": {
+      "terraform_type": "aws_spot_fleet_request",
+      "import_id_template": "{SpotFleetRequestId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "ec2:DescribeSpotFleetRequests",
+      "dependencies": ["aws_launch_template", "aws_subnet"]
+    },
+    "AWS::RDS::DBInstance": {
+      "terraform_type": "aws_db_instance",
+      "import_id_template": "{DBInstanceIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBInstanceIdentifier",
+      "discovery_api": "rds:DescribeDBInstances",
+      "dependencies": ["aws_db_subnet_group", "aws_security_group", "aws_db_parameter_group"]
+    },
+    "AWS::RDS::DBCluster": {
+      "terraform_type": "aws_rds_cluster",
+      "import_id_template": "{DBClusterIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBClusterIdentifier",
+      "discovery_api": "rds:DescribeDBClusters",
+      "dependencies": ["aws_db_subnet_group", "aws_security_group", "aws_rds_cluster_parameter_group"]
+    },
+    "AWS::RDS::DBClusterInstance": {
+      "terraform_type": "aws_rds_cluster_instance",
+      "import_id_template": "{DBInstanceIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBInstanceIdentifier",
+      "discovery_api": "rds:DescribeDBInstances",
+      "dependencies": ["aws_rds_cluster"]
+    },
+    "AWS::RDS::DBSubnetGroup": {
+      "terraform_type": "aws_db_subnet_group",
+      "import_id_template": "{DBSubnetGroupName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DBSubnetGroupName",
+      "discovery_api": "rds:DescribeDBSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::RDS::DBParameterGroup": {
+      "terraform_type": "aws_db_parameter_group",
+      "import_id_template": "{DBParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBParameterGroupName",
+      "discovery_api": "rds:DescribeDBParameterGroups",
+      "dependencies": []
+    },
+    "AWS::RDS::DBClusterParameterGroup": {
+      "terraform_type": "aws_rds_cluster_parameter_group",
+      "import_id_template": "{DBClusterParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBClusterParameterGroupName",
+      "discovery_api": "rds:DescribeDBClusterParameterGroups",
+      "dependencies": []
+    },
+    "AWS::RDS::OptionGroup": {
+      "terraform_type": "aws_db_option_group",
+      "import_id_template": "{OptionGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "OptionGroupName",
+      "discovery_api": "rds:DescribeOptionGroups",
+      "dependencies": []
+    },
+    "AWS::RDS::DBSnapshot": {
+      "terraform_type": "aws_db_snapshot",
+      "import_id_template": "{DBSnapshotIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBSnapshotIdentifier",
+      "discovery_api": "rds:DescribeDBSnapshots",
+      "dependencies": ["aws_db_instance"]
+    },
+    "AWS::RDS::DBProxy": {
+      "terraform_type": "aws_db_proxy",
+      "import_id_template": "{DBProxyName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBProxyName",
+      "discovery_api": "rds:DescribeDBProxies",
+      "dependencies": ["aws_iam_role", "aws_security_group", "aws_subnet"]
+    },
+    "AWS::RDS::GlobalCluster": {
+      "terraform_type": "aws_rds_global_cluster",
+      "import_id_template": "{GlobalClusterIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "GlobalClusterIdentifier",
+      "discovery_api": "rds:DescribeGlobalClusters",
+      "dependencies": []
+    },
+    "AWS::S3::Bucket": {
+      "terraform_type": "aws_s3_bucket",
+      "import_id_template": "{BucketName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "s3:ListBuckets",
+      "dependencies": []
+    },
+    "AWS::S3::BucketPolicy": {
+      "terraform_type": "aws_s3_bucket_policy",
+      "import_id_template": "{Bucket}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "s3:GetBucketPolicy",
+      "dependencies": ["aws_s3_bucket"]
+    },
+    "AWS::S3::AccessPoint": {
+      "terraform_type": "aws_s3_access_point",
+      "import_id_template": "{Arn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "s3control:ListAccessPoints",
+      "dependencies": ["aws_s3_bucket"]
+    },
+    "AWS::Lambda::Function": {
+      "terraform_type": "aws_lambda_function",
+      "import_id_template": "{FunctionName}",
+      "import_phase": "Compute",
+      "name_tag_path": "FunctionName",
+      "discovery_api": "lambda:ListFunctions",
+      "dependencies": ["aws_iam_role", "aws_vpc", "aws_security_group"]
+    },
+    "AWS::Lambda::Alias": {
+      "terraform_type": "aws_lambda_alias",
+      "import_id_template": "{FunctionName}/{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "lambda:ListAliases",
+      "dependencies": ["aws_lambda_function"]
+    },
+    "AWS::Lambda::Version": {
+      "terraform_type": "aws_lambda_function_version",
+      "import_id_template": "{FunctionArn}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "lambda:ListVersionsByFunction",
+      "dependencies": ["aws_lambda_function"]
+    },
+    "AWS::Lambda::EventSourceMapping": {
+      "terraform_type": "aws_lambda_event_source_mapping",
+      "import_id_template": "{UUID}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "lambda:ListEventSourceMappings",
+      "dependencies": ["aws_lambda_function"]
+    },
+    "AWS::Lambda::Permission": {
+      "terraform_type": "aws_lambda_permission",
+      "import_id_template": "{FunctionName}/{StatementId}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "lambda:GetPolicy",
+      "dependencies": ["aws_lambda_function"]
+    },
+    "AWS::Lambda::LayerVersion": {
+      "terraform_type": "aws_lambda_layer_version",
+      "import_id_template": "{LayerArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "LayerName",
+      "discovery_api": "lambda:ListLayers",
+      "dependencies": []
+    },
+    "AWS::Lambda::Url": {
+      "terraform_type": "aws_lambda_function_url",
+      "import_id_template": "{FunctionName}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "lambda:ListFunctionUrlConfigs",
+      "dependencies": ["aws_lambda_function"]
+    },
+    "AWS::IAM::Role": {
+      "terraform_type": "aws_iam_role",
+      "import_id_template": "{RoleName}",
+      "import_phase": "Security",
+      "name_tag_path": "RoleName",
+      "discovery_api": "iam:ListRoles",
+      "dependencies": []
+    },
+    "AWS::IAM::Policy": {
+      "terraform_type": "aws_iam_policy",
+      "import_id_template": "{Arn}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "iam:ListPolicies",
+      "dependencies": []
+    },
+    "AWS::IAM::RolePolicy": {
+      "terraform_type": "aws_iam_role_policy",
+      "import_id_template": "{RoleName}:{PolicyName}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "iam:ListRolePolicies",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::IAM::RolePolicyAttachment": {
+      "terraform_type": "aws_iam_role_policy_attachment",
+      "import_id_template": "{RoleName}/{PolicyArn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "iam:ListAttachedRolePolicies",
+      "dependencies": ["aws_iam_role", "aws_iam_policy"]
+    },
+    "AWS::IAM::User": {
+      "terraform_type": "aws_iam_user",
+      "import_id_template": "{UserName}",
+      "import_phase": "Security",
+      "name_tag_path": "UserName",
+      "discovery_api": "iam:ListUsers",
+      "dependencies": []
+    },
+    "AWS::IAM::UserPolicy": {
+      "terraform_type": "aws_iam_user_policy",
+      "import_id_template": "{UserName}:{PolicyName}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "iam:ListUserPolicies",
+      "dependencies": ["aws_iam_user"]
+    },
+    "AWS::IAM::Group": {
+      "terraform_type": "aws_iam_group",
+      "import_id_template": "{GroupName}",
+      "import_phase": "Security",
+      "name_tag_path": "GroupName",
+      "discovery_api": "iam:ListGroups",
+      "dependencies": []
+    },
+    "AWS::IAM::GroupPolicy": {
+      "terraform_type": "aws_iam_group_policy",
+      "import_id_template": "{GroupName}:{PolicyName}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "iam:ListGroupPolicies",
+      "dependencies": ["aws_iam_group"]
+    },
+    "AWS::IAM::InstanceProfile": {
+      "terraform_type": "aws_iam_instance_profile",
+      "import_id_template": "{InstanceProfileName}",
+      "import_phase": "Security",
+      "name_tag_path": "InstanceProfileName",
+      "discovery_api": "iam:ListInstanceProfiles",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::IAM::OpenIDConnectProvider": {
+      "terraform_type": "aws_iam_openid_connect_provider",
+      "import_id_template": "{Arn}",
+      "import_phase": "Security",
+      "name_tag_path": "Url",
+      "discovery_api": "iam:ListOpenIDConnectProviders",
+      "dependencies": []
+    },
+    "AWS::IAM::SAMLProvider": {
+      "terraform_type": "aws_iam_saml_provider",
+      "import_id_template": "{Arn}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "iam:ListSAMLProviders",
+      "dependencies": []
+    },
+    "AWS::IAM::ServiceLinkedRole": {
+      "terraform_type": "aws_iam_service_linked_role",
+      "import_id_template": "{RoleName}",
+      "import_phase": "Security",
+      "name_tag_path": "RoleName",
+      "discovery_api": "iam:ListRoles",
+      "dependencies": []
+    },
+    "AWS::ElasticLoadBalancingV2::LoadBalancer": {
+      "terraform_type": "aws_lb",
+      "import_id_template": "{LoadBalancerArn}",
+      "import_phase": "LoadBalancing",
+      "name_tag_path": "LoadBalancerName",
+      "discovery_api": "elbv2:DescribeLoadBalancers",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::ElasticLoadBalancingV2::TargetGroup": {
+      "terraform_type": "aws_lb_target_group",
+      "import_id_template": "{TargetGroupArn}",
+      "import_phase": "LoadBalancing",
+      "name_tag_path": "TargetGroupName",
+      "discovery_api": "elbv2:DescribeTargetGroups",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::ElasticLoadBalancingV2::Listener": {
+      "terraform_type": "aws_lb_listener",
+      "import_id_template": "{ListenerArn}",
+      "import_phase": "LoadBalancing",
+      "name_tag_path": null,
+      "discovery_api": "elbv2:DescribeListeners",
+      "dependencies": ["aws_lb", "aws_lb_target_group"]
+    },
+    "AWS::ElasticLoadBalancingV2::ListenerRule": {
+      "terraform_type": "aws_lb_listener_rule",
+      "import_id_template": "{RuleArn}",
+      "import_phase": "LoadBalancing",
+      "name_tag_path": null,
+      "discovery_api": "elbv2:DescribeRules",
+      "dependencies": ["aws_lb_listener", "aws_lb_target_group"]
+    },
+    "AWS::ElasticLoadBalancing::LoadBalancer": {
+      "terraform_type": "aws_elb",
+      "import_id_template": "{LoadBalancerName}",
+      "import_phase": "LoadBalancing",
+      "name_tag_path": "LoadBalancerName",
+      "discovery_api": "elb:DescribeLoadBalancers",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::ECS::Cluster": {
+      "terraform_type": "aws_ecs_cluster",
+      "import_id_template": "{ClusterArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "ClusterName",
+      "discovery_api": "ecs:ListClusters",
+      "dependencies": []
+    },
+    "AWS::ECS::Service": {
+      "terraform_type": "aws_ecs_service",
+      "import_id_template": "{ClusterArn}/{ServiceName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ServiceName",
+      "discovery_api": "ecs:ListServices",
+      "dependencies": ["aws_ecs_cluster", "aws_ecs_task_definition", "aws_lb_target_group"]
+    },
+    "AWS::ECS::TaskDefinition": {
+      "terraform_type": "aws_ecs_task_definition",
+      "import_id_template": "{TaskDefinitionArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "Family",
+      "discovery_api": "ecs:ListTaskDefinitions",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::ECS::CapacityProvider": {
+      "terraform_type": "aws_ecs_capacity_provider",
+      "import_id_template": "{CapacityProviderArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "ecs:DescribeCapacityProviders",
+      "dependencies": ["aws_autoscaling_group"]
+    },
+    "AWS::EKS::Cluster": {
+      "terraform_type": "aws_eks_cluster",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "eks:ListClusters",
+      "dependencies": ["aws_iam_role", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::EKS::Nodegroup": {
+      "terraform_type": "aws_eks_node_group",
+      "import_id_template": "{ClusterName}:{NodegroupName}",
+      "import_phase": "Compute",
+      "name_tag_path": "NodegroupName",
+      "discovery_api": "eks:ListNodegroups",
+      "dependencies": ["aws_eks_cluster", "aws_iam_role", "aws_subnet"]
+    },
+    "AWS::EKS::FargateProfile": {
+      "terraform_type": "aws_eks_fargate_profile",
+      "import_id_template": "{ClusterName}:{FargateProfileName}",
+      "import_phase": "Compute",
+      "name_tag_path": "FargateProfileName",
+      "discovery_api": "eks:ListFargateProfiles",
+      "dependencies": ["aws_eks_cluster", "aws_iam_role", "aws_subnet"]
+    },
+    "AWS::EKS::Addon": {
+      "terraform_type": "aws_eks_addon",
+      "import_id_template": "{ClusterName}:{AddonName}",
+      "import_phase": "Compute",
+      "name_tag_path": "AddonName",
+      "discovery_api": "eks:ListAddons",
+      "dependencies": ["aws_eks_cluster"]
+    },
+    "AWS::EKS::IdentityProviderConfig": {
+      "terraform_type": "aws_eks_identity_provider_config",
+      "import_id_template": "{ClusterName}:{IdentityProviderConfigName}",
+      "import_phase": "Security",
+      "name_tag_path": "IdentityProviderConfigName",
+      "discovery_api": "eks:ListIdentityProviderConfigs",
+      "dependencies": ["aws_eks_cluster"]
+    },
+    "AWS::DynamoDB::Table": {
+      "terraform_type": "aws_dynamodb_table",
+      "import_id_template": "{TableName}",
+      "import_phase": "Databases",
+      "name_tag_path": "TableName",
+      "discovery_api": "dynamodb:ListTables",
+      "dependencies": []
+    },
+    "AWS::DynamoDB::GlobalTable": {
+      "terraform_type": "aws_dynamodb_global_table",
+      "import_id_template": "{GlobalTableName}",
+      "import_phase": "Databases",
+      "name_tag_path": "GlobalTableName",
+      "discovery_api": "dynamodb:ListGlobalTables",
+      "dependencies": ["aws_dynamodb_table"]
+    },
+    "AWS::ElastiCache::CacheCluster": {
+      "terraform_type": "aws_elasticache_cluster",
+      "import_id_template": "{CacheClusterId}",
+      "import_phase": "Databases",
+      "name_tag_path": "CacheClusterId",
+      "discovery_api": "elasticache:DescribeCacheClusters",
+      "dependencies": ["aws_elasticache_subnet_group", "aws_security_group"]
+    },
+    "AWS::ElastiCache::ReplicationGroup": {
+      "terraform_type": "aws_elasticache_replication_group",
+      "import_id_template": "{ReplicationGroupId}",
+      "import_phase": "Databases",
+      "name_tag_path": "ReplicationGroupId",
+      "discovery_api": "elasticache:DescribeReplicationGroups",
+      "dependencies": ["aws_elasticache_subnet_group", "aws_security_group"]
+    },
+    "AWS::ElastiCache::SubnetGroup": {
+      "terraform_type": "aws_elasticache_subnet_group",
+      "import_id_template": "{CacheSubnetGroupName}",
+      "import_phase": "Networking",
+      "name_tag_path": "CacheSubnetGroupName",
+      "discovery_api": "elasticache:DescribeCacheSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::ElastiCache::ParameterGroup": {
+      "terraform_type": "aws_elasticache_parameter_group",
+      "import_id_template": "{CacheParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "CacheParameterGroupName",
+      "discovery_api": "elasticache:DescribeCacheParameterGroups",
+      "dependencies": []
+    },
+    "AWS::ElastiCache::GlobalReplicationGroup": {
+      "terraform_type": "aws_elasticache_global_replication_group",
+      "import_id_template": "{GlobalReplicationGroupId}",
+      "import_phase": "Databases",
+      "name_tag_path": "GlobalReplicationGroupId",
+      "discovery_api": "elasticache:DescribeGlobalReplicationGroups",
+      "dependencies": []
+    },
+    "AWS::SNS::Topic": {
+      "terraform_type": "aws_sns_topic",
+      "import_id_template": "{TopicArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "TopicArn",
+      "discovery_api": "sns:ListTopics",
+      "dependencies": []
+    },
+    "AWS::SNS::Subscription": {
+      "terraform_type": "aws_sns_topic_subscription",
+      "import_id_template": "{SubscriptionArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": null,
+      "discovery_api": "sns:ListSubscriptions",
+      "dependencies": ["aws_sns_topic"]
+    },
+    "AWS::SNS::TopicPolicy": {
+      "terraform_type": "aws_sns_topic_policy",
+      "import_id_template": "{TopicArn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "sns:GetTopicAttributes",
+      "dependencies": ["aws_sns_topic"]
+    },
+    "AWS::SQS::Queue": {
+      "terraform_type": "aws_sqs_queue",
+      "import_id_template": "{QueueUrl}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "QueueName",
+      "discovery_api": "sqs:ListQueues",
+      "dependencies": []
+    },
+    "AWS::SQS::QueuePolicy": {
+      "terraform_type": "aws_sqs_queue_policy",
+      "import_id_template": "{QueueUrl}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "sqs:GetQueueAttributes",
+      "dependencies": ["aws_sqs_queue"]
+    },
+    "AWS::KMS::Key": {
+      "terraform_type": "aws_kms_key",
+      "import_id_template": "{KeyId}",
+      "import_phase": "Security",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "fallback_name_path": "KeyId",
+      "discovery_api": "kms:ListKeys",
+      "dependencies": []
+    },
+    "AWS::KMS::Alias": {
+      "terraform_type": "aws_kms_alias",
+      "import_id_template": "{AliasName}",
+      "import_phase": "Security",
+      "name_tag_path": "AliasName",
+      "discovery_api": "kms:ListAliases",
+      "dependencies": ["aws_kms_key"]
+    },
+    "AWS::CloudWatch::Alarm": {
+      "terraform_type": "aws_cloudwatch_metric_alarm",
+      "import_id_template": "{AlarmName}",
+      "import_phase": "Compute",
+      "name_tag_path": "AlarmName",
+      "discovery_api": "cloudwatch:DescribeAlarms",
+      "dependencies": []
+    },
+    "AWS::CloudWatch::CompositeAlarm": {
+      "terraform_type": "aws_cloudwatch_composite_alarm",
+      "import_id_template": "{AlarmName}",
+      "import_phase": "Compute",
+      "name_tag_path": "AlarmName",
+      "discovery_api": "cloudwatch:DescribeAlarms",
+      "dependencies": ["aws_cloudwatch_metric_alarm"]
+    },
+    "AWS::CloudWatch::Dashboard": {
+      "terraform_type": "aws_cloudwatch_dashboard",
+      "import_id_template": "{DashboardName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "DashboardName",
+      "discovery_api": "cloudwatch:ListDashboards",
+      "dependencies": []
+    },
+    "AWS::Logs::LogGroup": {
+      "terraform_type": "aws_cloudwatch_log_group",
+      "import_id_template": "{LogGroupName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "LogGroupName",
+      "discovery_api": "logs:DescribeLogGroups",
+      "dependencies": []
+    },
+    "AWS::Logs::LogStream": {
+      "terraform_type": "aws_cloudwatch_log_stream",
+      "import_id_template": "{LogGroupName}:{LogStreamName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "LogStreamName",
+      "discovery_api": "logs:DescribeLogStreams",
+      "dependencies": ["aws_cloudwatch_log_group"]
+    },
+    "AWS::Logs::MetricFilter": {
+      "terraform_type": "aws_cloudwatch_log_metric_filter",
+      "import_id_template": "{LogGroupName}:{FilterName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "FilterName",
+      "discovery_api": "logs:DescribeMetricFilters",
+      "dependencies": ["aws_cloudwatch_log_group"]
+    },
+    "AWS::Logs::SubscriptionFilter": {
+      "terraform_type": "aws_cloudwatch_log_subscription_filter",
+      "import_id_template": "{LogGroupName}/{FilterName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "FilterName",
+      "discovery_api": "logs:DescribeSubscriptionFilters",
+      "dependencies": ["aws_cloudwatch_log_group"]
+    },
+    "AWS::Logs::ResourcePolicy": {
+      "terraform_type": "aws_cloudwatch_log_resource_policy",
+      "import_id_template": "{PolicyName}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "logs:DescribeResourcePolicies",
+      "dependencies": []
+    },
+    "AWS::Events::Rule": {
+      "terraform_type": "aws_cloudwatch_event_rule",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "events:ListRules",
+      "dependencies": []
+    },
+    "AWS::Events::EventBus": {
+      "terraform_type": "aws_cloudwatch_event_bus",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "events:ListEventBuses",
+      "dependencies": []
+    },
+    "AWS::Events::Archive": {
+      "terraform_type": "aws_cloudwatch_event_archive",
+      "import_id_template": "{ArchiveName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ArchiveName",
+      "discovery_api": "events:ListArchives",
+      "dependencies": ["aws_cloudwatch_event_bus"]
+    },
+    "AWS::Events::Connection": {
+      "terraform_type": "aws_cloudwatch_event_connection",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "events:ListConnections",
+      "dependencies": []
+    },
+    "AWS::Events::ApiDestination": {
+      "terraform_type": "aws_cloudwatch_event_api_destination",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "events:ListApiDestinations",
+      "dependencies": ["aws_cloudwatch_event_connection"]
+    },
+    "AWS::Route53::HostedZone": {
+      "terraform_type": "aws_route53_zone",
+      "import_id_template": "{Id}",
+      "import_phase": "Foundation",
+      "name_tag_path": "Name",
+      "discovery_api": "route53:ListHostedZones",
+      "dependencies": []
+    },
+    "AWS::Route53::RecordSet": {
+      "terraform_type": "aws_route53_record",
+      "import_id_template": "{HostedZoneId}_{Name}_{Type}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "route53:ListResourceRecordSets",
+      "dependencies": ["aws_route53_zone"]
+    },
+    "AWS::Route53::HealthCheck": {
+      "terraform_type": "aws_route53_health_check",
+      "import_id_template": "{HealthCheckId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "route53:ListHealthChecks",
+      "dependencies": []
+    },
+    "AWS::Route53Resolver::ResolverEndpoint": {
+      "terraform_type": "aws_route53_resolver_endpoint",
+      "import_id_template": "{ResolverEndpointId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "route53resolver:ListResolverEndpoints",
+      "dependencies": ["aws_security_group", "aws_subnet"]
+    },
+    "AWS::Route53Resolver::ResolverRule": {
+      "terraform_type": "aws_route53_resolver_rule",
+      "import_id_template": "{ResolverRuleId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "route53resolver:ListResolverRules",
+      "dependencies": ["aws_route53_resolver_endpoint"]
+    },
+    "AWS::Route53Resolver::FirewallDomainList": {
+      "terraform_type": "aws_route53_resolver_firewall_domain_list",
+      "import_id_template": "{FirewallDomainListId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "route53resolver:ListFirewallDomainLists",
+      "dependencies": []
+    },
+    "AWS::Route53Resolver::FirewallRuleGroup": {
+      "terraform_type": "aws_route53_resolver_firewall_rule_group",
+      "import_id_template": "{FirewallRuleGroupId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "route53resolver:ListFirewallRuleGroups",
+      "dependencies": ["aws_route53_resolver_firewall_domain_list"]
+    },
+    "AWS::CloudFront::Distribution": {
+      "terraform_type": "aws_cloudfront_distribution",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "fallback_name_path": "DomainName",
+      "discovery_api": "cloudfront:ListDistributions",
+      "dependencies": ["aws_s3_bucket", "aws_acm_certificate"]
+    },
+    "AWS::CloudFront::CachePolicy": {
+      "terraform_type": "aws_cloudfront_cache_policy",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudfront:ListCachePolicies",
+      "dependencies": []
+    },
+    "AWS::CloudFront::OriginAccessControl": {
+      "terraform_type": "aws_cloudfront_origin_access_control",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudfront:ListOriginAccessControls",
+      "dependencies": []
+    },
+    "AWS::CloudFront::OriginRequestPolicy": {
+      "terraform_type": "aws_cloudfront_origin_request_policy",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudfront:ListOriginRequestPolicies",
+      "dependencies": []
+    },
+    "AWS::CloudFront::ResponseHeadersPolicy": {
+      "terraform_type": "aws_cloudfront_response_headers_policy",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudfront:ListResponseHeadersPolicies",
+      "dependencies": []
+    },
+    "AWS::CloudFront::Function": {
+      "terraform_type": "aws_cloudfront_function",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudfront:ListFunctions",
+      "dependencies": []
+    },
+    "AWS::CertificateManager::Certificate": {
+      "terraform_type": "aws_acm_certificate",
+      "import_id_template": "{CertificateArn}",
+      "import_phase": "Security",
+      "name_tag_path": "DomainName",
+      "discovery_api": "acm:ListCertificates",
+      "dependencies": []
+    },
+    "AWS::ACMPCA::CertificateAuthority": {
+      "terraform_type": "aws_acmpca_certificate_authority",
+      "import_id_template": "{Arn}",
+      "import_phase": "Security",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "acm-pca:ListCertificateAuthorities",
+      "dependencies": []
+    },
+    "AWS::SecretsManager::Secret": {
+      "terraform_type": "aws_secretsmanager_secret",
+      "import_id_template": "{ARN}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "secretsmanager:ListSecrets",
+      "dependencies": []
+    },
+    "AWS::SecretsManager::SecretVersion": {
+      "terraform_type": "aws_secretsmanager_secret_version",
+      "import_id_template": "{SecretId}|{VersionId}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "secretsmanager:ListSecretVersionIds",
+      "dependencies": ["aws_secretsmanager_secret"]
+    },
+    "AWS::SSM::Parameter": {
+      "terraform_type": "aws_ssm_parameter",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "ssm:DescribeParameters",
+      "dependencies": []
+    },
+    "AWS::SSM::Document": {
+      "terraform_type": "aws_ssm_document",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "ssm:ListDocuments",
+      "dependencies": []
+    },
+    "AWS::SSM::MaintenanceWindow": {
+      "terraform_type": "aws_ssm_maintenance_window",
+      "import_id_template": "{WindowId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "ssm:DescribeMaintenanceWindows",
+      "dependencies": []
+    },
+    "AWS::SSM::PatchBaseline": {
+      "terraform_type": "aws_ssm_patch_baseline",
+      "import_id_template": "{BaselineId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "ssm:DescribePatchBaselines",
+      "dependencies": []
+    },
+    "AWS::SSM::Association": {
+      "terraform_type": "aws_ssm_association",
+      "import_id_template": "{AssociationId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "ssm:ListAssociations",
+      "dependencies": ["aws_ssm_document"]
+    },
+    "AWS::AutoScaling::AutoScalingGroup": {
+      "terraform_type": "aws_autoscaling_group",
+      "import_id_template": "{AutoScalingGroupName}",
+      "import_phase": "Compute",
+      "name_tag_path": "AutoScalingGroupName",
+      "discovery_api": "autoscaling:DescribeAutoScalingGroups",
+      "dependencies": ["aws_launch_template", "aws_subnet", "aws_lb_target_group"]
+    },
+    "AWS::AutoScaling::LaunchConfiguration": {
+      "terraform_type": "aws_launch_configuration",
+      "import_id_template": "{LaunchConfigurationName}",
+      "import_phase": "Compute",
+      "name_tag_path": "LaunchConfigurationName",
+      "discovery_api": "autoscaling:DescribeLaunchConfigurations",
+      "dependencies": ["aws_security_group", "aws_iam_instance_profile"]
+    },
+    "AWS::AutoScaling::ScalingPolicy": {
+      "terraform_type": "aws_autoscaling_policy",
+      "import_id_template": "{AutoScalingGroupName}/{PolicyName}",
+      "import_phase": "Compute",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "autoscaling:DescribePolicies",
+      "dependencies": ["aws_autoscaling_group"]
+    },
+    "AWS::AutoScaling::ScheduledAction": {
+      "terraform_type": "aws_autoscaling_schedule",
+      "import_id_template": "{AutoScalingGroupName}/{ScheduledActionName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ScheduledActionName",
+      "discovery_api": "autoscaling:DescribeScheduledActions",
+      "dependencies": ["aws_autoscaling_group"]
+    },
+    "AWS::AutoScaling::LifecycleHook": {
+      "terraform_type": "aws_autoscaling_lifecycle_hook",
+      "import_id_template": "{AutoScalingGroupName}/{LifecycleHookName}",
+      "import_phase": "Compute",
+      "name_tag_path": "LifecycleHookName",
+      "discovery_api": "autoscaling:DescribeLifecycleHooks",
+      "dependencies": ["aws_autoscaling_group"]
+    },
+    "AWS::ApplicationAutoScaling::ScalableTarget": {
+      "terraform_type": "aws_appautoscaling_target",
+      "import_id_template": "{ServiceNamespace}/{ResourceId}/{ScalableDimension}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "application-autoscaling:DescribeScalableTargets",
+      "dependencies": []
+    },
+    "AWS::ApplicationAutoScaling::ScalingPolicy": {
+      "terraform_type": "aws_appautoscaling_policy",
+      "import_id_template": "{ServiceNamespace}/{ResourceId}/{ScalableDimension}/{PolicyName}",
+      "import_phase": "Compute",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "application-autoscaling:DescribeScalingPolicies",
+      "dependencies": ["aws_appautoscaling_target"]
+    },
+    "AWS::ApiGateway::RestApi": {
+      "terraform_type": "aws_api_gateway_rest_api",
+      "import_id_template": "{RestApiId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "apigateway:GetRestApis",
+      "dependencies": []
+    },
+    "AWS::ApiGateway::Resource": {
+      "terraform_type": "aws_api_gateway_resource",
+      "import_id_template": "{RestApiId}/{ResourceId}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "apigateway:GetResources",
+      "dependencies": ["aws_api_gateway_rest_api"]
+    },
+    "AWS::ApiGateway::Method": {
+      "terraform_type": "aws_api_gateway_method",
+      "import_id_template": "{RestApiId}/{ResourceId}/{HttpMethod}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "apigateway:GetMethod",
+      "dependencies": ["aws_api_gateway_resource"]
+    },
+    "AWS::ApiGateway::Stage": {
+      "terraform_type": "aws_api_gateway_stage",
+      "import_id_template": "{RestApiId}/{StageName}",
+      "import_phase": "Compute",
+      "name_tag_path": "StageName",
+      "discovery_api": "apigateway:GetStages",
+      "dependencies": ["aws_api_gateway_rest_api", "aws_api_gateway_deployment"]
+    },
+    "AWS::ApiGateway::Deployment": {
+      "terraform_type": "aws_api_gateway_deployment",
+      "import_id_template": "{RestApiId}/{DeploymentId}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "apigateway:GetDeployments",
+      "dependencies": ["aws_api_gateway_rest_api"]
+    },
+    "AWS::ApiGateway::DomainName": {
+      "terraform_type": "aws_api_gateway_domain_name",
+      "import_id_template": "{DomainName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DomainName",
+      "discovery_api": "apigateway:GetDomainNames",
+      "dependencies": ["aws_acm_certificate"]
+    },
+    "AWS::ApiGateway::BasePathMapping": {
+      "terraform_type": "aws_api_gateway_base_path_mapping",
+      "import_id_template": "{DomainName}/{BasePath}",
+      "import_phase": "Networking",
+      "name_tag_path": null,
+      "discovery_api": "apigateway:GetBasePathMappings",
+      "dependencies": ["aws_api_gateway_domain_name", "aws_api_gateway_rest_api"]
+    },
+    "AWS::ApiGateway::Authorizer": {
+      "terraform_type": "aws_api_gateway_authorizer",
+      "import_id_template": "{RestApiId}/{AuthorizerId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "apigateway:GetAuthorizers",
+      "dependencies": ["aws_api_gateway_rest_api"]
+    },
+    "AWS::ApiGateway::ApiKey": {
+      "terraform_type": "aws_api_gateway_api_key",
+      "import_id_template": "{ApiKeyId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "apigateway:GetApiKeys",
+      "dependencies": []
+    },
+    "AWS::ApiGateway::UsagePlan": {
+      "terraform_type": "aws_api_gateway_usage_plan",
+      "import_id_template": "{UsagePlanId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "apigateway:GetUsagePlans",
+      "dependencies": ["aws_api_gateway_rest_api", "aws_api_gateway_stage"]
+    },
+    "AWS::ApiGateway::VpcLink": {
+      "terraform_type": "aws_api_gateway_vpc_link",
+      "import_id_template": "{VpcLinkId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "apigateway:GetVpcLinks",
+      "dependencies": ["aws_lb"]
+    },
+    "AWS::ApiGatewayV2::Api": {
+      "terraform_type": "aws_apigatewayv2_api",
+      "import_id_template": "{ApiId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "apigatewayv2:GetApis",
+      "dependencies": []
+    },
+    "AWS::ApiGatewayV2::Stage": {
+      "terraform_type": "aws_apigatewayv2_stage",
+      "import_id_template": "{ApiId}/{StageName}",
+      "import_phase": "Compute",
+      "name_tag_path": "StageName",
+      "discovery_api": "apigatewayv2:GetStages",
+      "dependencies": ["aws_apigatewayv2_api"]
+    },
+    "AWS::ApiGatewayV2::Route": {
+      "terraform_type": "aws_apigatewayv2_route",
+      "import_id_template": "{ApiId}/{RouteId}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "apigatewayv2:GetRoutes",
+      "dependencies": ["aws_apigatewayv2_api"]
+    },
+    "AWS::ApiGatewayV2::Integration": {
+      "terraform_type": "aws_apigatewayv2_integration",
+      "import_id_template": "{ApiId}/{IntegrationId}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "apigatewayv2:GetIntegrations",
+      "dependencies": ["aws_apigatewayv2_api"]
+    },
+    "AWS::ApiGatewayV2::DomainName": {
+      "terraform_type": "aws_apigatewayv2_domain_name",
+      "import_id_template": "{DomainName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DomainName",
+      "discovery_api": "apigatewayv2:GetDomainNames",
+      "dependencies": ["aws_acm_certificate"]
+    },
+    "AWS::ApiGatewayV2::Authorizer": {
+      "terraform_type": "aws_apigatewayv2_authorizer",
+      "import_id_template": "{ApiId}/{AuthorizerId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "apigatewayv2:GetAuthorizers",
+      "dependencies": ["aws_apigatewayv2_api"]
+    },
+    "AWS::ApiGatewayV2::VpcLink": {
+      "terraform_type": "aws_apigatewayv2_vpc_link",
+      "import_id_template": "{VpcLinkId}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "apigatewayv2:GetVpcLinks",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::Cognito::UserPool": {
+      "terraform_type": "aws_cognito_user_pool",
+      "import_id_template": "{UserPoolId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "cognito-idp:ListUserPools",
+      "dependencies": []
+    },
+    "AWS::Cognito::UserPoolClient": {
+      "terraform_type": "aws_cognito_user_pool_client",
+      "import_id_template": "{UserPoolId}/{ClientId}",
+      "import_phase": "Security",
+      "name_tag_path": "ClientName",
+      "discovery_api": "cognito-idp:ListUserPoolClients",
+      "dependencies": ["aws_cognito_user_pool"]
+    },
+    "AWS::Cognito::UserPoolDomain": {
+      "terraform_type": "aws_cognito_user_pool_domain",
+      "import_id_template": "{Domain}",
+      "import_phase": "Security",
+      "name_tag_path": "Domain",
+      "discovery_api": "cognito-idp:DescribeUserPoolDomain",
+      "dependencies": ["aws_cognito_user_pool"]
+    },
+    "AWS::Cognito::IdentityPool": {
+      "terraform_type": "aws_cognito_identity_pool",
+      "import_id_template": "{IdentityPoolId}",
+      "import_phase": "Security",
+      "name_tag_path": "IdentityPoolName",
+      "discovery_api": "cognito-identity:ListIdentityPools",
+      "dependencies": []
+    },
+    "AWS::Cognito::UserPoolGroup": {
+      "terraform_type": "aws_cognito_user_group",
+      "import_id_template": "{UserPoolId}/{GroupName}",
+      "import_phase": "Security",
+      "name_tag_path": "GroupName",
+      "discovery_api": "cognito-idp:ListGroups",
+      "dependencies": ["aws_cognito_user_pool"]
+    },
+    "AWS::StepFunctions::StateMachine": {
+      "terraform_type": "aws_sfn_state_machine",
+      "import_id_template": "{StateMachineArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "stepfunctions:ListStateMachines",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::StepFunctions::Activity": {
+      "terraform_type": "aws_sfn_activity",
+      "import_id_template": "{ActivityArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "stepfunctions:ListActivities",
+      "dependencies": []
+    },
+    "AWS::Glue::Database": {
+      "terraform_type": "aws_glue_catalog_database",
+      "import_id_template": "{CatalogId}:{DatabaseName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetDatabases",
+      "dependencies": []
+    },
+    "AWS::Glue::Table": {
+      "terraform_type": "aws_glue_catalog_table",
+      "import_id_template": "{CatalogId}:{DatabaseName}:{TableName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetTables",
+      "dependencies": ["aws_glue_catalog_database"]
+    },
+    "AWS::Glue::Crawler": {
+      "terraform_type": "aws_glue_crawler",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetCrawlers",
+      "dependencies": ["aws_glue_catalog_database", "aws_iam_role"]
+    },
+    "AWS::Glue::Job": {
+      "terraform_type": "aws_glue_job",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetJobs",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::Glue::Connection": {
+      "terraform_type": "aws_glue_connection",
+      "import_id_template": "{CatalogId}:{ConnectionName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetConnections",
+      "dependencies": ["aws_vpc", "aws_security_group"]
+    },
+    "AWS::Glue::Trigger": {
+      "terraform_type": "aws_glue_trigger",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetTriggers",
+      "dependencies": ["aws_glue_job"]
+    },
+    "AWS::Glue::Workflow": {
+      "terraform_type": "aws_glue_workflow",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "glue:GetWorkflows",
+      "dependencies": []
+    },
+    "AWS::Athena::WorkGroup": {
+      "terraform_type": "aws_athena_workgroup",
+      "import_id_template": "{WorkGroupName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "athena:ListWorkGroups",
+      "dependencies": []
+    },
+    "AWS::Athena::DataCatalog": {
+      "terraform_type": "aws_athena_data_catalog",
+      "import_id_template": "{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "athena:ListDataCatalogs",
+      "dependencies": []
+    },
+    "AWS::Athena::NamedQuery": {
+      "terraform_type": "aws_athena_named_query",
+      "import_id_template": "{NamedQueryId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "athena:ListNamedQueries",
+      "dependencies": ["aws_athena_workgroup"]
+    },
+    "AWS::Kinesis::Stream": {
+      "terraform_type": "aws_kinesis_stream",
+      "import_id_template": "{StreamName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "StreamName",
+      "discovery_api": "kinesis:ListStreams",
+      "dependencies": []
+    },
+    "AWS::KinesisFirehose::DeliveryStream": {
+      "terraform_type": "aws_kinesis_firehose_delivery_stream",
+      "import_id_template": "{DeliveryStreamName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "DeliveryStreamName",
+      "discovery_api": "firehose:ListDeliveryStreams",
+      "dependencies": ["aws_iam_role", "aws_s3_bucket"]
+    },
+    "AWS::KinesisAnalytics::Application": {
+      "terraform_type": "aws_kinesis_analytics_application",
+      "import_id_template": "{ApplicationName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ApplicationName",
+      "discovery_api": "kinesisanalytics:ListApplications",
+      "dependencies": ["aws_kinesis_stream"]
+    },
+    "AWS::KinesisAnalyticsV2::Application": {
+      "terraform_type": "aws_kinesisanalyticsv2_application",
+      "import_id_template": "{ApplicationARN}",
+      "import_phase": "Compute",
+      "name_tag_path": "ApplicationName",
+      "discovery_api": "kinesisanalyticsv2:ListApplications",
+      "dependencies": []
+    },
+    "AWS::Redshift::Cluster": {
+      "terraform_type": "aws_redshift_cluster",
+      "import_id_template": "{ClusterIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "ClusterIdentifier",
+      "discovery_api": "redshift:DescribeClusters",
+      "dependencies": ["aws_redshift_subnet_group", "aws_security_group", "aws_iam_role"]
+    },
+    "AWS::Redshift::ClusterSubnetGroup": {
+      "terraform_type": "aws_redshift_subnet_group",
+      "import_id_template": "{ClusterSubnetGroupName}",
+      "import_phase": "Networking",
+      "name_tag_path": "ClusterSubnetGroupName",
+      "discovery_api": "redshift:DescribeClusterSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::Redshift::ClusterParameterGroup": {
+      "terraform_type": "aws_redshift_parameter_group",
+      "import_id_template": "{ParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "ParameterGroupName",
+      "discovery_api": "redshift:DescribeClusterParameterGroups",
+      "dependencies": []
+    },
+    "AWS::Redshift::ScheduledAction": {
+      "terraform_type": "aws_redshift_scheduled_action",
+      "import_id_template": "{ScheduledActionName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ScheduledActionName",
+      "discovery_api": "redshift:DescribeScheduledActions",
+      "dependencies": ["aws_redshift_cluster", "aws_iam_role"]
+    },
+    "AWS::Neptune::DBCluster": {
+      "terraform_type": "aws_neptune_cluster",
+      "import_id_template": "{DBClusterIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBClusterIdentifier",
+      "discovery_api": "neptune:DescribeDBClusters",
+      "dependencies": ["aws_neptune_subnet_group", "aws_security_group"]
+    },
+    "AWS::Neptune::DBInstance": {
+      "terraform_type": "aws_neptune_cluster_instance",
+      "import_id_template": "{DBInstanceIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBInstanceIdentifier",
+      "discovery_api": "neptune:DescribeDBInstances",
+      "dependencies": ["aws_neptune_cluster"]
+    },
+    "AWS::Neptune::DBSubnetGroup": {
+      "terraform_type": "aws_neptune_subnet_group",
+      "import_id_template": "{DBSubnetGroupName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DBSubnetGroupName",
+      "discovery_api": "neptune:DescribeDBSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::Neptune::DBParameterGroup": {
+      "terraform_type": "aws_neptune_parameter_group",
+      "import_id_template": "{DBParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBParameterGroupName",
+      "discovery_api": "neptune:DescribeDBParameterGroups",
+      "dependencies": []
+    },
+    "AWS::DocDB::DBCluster": {
+      "terraform_type": "aws_docdb_cluster",
+      "import_id_template": "{DBClusterIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBClusterIdentifier",
+      "discovery_api": "docdb:DescribeDBClusters",
+      "dependencies": ["aws_docdb_subnet_group", "aws_security_group"]
+    },
+    "AWS::DocDB::DBInstance": {
+      "terraform_type": "aws_docdb_cluster_instance",
+      "import_id_template": "{DBInstanceIdentifier}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBInstanceIdentifier",
+      "discovery_api": "docdb:DescribeDBInstances",
+      "dependencies": ["aws_docdb_cluster"]
+    },
+    "AWS::DocDB::DBSubnetGroup": {
+      "terraform_type": "aws_docdb_subnet_group",
+      "import_id_template": "{DBSubnetGroupName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DBSubnetGroupName",
+      "discovery_api": "docdb:DescribeDBSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::DocDB::DBClusterParameterGroup": {
+      "terraform_type": "aws_docdb_cluster_parameter_group",
+      "import_id_template": "{DBClusterParameterGroupName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DBClusterParameterGroupName",
+      "discovery_api": "docdb:DescribeDBClusterParameterGroups",
+      "dependencies": []
+    },
+    "AWS::OpenSearchService::Domain": {
+      "terraform_type": "aws_opensearch_domain",
+      "import_id_template": "{DomainName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DomainName",
+      "discovery_api": "opensearch:ListDomainNames",
+      "dependencies": ["aws_vpc", "aws_subnet", "aws_security_group", "aws_iam_role"]
+    },
+    "AWS::Elasticsearch::Domain": {
+      "terraform_type": "aws_elasticsearch_domain",
+      "import_id_template": "{DomainName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DomainName",
+      "discovery_api": "es:ListDomainNames",
+      "dependencies": ["aws_vpc", "aws_subnet", "aws_security_group", "aws_iam_role"]
+    },
+    "AWS::MSK::Cluster": {
+      "terraform_type": "aws_msk_cluster",
+      "import_id_template": "{ClusterArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ClusterName",
+      "discovery_api": "kafka:ListClusters",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::MSK::Configuration": {
+      "terraform_type": "aws_msk_configuration",
+      "import_id_template": "{Arn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "kafka:ListConfigurations",
+      "dependencies": []
+    },
+    "AWS::MQ::Broker": {
+      "terraform_type": "aws_mq_broker",
+      "import_id_template": "{BrokerId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "BrokerName",
+      "discovery_api": "mq:ListBrokers",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::MQ::Configuration": {
+      "terraform_type": "aws_mq_configuration",
+      "import_id_template": "{ConfigurationId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "mq:ListConfigurations",
+      "dependencies": []
+    },
+    "AWS::EFS::FileSystem": {
+      "terraform_type": "aws_efs_file_system",
+      "import_id_template": "{FileSystemId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "efs:DescribeFileSystems",
+      "dependencies": []
+    },
+    "AWS::EFS::MountTarget": {
+      "terraform_type": "aws_efs_mount_target",
+      "import_id_template": "{MountTargetId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": null,
+      "discovery_api": "efs:DescribeMountTargets",
+      "dependencies": ["aws_efs_file_system", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::EFS::AccessPoint": {
+      "terraform_type": "aws_efs_access_point",
+      "import_id_template": "{AccessPointId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "efs:DescribeAccessPoints",
+      "dependencies": ["aws_efs_file_system"]
+    },
+    "AWS::FSx::FileSystem": {
+      "terraform_type": "aws_fsx_lustre_file_system",
+      "import_id_template": "{FileSystemId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "fsx:DescribeFileSystems",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::WAFv2::WebACL": {
+      "terraform_type": "aws_wafv2_web_acl",
+      "import_id_template": "{Id}/{Name}/{Scope}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "wafv2:ListWebACLs",
+      "dependencies": []
+    },
+    "AWS::WAFv2::RuleGroup": {
+      "terraform_type": "aws_wafv2_rule_group",
+      "import_id_template": "{Id}/{Name}/{Scope}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "wafv2:ListRuleGroups",
+      "dependencies": []
+    },
+    "AWS::WAFv2::IPSet": {
+      "terraform_type": "aws_wafv2_ip_set",
+      "import_id_template": "{Id}/{Name}/{Scope}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "wafv2:ListIPSets",
+      "dependencies": []
+    },
+    "AWS::WAFv2::RegexPatternSet": {
+      "terraform_type": "aws_wafv2_regex_pattern_set",
+      "import_id_template": "{Id}/{Name}/{Scope}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "wafv2:ListRegexPatternSets",
+      "dependencies": []
+    },
+    "AWS::WAFv2::WebACLAssociation": {
+      "terraform_type": "aws_wafv2_web_acl_association",
+      "import_id_template": "{WebACLArn},{ResourceArn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "wafv2:ListResourcesForWebACL",
+      "dependencies": ["aws_wafv2_web_acl"]
+    },
+    "AWS::NetworkFirewall::Firewall": {
+      "terraform_type": "aws_networkfirewall_firewall",
+      "import_id_template": "{FirewallArn}",
+      "import_phase": "Security",
+      "name_tag_path": "FirewallName",
+      "discovery_api": "network-firewall:ListFirewalls",
+      "dependencies": ["aws_vpc", "aws_subnet", "aws_networkfirewall_firewall_policy"]
+    },
+    "AWS::NetworkFirewall::FirewallPolicy": {
+      "terraform_type": "aws_networkfirewall_firewall_policy",
+      "import_id_template": "{FirewallPolicyArn}",
+      "import_phase": "Security",
+      "name_tag_path": "FirewallPolicyName",
+      "discovery_api": "network-firewall:ListFirewallPolicies",
+      "dependencies": ["aws_networkfirewall_rule_group"]
+    },
+    "AWS::NetworkFirewall::RuleGroup": {
+      "terraform_type": "aws_networkfirewall_rule_group",
+      "import_id_template": "{RuleGroupArn}",
+      "import_phase": "Security",
+      "name_tag_path": "RuleGroupName",
+      "discovery_api": "network-firewall:ListRuleGroups",
+      "dependencies": []
+    },
+    "AWS::GuardDuty::Detector": {
+      "terraform_type": "aws_guardduty_detector",
+      "import_id_template": "{DetectorId}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "guardduty:ListDetectors",
+      "dependencies": []
+    },
+    "AWS::GuardDuty::IPSet": {
+      "terraform_type": "aws_guardduty_ipset",
+      "import_id_template": "{DetectorId}:{IPSetId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "guardduty:ListIPSets",
+      "dependencies": ["aws_guardduty_detector"]
+    },
+    "AWS::GuardDuty::ThreatIntelSet": {
+      "terraform_type": "aws_guardduty_threatintelset",
+      "import_id_template": "{DetectorId}:{ThreatIntelSetId}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "guardduty:ListThreatIntelSets",
+      "dependencies": ["aws_guardduty_detector"]
+    },
+    "AWS::SecurityHub::Hub": {
+      "terraform_type": "aws_securityhub_account",
+      "import_id_template": "{HubArn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "securityhub:DescribeHub",
+      "dependencies": []
+    },
+    "AWS::Inspector::AssessmentTarget": {
+      "terraform_type": "aws_inspector_assessment_target",
+      "import_id_template": "{AssessmentTargetArn}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "inspector:ListAssessmentTargets",
+      "dependencies": []
+    },
+    "AWS::Inspector::AssessmentTemplate": {
+      "terraform_type": "aws_inspector_assessment_template",
+      "import_id_template": "{AssessmentTemplateArn}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "inspector:ListAssessmentTemplates",
+      "dependencies": ["aws_inspector_assessment_target"]
+    },
+    "AWS::Config::ConfigRule": {
+      "terraform_type": "aws_config_config_rule",
+      "import_id_template": "{ConfigRuleName}",
+      "import_phase": "Security",
+      "name_tag_path": "ConfigRuleName",
+      "discovery_api": "config:DescribeConfigRules",
+      "dependencies": ["aws_config_configuration_recorder"]
+    },
+    "AWS::Config::ConfigurationRecorder": {
+      "terraform_type": "aws_config_configuration_recorder",
+      "import_id_template": "{Name}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "config:DescribeConfigurationRecorders",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::Config::DeliveryChannel": {
+      "terraform_type": "aws_config_delivery_channel",
+      "import_id_template": "{Name}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "config:DescribeDeliveryChannels",
+      "dependencies": ["aws_config_configuration_recorder", "aws_s3_bucket"]
+    },
+    "AWS::CloudTrail::Trail": {
+      "terraform_type": "aws_cloudtrail",
+      "import_id_template": "{Name}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "cloudtrail:DescribeTrails",
+      "dependencies": ["aws_s3_bucket", "aws_cloudwatch_log_group", "aws_iam_role"]
+    },
+    "AWS::Backup::BackupPlan": {
+      "terraform_type": "aws_backup_plan",
+      "import_id_template": "{BackupPlanId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "BackupPlanName",
+      "discovery_api": "backup:ListBackupPlans",
+      "dependencies": ["aws_backup_vault"]
+    },
+    "AWS::Backup::BackupVault": {
+      "terraform_type": "aws_backup_vault",
+      "import_id_template": "{BackupVaultName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "BackupVaultName",
+      "discovery_api": "backup:ListBackupVaults",
+      "dependencies": ["aws_kms_key"]
+    },
+    "AWS::Backup::BackupSelection": {
+      "terraform_type": "aws_backup_selection",
+      "import_id_template": "{BackupPlanId}|{SelectionId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "SelectionName",
+      "discovery_api": "backup:ListBackupSelections",
+      "dependencies": ["aws_backup_plan", "aws_iam_role"]
+    },
+    "AWS::SageMaker::NotebookInstance": {
+      "terraform_type": "aws_sagemaker_notebook_instance",
+      "import_id_template": "{NotebookInstanceName}",
+      "import_phase": "Compute",
+      "name_tag_path": "NotebookInstanceName",
+      "discovery_api": "sagemaker:ListNotebookInstances",
+      "dependencies": ["aws_iam_role", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::SageMaker::Model": {
+      "terraform_type": "aws_sagemaker_model",
+      "import_id_template": "{ModelName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ModelName",
+      "discovery_api": "sagemaker:ListModels",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::SageMaker::Endpoint": {
+      "terraform_type": "aws_sagemaker_endpoint",
+      "import_id_template": "{EndpointName}",
+      "import_phase": "Compute",
+      "name_tag_path": "EndpointName",
+      "discovery_api": "sagemaker:ListEndpoints",
+      "dependencies": ["aws_sagemaker_endpoint_configuration"]
+    },
+    "AWS::SageMaker::EndpointConfig": {
+      "terraform_type": "aws_sagemaker_endpoint_configuration",
+      "import_id_template": "{EndpointConfigName}",
+      "import_phase": "Compute",
+      "name_tag_path": "EndpointConfigName",
+      "discovery_api": "sagemaker:ListEndpointConfigs",
+      "dependencies": ["aws_sagemaker_model"]
+    },
+    "AWS::SageMaker::Domain": {
+      "terraform_type": "aws_sagemaker_domain",
+      "import_id_template": "{DomainId}",
+      "import_phase": "Compute",
+      "name_tag_path": "DomainName",
+      "discovery_api": "sagemaker:ListDomains",
+      "dependencies": ["aws_iam_role", "aws_vpc", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::CodeBuild::Project": {
+      "terraform_type": "aws_codebuild_project",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "codebuild:ListProjects",
+      "dependencies": ["aws_iam_role", "aws_vpc", "aws_security_group"]
+    },
+    "AWS::CodeBuild::SourceCredential": {
+      "terraform_type": "aws_codebuild_source_credential",
+      "import_id_template": "{Arn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "codebuild:ListSourceCredentials",
+      "dependencies": []
+    },
+    "AWS::CodePipeline::Pipeline": {
+      "terraform_type": "aws_codepipeline",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "codepipeline:ListPipelines",
+      "dependencies": ["aws_iam_role", "aws_s3_bucket"]
+    },
+    "AWS::CodeDeploy::Application": {
+      "terraform_type": "aws_codedeploy_app",
+      "import_id_template": "{ApplicationName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ApplicationName",
+      "discovery_api": "codedeploy:ListApplications",
+      "dependencies": []
+    },
+    "AWS::CodeDeploy::DeploymentGroup": {
+      "terraform_type": "aws_codedeploy_deployment_group",
+      "import_id_template": "{ApplicationName}:{DeploymentGroupName}",
+      "import_phase": "Compute",
+      "name_tag_path": "DeploymentGroupName",
+      "discovery_api": "codedeploy:ListDeploymentGroups",
+      "dependencies": ["aws_codedeploy_app", "aws_iam_role"]
+    },
+    "AWS::CodeDeploy::DeploymentConfig": {
+      "terraform_type": "aws_codedeploy_deployment_config",
+      "import_id_template": "{DeploymentConfigName}",
+      "import_phase": "Compute",
+      "name_tag_path": "DeploymentConfigName",
+      "discovery_api": "codedeploy:ListDeploymentConfigs",
+      "dependencies": []
+    },
+    "AWS::CodeCommit::Repository": {
+      "terraform_type": "aws_codecommit_repository",
+      "import_id_template": "{RepositoryName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "RepositoryName",
+      "discovery_api": "codecommit:ListRepositories",
+      "dependencies": []
+    },
+    "AWS::CodeArtifact::Domain": {
+      "terraform_type": "aws_codeartifact_domain",
+      "import_id_template": "{DomainName}:{Owner}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "codeartifact:ListDomains",
+      "dependencies": []
+    },
+    "AWS::CodeArtifact::Repository": {
+      "terraform_type": "aws_codeartifact_repository",
+      "import_id_template": "{DomainName}:{Owner}:{RepositoryName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "codeartifact:ListRepositories",
+      "dependencies": ["aws_codeartifact_domain"]
+    },
+    "AWS::ECR::Repository": {
+      "terraform_type": "aws_ecr_repository",
+      "import_id_template": "{RepositoryName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "RepositoryName",
+      "discovery_api": "ecr:DescribeRepositories",
+      "dependencies": []
+    },
+    "AWS::ECR::LifecyclePolicy": {
+      "terraform_type": "aws_ecr_lifecycle_policy",
+      "import_id_template": "{RepositoryName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": null,
+      "discovery_api": "ecr:GetLifecyclePolicy",
+      "dependencies": ["aws_ecr_repository"]
+    },
+    "AWS::ECR::RegistryPolicy": {
+      "terraform_type": "aws_ecr_registry_policy",
+      "import_id_template": "policy",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "ecr:GetRegistryPolicy",
+      "dependencies": []
+    },
+    "AWS::ECRPublic::Repository": {
+      "terraform_type": "aws_ecrpublic_repository",
+      "import_id_template": "{RepositoryName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "RepositoryName",
+      "discovery_api": "ecr-public:DescribeRepositories",
+      "dependencies": []
+    },
+    "AWS::AppRunner::Service": {
+      "terraform_type": "aws_apprunner_service",
+      "import_id_template": "{ServiceArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "ServiceName",
+      "discovery_api": "apprunner:ListServices",
+      "dependencies": ["aws_apprunner_auto_scaling_configuration", "aws_apprunner_vpc_connector"]
+    },
+    "AWS::AppRunner::AutoScalingConfiguration": {
+      "terraform_type": "aws_apprunner_auto_scaling_configuration_version",
+      "import_id_template": "{AutoScalingConfigurationArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "AutoScalingConfigurationName",
+      "discovery_api": "apprunner:ListAutoScalingConfigurations",
+      "dependencies": []
+    },
+    "AWS::AppRunner::VpcConnector": {
+      "terraform_type": "aws_apprunner_vpc_connector",
+      "import_id_template": "{VpcConnectorArn}",
+      "import_phase": "Networking",
+      "name_tag_path": "VpcConnectorName",
+      "discovery_api": "apprunner:ListVpcConnectors",
+      "dependencies": ["aws_subnet", "aws_security_group"]
+    },
+    "AWS::AppRunner::Connection": {
+      "terraform_type": "aws_apprunner_connection",
+      "import_id_template": "{ConnectionName}",
+      "import_phase": "Security",
+      "name_tag_path": "ConnectionName",
+      "discovery_api": "apprunner:ListConnections",
+      "dependencies": []
+    },
+    "AWS::Batch::ComputeEnvironment": {
+      "terraform_type": "aws_batch_compute_environment",
+      "import_id_template": "{ComputeEnvironmentName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ComputeEnvironmentName",
+      "discovery_api": "batch:DescribeComputeEnvironments",
+      "dependencies": ["aws_iam_role", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::Batch::JobQueue": {
+      "terraform_type": "aws_batch_job_queue",
+      "import_id_template": "{JobQueueName}",
+      "import_phase": "Compute",
+      "name_tag_path": "JobQueueName",
+      "discovery_api": "batch:DescribeJobQueues",
+      "dependencies": ["aws_batch_compute_environment"]
+    },
+    "AWS::Batch::JobDefinition": {
+      "terraform_type": "aws_batch_job_definition",
+      "import_id_template": "{JobDefinitionArn}",
+      "import_phase": "Compute",
+      "name_tag_path": "JobDefinitionName",
+      "discovery_api": "batch:DescribeJobDefinitions",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::EMR::Cluster": {
+      "terraform_type": "aws_emr_cluster",
+      "import_id_template": "{ClusterId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "emr:ListClusters",
+      "dependencies": ["aws_iam_role", "aws_subnet", "aws_security_group"]
+    },
+    "AWS::EMR::SecurityConfiguration": {
+      "terraform_type": "aws_emr_security_configuration",
+      "import_id_template": "{Name}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "emr:ListSecurityConfigurations",
+      "dependencies": []
+    },
+    "AWS::ElasticBeanstalk::Application": {
+      "terraform_type": "aws_elastic_beanstalk_application",
+      "import_id_template": "{ApplicationName}",
+      "import_phase": "Compute",
+      "name_tag_path": "ApplicationName",
+      "discovery_api": "elasticbeanstalk:DescribeApplications",
+      "dependencies": []
+    },
+    "AWS::ElasticBeanstalk::Environment": {
+      "terraform_type": "aws_elastic_beanstalk_environment",
+      "import_id_template": "{EnvironmentId}",
+      "import_phase": "Compute",
+      "name_tag_path": "EnvironmentName",
+      "discovery_api": "elasticbeanstalk:DescribeEnvironments",
+      "dependencies": ["aws_elastic_beanstalk_application"]
+    },
+    "AWS::ServiceDiscovery::PrivateDnsNamespace": {
+      "terraform_type": "aws_service_discovery_private_dns_namespace",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "servicediscovery:ListNamespaces",
+      "dependencies": ["aws_vpc"]
+    },
+    "AWS::ServiceDiscovery::PublicDnsNamespace": {
+      "terraform_type": "aws_service_discovery_public_dns_namespace",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "servicediscovery:ListNamespaces",
+      "dependencies": []
+    },
+    "AWS::ServiceDiscovery::Service": {
+      "terraform_type": "aws_service_discovery_service",
+      "import_id_template": "{Id}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "servicediscovery:ListServices",
+      "dependencies": ["aws_service_discovery_private_dns_namespace"]
+    },
+    "AWS::GlobalAccelerator::Accelerator": {
+      "terraform_type": "aws_globalaccelerator_accelerator",
+      "import_id_template": "{AcceleratorArn}",
+      "import_phase": "Networking",
+      "name_tag_path": "Name",
+      "discovery_api": "globalaccelerator:ListAccelerators",
+      "dependencies": []
+    },
+    "AWS::GlobalAccelerator::Listener": {
+      "terraform_type": "aws_globalaccelerator_listener",
+      "import_id_template": "{ListenerArn}",
+      "import_phase": "Networking",
+      "name_tag_path": null,
+      "discovery_api": "globalaccelerator:ListListeners",
+      "dependencies": ["aws_globalaccelerator_accelerator"]
+    },
+    "AWS::GlobalAccelerator::EndpointGroup": {
+      "terraform_type": "aws_globalaccelerator_endpoint_group",
+      "import_id_template": "{EndpointGroupArn}",
+      "import_phase": "Networking",
+      "name_tag_path": null,
+      "discovery_api": "globalaccelerator:ListEndpointGroups",
+      "dependencies": ["aws_globalaccelerator_listener"]
+    },
+    "AWS::DirectConnect::Connection": {
+      "terraform_type": "aws_dx_connection",
+      "import_id_template": "{ConnectionId}",
+      "import_phase": "Networking",
+      "name_tag_path": "ConnectionName",
+      "discovery_api": "directconnect:DescribeConnections",
+      "dependencies": []
+    },
+    "AWS::DirectConnect::VirtualInterface": {
+      "terraform_type": "aws_dx_private_virtual_interface",
+      "import_id_template": "{VirtualInterfaceId}",
+      "import_phase": "Networking",
+      "name_tag_path": "VirtualInterfaceName",
+      "discovery_api": "directconnect:DescribeVirtualInterfaces",
+      "dependencies": ["aws_dx_connection", "aws_vpn_gateway"]
+    },
+    "AWS::DirectConnect::Gateway": {
+      "terraform_type": "aws_dx_gateway",
+      "import_id_template": "{DirectConnectGatewayId}",
+      "import_phase": "Networking",
+      "name_tag_path": "DirectConnectGatewayName",
+      "discovery_api": "directconnect:DescribeDirectConnectGateways",
+      "dependencies": []
+    },
+    "AWS::Transfer::Server": {
+      "terraform_type": "aws_transfer_server",
+      "import_id_template": "{ServerId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Tags[?Key=='Name'].Value | [0]",
+      "discovery_api": "transfer:ListServers",
+      "dependencies": ["aws_iam_role", "aws_vpc", "aws_security_group"]
+    },
+    "AWS::Transfer::User": {
+      "terraform_type": "aws_transfer_user",
+      "import_id_template": "{ServerId}/{UserName}",
+      "import_phase": "Security",
+      "name_tag_path": "UserName",
+      "discovery_api": "transfer:ListUsers",
+      "dependencies": ["aws_transfer_server", "aws_iam_role"]
+    },
+    "AWS::DataSync::Agent": {
+      "terraform_type": "aws_datasync_agent",
+      "import_id_template": "{AgentArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "datasync:ListAgents",
+      "dependencies": []
+    },
+    "AWS::DataSync::Task": {
+      "terraform_type": "aws_datasync_task",
+      "import_id_template": "{TaskArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "datasync:ListTasks",
+      "dependencies": ["aws_datasync_agent"]
+    },
+    "AWS::DMS::ReplicationInstance": {
+      "terraform_type": "aws_dms_replication_instance",
+      "import_id_template": "{ReplicationInstanceIdentifier}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ReplicationInstanceIdentifier",
+      "discovery_api": "dms:DescribeReplicationInstances",
+      "dependencies": ["aws_dms_replication_subnet_group", "aws_security_group"]
+    },
+    "AWS::DMS::ReplicationSubnetGroup": {
+      "terraform_type": "aws_dms_replication_subnet_group",
+      "import_id_template": "{ReplicationSubnetGroupIdentifier}",
+      "import_phase": "Networking",
+      "name_tag_path": "ReplicationSubnetGroupIdentifier",
+      "discovery_api": "dms:DescribeReplicationSubnetGroups",
+      "dependencies": ["aws_subnet"]
+    },
+    "AWS::DMS::Endpoint": {
+      "terraform_type": "aws_dms_endpoint",
+      "import_id_template": "{EndpointIdentifier}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "EndpointIdentifier",
+      "discovery_api": "dms:DescribeEndpoints",
+      "dependencies": []
+    },
+    "AWS::DMS::ReplicationTask": {
+      "terraform_type": "aws_dms_replication_task",
+      "import_id_template": "{ReplicationTaskIdentifier}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ReplicationTaskIdentifier",
+      "discovery_api": "dms:DescribeReplicationTasks",
+      "dependencies": ["aws_dms_replication_instance", "aws_dms_endpoint"]
+    },
+    "AWS::AppSync::GraphQLApi": {
+      "terraform_type": "aws_appsync_graphql_api",
+      "import_id_template": "{ApiId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "appsync:ListGraphqlApis",
+      "dependencies": []
+    },
+    "AWS::AppSync::DataSource": {
+      "terraform_type": "aws_appsync_datasource",
+      "import_id_template": "{ApiId}:{Name}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "appsync:ListDataSources",
+      "dependencies": ["aws_appsync_graphql_api"]
+    },
+    "AWS::AppSync::Resolver": {
+      "terraform_type": "aws_appsync_resolver",
+      "import_id_template": "{ApiId}:{TypeName}:{FieldName}",
+      "import_phase": "Compute",
+      "name_tag_path": null,
+      "discovery_api": "appsync:ListResolvers",
+      "dependencies": ["aws_appsync_graphql_api", "aws_appsync_datasource"]
+    },
+    "AWS::MediaStore::Container": {
+      "terraform_type": "aws_media_store_container",
+      "import_id_template": "{ContainerName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "mediastore:ListContainers",
+      "dependencies": []
+    },
+    "AWS::MediaConvert::Queue": {
+      "terraform_type": "aws_media_convert_queue",
+      "import_id_template": "{Name}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "mediaconvert:ListQueues",
+      "dependencies": []
+    },
+    "AWS::Amplify::App": {
+      "terraform_type": "aws_amplify_app",
+      "import_id_template": "{AppId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "amplify:ListApps",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::Amplify::Branch": {
+      "terraform_type": "aws_amplify_branch",
+      "import_id_template": "{AppId}/{BranchName}",
+      "import_phase": "Compute",
+      "name_tag_path": "BranchName",
+      "discovery_api": "amplify:ListBranches",
+      "dependencies": ["aws_amplify_app"]
+    },
+    "AWS::Amplify::Domain": {
+      "terraform_type": "aws_amplify_domain_association",
+      "import_id_template": "{AppId}/{DomainName}",
+      "import_phase": "Networking",
+      "name_tag_path": "DomainName",
+      "discovery_api": "amplify:ListDomainAssociations",
+      "dependencies": ["aws_amplify_app"]
+    },
+    "AWS::LakeFormation::Resource": {
+      "terraform_type": "aws_lakeformation_resource",
+      "import_id_template": "{ResourceArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": null,
+      "discovery_api": "lakeformation:ListResources",
+      "dependencies": []
+    },
+    "AWS::LakeFormation::Permissions": {
+      "terraform_type": "aws_lakeformation_permissions",
+      "import_id_template": "{Principal}:{ResourceType}:{ResourceArn}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "lakeformation:ListPermissions",
+      "dependencies": ["aws_lakeformation_resource"]
+    },
+    "AWS::RAM::ResourceShare": {
+      "terraform_type": "aws_ram_resource_share",
+      "import_id_template": "{ResourceShareArn}",
+      "import_phase": "Security",
+      "name_tag_path": "Name",
+      "discovery_api": "ram:GetResourceShares",
+      "dependencies": []
+    },
+    "AWS::XRay::Group": {
+      "terraform_type": "aws_xray_group",
+      "import_id_template": "{GroupARN}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "GroupName",
+      "discovery_api": "xray:GetGroups",
+      "dependencies": []
+    },
+    "AWS::XRay::SamplingRule": {
+      "terraform_type": "aws_xray_sampling_rule",
+      "import_id_template": "{RuleName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "RuleName",
+      "discovery_api": "xray:GetSamplingRules",
+      "dependencies": []
+    },
+    "AWS::ServiceCatalog::Portfolio": {
+      "terraform_type": "aws_servicecatalog_portfolio",
+      "import_id_template": "{Id}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "DisplayName",
+      "discovery_api": "servicecatalog:ListPortfolios",
+      "dependencies": []
+    },
+    "AWS::ServiceCatalog::Product": {
+      "terraform_type": "aws_servicecatalog_product",
+      "import_id_template": "{ProductId}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "servicecatalog:SearchProducts",
+      "dependencies": []
+    },
+    "AWS::QLDB::Ledger": {
+      "terraform_type": "aws_qldb_ledger",
+      "import_id_template": "{LedgerName}",
+      "import_phase": "Databases",
+      "name_tag_path": "Name",
+      "discovery_api": "qldb:ListLedgers",
+      "dependencies": []
+    },
+    "AWS::Timestream::Database": {
+      "terraform_type": "aws_timestreamwrite_database",
+      "import_id_template": "{DatabaseName}",
+      "import_phase": "Databases",
+      "name_tag_path": "DatabaseName",
+      "discovery_api": "timestream-write:ListDatabases",
+      "dependencies": []
+    },
+    "AWS::Timestream::Table": {
+      "terraform_type": "aws_timestreamwrite_table",
+      "import_id_template": "{DatabaseName}:{TableName}",
+      "import_phase": "Databases",
+      "name_tag_path": "TableName",
+      "discovery_api": "timestream-write:ListTables",
+      "dependencies": ["aws_timestreamwrite_database"]
+    },
+    "AWS::IoT::Thing": {
+      "terraform_type": "aws_iot_thing",
+      "import_id_template": "{ThingName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ThingName",
+      "discovery_api": "iot:ListThings",
+      "dependencies": []
+    },
+    "AWS::IoT::ThingType": {
+      "terraform_type": "aws_iot_thing_type",
+      "import_id_template": "{ThingTypeName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "ThingTypeName",
+      "discovery_api": "iot:ListThingTypes",
+      "dependencies": []
+    },
+    "AWS::IoT::Policy": {
+      "terraform_type": "aws_iot_policy",
+      "import_id_template": "{PolicyName}",
+      "import_phase": "Security",
+      "name_tag_path": "PolicyName",
+      "discovery_api": "iot:ListPolicies",
+      "dependencies": []
+    },
+    "AWS::IoT::Certificate": {
+      "terraform_type": "aws_iot_certificate",
+      "import_id_template": "{CertificateId}",
+      "import_phase": "Security",
+      "name_tag_path": null,
+      "discovery_api": "iot:ListCertificates",
+      "dependencies": []
+    },
+    "AWS::IoT::TopicRule": {
+      "terraform_type": "aws_iot_topic_rule",
+      "import_id_template": "{RuleName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "RuleName",
+      "discovery_api": "iot:ListTopicRules",
+      "dependencies": ["aws_iam_role"]
+    },
+    "AWS::Pinpoint::App": {
+      "terraform_type": "aws_pinpoint_app",
+      "import_id_template": "{ApplicationId}",
+      "import_phase": "Compute",
+      "name_tag_path": "Name",
+      "discovery_api": "pinpoint:GetApps",
+      "dependencies": []
+    },
+    "AWS::SES::ConfigurationSet": {
+      "terraform_type": "aws_ses_configuration_set",
+      "import_id_template": "{ConfigurationSetName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "ses:ListConfigurationSets",
+      "dependencies": []
+    },
+    "AWS::SES::EmailIdentity": {
+      "terraform_type": "aws_ses_email_identity",
+      "import_id_template": "{EmailIdentity}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "EmailIdentity",
+      "discovery_api": "ses:ListIdentities",
+      "dependencies": []
+    },
+    "AWS::SES::ReceiptRule": {
+      "terraform_type": "aws_ses_receipt_rule",
+      "import_id_template": "{RuleSetName}:{RuleName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "ses:DescribeActiveReceiptRuleSet",
+      "dependencies": ["aws_ses_receipt_rule_set"]
+    },
+    "AWS::SES::ReceiptRuleSet": {
+      "terraform_type": "aws_ses_receipt_rule_set",
+      "import_id_template": "{RuleSetName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "Name",
+      "discovery_api": "ses:ListReceiptRuleSets",
+      "dependencies": []
+    },
+    "AWS::Budgets::Budget": {
+      "terraform_type": "aws_budgets_budget",
+      "import_id_template": "{AccountId}:{BudgetName}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "BudgetName",
+      "discovery_api": "budgets:DescribeBudgets",
+      "dependencies": []
+    },
+    "AWS::CostExplorer::AnomalyMonitor": {
+      "terraform_type": "aws_ce_anomaly_monitor",
+      "import_id_template": "{MonitorArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "MonitorName",
+      "discovery_api": "ce:GetAnomalyMonitors",
+      "dependencies": []
+    },
+    "AWS::CostExplorer::AnomalySubscription": {
+      "terraform_type": "aws_ce_anomaly_subscription",
+      "import_id_template": "{SubscriptionArn}",
+      "import_phase": "DataLayer",
+      "name_tag_path": "SubscriptionName",
+      "discovery_api": "ce:GetAnomalySubscriptions",
+      "dependencies": ["aws_ce_anomaly_monitor"]
+    }
+  }
+}
+
