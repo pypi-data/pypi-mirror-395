@@ -1,0 +1,150 @@
+[project]
+name = "logseq-to-obsidian"
+version = "0.1.1"
+description = "Convert a Logseq vault to Obsidian-friendly Markdown"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Text Processing :: Markup :: Markdown",
+  "Topic :: Utilities",
+]
+authors = [
+  {name = "Georg Lutz", email="georg@georglutz.de"},
+]
+
+[project.urls]
+homepage = "https://github.com/sercxanto/logseq-to-obsidian"
+repository = "https://github.com/sercxanto/logseq-to-obsidian.git"
+
+
+
+[project.scripts]
+logseq-to-obsidian = "logseq_to_obsidian.__main__:main"
+
+[tool.poetry]
+
+package-mode = true
+packages = [
+  { include = "logseq_to_obsidian", from = "src" },
+]
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.14.7"
+pytest = "^8.4.2"
+pytest-cov = "^7.0.0"
+pyyaml = "^6.0.3"
+towncrier = "^25.8.0"
+poethepoet = "^0.37.0"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # isort (imports)
+  "N",   # pep8-naming
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+]
+ignore = [
+  "E501",  # line length handled by formatter/line-length
+  "F841",  # allow assigned-but-unused (keeps script unchanged)
+]
+
+[tool.pytest.ini_options]
+addopts = "-q --cov=logseq_to_obsidian --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=80"
+testpaths = [
+  "tests",
+]
+
+[tool.coverage.run]
+omit = [
+  "src/logseq_to_obsidian/__main__.py",
+]
+
+[tool.towncrier]
+package = "logseq_to_obsidian"
+package_dir = "src"
+filename = "CHANGELOG.md"
+directory = ".changelog"
+title_format = "## [{version}] - {project_date}"
+issue_format = "#{issue}"
+underlines = ["", "", ""]
+
+[tool.towncrier.fragment.added]
+[tool.towncrier.fragment.changed]
+[tool.towncrier.fragment.deprecated]
+[tool.towncrier.fragment.removed]
+[tool.towncrier.fragment.fixed]
+[tool.towncrier.fragment.security]
+
+[tool.poe.tasks]
+
+[tool.poe.tasks.lint]
+cmd = "ruff check ."
+help = "Run static analysis."
+
+[tool.poe.tasks.fixlint]
+cmd = "ruff check . --fix"
+help = "Run automatic fixes."
+
+[tool.poe.tasks.format]
+cmd = "ruff format ."
+help = "Format source code."
+
+[tool.poe.tasks.test]
+cmd = "pytest"
+help = "Run the test suite."
+
+[tool.poe.tasks.testandlint]
+sequence = ["test", "lint"]
+help = "Run test an lint in one step."
+
+[tool.poe.tasks.bumpversion]
+cmd = "poetry version $increment"
+help = "Bump version in pyproject.toml"
+args = [{ name="increment", positional=true, required=true, help="Either 'major', minor'or 'patch'." }]
+
+[tool.poe.tasks._get_version]
+cmd = "poetry version -s"
+
+[tool.poe.tasks.draftchangelog]
+cmd = "towncrier build --draft --version $VERSION"
+help = "List pending news fragments without consuming them."
+uses = { VERSION = "_get_version" }
+
+[tool.poe.tasks.changelog]
+cmd = "towncrier build --yes --version $VERSION"
+help = "Build the changelog for the configured version number."
+uses = { VERSION = "_get_version" }
+
+[tool.poe.tasks.commitandtagrelease]
+shell = """
+  git commit -am "Release $VERSION"
+  git tag v$VERSION
+"""
+help = "Commits the changes for the new version"
+uses = { VERSION = "_get_version" }
+
+[tool.poe.tasks.release]
+sequence = ["lint", "test", "bumpversion $increment", "changelog", "commitandtagrelease"]
+args = [{ name="increment", positional=true, required=true, help="Either 'major', minor'or 'patch'." }]
+help = "runs lint + tests, bumps the version, updates 'CHANGELOG.md', commits and tags 'v<version>'"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
