@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <style>
+        body {
+            background-color: white;
+            color: black;
+            font-family: monospace;
+            margin: 20px;
+        }
+        input {
+            font-family: monospace;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        .config-group {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+        }
+        .config-row {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        .config-row label {
+            display: inline-block;
+            width: 200px;
+            margin-right: 10px;
+        }
+        .config-row input[type="number"] {
+            width: 80px;
+            margin-right: 10px;
+        }
+        .help-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Admin Panel</h2>
+        <a href="/profile" style="font-size: 12px; color: #666; text-decoration: none;">👤 {{ handler.get_display_username() }}</a>
+    </div>
+    <form method="POST">
+        {% raw xsrf_form_html() %}
+        
+        <div class="section">
+            <h3>Feature Flags</h3>
+            <label>
+                <input type="checkbox" name="file_upload" {% if features.get('file_upload') %}checked{% end %}>
+                Enable File Upload
+            </label><br>
+            <label>
+                <input type="checkbox" name="file_delete" {% if features.get('file_delete') %}checked{% end %}>
+                Enable File Delete
+            </label><br>
+            <label>
+                <input type="checkbox" name="file_rename" {% if features.get('file_rename') %}checked{% end %}>
+                Enable File Rename
+            </label><br>
+            <label>
+                <input type="checkbox" name="file_download" {% if features.get('file_download') %}checked{% end %}>
+                Enable File Download
+            </label><br>
+            <label>
+                <input type="checkbox" name="file_edit" {% if features.get('file_edit') %}checked{% end %}>
+                Enable File Edit
+            </label><br>
+            <label>
+                <input type="checkbox" name="file_share" {% if features.get('file_share') %}checked{% end %}>
+                Enable File Share
+            </label><br>
+            <label>
+                <input type="checkbox" name="super_search" {% if features.get('super_search') %}checked{% end %}>
+                Enable Super Search
+            </label><br>
+            <label>
+                <input type="checkbox" name="compression" {% if features.get('compression') %}checked{% end %}>
+                Enable Gzip Compression
+            </label><br>
+            <label>
+                <input type="checkbox" name="p2p_transfer" {% if features.get('p2p_transfer') %}checked{% end %}>
+                Enable P2P Transfer
+            </label><br>
+        </div>
+
+        <div class="section">
+            <h3>WebSocket Connection Settings</h3>
+            <p><em>Configure connection limits and timeouts for WebSocket handlers. Changes take effect immediately.</em></p>
+            
+            <div class="config-group">
+                <h4>Feature Flags WebSocket</h4>
+                <div class="config-row">
+                    <label>Max Connections:</label>
+                    <input type="number" name="feature_flags_max_connections" 
+                           value="{{ websocket_config.get('feature_flags_max_connections', 50) }}" 
+                           min="1" max="1000">
+                    <span class="help-text">(1-1000, low traffic handler)</span>
+                </div>
+                <div class="config-row">
+                    <label>Idle Timeout (seconds):</label>
+                    <input type="number" name="feature_flags_idle_timeout" 
+                           value="{{ websocket_config.get('feature_flags_idle_timeout', 600) }}" 
+                           min="30" max="7200">
+                    <span class="help-text">(30-7200, admin connections can be longer)</span>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <h4>File Streaming WebSocket</h4>
+                <div class="config-row">
+                    <label>Max Connections:</label>
+                    <input type="number" name="file_streaming_max_connections" 
+                           value="{{ websocket_config.get('file_streaming_max_connections', 200) }}" 
+                           min="1" max="1000">
+                    <span class="help-text">(1-1000, high traffic handler)</span>
+                </div>
+                <div class="config-row">
+                    <label>Idle Timeout (seconds):</label>
+                    <input type="number" name="file_streaming_idle_timeout" 
+                           value="{{ websocket_config.get('file_streaming_idle_timeout', 300) }}" 
+                           min="30" max="7200">
+                    <span class="help-text">(30-7200, streaming sessions)</span>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <h4>Search WebSocket</h4>
+                <div class="config-row">
+                    <label>Max Connections:</label>
+                    <input type="number" name="search_max_connections" 
+                           value="{{ websocket_config.get('search_max_connections', 100) }}" 
+                           min="1" max="1000">
+                    <span class="help-text">(1-1000, moderate traffic handler)</span>
+                </div>
+                <div class="config-row">
+                    <label>Idle Timeout (seconds):</label>
+                    <input type="number" name="search_idle_timeout" 
+                           value="{{ websocket_config.get('search_idle_timeout', 180) }}" 
+                           min="30" max="7200">
+                    <span class="help-text">(30-7200, search operations)</span>
+                </div>
+            </div>
+        </div>
+
+        <br>
+        <input type="submit" value="Save Configuration">
+    </form>
+    <br>
+    <div class="section">
+        <h3>User Management</h3>
+        <p><em>Manage system users and their access permissions.</em></p>
+        <a href="/admin/users" style="display: inline-block; padding: 8px 16px; background-color: #007bff; color: white; text-decoration: none; border: 1px solid #007bff; margin-right: 10px;">👥 Manage Users</a>
+        {% if ldap_enabled %}
+        <a href="/admin/ldap" style="display: inline-block; padding: 8px 16px; background-color: #28a745; color: white; text-decoration: none; border: 1px solid #28a745; margin-right: 10px;">🔗 LDAP Management</a>
+        {% end %}
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <a href="/files/" style="margin-right: 20px;">📁 Files</a>
+        <a href="/admin/websocket-stats" target="_blank" style="margin-right: 20px;">📈 View WebSocket Statistics</a>
+        <a href="/logout">Logout</a>
+    </div>
+</body>
+</html>

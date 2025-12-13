@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        body {
+            background-color: white;
+            color: black;
+            font-family: monospace;
+        }
+        input {
+            font-family: monospace;
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Login</h2>
+    {% if error %}
+        <div style="color: red;">{{ escape(error) }}</div>
+    {% end %}
+    <form method="POST">
+        {% raw xsrf_form_html() %}
+        {% if next_url %}
+            <input type="hidden" name="next" value="{{ escape(next_url) }}">
+        {% end %}
+        {% if settings.get("ldap_server") %}
+            <div style="margin-bottom:8px; color:#333;">LDAP is enabled. Sign in with your username and password.</div>
+            <input type="text" name="username" placeholder="Enter username"><br><br>
+            <input type="password" name="password" placeholder="Enter password">
+        {% else %}
+            <div style="margin-bottom:8px; color:#333;">Sign in with your username and password, or use an access token.</div>
+            <div style="margin-bottom:10px;">
+                <input type="text" name="username" placeholder="Username (optional)"><br><br>
+                <input type="password" name="password" placeholder="Password (optional)"><br><br>
+                <div style="text-align: center; margin: 10px 0; color: #666;">— OR —</div>
+                <input type="password" name="token" placeholder="Access token">
+            </div>
+        {% end %}
+        <br><br>
+        <input type="submit" value="Login">
+    </form>
+</body>
+</html>
