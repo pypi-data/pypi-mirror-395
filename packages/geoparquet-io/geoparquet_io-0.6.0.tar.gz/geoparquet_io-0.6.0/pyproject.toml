@@ -1,0 +1,133 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geoparquet-io"
+version = "0.6.0"
+description = "Fast I/O and transformation tools for GeoParquet files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [
+    { name = "Chris Holmes", email = "cholmes@9eo.org" }
+]
+keywords = ["geoparquet", "geospatial", "parquet", "gis", "io"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = [
+    "click>=8.0.0",
+    "pyarrow>=12.0.0,<22.0.0",  # v22+ has ABI incompatibility with abseil on some systems
+    "duckdb>=1.4.1",
+    "pandas>=1.0.0",
+    "fsspec>=2023.9.0",
+    "rich>=13.0.0",
+    "pystac>=1.9.0",
+    "jsonschema>=4.0.0",  # Required for pystac validation
+    "psutil>=5.9.0",
+    "obstore>=0.8.2",
+    "aiohttp>=3.8.0",  # Required by fsspec for HTTP/HTTPS support
+    "s3fs>=2023.9.0",  # Required by fsspec for S3 support
+    "geoarrow-pyarrow>=0.1.0",  # Required for CRS handling in Parquet native geo types
+]
+
+[project.scripts]
+gpio = "geoparquet_io:cli"
+gt = "geoparquet_io:cli"  # Legacy alias for backwards compatibility
+
+[project.urls]
+"Homepage" = "https://github.com/cholmes/geoparquet-io"
+"Bug Tracker" = "https://github.com/cholmes/geoparquet-io/issues"
+"Documentation" = "https://github.com/cholmes/geoparquet-io#readme"
+"Source" = "https://github.com/cholmes/geoparquet-io"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.8.0",
+    "pre-commit>=4.3.0",
+    "mypy>=1.0.0",
+    "vulture>=2.14",
+    "radon>=6.0.1",
+    "xenon>=0.9.3",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+benchmark = [
+    "geopandas>=0.14.0",
+    "pyogrio>=0.7.0",
+    "fiona>=1.9.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["geoparquet_io"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "network: marks tests requiring network access (deselect with '-m \"not network\"')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py
+
+[tool.ruff.lint.isort]
+known-first-party = ["geoparquet_io"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[tool.vulture]
+min_confidence = 80
+paths = ["geoparquet_io", "tests"]
+sort_by_size = true
+verbose = false

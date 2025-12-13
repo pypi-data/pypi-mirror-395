@@ -1,0 +1,2084 @@
+import json
+import os
+import re
+import shutil
+import tempfile
+import urllib.parse
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+
+import click
+import duckdb
+import fsspec
+import pyarrow.parquet as pq
+
+# GeoParquet version configuration
+# Maps CLI version options to DuckDB parameters and metadata settings
+# Note: For v2, we skip pyarrow rewrite to preserve native Parquet Geometry types
+# that DuckDB writes. DuckDB already produces correct GeoParquet 2.0 metadata.
+GEOPARQUET_VERSIONS = {
+    "1.0": {"duckdb_param": "V1", "metadata_version": "1.0.0", "rewrite_metadata": True},
+    "1.1": {"duckdb_param": "V1", "metadata_version": "1.1.0", "rewrite_metadata": True},
+    "2.0": {"duckdb_param": "V2", "metadata_version": "2.0.0", "rewrite_metadata": False},
+    "parquet-geo-only": {
+        "duckdb_param": "NONE",
+        "metadata_version": None,
+        "rewrite_metadata": False,
+    },
+}
+DEFAULT_GEOPARQUET_VERSION = "1.1"
+
+
+@dataclass
+class ParquetWriteSettings:
+    """
+    Central configuration for Parquet write best practices.
+    Single source of truth for compression, row groups, and other settings.
+    """
+
+    compression: str = "ZSTD"
+    compression_level: int = 15
+    row_group_rows: int | None = None
+    row_group_size_mb: int | None = None
+
+    # Best practice constants
+    DEFAULT_COMPRESSION = "ZSTD"
+    DEFAULT_COMPRESSION_LEVEL = 15
+    DEFAULT_ROW_GROUP_ROWS = 100_000
+    DEFAULT_PARQUET_VERSION = "2.6"
+
+    def get_pyarrow_kwargs(self, calculated_row_group_size: int | None = None) -> dict:
+        """Get kwargs dict for PyArrow write_table()."""
+        pa_compression = self.compression if self.compression != "UNCOMPRESSED" else None
+        pa_compression_level = (
+            self.compression_level if self.compression in ["GZIP", "ZSTD", "BROTLI"] else None
+        )
+
+        row_group_size = (
+            calculated_row_group_size or self.row_group_rows or self.DEFAULT_ROW_GROUP_ROWS
+        )
+
+        kwargs = {
+            "row_group_size": row_group_size,
+            "compression": pa_compression,
+            "write_statistics": True,
+            "use_dictionary": True,
+            "version": self.DEFAULT_PARQUET_VERSION,
+        }
+
+        if pa_compression_level is not None:
+            kwargs["compression_level"] = pa_compression_level
+
+        return kwargs
+
+
+def should_skip_bbox(geoparquet_version):
+    """Check if bbox column should be skipped for this GeoParquet version.
+
+    For GeoParquet 2.0 and parquet-geo-only, bbox columns are not needed because
+    native Parquet geo types provide row group statistics for spatial filtering.
+
+    Args:
+        geoparquet_version: Version string (e.g., "1.1", "2.0", "parquet-geo-only")
+
+    Returns:
+        bool: True if bbox should be skipped, False if bbox should be added
+    """
+    return geoparquet_version in ("2.0", "parquet-geo-only")
+
+
+def detect_geoparquet_file_type(parquet_file, verbose=False):
+    """
+    Detect the GeoParquet/Parquet-geo type of a file.
+
+    Determines whether a file is:
+    - GeoParquet 1.x (has geo metadata with version 1.x)
+    - GeoParquet 2.0 (has geo metadata with version 2.x, uses native Parquet geo types)
+    - Parquet-geo-only (has native Parquet geo types but NO geo metadata)
+    - Unknown (no geo indicators found)
+
+    Args:
+        parquet_file: Path to the parquet file
+        verbose: Whether to print verbose output
+
+    Returns:
+        dict with:
+            - has_geo_metadata: bool - Has 'geo' key in metadata
+            - geo_version: str - GeoParquet version from metadata (e.g., "1.1.0", "2.0.0") or None
+            - has_native_geo_types: bool - Has Parquet GEOMETRY/GEOGRAPHY logical types
+            - file_type: str - One of: "geoparquet_v1", "geoparquet_v2", "parquet_geo_only", "unknown"
+            - bbox_recommended: bool - Whether bbox column is recommended for this file type
+    """
+    # Import here to avoid circular import
+    from geoparquet_io.core.metadata_utils import detect_geo_logical_type
+
+    result = {
+        "has_geo_metadata": False,
+        "geo_version": None,
+        "has_native_geo_types": False,
+        "file_type": "unknown",
+        "bbox_recommended": True,  # Default for v1.x
+    }
+
+    safe_url = safe_file_url(parquet_file, verbose=False)
+
+    with fsspec.open(safe_url, "rb") as f:
+        pf = pq.ParquetFile(f)
+        metadata = pf.schema_arrow.metadata
+        schema = pf.schema_arrow
+        parquet_schema_str = str(pf.metadata.schema)
+
+    # Check for geo metadata
+    if metadata and b"geo" in metadata:
+        result["has_geo_metadata"] = True
+        try:
+            geo_meta = json.loads(metadata[b"geo"].decode("utf-8"))
+            if isinstance(geo_meta, dict) and "version" in geo_meta:
+                result["geo_version"] = geo_meta["version"]
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Check for native Parquet geo types
+    for field in schema:
+        geo_type = detect_geo_logical_type(field, parquet_schema_str)
+        if geo_type:
+            result["has_native_geo_types"] = True
+            break
+
+    # Determine file type
+    if result["has_geo_metadata"]:
+        version = result["geo_version"]
+        if version and version.startswith("2."):
+            result["file_type"] = "geoparquet_v2"
+            result["bbox_recommended"] = False  # V2 uses native geo row group stats
+        else:
+            result["file_type"] = "geoparquet_v1"
+            result["bbox_recommended"] = True  # V1.x needs bbox for spatial filtering
+    elif result["has_native_geo_types"]:
+        result["file_type"] = "parquet_geo_only"
+        result["bbox_recommended"] = False  # Native geo types provide row group stats
+    # else: remains "unknown"
+
+    if verbose:
+        click.echo(f"File type detection: {result}")
+
+    return result
+
+
+def is_remote_url(path):
+    """
+    Check if path is a remote URL that DuckDB can read.
+
+    Supports:
+    - HTTP/HTTPS: http://, https://
+    - AWS S3: s3://, s3a://
+    - Azure: az://, azure://, abfs://, abfss://
+    - Google Cloud Storage: gs://, gcs://
+
+    Args:
+        path: File path or URL to check
+
+    Returns:
+        bool: True if path is a remote URL, False otherwise
+    """
+    remote_schemes = [
+        "http://",
+        "https://",
+        "s3://",
+        "s3a://",
+        "gs://",
+        "gcs://",
+        "az://",
+        "azure://",
+        "abfs://",
+        "abfss://",
+    ]
+    return any(path.startswith(scheme) for scheme in remote_schemes)
+
+
+def upload_if_remote(local_path, remote_path, profile=None, is_directory=False, verbose=False):
+    """
+    Upload local file/dir to remote path if remote_path is a remote URL.
+
+    Args:
+        local_path: Local file or directory path to upload
+        remote_path: Remote URL or local path
+        profile: AWS profile name (S3 only, optional)
+        is_directory: Whether local_path is a directory
+        verbose: Whether to print verbose output
+
+    Returns:
+        bool: True if upload was performed, False if not remote
+    """
+    if not is_remote_url(remote_path):
+        return False
+
+    from geoparquet_io.core.upload import upload
+
+    if verbose:
+        # Calculate size for progress indication
+        if is_directory:
+            total_size = sum(
+                os.path.getsize(os.path.join(dirpath, filename))
+                for dirpath, _, filenames in os.walk(local_path)
+                for filename in filenames
+            )
+        else:
+            total_size = os.path.getsize(local_path)
+
+        size_mb = total_size / (1024 * 1024)
+        click.echo(f"Uploading {size_mb:.1f} MB to {remote_path}...")
+
+    pattern = "*.parquet" if is_directory else None
+    upload(
+        source=Path(local_path),
+        destination=remote_path,
+        profile=profile,
+        pattern=pattern,
+        dry_run=False,
+    )
+
+    if verbose:
+        click.echo(f"✓ Successfully uploaded to {remote_path}")
+
+    return True
+
+
+@contextmanager
+def remote_write_context(output_path, is_directory=False, verbose=False):
+    """
+    Context manager for remote writes with automatic temp file/dir cleanup.
+
+    Yields actual write path (temp for remote, original for local).
+    Handles cleanup automatically on exit.
+
+    Args:
+        output_path: Output path (local or remote URL)
+        is_directory: Whether output is a directory (for partitioning)
+        verbose: Whether to print verbose output
+
+    Yields:
+        tuple: (actual_write_path, is_remote)
+            - actual_write_path: Path to write to (temp for remote, original for local)
+            - is_remote: Boolean indicating if output is remote
+
+    Example:
+        with remote_write_context('s3://bucket/file.parquet', verbose=True) as (path, is_remote):
+            # Write to path
+            write_file(path)
+            # Cleanup and upload handled automatically
+    """
+    is_remote = is_remote_url(output_path)
+
+    if is_remote:
+        if is_directory:
+            temp_path = tempfile.mkdtemp(prefix="gpio_")
+        else:
+            temp_fd, temp_path = tempfile.mkstemp(suffix=".parquet")
+            os.close(temp_fd)
+
+        if verbose:
+            click.echo(f"Remote output detected: {output_path}")
+            click.echo(
+                f"Writing to temporary {'directory' if is_directory else 'file'}: {temp_path}"
+            )
+    else:
+        temp_path = output_path
+
+    try:
+        yield temp_path, is_remote
+    finally:
+        if is_remote and os.path.exists(temp_path):
+            try:
+                if is_directory:
+                    shutil.rmtree(temp_path)
+                else:
+                    os.unlink(temp_path)
+                if verbose:
+                    click.echo(
+                        f"Cleaned up temporary {'directory' if is_directory else 'file'}: {temp_path}"
+                    )
+            except Exception as e:
+                if verbose:
+                    click.echo(
+                        f"Warning: Could not clean up temp {'directory' if is_directory else 'file'} {temp_path}: {e}"
+                    )
+
+
+def is_s3_url(path):
+    """
+    Check if path is an S3 URL.
+
+    Args:
+        path: File path or URL to check
+
+    Returns:
+        bool: True if path is S3
+    """
+    return isinstance(path, str) and path.startswith(("s3://", "s3a://"))
+
+
+def is_azure_url(path):
+    """
+    Check if path is an Azure Blob Storage URL.
+
+    Args:
+        path: File path or URL to check
+
+    Returns:
+        bool: True if path is Azure
+    """
+    return isinstance(path, str) and path.startswith(("az://", "azure://", "abfs://", "abfss://"))
+
+
+def is_gcs_url(path):
+    """
+    Check if path is a Google Cloud Storage URL.
+
+    Args:
+        path: File path or URL to check
+
+    Returns:
+        bool: True if path is GCS
+    """
+    return isinstance(path, str) and path.startswith(("gs://", "gcs://"))
+
+
+def needs_httpfs(path):
+    """
+    Check if path requires httpfs extension (S3, Azure, GCS).
+
+    HTTP/HTTPS work without httpfs, but cloud storage protocols need it.
+
+    Args:
+        path: File path or URL to check
+
+    Returns:
+        bool: True if httpfs extension is needed
+    """
+    httpfs_schemes = [
+        "s3://",
+        "s3a://",
+        "gs://",
+        "gcs://",
+        "az://",
+        "azure://",
+        "abfs://",
+        "abfss://",
+    ]
+    return any(path.startswith(scheme) for scheme in httpfs_schemes)
+
+
+def setup_aws_profile_if_needed(profile, *paths):
+    """
+    Set AWS_PROFILE environment variable if profile specified and S3 URLs detected.
+
+    This allows both DuckDB (via credential_chain) and obstore to use the specified
+    AWS profile for authentication. The profile is resolved using standard AWS SDK
+    mechanisms (reads from ~/.aws/credentials, ~/.aws/config, etc.).
+
+    Note: This is a convenience wrapper. Setting AWS_PROFILE env var directly
+    has the same effect.
+
+    Args:
+        profile: AWS profile name or None
+        *paths: Variable number of file paths to check for S3 URLs
+
+    Example:
+        setup_aws_profile_if_needed(profile, input_file, output_file)
+        # Equivalent to: os.environ['AWS_PROFILE'] = profile
+    """
+    if not profile:
+        return
+
+    # Check if any path is S3
+    has_s3 = any(p and is_s3_url(p) for p in paths)
+    if has_s3:
+        os.environ["AWS_PROFILE"] = profile
+
+
+def validate_profile_for_urls(profile, *urls):
+    """
+    Validate that profile parameter is only used with S3 URLs.
+
+    The --profile flag sets AWS credentials for S3 operations. Using it with
+    other cloud providers (GCS, Azure) would be confusing since they use
+    different authentication mechanisms.
+
+    Args:
+        profile: AWS profile name or None
+        *urls: Variable number of file paths to validate
+
+    Raises:
+        click.BadParameter: If profile is used with non-S3 remote URLs
+
+    Example:
+        validate_profile_for_urls(profile, input_file, output_file)
+    """
+    if not profile:
+        return
+
+    for url in urls:
+        if url and is_remote_url(url) and not is_s3_url(url):
+            protocol = url.split("://")[0].upper() if "://" in url else "unknown"
+            raise click.BadParameter(
+                f"--profile flag is only valid for S3 URLs, but got {protocol} URL: {url}\n"
+                f"For {protocol} authentication, use environment variables or default credentials."
+            )
+
+
+def show_remote_read_message(file_path, verbose=False):
+    """
+    Show consistent message when reading from remote files.
+
+    Args:
+        file_path: Path to check (local or remote)
+        verbose: If True, show detailed message
+    """
+    if not is_remote_url(file_path):
+        return
+
+    protocol = file_path.split("://")[0].upper() if "://" in file_path else "HTTP"
+    if verbose:
+        click.echo(f"📡 Reading from {protocol}: {file_path}")
+    else:
+        click.echo(f"📡 Reading from {protocol} (network operations may take time)...")
+
+
+def validate_output_path(output_path, verbose=False):
+    """
+    Validate output path for local files (remote URLs pass through).
+
+    For local paths:
+    - Check parent directory exists
+    - Check parent directory is writable
+
+    For remote URLs:
+    - No validation needed (handled by remote_write_context)
+
+    Args:
+        output_path: Local file path or remote URL
+        verbose: Whether to print verbose output
+
+    Raises:
+        click.ClickException: If local directory doesn't exist or isn't writable
+    """
+    if is_remote_url(output_path):
+        # Remote outputs handled by remote_write_context
+        return
+
+    output_dir = os.path.dirname(output_path) or "."
+    if not os.path.exists(output_dir):
+        raise click.ClickException(f"Output directory not found: {output_dir}")
+    if not os.access(output_dir, os.W_OK):
+        raise click.ClickException(f"No write permission for: {output_dir}")
+
+
+def get_duckdb_connection(load_spatial=True, load_httpfs=None):
+    """
+    Create a DuckDB connection with necessary extensions loaded.
+
+    When load_httpfs=True, also loads the aws extension and configures
+    automatic credential discovery for S3 access. Credentials are discovered
+    via the AWS SDK in this order:
+    1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    2. AWS profile (AWS_PROFILE env var or ~/.aws/credentials)
+    3. IAM role (EC2/ECS/EKS instance metadata)
+
+    Args:
+        load_spatial: Whether to load spatial extension (default: True)
+        load_httpfs: Whether to load httpfs extension for S3/Azure/GCS.
+                    If None (default), auto-detects based on usage.
+
+    Returns:
+        duckdb.DuckDBPyConnection: Configured connection with extensions loaded
+    """
+    con = duckdb.connect()
+
+    # Always load spatial extension by default (core use case)
+    if load_spatial:
+        con.execute("INSTALL spatial;")
+        con.execute("LOAD spatial;")
+
+    # Load httpfs for cloud storage support
+    if load_httpfs:
+        con.execute("INSTALL httpfs;")
+        con.execute("LOAD httpfs;")
+
+        # Load aws extension for S3 authentication
+        # This works in conjunction with httpfs to provide authenticated S3 access
+        con.execute("INSTALL aws;")
+        con.execute("LOAD aws;")
+
+        # Configure automatic credential discovery using AWS SDK
+        # This respects AWS_PROFILE, ~/.aws/credentials, env vars, and IAM roles
+        # Use VALIDATION 'none' to allow creating secret without immediate credentials
+        # (credentials will be discovered at query time)
+        con.execute("""
+            CREATE OR REPLACE SECRET (
+                TYPE s3,
+                PROVIDER credential_chain,
+                VALIDATION 'none'
+            );
+        """)
+
+    return con
+
+
+def safe_file_url(file_path, verbose=False):
+    """
+    Handle both local and remote files, returning safe URL.
+
+    For remote URLs, performs URL encoding if needed.
+    For local files, validates existence.
+
+    Args:
+        file_path: Local file path or remote URL
+        verbose: Whether to print verbose output
+
+    Returns:
+        str: Safe URL or file path
+
+    Raises:
+        click.BadParameter: If local file doesn't exist
+    """
+    if is_remote_url(file_path):
+        # Remote URL - URL encode if HTTP/HTTPS
+        if file_path.startswith(("http://", "https://")):
+            parsed = urllib.parse.urlparse(file_path)
+            encoded_path = urllib.parse.quote(parsed.path)
+            safe_url = parsed._replace(path=encoded_path).geturl()
+        else:
+            safe_url = file_path
+
+        if verbose:
+            protocol = file_path.split("://")[0].upper() if "://" in file_path else "HTTP"
+            click.echo(f"Reading from {protocol}: {safe_url}")
+        return safe_url
+    else:
+        # Local file - check existence
+        if not os.path.exists(file_path):
+            raise click.BadParameter(f"Local file not found: {file_path}")
+        return file_path
+
+
+def get_remote_error_hint(error_msg, file_path=""):
+    """
+    Generate helpful error messages for remote file access failures.
+
+    Args:
+        error_msg: Original error message from DuckDB or other library
+        file_path: The remote file path/URL that failed
+
+    Returns:
+        str: User-friendly error message with troubleshooting hints
+    """
+    # Simple pattern matching - check error type and return appropriate hint
+    error_lower = error_msg.lower()
+    path_lower = file_path.lower()
+
+    # Check for 403/auth errors
+    auth_error = "403" in error_msg or "forbidden" in error_lower or "access denied" in error_lower
+    if auth_error:
+        if "s3://" in path_lower:
+            return "Authentication required or access denied:\n  • S3: Check AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables\n  • Or configure ~/.aws/credentials file"
+        if "az://" in path_lower or "azure" in path_lower or "blob.core" in path_lower:
+            return "Authentication required or access denied:\n  • Azure: Check AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY\n  • Or set AZURE_STORAGE_SAS_TOKEN for SAS token auth"
+        if "gs://" in path_lower or "gcs://" in path_lower:
+            return "Authentication required or access denied:\n  • GCS: Check GOOGLE_APPLICATION_CREDENTIALS points to service account JSON"
+        return "Authentication required or access denied:\n  • File may be private or require authentication"
+
+    # Check for 404 errors
+    if "404" in error_msg or "not found" in error_lower or "does not exist" in error_lower:
+        base = "File not found at remote location:\n  • Verify the URL is correct\n  • Check the file exists at the specified path"
+        return f"{base}\n  • URL: {file_path}" if file_path else base
+
+    # Check for timeout
+    if "timeout" in error_lower or "timed out" in error_lower:
+        return "Connection timed out:\n  • Check network connectivity\n  • File may be very large - try a smaller file first\n  • Remote server may be slow or overloaded"
+
+    # Check for connection issues
+    if "unable to connect" in error_lower or "connection" in error_lower:
+        return "Cannot connect to remote server:\n  • Check network connectivity\n  • Verify the hostname/URL is correct\n  • Server may be down or unreachable"
+
+    # Generic
+    return "Remote file access failed:\n  • Check network connectivity\n  • Verify file URL and access permissions"
+
+
+def get_parquet_metadata(parquet_file, verbose=False):
+    """Get Parquet file metadata."""
+    with fsspec.open(parquet_file, "rb") as f:
+        pf = pq.ParquetFile(f)
+        metadata = pf.schema_arrow.metadata
+        schema = pf.schema_arrow
+
+    if verbose and metadata:
+        click.echo("\nParquet metadata key-value pairs:")
+        for key in metadata:
+            click.echo(f"{key}: {metadata[key]}")
+
+    return metadata, schema
+
+
+def parse_geo_metadata(metadata, verbose=False):
+    """Parse GeoParquet metadata from Parquet metadata."""
+    if not metadata or b"geo" not in metadata:
+        return None
+
+    try:
+        geo_meta = json.loads(metadata[b"geo"].decode("utf-8"))
+        if verbose:
+            click.echo("\nParsed geo metadata:")
+            click.echo(json.dumps(geo_meta, indent=2))
+        return geo_meta
+    except json.JSONDecodeError:
+        if verbose:
+            click.echo("Failed to parse geo metadata as JSON")
+        return None
+
+
+def find_primary_geometry_column(parquet_file, verbose=False):
+    """Find primary geometry column from GeoParquet metadata."""
+    metadata, _ = get_parquet_metadata(parquet_file, verbose)
+    geo_meta = parse_geo_metadata(metadata, verbose)
+
+    if not geo_meta:
+        return "geometry"
+
+    if isinstance(geo_meta, dict):
+        return geo_meta.get("primary_column", "geometry")
+    elif isinstance(geo_meta, list):
+        for col in geo_meta:
+            if isinstance(col, dict) and col.get("primary", False):
+                return col.get("name", "geometry")
+
+    return "geometry"
+
+
+# CRS handling functions for GeoParquet 2.0 and parquet-geo-only
+
+
+def _extract_crs_identifier(crs_info):
+    """
+    Extract normalized CRS identifier (authority, code) from various formats.
+
+    Handles PROJJSON dicts, "EPSG:CODE" strings, and URN formats.
+    Returns tuple of (authority, code) like ("EPSG", 31287) or ("OGC", "CRS84"), or None.
+    Code is int for numeric codes, str for non-numeric (e.g., CRS84).
+    """
+    if isinstance(crs_info, dict):
+        if "id" in crs_info:
+            crs_id = crs_info["id"]
+            if isinstance(crs_id, dict):
+                authority = crs_id.get("authority", "").upper()
+                code = crs_id.get("code")
+                if authority and code:
+                    # Try to convert to int, but keep as string if not numeric
+                    try:
+                        return (authority, int(code))
+                    except (ValueError, TypeError):
+                        return (authority, str(code).upper())
+        return None
+
+    if isinstance(crs_info, str):
+        crs_str = crs_info.strip().upper()
+        if ":" in crs_str and not crs_str.startswith("URN:"):
+            parts = crs_str.split(":")
+            if len(parts) == 2:
+                try:
+                    return (parts[0], int(parts[1]))
+                except ValueError:
+                    # Non-numeric code (e.g., OGC:CRS84)
+                    return (parts[0], parts[1])
+        if crs_str.startswith("URN:OGC:DEF:CRS:"):
+            parts = crs_str.split(":")
+            if len(parts) >= 7:
+                try:
+                    return (parts[4], int(parts[-1]))
+                except ValueError:
+                    return (parts[4], parts[-1])
+
+    return None
+
+
+def is_default_crs(crs):
+    """
+    Check if CRS is the default (OGC:CRS84 or EPSG:4326).
+
+    Returns True if CRS is None, empty, or represents WGS84.
+    Used to skip CRS rewriting when output would be default anyway.
+    """
+    if not crs:
+        return True
+
+    identifier = _extract_crs_identifier(crs)
+    if identifier:
+        authority, code = identifier
+        if authority == "EPSG" and code == 4326:
+            return True
+        if authority == "OGC" and str(code).upper() == "CRS84":
+            return True
+
+    return False
+
+
+def extract_crs_from_parquet(parquet_file, verbose=False):
+    """
+    Extract CRS (as PROJJSON dict) from a Parquet file.
+
+    Checks in order:
+    1. GeoParquet metadata (columns.<geom_col>.crs)
+    2. Parquet native geo type (from schema string)
+
+    Args:
+        parquet_file: Path to the parquet file
+        verbose: Whether to print verbose output
+
+    Returns:
+        dict: PROJJSON CRS dict, or None if no CRS found or CRS is default
+    """
+    from geoparquet_io.core.metadata_utils import parse_geometry_type_from_schema
+
+    safe_url = safe_file_url(parquet_file, verbose=False)
+
+    with fsspec.open(safe_url, "rb") as f:
+        pf = pq.ParquetFile(f)
+        schema = pf.schema_arrow
+        parquet_schema_str = str(pf.metadata.schema)
+        metadata = schema.metadata
+
+    # First, try GeoParquet metadata
+    if metadata and b"geo" in metadata:
+        try:
+            geo_meta = json.loads(metadata[b"geo"].decode("utf-8"))
+            primary_col = geo_meta.get("primary_column", "geometry")
+            columns = geo_meta.get("columns", {})
+            if primary_col in columns:
+                crs = columns[primary_col].get("crs")
+                if crs and not is_default_crs(crs):
+                    if verbose:
+                        click.echo(f"Found CRS in GeoParquet metadata: {_format_crs_display(crs)}")
+                    return crs
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Second, try Parquet native geo type
+    for field in schema:
+        geom_details = parse_geometry_type_from_schema(field.name, parquet_schema_str)
+        if geom_details and "crs" in geom_details:
+            crs = geom_details["crs"]
+            if crs and not is_default_crs(crs):
+                if verbose:
+                    click.echo(f"Found CRS in Parquet geo type: {_format_crs_display(crs)}")
+                return crs
+
+    return None
+
+
+def detect_crs_from_spatial_file(input_file, con, verbose=False):
+    """
+    Detect CRS from a spatial file (GeoJSON, GPKG, Shapefile).
+
+    Uses DuckDB's ST_Read_Meta which returns metadata including full PROJJSON CRS.
+
+    Args:
+        input_file: Path to the spatial file
+        con: DuckDB connection (with spatial extension loaded)
+        verbose: Whether to print verbose output
+
+    Returns:
+        dict: PROJJSON CRS dict, or None if no CRS found in file metadata.
+              Note: Returns CRS even if it's default (EPSG:4326). Caller should
+              use is_default_crs() to decide whether to write it.
+    """
+    try:
+        result = con.execute(f"""
+            SELECT * FROM ST_Read_Meta('{input_file}')
+        """).fetchone()
+
+        if result:
+            # Result structure: (path, driver, driver_long, layers_list)
+            layers = result[3]  # List of layer dicts
+            if layers and len(layers) > 0:
+                layer = layers[0]
+                geometry_fields = layer.get("geometry_fields", [])
+                if geometry_fields:
+                    crs_info = geometry_fields[0].get("crs", {})
+                    # Extract PROJJSON if available
+                    projjson_str = crs_info.get("projjson")
+                    if projjson_str:
+                        crs = json.loads(projjson_str)
+                        if verbose:
+                            click.echo(f"Found CRS in spatial file: {_format_crs_display(crs)}")
+                        return crs
+                    # Fallback to auth_name/auth_code
+                    auth_name = crs_info.get("auth_name")
+                    auth_code = crs_info.get("auth_code")
+                    if auth_name and auth_code:
+                        crs = {"id": {"authority": auth_name, "code": int(auth_code)}}
+                        if verbose:
+                            click.echo(f"Found CRS: {auth_name}:{auth_code}")
+                        return crs
+    except Exception as e:
+        if verbose:
+            click.echo(f"Could not detect CRS from spatial file: {e}")
+
+    return None
+
+
+def _format_crs_display(crs):
+    """Format CRS for display (extract EPSG code if possible)."""
+    if not crs:
+        return "None"
+    identifier = _extract_crs_identifier(crs)
+    if identifier:
+        return f"{identifier[0]}:{identifier[1]}"
+    return str(crs)[:50] + "..." if len(str(crs)) > 50 else str(crs)
+
+
+def apply_crs_to_parquet(
+    parquet_file,
+    crs,
+    geometry_column="geometry",
+    compression="ZSTD",
+    compression_level=15,
+    row_group_rows=None,
+    add_to_geo_metadata=False,
+    verbose=False,
+):
+    """
+    Rewrite a Parquet file to add CRS to the geometry column.
+
+    Uses geoarrow-pyarrow to set CRS on the geometry column type,
+    which writes it into the Parquet schema. Optionally also adds CRS
+    to GeoParquet 'geo' metadata in the same write operation.
+
+    Args:
+        parquet_file: Path to the parquet file to rewrite
+        crs: PROJJSON dict with CRS information
+        geometry_column: Name of the geometry column
+        compression: Compression type for output
+        compression_level: Compression level
+        row_group_rows: Number of rows per row group
+        add_to_geo_metadata: If True, also add CRS to GeoParquet 'geo' metadata (for v2.0)
+        verbose: Whether to print verbose output
+    """
+    import geoarrow.pyarrow as ga
+    import pyarrow as pa
+
+    if verbose:
+        target = (
+            "Parquet schema and GeoParquet metadata" if add_to_geo_metadata else "Parquet schema"
+        )
+        click.echo(f"Applying CRS {_format_crs_display(crs)} to {target}...")
+
+    # Read the file
+    table = pq.read_table(parquet_file)
+
+    # Get the geometry column and convert to WKB format with geoarrow
+    # Using as_wkb preserves binary WKB and writes proper Parquet GEOMETRY type
+    geom_col = table.column(geometry_column)
+    wkb_arr = ga.as_wkb(geom_col)
+
+    # Create new type with CRS
+    new_type = wkb_arr.type.with_crs(crs)
+
+    # Create new chunks with the CRS type using from_storage
+    # This preserves the CRS unlike cast() which resets it
+    new_chunks = []
+    for chunk in wkb_arr.chunks:
+        new_chunk = pa.ExtensionArray.from_storage(new_type, chunk.storage)
+        new_chunks.append(new_chunk)
+
+    geom_with_crs = pa.chunked_array(new_chunks, type=new_type)
+
+    # Replace the column in the table
+    col_index = table.schema.get_field_index(geometry_column)
+    new_table = table.set_column(col_index, geometry_column, geom_with_crs)
+
+    # If requested, also add CRS to GeoParquet metadata (for v2.0)
+    if add_to_geo_metadata:
+        metadata = new_table.schema.metadata or {}
+
+        # Parse existing geo metadata or create new
+        if b"geo" in metadata:
+            geo_meta = json.loads(metadata[b"geo"])
+        else:
+            geo_meta = {"version": "2.0.0", "primary_column": geometry_column, "columns": {}}
+
+        # Add CRS to geometry column in metadata
+        geom_col_name = geo_meta.get("primary_column", geometry_column)
+        if geom_col_name not in geo_meta["columns"]:
+            geo_meta["columns"][geom_col_name] = {}
+        geo_meta["columns"][geom_col_name]["crs"] = crs
+
+        # Update table metadata
+        new_metadata = dict(metadata)
+        new_metadata[b"geo"] = json.dumps(geo_meta).encode("utf-8")
+        new_table = new_table.replace_schema_metadata(new_metadata)
+
+    # Use central configuration for write settings
+    settings = ParquetWriteSettings(
+        compression=compression, compression_level=compression_level, row_group_rows=row_group_rows
+    )
+    write_kwargs = settings.get_pyarrow_kwargs()
+
+    # Write back with all best practices (single write!)
+    pq.write_table(new_table, parquet_file, **write_kwargs)
+
+    if verbose:
+        click.echo("CRS applied successfully")
+
+
+def add_crs_to_geoparquet_metadata(
+    parquet_file, crs, compression="ZSTD", compression_level=15, row_group_rows=None, verbose=False
+):
+    """
+    Add CRS to GeoParquet 'geo' metadata.
+
+    NOTE: This function is kept for compatibility but is no longer used internally.
+    For GeoParquet 2.0, use apply_crs_to_parquet() with add_to_geo_metadata=True
+    to write CRS to both Parquet schema and geo metadata in a single write operation.
+
+    Args:
+        parquet_file: Path to the parquet file
+        crs: PROJJSON dict with CRS information
+        compression: Compression type
+        compression_level: Compression level
+        row_group_rows: Number of rows per row group
+        verbose: Whether to print verbose output
+    """
+    if verbose:
+        click.echo(f"Adding CRS to GeoParquet metadata: {_format_crs_display(crs)}")
+
+    table = pq.read_table(parquet_file)
+    metadata = table.schema.metadata or {}
+
+    # Parse existing geo metadata or create new
+    if b"geo" in metadata:
+        geo_meta = json.loads(metadata[b"geo"])
+    else:
+        geo_meta = {"version": "2.0.0", "primary_column": "geometry", "columns": {}}
+
+    # Add CRS to geometry column
+    geom_col = geo_meta.get("primary_column", "geometry")
+    if geom_col not in geo_meta["columns"]:
+        geo_meta["columns"][geom_col] = {}
+    geo_meta["columns"][geom_col]["crs"] = crs
+
+    # Write back with same compression settings
+    new_metadata = dict(metadata)
+    new_metadata[b"geo"] = json.dumps(geo_meta).encode("utf-8")
+    new_table = table.replace_schema_metadata(new_metadata)
+
+    # Use central configuration for write settings
+    settings = ParquetWriteSettings(
+        compression=compression, compression_level=compression_level, row_group_rows=row_group_rows
+    )
+    write_kwargs = settings.get_pyarrow_kwargs()
+    pq.write_table(new_table, parquet_file, **write_kwargs)
+
+    if verbose:
+        click.echo("CRS added to GeoParquet metadata")
+
+
+def parse_crs_string_to_projjson(crs_string, con=None):
+    """
+    Convert a CRS string (like "EPSG:5070") to PROJJSON dict.
+
+    Uses DuckDB's spatial extension to look up the CRS definition.
+
+    Args:
+        crs_string: CRS string like "EPSG:5070" or "EPSG:4326"
+        con: DuckDB connection (optional, will create one if not provided)
+
+    Returns:
+        dict: PROJJSON dict, or simple id dict if lookup fails
+    """
+    identifier = _extract_crs_identifier(crs_string)
+    if not identifier:
+        return None
+
+    authority, code = identifier
+
+    # Try to get full PROJJSON from DuckDB
+    if con is None:
+        con = duckdb.connect()
+        con.execute("INSTALL spatial; LOAD spatial;")
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        # Create a simple point and get its CRS via ST_Transform metadata
+        # This is a workaround since DuckDB doesn't have direct CRS lookup
+        result = con.execute(f"""
+            SELECT ST_AsText(ST_Transform(
+                ST_Point(0, 0)::GEOMETRY,
+                'EPSG:4326',
+                '{authority}:{code}'
+            ))
+        """).fetchone()
+
+        # If transform succeeds, return simple PROJJSON with id
+        if result:
+            return {"id": {"authority": authority, "code": code}}
+    except Exception:
+        pass
+    finally:
+        if should_close:
+            con.close()
+
+    # Fallback to simple id dict
+    return {"id": {"authority": authority, "code": code}}
+
+
+def _parse_existing_geo_metadata(original_metadata):
+    """Parse existing geo metadata from original parquet metadata."""
+    if not original_metadata or b"geo" not in original_metadata:
+        return None
+    try:
+        return json.loads(original_metadata[b"geo"].decode("utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _initialize_geo_metadata(geo_meta, geom_col, version="1.1.0"):
+    """Initialize or upgrade geo metadata structure.
+
+    Args:
+        geo_meta: Existing geo metadata dict or None
+        geom_col: Name of the geometry column
+        version: GeoParquet version string (e.g., "1.0.0", "1.1.0", "2.0.0")
+
+    Returns:
+        dict: Initialized geo metadata structure
+    """
+    if not geo_meta:
+        return {"version": version, "primary_column": geom_col, "columns": {geom_col: {}}}
+
+    # Set the specified version
+    geo_meta["version"] = version
+    if "columns" not in geo_meta:
+        geo_meta["columns"] = {}
+    if geom_col not in geo_meta["columns"]:
+        geo_meta["columns"][geom_col] = {}
+
+    return geo_meta
+
+
+def _add_bbox_covering(geo_meta, geom_col, bbox_info, verbose):
+    """Add bbox covering metadata to geometry column."""
+    if not bbox_info or not bbox_info.get("has_bbox_column"):
+        return
+
+    if "covering" not in geo_meta["columns"][geom_col]:
+        geo_meta["columns"][geom_col]["covering"] = {}
+
+    geo_meta["columns"][geom_col]["covering"]["bbox"] = {
+        "xmin": [bbox_info["bbox_column_name"], "xmin"],
+        "ymin": [bbox_info["bbox_column_name"], "ymin"],
+        "xmax": [bbox_info["bbox_column_name"], "xmax"],
+        "ymax": [bbox_info["bbox_column_name"], "ymax"],
+    }
+    if verbose:
+        click.echo(f"Added bbox covering metadata for column '{bbox_info['bbox_column_name']}'")
+
+
+def _add_custom_covering(geo_meta, geom_col, custom_metadata, verbose):
+    """Add custom covering metadata (e.g., H3, S2)."""
+    if not custom_metadata or "covering" not in custom_metadata:
+        return
+
+    if "covering" not in geo_meta["columns"][geom_col]:
+        geo_meta["columns"][geom_col]["covering"] = {}
+
+    geo_meta["columns"][geom_col]["covering"].update(custom_metadata["covering"])
+    if verbose:
+        for key in custom_metadata["covering"]:
+            click.echo(f"Added {key} covering metadata")
+
+
+def create_geo_metadata(
+    original_metadata,
+    geom_col,
+    bbox_info,
+    custom_metadata=None,
+    verbose=False,
+    version="1.1.0",
+):
+    """
+    Create or update GeoParquet metadata with spatial index covering information.
+
+    Args:
+        original_metadata: Original parquet metadata dict
+        geom_col: Name of the geometry column
+        bbox_info: Result from check_bbox_structure
+        custom_metadata: Optional dict with custom metadata (e.g., H3 info)
+        verbose: Whether to print verbose output
+        version: GeoParquet version string (e.g., "1.0.0", "1.1.0", "2.0.0")
+
+    Returns:
+        dict: Updated geo metadata
+    """
+    geo_meta = _parse_existing_geo_metadata(original_metadata)
+    geo_meta = _initialize_geo_metadata(geo_meta, geom_col, version=version)
+
+    # Add encoding if not present (required by GeoParquet spec)
+    if "encoding" not in geo_meta["columns"][geom_col]:
+        geo_meta["columns"][geom_col]["encoding"] = "WKB"
+
+    # Add bbox covering if needed
+    _add_bbox_covering(geo_meta, geom_col, bbox_info, verbose)
+
+    # Add custom covering if needed
+    _add_custom_covering(geo_meta, geom_col, custom_metadata, verbose)
+
+    # Add any top-level custom metadata
+    if custom_metadata:
+        for key, value in custom_metadata.items():
+            if key != "covering":
+                geo_meta[key] = value
+
+    return geo_meta
+
+
+def parse_size_string(size_str):
+    """
+    Parse a human-readable size string into bytes.
+
+    Args:
+        size_str: String like '256MB', '1GB', '128' (assumed MB if no unit)
+
+    Returns:
+        int: Size in bytes
+    """
+    if not size_str:
+        return None
+
+    # Handle plain numbers (assume MB)
+    try:
+        return int(size_str) * 1024 * 1024
+    except ValueError:
+        pass
+
+    # Parse with units
+    size_str = size_str.strip().upper()
+    match = re.match(r"^(\d+(?:\.\d+)?)\s*([KMGT]?B?)$", size_str)
+    if not match:
+        raise ValueError(f"Invalid size format: {size_str}")
+
+    value = float(match.group(1))
+    unit = match.group(2)
+
+    # Convert to bytes
+    multipliers = {
+        "B": 1,
+        "KB": 1024,
+        "MB": 1024 * 1024,
+        "GB": 1024 * 1024 * 1024,
+        "TB": 1024 * 1024 * 1024 * 1024,
+        "K": 1024,
+        "M": 1024 * 1024,
+        "G": 1024 * 1024 * 1024,
+        "T": 1024 * 1024 * 1024 * 1024,
+    }
+
+    multiplier = multipliers.get(unit, 1024 * 1024)  # Default to MB
+    return int(value * multiplier)
+
+
+def calculate_row_group_size(
+    total_rows, file_size_bytes, target_row_group_size_mb=None, target_row_group_rows=None
+):
+    """
+    Calculate optimal row group size for parquet file.
+
+    Args:
+        total_rows: Total number of rows in the file
+        file_size_bytes: Current file size in bytes
+        target_row_group_size_mb: Target size per row group in MB
+        target_row_group_rows: Exact number of rows per row group
+
+    Returns:
+        int: Number of rows per row group
+    """
+    if target_row_group_rows:
+        # Use exact row count if specified
+        return min(target_row_group_rows, total_rows)
+
+    if not target_row_group_size_mb:
+        target_row_group_size_mb = 130  # Default 130MB
+
+    # Convert target size to bytes
+    target_bytes = target_row_group_size_mb * 1024 * 1024
+
+    # Calculate average bytes per row
+    if total_rows > 0 and file_size_bytes > 0:
+        bytes_per_row = file_size_bytes / total_rows
+        # Calculate number of rows that would fit in target size
+        rows_per_group = int(target_bytes / bytes_per_row)
+        # Ensure at least 1 row per group but not more than total rows
+        return max(1, min(rows_per_group, total_rows))
+    else:
+        # Default to all rows in one group if we can't calculate
+        return max(1, total_rows)
+
+
+def validate_compression_settings(compression, compression_level, verbose=False):
+    """
+    Validate and normalize compression settings.
+
+    Args:
+        compression: Compression type string
+        compression_level: Compression level (can be None for defaults)
+        verbose: Whether to print verbose output
+
+    Returns:
+        tuple: (normalized_compression, validated_level, compression_desc)
+    """
+    compression = compression.upper()
+    valid_compressions = ["ZSTD", "GZIP", "BROTLI", "LZ4", "SNAPPY", "UNCOMPRESSED"]
+
+    if compression not in valid_compressions:
+        raise click.BadParameter(
+            f"Invalid compression '{compression}'. Must be one of: {', '.join(valid_compressions)}"
+        )
+
+    # Handle compression level based on format
+    compression_ranges = {
+        "GZIP": (1, 9, 6),  # min, max, default
+        "ZSTD": (1, 22, 15),  # min, max, default
+        "BROTLI": (1, 11, 6),  # min, max, default
+    }
+
+    if compression in compression_ranges:
+        min_level, max_level, default_level = compression_ranges[compression]
+
+        # Use default if not specified
+        if compression_level is None:
+            compression_level = default_level
+
+        if compression_level < min_level or compression_level > max_level:
+            raise click.BadParameter(
+                f"{compression} compression level must be between {min_level} and {max_level}, got {compression_level}"
+            )
+        compression_desc = f"{compression}:{compression_level}"
+    elif compression in ["LZ4", "SNAPPY"]:
+        if compression_level and compression_level != 15 and verbose:  # Not default
+            click.echo(
+                click.style(
+                    f"Note: {compression} does not support compression levels. Ignoring level {compression_level}.",
+                    fg="yellow",
+                )
+            )
+        compression_level = None  # These formats don't use compression levels
+        compression_desc = compression
+    else:
+        compression_level = None  # UNCOMPRESSED doesn't use levels
+        compression_desc = compression
+
+    return compression, compression_level, compression_desc
+
+
+def build_copy_query(
+    query,
+    output_file,
+    compression,
+    compression_level=15,
+    row_group_rows=None,
+    geoparquet_version=None,
+):
+    """
+    Build a DuckDB COPY query with proper compression and GeoParquet version settings.
+
+    Args:
+        query: SELECT query or existing COPY query
+        output_file: Output file path
+        compression: Compression type (already validated)
+        compression_level: Compression level (for ZSTD, GZIP, BROTLI)
+        row_group_rows: Number of rows per row group (optional)
+        geoparquet_version: GeoParquet version to write (1.0, 1.1, 2.0, parquet-geo-only)
+
+    Returns:
+        str: Complete COPY query
+    """
+    # Map to DuckDB compression names
+    duckdb_compression_map = {
+        "ZSTD": "zstd",
+        "GZIP": "gzip",
+        "BROTLI": "brotli",
+        "LZ4": "lz4",
+        "SNAPPY": "snappy",
+        "UNCOMPRESSED": "uncompressed",
+    }
+    duckdb_compression = duckdb_compression_map[compression]
+
+    # Get GeoParquet version setting for DuckDB
+    version_config = GEOPARQUET_VERSIONS.get(
+        geoparquet_version, GEOPARQUET_VERSIONS[DEFAULT_GEOPARQUET_VERSION]
+    )
+    duckdb_gp_version = version_config["duckdb_param"]
+
+    # Build COPY options with all parameters
+    copy_options_list = [
+        "FORMAT PARQUET",
+        f"COMPRESSION '{duckdb_compression}'",
+        f"GEOPARQUET_VERSION '{duckdb_gp_version}'",
+    ]
+
+    # Add compression level only for ZSTD (DuckDB only supports it for ZSTD)
+    if compression == "ZSTD" and compression_level is not None:
+        copy_options_list.append(f"COMPRESSION_LEVEL {compression_level}")
+
+    # Add row group size if specified
+    if row_group_rows:
+        copy_options_list.append(f"ROW_GROUP_SIZE {row_group_rows}")
+
+    copy_options = ", ".join(copy_options_list)
+
+    # Modify query to use the specified settings
+    if "COPY (" in query and "TO '" in query:
+        # Extract the query parts
+        query_parts = query.split("TO '")
+        if len(query_parts) == 2:
+            output_path_and_rest = query_parts[1]
+            # Find the end of the output path
+            path_end = output_path_and_rest.find("'")
+            if path_end > 0:
+                # Rebuild query with options
+                base_query = query_parts[0] + f"TO '{output_file}'"
+                query = base_query + f"\n({copy_options});"
+    else:
+        # Assume it's a SELECT query that needs COPY wrapper
+        query = f"""COPY ({query})
+TO '{output_file}'
+({copy_options});"""
+
+    return query
+
+
+def rewrite_with_metadata(
+    output_file,
+    original_metadata,
+    compression,
+    compression_level,
+    row_group_size_mb=None,
+    row_group_rows=None,
+    custom_metadata=None,
+    verbose=False,
+    metadata_version="1.1.0",
+    input_crs=None,
+):
+    """
+    Rewrite a parquet file with updated metadata and compression settings.
+
+    Args:
+        output_file: Path to the parquet file to rewrite
+        original_metadata: Original metadata to preserve
+        compression: Compression type
+        compression_level: Compression level
+        row_group_size_mb: Target row group size in MB
+        row_group_rows: Exact number of rows per row group
+        custom_metadata: Optional dict with custom metadata (e.g., H3 info)
+        verbose: Whether to print verbose output
+        metadata_version: GeoParquet version string (e.g., "1.0.0", "1.1.0", "2.0.0")
+        input_crs: PROJJSON dict with CRS to include in geo metadata (optional)
+    """
+    if verbose:
+        click.echo("Updating metadata and optimizing file structure...")
+
+    # Check if this is a Hive-partitioned file by examining the parent directory
+    parent_dir = os.path.basename(os.path.dirname(output_file))
+    is_hive_partition = "=" in parent_dir
+
+    if is_hive_partition:
+        # For Hive-partitioned files, read directly as a single file
+        # to avoid PyArrow trying to interpret it as a dataset
+        with open(output_file, "rb") as f:
+            table = pq.read_table(f)
+    else:
+        # Read the written file normally
+        table = pq.read_table(output_file)
+
+    # Prepare metadata
+    existing_metadata = table.schema.metadata or {}
+    new_metadata = {}
+
+    # Copy non-geo metadata from existing
+    for k, v in existing_metadata.items():
+        if not k.decode("utf-8").startswith("geo"):
+            new_metadata[k] = v
+
+    # Get geometry column and bbox info
+    geom_col = find_primary_geometry_column(output_file, verbose=False)
+    bbox_info = check_bbox_structure(output_file, verbose=False)
+
+    # Create geo metadata - use existing metadata if no original provided
+    # This preserves DuckDB-generated metadata (encoding, geometry_types, etc.)
+    metadata_source = original_metadata if original_metadata else existing_metadata
+    geo_meta = create_geo_metadata(
+        metadata_source, geom_col, bbox_info, custom_metadata, verbose, version=metadata_version
+    )
+
+    # Add CRS to geo metadata if provided (for GeoParquet 1.x)
+    if input_crs and not is_default_crs(input_crs):
+        if geom_col not in geo_meta.get("columns", {}):
+            geo_meta["columns"][geom_col] = {}
+        geo_meta["columns"][geom_col]["crs"] = input_crs
+        if verbose:
+            click.echo(f"Added CRS to geo metadata: {_format_crs_display(input_crs)}")
+
+    new_metadata[b"geo"] = json.dumps(geo_meta).encode("utf-8")
+
+    # Update table schema with new metadata
+    new_table = table.replace_schema_metadata(new_metadata)
+
+    # Calculate optimal row groups
+    file_size = os.path.getsize(output_file)
+    rows_per_group = calculate_row_group_size(
+        new_table.num_rows,
+        file_size,
+        target_row_group_size_mb=row_group_size_mb,
+        target_row_group_rows=row_group_rows,
+    )
+
+    # Use central configuration for write settings
+    settings = ParquetWriteSettings(
+        compression=compression,
+        compression_level=compression_level,
+        row_group_rows=row_group_rows,
+        row_group_size_mb=row_group_size_mb,
+    )
+    write_kwargs = settings.get_pyarrow_kwargs(calculated_row_group_size=rows_per_group)
+
+    # Rewrite the file
+    pq.write_table(new_table, output_file, **write_kwargs)
+
+    if verbose:
+        if compression in ["GZIP", "ZSTD", "BROTLI"]:
+            compression_desc = f"{compression}:{compression_level}"
+        else:
+            compression_desc = compression
+        click.echo(f"✓ File written with {compression_desc} compression and updated metadata")
+        if row_group_rows:
+            click.echo(f"  Row group size: {rows_per_group:,} rows")
+        elif row_group_size_mb:
+            click.echo(f"  Row group size: ~{row_group_size_mb}MB ({rows_per_group:,} rows)")
+
+
+def write_parquet_with_metadata(
+    con,
+    query,
+    output_file,
+    original_metadata=None,
+    compression="ZSTD",
+    compression_level=15,
+    row_group_size_mb=None,
+    row_group_rows=None,
+    custom_metadata=None,
+    verbose=False,
+    show_sql=False,
+    profile=None,
+    geoparquet_version=None,
+    input_crs=None,
+):
+    """
+    Write a parquet file with proper compression and metadata handling.
+
+    Supports both local and remote outputs (S3, GCS, Azure). Remote outputs
+    are written to a temporary local file, then uploaded.
+
+    Note: Remote writes require ~2× output file size in local disk space
+    for temporary processing.
+
+    Args:
+        con: DuckDB connection
+        query: SQL query to execute
+        output_file: Path to output file (local path or remote URL)
+        original_metadata: Original metadata from source file
+        compression: Compression type (ZSTD, GZIP, BROTLI, LZ4, SNAPPY, UNCOMPRESSED)
+        compression_level: Compression level (varies by format)
+        row_group_size_mb: Target row group size in MB
+        row_group_rows: Exact number of rows per row group
+        custom_metadata: Optional dict with custom metadata (e.g., H3 info)
+        verbose: Whether to print verbose output
+        show_sql: Whether to print SQL statements before execution
+        profile: AWS profile name (S3 only, optional)
+        geoparquet_version: GeoParquet version to write (1.0, 1.1, 2.0, parquet-geo-only)
+        input_crs: PROJJSON dict with CRS from input file (for 2.0/parquet-geo-only)
+
+    Returns:
+        None
+    """
+    # Setup AWS profile if needed (for writes to S3)
+    setup_aws_profile_if_needed(profile, output_file)
+
+    # Get version configuration
+    version_config = GEOPARQUET_VERSIONS.get(
+        geoparquet_version, GEOPARQUET_VERSIONS[DEFAULT_GEOPARQUET_VERSION]
+    )
+
+    with remote_write_context(output_file, is_directory=False, verbose=verbose) as (
+        actual_output,
+        is_remote,
+    ):
+        # Validate compression settings
+        compression, compression_level, compression_desc = validate_compression_settings(
+            compression, compression_level, verbose
+        )
+
+        if verbose:
+            click.echo(f"Writing output with {compression_desc} compression...")
+            if geoparquet_version:
+                click.echo(f"Using GeoParquet version: {geoparquet_version}")
+
+        # Build and execute query with version-specific settings
+        final_query = build_copy_query(
+            query,
+            actual_output,
+            compression,
+            compression_level=compression_level,
+            row_group_rows=row_group_rows,
+            geoparquet_version=geoparquet_version,
+        )
+
+        if show_sql:
+            click.echo(click.style("\n-- COPY query:", fg="cyan"))
+            click.echo(final_query)
+
+        con.execute(final_query)
+
+        # For 2.0 and parquet-geo-only, apply CRS to Parquet native type if non-default
+        if geoparquet_version in ("2.0", "parquet-geo-only"):
+            if input_crs and not is_default_crs(input_crs):
+                if verbose:
+                    click.echo(
+                        f"Applying CRS {_format_crs_display(input_crs)} to Parquet native type..."
+                    )
+                # For v2.0, write CRS to BOTH schema and metadata in single pass
+                # For parquet-geo-only, write CRS to schema only
+                apply_crs_to_parquet(
+                    actual_output,
+                    input_crs,
+                    compression=compression,
+                    compression_level=compression_level,
+                    row_group_rows=row_group_rows,
+                    add_to_geo_metadata=(geoparquet_version == "2.0"),
+                    verbose=verbose,
+                )
+
+        # Rewrite with metadata and optimal settings (skip for parquet-geo-only)
+        should_rewrite = version_config["rewrite_metadata"] and (
+            original_metadata or verbose or row_group_size_mb or row_group_rows or True
+        )
+        if should_rewrite:
+            rewrite_with_metadata(
+                actual_output,
+                original_metadata,
+                compression,
+                compression_level,
+                row_group_size_mb,
+                row_group_rows,
+                custom_metadata,
+                verbose,
+                metadata_version=version_config["metadata_version"],
+                input_crs=input_crs,
+            )
+
+        # Upload to remote if needed
+        if is_remote:
+            upload_if_remote(
+                actual_output, output_file, profile=profile, is_directory=False, verbose=verbose
+            )
+
+
+def update_metadata(output_file, original_metadata):
+    """Update a parquet file with original metadata and add bbox covering if present."""
+    if not original_metadata:
+        return
+
+    # Use the rewrite function with default compression settings
+    rewrite_with_metadata(
+        output_file, original_metadata, compression="ZSTD", compression_level=15, verbose=False
+    )
+
+
+def format_size(size_bytes):
+    """Convert bytes to human readable string."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} TB"
+
+
+def _find_bbox_column_in_schema(schema, verbose):
+    """Find bbox column in schema by conventional names or structure."""
+    conventional_names = ["bbox", "bounds", "extent"]
+    for field in schema:
+        if field.name in conventional_names or (
+            isinstance(field.type, type(schema[0].type))
+            and str(field.type).startswith("struct<")
+            and all(f in str(field.type) for f in ["xmin", "ymin", "xmax", "ymax"])
+        ):
+            if verbose:
+                click.echo(f"Found bbox column: {field.name} with type {field.type}")
+            return field.name
+    return None
+
+
+def _check_bbox_metadata_covering(metadata, has_bbox_column, verbose):
+    """Check if metadata contains proper bbox covering."""
+    if not (metadata and b"geo" in metadata and has_bbox_column):
+        return False
+
+    try:
+        geo_meta = json.loads(metadata[b"geo"].decode("utf-8"))
+        if verbose:
+            click.echo("\nParsed geo metadata:")
+            click.echo(json.dumps(geo_meta, indent=2))
+
+        if isinstance(geo_meta, dict) and "columns" in geo_meta:
+            columns = geo_meta["columns"]
+            for _col_name, col_info in columns.items():
+                if isinstance(col_info, dict) and col_info.get("covering", {}).get("bbox"):
+                    bbox_refs = col_info["covering"]["bbox"]
+                    # Check if the bbox covering has the required structure
+                    if (
+                        isinstance(bbox_refs, dict)
+                        and all(key in bbox_refs for key in ["xmin", "ymin", "xmax", "ymax"])
+                        and all(
+                            isinstance(ref, list) and len(ref) == 2 for ref in bbox_refs.values()
+                        )
+                    ):
+                        referenced_bbox_column = bbox_refs["xmin"][0]
+                        if verbose:
+                            click.echo(
+                                f"Found bbox covering in metadata referencing column: {referenced_bbox_column}"
+                            )
+                        return True
+    except json.JSONDecodeError:
+        if verbose:
+            click.echo("Failed to parse geo metadata as JSON")
+
+    return False
+
+
+def _determine_bbox_status(has_bbox_column, bbox_column_name, has_bbox_metadata):
+    """Determine bbox status and message."""
+    if has_bbox_column and has_bbox_metadata:
+        return "optimal", f"✓ Found bbox column '{bbox_column_name}' with proper metadata covering"
+    elif has_bbox_column:
+        return (
+            "suboptimal",
+            f"⚠️  Found bbox column '{bbox_column_name}' but no bbox covering metadata (recommended for better performance)",
+        )
+    else:
+        return "poor", "❌ No valid bbox column found"
+
+
+def check_bbox_structure(parquet_file, verbose=False):
+    """
+    Check bbox structure and metadata coverage in a GeoParquet file.
+
+    Returns:
+        dict: Results including:
+            - has_bbox_column (bool): Whether a valid bbox struct column exists
+            - bbox_column_name (str): Name of the bbox column if found
+            - has_bbox_metadata (bool): Whether bbox covering is specified in metadata
+            - status (str): "optimal", "suboptimal", or "poor"
+            - message (str): Human readable description
+    """
+    with fsspec.open(safe_file_url(parquet_file), "rb") as f:
+        pf = pq.ParquetFile(f)
+        metadata = pf.schema_arrow.metadata
+        schema = pf.schema_arrow
+
+    if verbose:
+        click.echo("\nSchema fields:")
+        for field in schema:
+            click.echo(f"  {field.name}: {field.type}")
+
+    # Find the bbox column in the schema
+    bbox_column_name = _find_bbox_column_in_schema(schema, verbose)
+    has_bbox_column = bbox_column_name is not None
+
+    # Check metadata for bbox covering
+    has_bbox_metadata = _check_bbox_metadata_covering(metadata, has_bbox_column, verbose)
+
+    # Determine status and message
+    status, message = _determine_bbox_status(has_bbox_column, bbox_column_name, has_bbox_metadata)
+
+    if verbose:
+        click.echo("\nFinal results:")
+        click.echo(f"  has_bbox_column: {has_bbox_column}")
+        click.echo(f"  bbox_column_name: {bbox_column_name}")
+        click.echo(f"  has_bbox_metadata: {has_bbox_metadata}")
+        click.echo(f"  status: {status}")
+        click.echo(f"  message: {message}")
+
+    return {
+        "has_bbox_column": has_bbox_column,
+        "bbox_column_name": bbox_column_name if has_bbox_column else None,
+        "has_bbox_metadata": has_bbox_metadata,
+        "status": status,
+        "message": message,
+    }
+
+
+def _build_bounds_query(safe_url, bbox_info, geometry_column, verbose):
+    """Build query for bounds calculation."""
+    if bbox_info["has_bbox_column"]:
+        bbox_col = bbox_info["bbox_column_name"]
+        if verbose:
+            click.echo(f"Using bbox column '{bbox_col}' for fast bounds calculation")
+
+        return f"""
+        SELECT
+            MIN({bbox_col}.xmin) as xmin,
+            MIN({bbox_col}.ymin) as ymin,
+            MAX({bbox_col}.xmax) as xmax,
+            MAX({bbox_col}.ymax) as ymax
+        FROM '{safe_url}'
+        """
+    else:
+        click.echo(
+            click.style(
+                f"⚠️  No bbox column found - calculating bounds from geometry column '{geometry_column}' (this may be slow)",
+                fg="yellow",
+            )
+        )
+        click.echo(
+            click.style(
+                "💡 Tip: Add a bbox column for faster operations with 'gpio add bbox'", fg="cyan"
+            )
+        )
+
+        return f"""
+        SELECT
+            MIN(ST_XMin({geometry_column})) as xmin,
+            MIN(ST_YMin({geometry_column})) as ymin,
+            MAX(ST_XMax({geometry_column})) as xmax,
+            MAX(ST_YMax({geometry_column})) as ymax
+        FROM '{safe_url}'
+        """
+
+
+def get_dataset_bounds(parquet_file, geometry_column=None, verbose=False):
+    """
+    Calculate the bounding box of the entire dataset.
+
+    Uses bbox column if available for fast calculation, otherwise calculates
+    from geometry column (slower).
+
+    Args:
+        parquet_file: Path to the parquet file
+        geometry_column: Geometry column name (if None, will auto-detect)
+        verbose: Whether to print verbose output
+
+    Returns:
+        tuple: (xmin, ymin, xmax, ymax) or None if error
+    """
+    safe_url = safe_file_url(parquet_file, verbose)
+
+    # Get geometry column if not specified
+    if not geometry_column:
+        geometry_column = find_primary_geometry_column(parquet_file, verbose)
+
+    # Check for bbox column
+    bbox_info = check_bbox_structure(parquet_file, verbose)
+
+    # Create DuckDB connection with httpfs if needed
+    con = get_duckdb_connection(load_spatial=True, load_httpfs=needs_httpfs(parquet_file))
+
+    try:
+        query = _build_bounds_query(safe_url, bbox_info, geometry_column, verbose)
+        result = con.execute(query).fetchone()
+
+        if result and all(v is not None for v in result):
+            xmin, ymin, xmax, ymax = result
+            if verbose:
+                click.echo(f"Dataset bounds: ({xmin:.6f}, {ymin:.6f}, {xmax:.6f}, {ymax:.6f})")
+            return (xmin, ymin, xmax, ymax)
+        else:
+            if verbose:
+                click.echo("Warning: Could not calculate bounds (empty dataset or null geometries)")
+            return None
+
+    except Exception as e:
+        if verbose:
+            click.echo(f"Error calculating bounds: {e}")
+        return None
+    finally:
+        con.close()
+
+
+def add_computed_column(
+    input_parquet,
+    output_parquet,
+    column_name,
+    sql_expression,
+    extensions=None,
+    dry_run=False,
+    verbose=False,
+    compression="ZSTD",
+    compression_level=None,
+    row_group_size_mb=None,
+    row_group_rows=None,
+    dry_run_description=None,
+    custom_metadata=None,
+    profile=None,
+    replace_column=None,
+    geoparquet_version=None,
+):
+    """
+    Add a computed column to a GeoParquet file using SQL expression.
+
+    Handles all boilerplate for adding columns derived from existing data:
+    - Input validation
+    - Schema checking
+    - DuckDB connection and extension loading
+    - Query execution
+    - Metadata preservation
+    - Dry-run support
+    - Remote input/output support
+
+    Args:
+        input_parquet: Path to input file (local or remote URL)
+        output_parquet: Path to output file (local or remote URL)
+        column_name: Name for the new column
+        sql_expression: SQL expression to compute column value
+        extensions: DuckDB extensions to load beyond 'spatial' (e.g., ['h3'])
+        dry_run: Whether to print SQL without executing
+        verbose: Whether to print verbose output
+        compression: Compression type (ZSTD, GZIP, BROTLI, LZ4, SNAPPY, UNCOMPRESSED)
+        compression_level: Compression level (varies by format)
+        row_group_size_mb: Target row group size in MB
+        row_group_rows: Exact number of rows per row group
+        dry_run_description: Optional description for dry-run output
+        custom_metadata: Optional dict with custom metadata (e.g., H3 info)
+        profile: AWS profile name (S3 only, optional)
+        replace_column: Name of existing column to replace (uses EXCLUDE in query)
+
+    Example:
+        add_computed_column(
+            'input.parquet', 'output.parquet',
+            column_name='h3_cell',
+            sql_expression="h3_latlng_to_cell(ST_Y(ST_Centroid(geometry)), "
+                          "ST_X(ST_Centroid(geometry)), 9)",
+            extensions=['h3'],
+            custom_metadata={'covering': {'h3': {'column': 'h3_cell', 'resolution': 9}}}
+        )
+    """
+    # Get safe URL for input file
+    input_url = safe_file_url(input_parquet, verbose)
+
+    # Get geometry column (for reference)
+    geom_col = find_primary_geometry_column(input_parquet, verbose)
+
+    # Dry-run mode header
+    if dry_run:
+        click.echo(
+            click.style(
+                "\n=== DRY RUN MODE - SQL Commands that would be executed ===\n",
+                fg="yellow",
+                bold=True,
+            )
+        )
+        click.echo(click.style(f"-- Input file: {input_url}", fg="cyan"))
+        click.echo(click.style(f"-- Output file: {output_parquet}", fg="cyan"))
+        click.echo(click.style(f"-- Geometry column: {geom_col}", fg="cyan"))
+        click.echo(click.style(f"-- New column: {column_name}", fg="cyan"))
+        if dry_run_description:
+            click.echo(click.style(f"-- Description: {dry_run_description}", fg="cyan"))
+        click.echo()
+
+    # Check if column already exists (skip in dry-run or when replacing)
+    if not dry_run:
+        with fsspec.open(input_url, "rb") as f:
+            pf = pq.ParquetFile(f)
+            schema = pf.schema_arrow
+
+        # Only check for column collision if not replacing
+        if not replace_column:
+            for field in schema:
+                if field.name == column_name:
+                    raise click.ClickException(
+                        f"Column '{column_name}' already exists in the file. "
+                        f"Please choose a different name."
+                    )
+
+        # Get metadata before processing
+        metadata, _ = get_parquet_metadata(input_parquet, verbose)
+
+        if verbose:
+            if replace_column:
+                click.echo(f"Replacing column '{replace_column}' with '{column_name}'...")
+            else:
+                click.echo(f"Adding column '{column_name}'...")
+
+    # Create DuckDB connection with httpfs if needed
+    con = get_duckdb_connection(load_spatial=True, load_httpfs=needs_httpfs(input_parquet))
+
+    # Load additional extensions if specified
+    if extensions:
+        for ext in extensions:
+            if verbose and not dry_run:
+                click.echo(f"Loading DuckDB extension: {ext}")
+            con.execute(f"INSTALL {ext} FROM community;")
+            con.execute(f"LOAD {ext};")
+
+    # Get total count (skip in dry-run)
+    if not dry_run:
+        total_count = con.execute(f"SELECT COUNT(*) FROM '{input_url}'").fetchone()[0]
+        click.echo(f"Processing {total_count:,} features...")
+
+    # Build the query
+    # Use EXCLUDE to drop existing column when replacing
+    if replace_column:
+        query = f"""
+        SELECT
+            * EXCLUDE ({replace_column}),
+            {sql_expression} AS {column_name}
+        FROM '{input_url}'
+    """
+    else:
+        query = f"""
+        SELECT
+            *,
+            {sql_expression} AS {column_name}
+        FROM '{input_url}'
+    """
+
+    # Handle dry-run display
+    if dry_run:
+        # Show formatted query with COPY wrapper
+        compression_desc = compression
+        if compression in ["GZIP", "ZSTD", "BROTLI"] and compression_level:
+            compression_desc = f"{compression}:{compression_level}"
+
+        duckdb_compression = (
+            compression.lower() if compression != "UNCOMPRESSED" else "uncompressed"
+        )
+        display_query = f"""COPY ({query.strip()})
+TO '{output_parquet}'
+(FORMAT PARQUET, COMPRESSION '{duckdb_compression}');"""
+
+        click.echo(click.style("-- Main query:", fg="cyan"))
+        click.echo(display_query)
+        click.echo(click.style(f"\n-- Note: Using {compression_desc} compression", fg="cyan"))
+        click.echo(
+            click.style(
+                "-- This query creates a new parquet file with the computed column added", fg="cyan"
+            )
+        )
+        click.echo(
+            click.style(
+                "-- Metadata would also be updated with proper GeoParquet covering information",
+                fg="cyan",
+            )
+        )
+        return
+
+    # Execute the query using existing write helper
+    if verbose:
+        click.echo(f"Creating column '{column_name}'...")
+
+    write_parquet_with_metadata(
+        con,
+        query,
+        output_parquet,
+        original_metadata=metadata,
+        compression=compression,
+        compression_level=compression_level,
+        row_group_size_mb=row_group_size_mb,
+        row_group_rows=row_group_rows,
+        custom_metadata=custom_metadata,
+        verbose=verbose,
+        profile=profile,
+        geoparquet_version=geoparquet_version,
+    )
+
+
+def add_bbox(parquet_file, bbox_column_name="bbox", verbose=False):
+    """
+    Add a bbox struct column to a GeoParquet file in-place.
+
+    Internal helper function used by --add-bbox flags in other commands
+    (hilbert_order, add_country_codes). Modifies the file in-place by
+    writing to a temporary file and replacing the original.
+
+    Raises an error if the bbox column already exists.
+
+    Args:
+        parquet_file: Path to the parquet file (will be modified in-place)
+        bbox_column_name: Name for the bbox column (default: 'bbox')
+        verbose: Whether to print verbose output
+
+    Returns:
+        bool: True if bbox was added successfully
+
+    Raises:
+        click.ClickException: If column already exists or operation fails
+    """
+    # Check if column already exists
+    with fsspec.open(safe_file_url(parquet_file), "rb") as f:
+        pf = pq.ParquetFile(f)
+        schema = pf.schema_arrow
+
+    for field in schema:
+        if field.name == bbox_column_name:
+            raise click.ClickException(
+                f"Column '{bbox_column_name}' already exists in the file. "
+                f"Please choose a different name."
+            )
+
+    # Get geometry column for SQL expression
+    geom_col = find_primary_geometry_column(parquet_file, verbose)
+
+    if verbose:
+        click.echo(f"Adding bbox column for geometry column: {geom_col}")
+
+    # Define SQL expression
+    sql_expression = f"""STRUCT_PACK(
+        xmin := ST_XMin({geom_col}),
+        ymin := ST_YMin({geom_col}),
+        xmax := ST_XMax({geom_col}),
+        ymax := ST_YMax({geom_col})
+    )"""
+
+    # Create temporary file path
+    temp_file = parquet_file + ".tmp"
+
+    try:
+        # Use add_computed_column to write to temp file
+        add_computed_column(
+            input_parquet=parquet_file,
+            output_parquet=temp_file,
+            column_name=bbox_column_name,
+            sql_expression=sql_expression,
+            extensions=None,
+            dry_run=False,
+            verbose=verbose,
+            compression="ZSTD",
+            compression_level=15,
+            row_group_size_mb=None,
+            row_group_rows=None,
+            dry_run_description=None,
+        )
+
+        # Replace original file with updated file
+        os.replace(temp_file, parquet_file)
+
+        if verbose:
+            click.echo(f"Successfully added bbox column '{bbox_column_name}'")
+
+        return True
+
+    except Exception as e:
+        # Clean up temporary file if something goes wrong
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        raise click.ClickException(f"Failed to add bbox: {str(e)}") from e
