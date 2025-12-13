@@ -1,0 +1,244 @@
+import requests
+import json
+import os
+from jinja2 import Template
+import pytest
+import assertions
+import curlify
+import logging
+import urllib.parse as urlparse
+from urllib.parse import parse_qs
+from cvutils import *
+{% if TEST_MANAGEMENT == "testrails" %}
+#from pytest_testrail.plugin import pytestrail
+{% endif %}
+
+#HOST_URL = {{ host_url }}
+extra_vars = {}
+
+LOGGER = logging.getLogger(__name__)
+
+def get_extra_vars(*args):
+    extra_vars = json.loads(os.environ.get("extra_vars", {}))
+    custom_response = extra_vars.get("custom_response")
+    test_id = extra_vars.get("test_id")
+    comment = extra_vars.get("comment")
+    return custom_response, test_id, comment
+
+def _create_curl_request(url, method, headers, payloads):
+    # construct the curl command from request
+    command = "curl -v -H {headers} {data} -X {method} {uri}"
+    data = ""
+    if payloads:
+        payloads = json.loads(payloads)
+        if isinstance(payloads, list):
+            payloads = payloads[0]
+        payload_list = [
+                '"{0}":"{1}"'.format(
+                    k,
+                    v) for k,
+                v in payloads.items()]
+        data = " -d '{" + ", ".join(payload_list) + "}'"
+    header_list = ['"{0}: {1}"'.format(k, v) for k, v in headers.items()]
+    header = " -H ".join(header_list)
+    return command.format(method=method, headers=header, data=data, uri=url)
+
+
+def _trigger_requests(req_method, url, header, data, proxies=None):
+    print("\n\nRegenerating traffic from CloudVector events....")
+    return requests.request(method=req_method, url=url, proxies=proxies, headers=header, data=data, verify=False)
+
+{% set api_name = api_name | replace("{","") | replace("}","") %}
+{% for method, api_info in apis_metadata.items() %}
+{% if TEST_MANAGEMENT == "testrails" %}
+#@pytestrail.case(extra_vars.get("test_id"))
+{% endif %}
+def test_{{ method | lower }}_{{ api_name | lower | replace("-","9i9")}}({{ api_info.get("params",[])|join(", ") }}, update_headers, properties):
+    data = {}
+    {% for param in api_info.get("params",[]) %}{% if (param not in ('host', 'access_token','url_prefix')) %}
+    data["{{ param }}"] = parse_inputs(properties, {{ param }}={{ param }}){% endif %}
+    {% endfor %}
+    try:
+        header_from_cv_events
+    except NameError:
+        header_from_cv_events = {{ api_info.get("header") }}
+    def delete_from_dict(a_dict):
+        new_data = {}
+        for k, v in a_dict.items():
+            if isinstance(v, dict):
+                v = delete_from_dict(v)
+            if isinstance(v, list):
+                for _ in range(len(v)):
+                    if isinstance(v[_], dict):
+                        v[_] = delete_from_dict(v[_])
+            if v != "<delete>":
+                new_data[k] = v
+        return new_data
+
+    data = delete_from_dict(data)
+
+    req = {
+             "data": data,
+             "headers": header_from_cv_events #extra_vars.get("headers", header_from_cv_events )
+          }
+    req["headers"] = update_headers(headers=req["headers"], api="{{ api_info.get("url_from_spec") }}", method="{{ method }}")
+    if "Authorization" in req["headers"] and req["headers"]["Authorization"] is None:
+        req["headers"]["Authorization"] = os.environ.get("IMPACT_ACCESS_TOKEN")
+    if access_token:
+        req["headers"]["Authorization"] = access_token
+    #print("for debugging:" + str(req))
+    url = Template(host + url_prefix + "{{ api_info.get("url") | replace("//","/")}}").render(**data)
+    parsed = urlparse.urlparse(url)
+    for param in parse_qs(parsed.query):
+        del data[param]
+    for k, v in data.items():
+        if isinstance(v, str) and v in url:
+            data[k] = "<delete>"
+    data = delete_from_dict(data)
+    req["data"] = data
+        old_url = url.split("?")
+    new_url = old_url[0] + "?"
+    if len(old_url) > 1:
+        for q in old_url[1].split("&"):
+            query = q.split("=")
+            if query[1]:
+                if new_url[-1] != "?":
+                    new_url += "&"
+                val = query[1].replace("[","").replace("]","").replace("'","").split(",")
+                new_url += query[0] + "=" + ",".join(val)
+        url = new_url
+
+    {% for each in apis_with_array_payloads %}
+    {% if each == api_info.get("url") %}
+    # payload needs to be sent in an array
+    data = [data]
+    req["data"] = data
+    {% endif %}
+    {% endfor %}
+
+    print("for debugging:" + str(req))
+    resp = _trigger_requests("{{ method }}", url,
+                      header=req["headers"],
+                      data=json.dumps(data))
+    custom_response, test_id, comment = get_extra_vars({{ api_info.get("params",[]) | join(", ") }})
+    LOGGER.info("Comment: " + str(comment))
+    LOGGER.info("TEST ID:" + str(test_id))
+    print(resp.status_code)
+    print(resp.text)
+    os.environ["response_time"] = str(resp.elapsed)
+    os.environ["response_code"] = str(resp.status_code)
+    os.environ["response_length"] = str(len(resp.content))
+    print("\n---------------------------------\n")
+    print("CURL command to retry: \n" + str(_create_curl_request(resp.request.url, resp.request.method,
+                                                                 req["headers"], json.dumps(data))))
+    print("\n---------------------------------\n")
+    rsp_to_validate = {{ api_response_schema.get(method) }}
+    assertions.assert_for_{{ api_name | lower | replace("-","9i9") | replace(" ","")}}(req,resp)
+    assertions.assert_for_respcodes(req, resp, resp.status_code, None, rsp_to_validate)
+{% endfor %}
+
+{% if STATUS_CODES %}
+{% set api_name = api_name | replace("{","") | replace("}","") %}
+{% for method, api_info in apis_metadata.items() %}
+{% for status_code in STATUS_CODES.get(method,[]) %}
+{% if status_code not in [ "200", "201"] %}
+{% if TEST_MANAGEMENT == "testrails" %}
+#@pytestrail.case(extra_vars.get("test_id"))
+{% endif %}
+def test_{{ method | lower }}_{{ api_name | lower | replace("-","9i9") }}_for_{{ status_code }}_code({{ api_info.get("params",[])|join(", ") }}, update_headers, properties):
+    data = {}
+    {% for param in api_info.get("params",[]) %}{% if (param not in ('host', 'access_token','url_prefix')) %}
+    data["{{ param }}"] = parse_inputs(properties, {{ param }}={{ param }}){% endif %}
+    {% endfor %}
+    try:
+        header_from_cv_events
+    except NameError:
+        header_from_cv_events = {{ api_info.get("header") }}
+
+    def delete_from_dict(a_dict):
+        new_data = {}
+        for k, v in a_dict.items():
+            if isinstance(v, dict):
+                v = delete_from_dict(v)
+            if isinstance(v, list):
+                for _ in range(len(v)):
+                    if isinstance(v[_], dict):
+                        v[_] = delete_from_dict(v[_])
+            if v != "<delete>":
+                new_data[k] = v
+        return new_data
+
+    data = delete_from_dict(data)
+
+    req = {
+             "data": data,
+             "headers": extra_vars.get("headers", header_from_cv_events )
+          }
+    if "Authorization" in req["headers"] and req["headers"]["Authorization"] is None:
+        req["headers"]["Authorization"] = os.environ.get("IMPACT_ACCESS_TOKEN")
+    if access_token:
+        req["headers"]["Authorization"] = access_token
+    req["headers"] = update_headers(headers=req["headers"], api="{{ api_info.get("url_from_spec").split("?")[0] }}", status_code="{{ status_code }}", method="{{ method }}")
+    #print("for debugging:" + str(req))
+    url = Template(host + url_prefix + "{{ api_info.get("url") | replace("//","/") }}").render(**data)
+    parsed = urlparse.urlparse(url)
+    for param in parse_qs(parsed.query):
+        del data[param]
+    for k, v in data.items():
+        if isinstance(v, str) and v in url:
+            data[k] = "<delete>"
+    data = delete_from_dict(data)
+    req["data"] = data
+        old_url = url.split("?")
+    new_url = old_url[0] + "?"
+    if len(old_url) > 1:
+        for q in old_url[1].split("&"):
+            query = q.split("=")
+            if query[1]:
+                if new_url[-1] != "?":
+                    new_url += "&"
+                val = query[1].replace("[","").replace("]","").replace("'","").split(",")
+                new_url += query[0] + "=" + ",".join(val)
+        url = new_url
+
+    {% for each in apis_with_array_payloads %}
+    {% if each == api_info.get("url") %}
+    # payload needs to be sent in an array
+    data = [data]
+    req["data"] = data
+    {% endif %}
+    {% endfor %}
+
+    print("for debugging:" + str(req))
+    resp = _trigger_requests("{{ method }}", url,
+                      header=req["headers"],
+                      data=json.dumps(data))
+    custom_response, test_id, comment = get_extra_vars({{ api_info.get("params",[]) | join(", ") }})
+    LOGGER.info("Comment: " + str(comment))
+    LOGGER.info("TEST ID:" + str(test_id))
+    print(resp.status_code)
+    print(resp.text)
+    os.environ["response_time"] = str(resp.elapsed)
+    os.environ["response_code"] = str(resp.status_code)
+    os.environ["response_length"] = str(len(resp.content))
+    print("\n---------------------------------\n")
+    print("CURL command to retry: \n" + str(_create_curl_request(resp.request.url, resp.request.method,
+                                                                 req["headers"], json.dumps(data))))
+    print("\n---------------------------------\n")
+
+    {% if status_code.startswith('2') %}
+    rsp_to_validate = {{ api_response_schema.get(method) }}
+    {% else %}
+    rsp_to_validate = []
+    {% endif %}
+    assertions.assert_for_respcodes(req, resp, {{ status_code }}, None, rsp_to_validate)
+    custom_response, test_id, comment = get_extra_vars({{ api_info.get("params",[]) | join(", ") }})
+    LOGGER.info("Response seen: " + str(resp.status_code) + " --> " + str(resp.text))
+    if custom_response:
+        if "requestId" in custom_response:
+            del custom_response["requestId"]
+        assertions.assert_for_custom_response(req, resp, custom_response)
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}

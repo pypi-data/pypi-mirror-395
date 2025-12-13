@@ -1,0 +1,106 @@
+import os
+import requests
+import pytest
+from dictor import dictor
+
+ANOMALY_THRESHOLD = {{ ANOMALY_THRESHOLD }}
+
+def _get_all_values(nested_dictionary, all_keys={}):
+    for key, value in nested_dictionary.items():
+        if isinstance(value, dict):
+            _get_all_values(value, all_keys)
+        else:
+            all_keys[key] = value
+            #print(key, ":", value)
+    return all_keys
+
+{% for api,info in assertions.items() %}
+
+def assert_for{{ api | lower | replace("-","9i9") | replace(".","dot") | replace(" ","")}}(req, resp):
+    assert resp.status_code in range(200,210){% for param,param_info in info.items() %}{% for req_path in param_info.get("req") %}{% for rsp_path in param_info.get("resp") %}
+    #assert type(dictor(req, 'data.{{ req_path }}'))((dictor(req, 'data.{{ req_path }}'))) == type(dictor(req, 'data.{{ req_path }}'))((dictor(resp.json(),'{{ rsp_path }}'))){% endfor %}{% endfor %}{% endfor %}
+{% endfor %}
+
+def assert_for_respcodes(
+        req,
+        resp,
+        expected_status_code,
+        expected_response=None,
+        keys_to_check_in_response=None):
+
+    if int(resp.status_code) == expected_status_code:
+        print("----------------------")
+        print("Request: " + str(req))
+        print("Response: " + str(resp))
+        print("----------------------")
+        assert True
+    else:
+        assert False
+
+def assert_for_negative_scenarios(req, resp):
+    if resp.status_code == 401:
+        #pytest.exit("Status code is 401, Please check the access to the test app for effective fuzzing!")
+        os.environ["CVIAST_SKIP_REASON"] = "Status code is 401, Skipping the test!"
+        pytest.skip("Status code is 401, Skipping the test!")
+    if resp.status_code not in range (200,210):
+        print("----------------------")
+        print("Request: " + str(req))
+        print("Response: " + str(resp))
+        print("----------------------")
+    assert resp.status_code != 200
+
+{% if ANOMALY_THRESHOLD != 0 %}
+def assert_for_anomalies(pattern_observed):
+    status_codes = list(set(pattern_observed["status_code"]))
+    if len(status_codes) == 1:
+        print("No anomalies observed in status codes")
+        assert 1
+    else:
+        counter = 0
+        num = status_codes[0]
+
+        for i in status_codes:
+            curr_frequency = status_codes.count(i)
+            if curr_frequency > counter:
+                counter = curr_frequency
+                num = i
+
+        indexes = [i for i, x in enumerate(pattern_observed["status_code"]) if x != num]
+        for _ in indexes:
+            print("To regenerate the request for " + str(pattern_observed["fuzz_type"]) + ":\n\n" + str(pattern_observed["request"][_]))
+            print("--------" * 20)
+        print("anomalies observed in status codes")
+        assert 0
+    resp_sizes_observed = [_ for _ in pattern_observed["resp_size"] if int(_) > 0]
+    print(resp_sizes_observed)
+    if len(resp_sizes_observed) > 5:
+        min_resp_size = min(resp_sizes_observed)
+        resp_codes = [(int(_) / int(min_resp_size))
+                      for _ in pattern_observed["resp_size"]]
+        suspicious_responses = []
+        for _ in range(len(resp_codes)):
+            if resp_codes[_] > ANOMALY_THRESHOLD:
+                suspicious_responses.append(pattern_observed["request"][_])
+                print("\n ------------ To regenerate the request for " + \
+                      str(pattern_observed["fuzz_type"]) + ":\n\n" + str(suspicious_responses[-1]))
+                print("--------" * 20)
+        if not suspicious_responses:
+            print("No anomalies observed in response content length")
+            assert 1
+        else:
+            print("anomalies observed in response content length")
+            assert 0
+{% endif %}
+
+def assert_for_custom_response(req, resp, keys_to_check):
+    for k, v in keys_to_check.items():
+        print("checking for " + str(k) + " in response: " +
+              str(resp.json().get("error", {})))
+        validation_values = []
+        if isinstance(v, list):
+            for _ in v:
+                validation_values.append(_ in _get_all_values(resp.json().get("error",{})).get(k,""))
+        if validation_values:
+            assert any(validation_values)
+        else:
+            assert v in _get_all_values(resp.json().get("error", {})).get(k, "")

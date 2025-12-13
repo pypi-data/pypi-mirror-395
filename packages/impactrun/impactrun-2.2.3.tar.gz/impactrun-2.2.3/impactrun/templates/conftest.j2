@@ -1,0 +1,530 @@
+import urllib3
+import re
+import json
+import pytest
+import requests
+import random
+import time
+import os
+import yaml
+import sys
+import validators
+#from pytest_cases import fixture_plus
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+CLI_OPTIONS_FROM_PROPERTIES_FILE = {}
+
+CURRENT_TEST_ITERATION = 9999999
+EXECUTION_SEQ = 0
+EXECUTED_TESTS = []
+
+known_fixtures = [
+    "json_environment",
+    "request",
+    "access_token",
+    "host",
+    "pytestconfig",
+    "properties",
+    "jwt_token",
+    "update_headers",
+    "url_prefix"]
+
+if os.path.exists(os.path.join(os.getcwd(), "properties.yaml")):
+    with open(os.path.join(os.getcwd(), "properties.yaml")) as f:
+        CLI_OPTIONS_FROM_PROPERTIES_FILE = yaml.load(
+            f, Loader=yaml.FullLoader)
+
+
+def _merge_nested_dict(a, b, path=None, update=True):
+    if path is None:
+        path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                _merge_nested_dict(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass  # same leaf value
+            elif isinstance(a[key], list) and isinstance(b[key], list):
+                for idx, val in enumerate(b[key]):
+                    a[key][idx] = _merge_nested_dict(
+                        a[key][idx], b[key][idx], path + [str(key), str(idx)], update=update)
+            elif update:
+                a[key] = b[key]
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a
+
+
+def massage_data(params):
+    maxlen = 0
+    def grow_list(l, mlen):
+        if len(l) == mlen:
+            return l
+        elif len(l) < mlen:
+            diff = mlen - len(l)
+            if l:
+                l.extend([random.choice(l)] * diff)
+            return l
+        elif len(l) > mlen:
+            return l[:mlen]
+
+    if isinstance(params, dict):
+        for _ in list(params.values()):
+            if len(_) > maxlen:
+                maxlen = len(_)
+        for k, v in params.items():
+            params[k] = grow_list(v, maxlen)
+        data = []
+        for _ in range(maxlen):
+            d = {}
+            for k, v in params.items():
+                try:
+                    d[k] = v[_]
+                except IndexError:
+                    pass
+            data.append(d)
+    elif isinstance(params, list):
+        for _ in params:
+            if len(_) > maxlen:
+                maxlen = len(_)
+        data = []
+        for e in params:
+            d = grow_list(e, maxlen)
+            data.append(d)
+    return data
+
+
+def get_current_test(metafunc):
+    #global EXECUTION_SEQ
+    current_test = str(metafunc.module.__name__).replace(
+        "test", "").replace("__", "/").replace("9i9", "-")
+    if current_test.startswith("_"):
+        current_test = "/" + str(current_test[1:])
+    # EXECUTED_TESTS.append(current_test)
+    # EXECUTION_SEQ = EXECUTED_TESTS.count(current_test)
+    # method = re.search(
+    #    'test_(.*)_', metafunc.function.__name__)
+    method = metafunc.function.__name__.split("test_")[1].split("_")[0]
+    expected_status_code = re.search(
+        'for_(.*)_code', metafunc.function.__name__)
+
+    if expected_status_code:
+        expected_status_code = str(expected_status_code.group(1))
+    else:
+        expected_status_code = "200"
+
+    return current_test, method, expected_status_code
+
+
+def _get_all_values(nested_dictionary, all_keys={}):
+    for key, value in nested_dictionary.items():
+        if isinstance(value, dict):
+            _get_all_values(value, all_keys)
+        else:
+            all_keys[key] = value
+            # print(key, ":", value)
+    return all_keys
+
+
+extra_vars = {}
+
+def get_headers_from_file(
+        api_name=None,
+        method="get",
+        status_code='200'):
+    headers = []
+    input_params = {}
+    if os.path.exists(os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), "input_params.json")):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "input_params.json")) as fobj:
+            input_params = json.load(fobj)
+    if input_params.get(api_name, {}).get(status_code, {}).get(method, []):
+        header = {}
+        for each in input_params.get(
+                api_name,
+                {}).get(
+                status_code,
+                {}).get(
+                method,
+                []):
+            for k,v in each.get("$headers",{}).items():
+                header[k] = v
+            headers.append(header)
+
+    return headers
+
+def get_params_from_file(
+        param,
+        api_name=None,
+        method="get",
+        status_code='200'):
+    val_from_properties = None
+    method = str(method).lower()
+    if int(status_code) in range(
+            200, 210) and param in CLI_OPTIONS_FROM_PROPERTIES_FILE:
+        if "epochtime" in param or "utcnow" in param:
+            dv = param.replace("<", "").replace(">", "").split("_")
+            date_format = dv[0]
+            try:
+                operation = dv[1]
+                timeframe = dv[2].replace("d", "")
+            except IndexError:
+                operation = None
+                timeframe = None
+            if date_format == "utcnow":
+                from datetime import timedelta
+                import datetime
+                utcnow = datetime.datetime.utcnow()
+                if operation:
+                    if operation == "plus":
+                        utcnow_resolved = utcnow + \
+                            timedelta(days=int(timeframe))
+                    elif operation == "minus":
+                        utcnow_resolved = utcnow - \
+                            timedelta(days=int(timeframe))
+                else:
+                    utcnow_resolved = utcnow
+                val_from_properties = [utcnow_resolved]
+                # return utcnow_resolved
+            elif date_format == "epoch":
+                epochnow = time.time()
+                if operation:
+                    if operation == "plus":
+                        epochnow_resolved = epochnow + int(60 * 60 * 24)
+                    elif operation == "minus":
+                        epochnow_resolved = epochnow - int(60 * 60 * 24)
+                else:
+                    epochnow_resolved = epochnow
+                val_from_properties = [epochnow_resolved]
+                # return epochnow_resolved
+        val_from_properties = str(CLI_OPTIONS_FROM_PROPERTIES_FILE.get(
+            param)).split(",")
+        # return [CLI_OPTIONS_FROM_PROPERTIES_FILE.get(param)]
+
+    if not api_name:
+        if os.environ.get('PYTEST_CURRENT_TEST'):
+            api_name = os.environ.get('PYTEST_CURRENT_TEST').split(':')[0].split(
+                '/')[-1].replace("test", "").replace(".py", "").replace("_", "/")
+    api_name = api_name.replace(", ).replace(", "")
+    input_params = {}
+    # with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "params_captured.json")) as fobj:
+    #    params = json.load(fobj)
+    if os.path.exists(os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), "input_params.json")):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "input_params.json")) as fobj:
+            input_params = json.load(fobj)
+
+    val_from_params_captured = []
+    val_from_input_params = []
+
+    if input_params.get(api_name, {}).get(status_code, {}).get(method, {}):
+        extra_vars["custom_response"] = input_params.get(api_name).get(
+            status_code).get(method)[EXECUTION_SEQ - 1].get("$RESPONSE_ERROR")
+        extra_vars["test_id"] = input_params.get(api_name).get(
+            status_code).get(method)[EXECUTION_SEQ - 1].get("$TEST_ID")
+        extra_vars["comment"] = input_params.get(api_name).get(
+            status_code).get(method)[EXECUTION_SEQ - 1].get("$comment")
+    for api, info in input_params.items():
+        if api_name not in api:
+            continue
+        for each in info.get(status_code, {}).get(method, []):
+            if param in each:
+                # val_from_input_params = each[param]
+                val_from_input_params.append(each[param])
+                headers = {}
+                for _ in each.get("$headers", []):
+                    headers[_] = each.get(_)
+
+                if "headers" not in extra_vars:
+                    extra_vars["headers"] = headers
+                else:
+                    extra_vars["headers"].update(headers)
+        break
+    os.environ["extra_vars"] = json.dumps(extra_vars)
+    if not val_from_input_params:
+        if param in input_params:
+            val_from_input_params.append(input_params[param])
+        if val_from_params_captured:
+            val_from_input_params = [random.choice(val_from_params_captured)]
+    if str(status_code) == "200":
+        if not val_from_input_params:
+            val_from_input_params = get_params_from_file(
+                param, api_name, method, "201")
+        if not val_from_input_params:
+            val_from_input_params = get_params_from_file(
+                param, api_name, method, "204")
+
+    for _ in range(len(val_from_input_params)):
+        try:
+            if "epochtime" in val_from_input_params[_] or "utcnow" in val_from_input_params[_]:
+                dv = val_from_input_params[_].replace(
+                    "<", "").replace(">", "").split("_")
+                date_format = dv[0]
+                try:
+                    operation = dv[1]
+                    timeframe = dv[2].replace("d", "")
+                except IndexError:
+                    operation = None
+                    timeframe = None
+                if date_format == "utcnow":
+                    from datetime import timedelta
+                    import datetime
+                    utcnow = datetime.datetime.utcnow()
+                    if operation:
+                        if operation == "plus":
+                            utcnow_resolved = utcnow + \
+                                timedelta(days=int(timeframe))
+                        elif operation == "minus":
+                            utcnow_resolved = utcnow - \
+                                timedelta(days=int(timeframe))
+                    else:
+                        utcnow_resolved = utcnow
+                    val_from_input_params[_] = utcnow_resolved
+                elif date_format == "epochtime":
+                    epochnow = time.time()
+                    if operation:
+                        if operation == "plus":
+                            epochnow_resolved = epochnow + int(60 * 60 * 24)
+                        elif operation == "minus":
+                            epochnow_resolved = epochnow - int(60 * 60 * 24)
+                    else:
+                        epochnow_resolved = epochnow
+                    val_from_input_params[_] = str(int(epochnow_resolved))
+        except BaseException:
+            pass
+
+    if val_from_properties:
+        for _ in range(len(val_from_input_params)):
+            if str(
+                    val_from_input_params[_]).startswith("<") and str(
+                    val_from_input_params[_]).endswith(">"):
+                continue
+            else:
+                val_from_input_params[_] = random.choice(val_from_properties)
+    if not val_from_input_params and val_from_properties:
+        return val_from_properties
+
+    return val_from_input_params
+
+def pytest_addoption(parser):
+    # parser.addoption("--host", action="store", default="")
+    parser.addoption("--url_prefix", action="store", default="", help="prefix to the API endpoints")
+
+    parser.addoption("--host", action="store", default="", help="host to send API calls")
+
+    parser.addoption("--jwt_token", action="store", default="", help="JWT token to get access token")
+
+    parser.addoption("--properties", action="store", default="", help="file that contains CLI arguments")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def properties(pytestconfig):
+    global CLI_OPTIONS_FROM_PROPERTIES_FILE
+    fpath = pytestconfig.getoption("properties")
+    if os.path.exists(fpath):
+        with open(fpath) as f:
+            CLI_OPTIONS_FROM_PROPERTIES_FILE = yaml.load(f, Loader=yaml.FullLoader)
+    else:
+        return
+    return CLI_OPTIONS_FROM_PROPERTIES_FILE
+
+@pytest.fixture(scope="session", autouse=True)
+def url_prefix(pytestconfig, properties):
+    if pytestconfig.getoption("url_prefix"):
+        return pytestconfig.getoption("url_prefix")
+    if CLI_OPTIONS_FROM_PROPERTIES_FILE.get("url_prefix"):
+        return CLI_OPTIONS_FROM_PROPERTIES_FILE.get("url_prefix")
+    return ""
+
+@pytest.fixture(scope="session", autouse=True)
+def host(pytestconfig, properties):
+    if pytestconfig.getoption("host"):
+        return pytestconfig.getoption("host")
+    else:
+        for k, v in CLI_OPTIONS_FROM_PROPERTIES_FILE.items():
+            if ("host" in str(k).lower() or "url" in str(k).lower()) and validators.url(v):
+                return CLI_OPTIONS_FROM_PROPERTIES_FILE.get(k)
+
+@pytest.fixture(scope="session", autouse=True)
+def jwt_token(pytestconfig, properties):
+    #value = pytestconfig.getoption("jwt_token")
+    value = ""
+    if pytestconfig.getoption("jwt_token"):
+        value = pytestconfig.getoption("jwt_token")
+    elif CLI_OPTIONS_FROM_PROPERTIES_FILE.get("jwt_token"):
+        value = CLI_OPTIONS_FROM_PROPERTIES_FILE.get("jwt_token")
+    if os.path.exists(value):
+        with open(value, "r") as fobj:
+            jwt_token = fobj.read().replace("\n", "")
+    else:
+        jwt_token = value
+    return jwt_token
+
+{% for input in AUTH_INPUTS %}
+{% if input not in ["host", "jwt_token"] %}
+@pytest.fixture(scope="session", autouse=True)
+def {{ input }}(pytestconfig):
+    return pytestconfig.getoption("{{ input }}")
+{% endif %}
+{% endfor %}
+
+
+{% if AUTH_API %}
+@pytest.fixture(scope="module", autouse=True)
+def access_token({{ AUTH_INPUTS | join(", ") }}):
+    if os.environ.get("IMPACT_AUTH_OVERRIDE"):
+        return os.environ["IMPACT_AUTH_OVERRIDE"]
+    if 'headers' in CLI_OPTIONS_FROM_PROPERTIES_FILE:
+        return ''
+    for k, v in CLI_OPTIONS_FROM_PROPERTIES_FILE.items():
+        if "authorization" in str(k).lower() or "token" in str(k).lower() and str(k) != "jwt_token":
+            return CLI_OPTIONS_FROM_PROPERTIES_FILE.get(k)
+
+    CVIAST_TEST_APP_USER = os.environ.get("CVIAST_TEST_APP_USER","")
+    CVIAST_TEST_APP_PASSWORD = os.environ.get("CVIAST_TEST_APP_PASSWORD","")
+    data = {{ AUTH_API_PAYLOAD }}
+    if not data:
+        try:
+            from auth import authenticate
+            return "{{ TOKEN_PREFIX }} " + authenticate()
+        except ModuleNotFoundError:
+            pytest.exit("Need custom handler auth.py with authenticate method implemented as login flow is not provided in config file")
+            #raise SystemExit
+    data = json.dumps({{ AUTH_API_PAYLOAD }}).replace("<CVIAST_TEST_APP_USER>",CVIAST_TEST_APP_USER).replace("<CVIAST_TEST_APP_PASSWORD>",CVIAST_TEST_APP_PASSWORD)
+    resp = requests.post(host + "{{ AUTH_API }}",
+                        headers={ {% for k, v in AUTH_API_HEADERS.items() %}{% if v in AUTH_INPUTS %}'{{ k }}':{{ v }}{% else %}'{{ k }}':'{{ v }}'{% endif %},{% endfor %} },
+                        data=data)
+    if resp.status_code == 200:
+        os.environ["IMPACT_ACCESS_TOKEN"] = "{{ TOKEN_PREFIX }} " + str(resp.json(){% for each in AUTH_RESP_KEY.split(".") %}["{{ each }}"]{% endfor %})
+        return "{{ TOKEN_PREFIX }} "+ str(resp.json(){% for each in AUTH_RESP_KEY.split(".") %}["{{ each }}"]{% endfor %})
+    else:
+        pytest.exit("AUTHENTICATION is not successful, please check the creds!")
+        #raise SystemExit
+{% endif %}
+
+
+@pytest.fixture(autouse=True)
+def update_headers(request):
+    def _mask(*args, **kwargs):
+        global CURRENT_TEST_ITERATION
+        global EXECUTED_TESTS
+        global EXECUTION_SEQ
+        temp = re.findall(r'\d+', str(request.node.name).split("[")[-1])
+        try:
+            CURRENT_TEST_ITERATION = list(map(int, temp))[0]
+        except BaseException:
+            pass
+        EXECUTED_TESTS.append(request.node.name.split("[")[0])
+        EXECUTION_SEQ = EXECUTED_TESTS.count(request.node.name.split("[")[0])
+        headers = kwargs["headers"]
+        new_headers = {}
+        api = kwargs.get("api").split("?")[0]
+        method = kwargs.get("method")
+        status_code = kwargs.get("status_code", "200")
+        to_delete = []
+        for k, v in headers.items():
+            output = get_params_from_file(k, api, method, status_code)
+            res = None
+            if isinstance(output, list):
+                if output:
+                    try:
+                        res = output[EXECUTION_SEQ-1]
+                    except IndexError:
+                        res = output[0]
+            else:
+                res = output
+
+            if res:
+                new_headers[k] = res
+            else:
+                new_headers[k] = v
+        # print(new_headers)
+        # raise SystemExit
+        return {k: v for k, v in new_headers.items() if v != "<delete>"}
+    return _mask
+
+
+{%- for param in api_info %}
+{% if param in nested_params %}
+def {{ param }}_param(api, method, expected_status_code):
+    data = {}
+    {% for each in nested_params[param] %}
+    data['{{ each }}'] = get_params_from_file("{{ each }}", api, method, expected_status_code)
+    {% endfor %}
+    data = massage_data(data)
+    data_block =[]
+    for _ in data:
+        data_block.append({{ api_detailed_info[param] | replace('"$','') | replace('$"','') }})
+    return data_block
+{% endif %}
+{% endfor -%}
+
+
+{% if api_info %}
+def pytest_generate_tests(metafunc):
+    if "headers_from_cv_events" in metafunc.fixturenames:
+        current_test, method, expected_status_code = get_current_test(metafunc)
+        headers = get_headers_from_file(current_test, method, expected_status_code)
+        metafunc.parametrize("headers_from_cv_events", headers)
+
+    {%- for param in api_info %}
+    {% if param not in nested_params %}
+    if "{{ param }}" in metafunc.fixturenames:
+        current_test, method, expected_status_code = get_current_test(metafunc)
+        setattr(metafunc.module, "extra_vars", extra_vars)
+
+        funcarglist = list(list(set(metafunc.fixturenames)-set(known_fixtures)) + list(set(known_fixtures)-set(metafunc.fixturenames)))
+        argnames = ",".join(funcarglist)
+        return_value = []
+        for _ in funcarglist:
+            return_value.append(get_params_from_file(
+                _,
+                current_test,
+                method,
+                expected_status_code))
+        return_value = massage_data(return_value)
+        if return_value and type(return_value[0]) is list:
+            if len(funcarglist) == 1:
+                metafunc.parametrize(argnames, *return_value)
+            else:
+                metafunc.parametrize(argnames, list(zip(*return_value)))
+        else:
+            metafunc.parametrize(argnames, list(set(zip(*return_value))))
+    {% else %}
+    if "{{ param }}" in metafunc.fixturenames:
+        current_test, method, expected_status_code = get_current_test(metafunc)
+        setattr(metafunc.module, "extra_vars", extra_vars)
+
+        funcarglist = list(list(set(metafunc.fixturenames) -
+                                set(known_fixtures)) +
+                           list(set(known_fixtures) -
+                                set(metafunc.fixturenames)))
+        argnames = ",".join(funcarglist)
+        return_value = []
+        for _ in funcarglist:
+            try:
+                return_value.append(getattr(sys.modules[__name__], str(_) + "_param")(current_test, method, expected_status_code))
+            except AttributeError:
+                return_value.append(get_params_from_file(
+                _,
+                current_test,
+                method,
+                expected_status_code))
+        return_value = massage_data(return_value)
+        metafunc.parametrize(argnames, list(zip(*return_value)))
+    {% endif %}
+    {% endfor %}
+
+{% endif %}
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    # only add this during call instead of during any stage
+    if report.when == 'teardown':
+        report.test_metadata = os.environ.get("response_length","") + "::" + os.environ.get("response_time","") + "::" + os.environ.get("response_code","") + "::" + os.environ.get("CVIAST_FUZZ_TYPE","") + "::" + os.environ.get("CVIAST_TEST_RESPONSE","") + "::SKIP_REASON-->" + os.environ.get("CVIAST_SKIP_REASON","NA")+ "::" + os.environ.get("CVIAST_FUZZ_FILE","")

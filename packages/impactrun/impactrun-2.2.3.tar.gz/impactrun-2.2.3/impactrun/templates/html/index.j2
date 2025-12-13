@@ -1,0 +1,747 @@
+
+
+
+<html>
+<head>
+    <link href="https://unpkg.com/tabulator-tables@4.1.4/dist/css/tabulator.min.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/tabulator_site.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/tabulator.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/tabulator_midnight.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/tabulator_modern.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/tabulator_simple.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/bootstrap/tabulator_bootstrap.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/bootstrap/tabulator_bootstrap4.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/semantic-ui/tabulator_semantic-ui.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/bulma/tabulator_bulma.css" rel="stylesheet">
+    <link href="http://tabulator.info/js/docsearchbackup/docsearch.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/jquery-ui.theme.min.css" rel="stylesheet">
+    <link href="http://tabulator.info/js/docsearchbackup/docsearch.css" rel="stylesheet">
+    <link href="http://tabulator.info/css/tabulator/4.8/materialize/tabulator_materialize.css" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:800,400,700,400italic,700italic|Bevan' rel='stylesheet' type='text/css'>
+    <link href='http://tabulator.info/css/bootstrap.min.css' rel='stylesheet' type='text/css'>
+    <link href='http://tabulator.info/css/app.css?id=3b50b414b7323ca0ee48' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.1.4/dist/js/tabulator.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
+    <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.5/jspdf.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.0.5/jspdf.plugin.autotable.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="http://tabulator.info/js/faker.js"></script>
+    <script type="text/javascript" src="http://tabulator.info/js/touchpunch.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/2.0.4/fetch.min.js"></script>
+    <script type="text/javascript" src="http://tabulator.info/js/sparkline.js"></script>
+
+      <style>
+         * {
+         box-sizing: border-box;
+         }
+         body {
+         font-family: Arial, Helvetica, sans-serif;
+         }
+         /* Float four columns side by side */
+         .column {
+         float: left;
+         width: 25%;
+         padding: 0 10px;
+         }
+         /* Remove extra left and right margins, due to padding */
+         .row {margin: 0 -5px;}
+         /* Clear floats after the columns */
+         .row:after {
+         content: "";
+         display: table;
+         clear: both;
+         }
+         /* Responsive columns */
+         @media screen and (max-width: 600px) {
+         .column {
+         width: 100%;
+         display: block;
+         margin-bottom: 20px;
+         }
+         }
+         /* Style the counter cards */
+         .card {
+         box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+         padding: 16px;
+         text-align: center;
+         background-color: #f1f1f1;
+         }
+      <style type="text/css">
+         #apis-table .tabulator-header .tabulator-cell{
+         color:#000;
+         }
+         /*Theme the Tabulator element*/
+         #example-table-theme{
+         background-color:#ccc;
+         border: 1px solid #333;
+         border-radius: 10px;
+         }
+         /*Theme the header*/
+         #example-table-theme .tabulator-header {
+         background-color:#333;
+         color:#fff;
+         }
+         /*Allow column header names to wrap lines*/
+         #example-table-theme .tabulator-header .tabulator-col,
+         #example-table-theme .tabulator-header .tabulator-col-row-handle {
+         white-space: normal;
+         }
+         /*Color the table rows*/
+         #example-table-theme .tabulator-tableHolder .tabulator-table .tabulator-row{
+         color:#fff;
+         background-color: #666;
+         }
+         /*Color even rows*/
+         #example-table-theme .tabulator-tableHolder .tabulator-table .tabulator-row:nth-child(even) {
+         background-color: #444;
+         }
+         #example-table-theme-bootstrap4 .tabulator-header{
+         font-size:14px !important;
+         }
+         #example-table-theme-bootstrap4 .tabulator-row .tabulator-cell{
+         font-size:14px !important;
+         }
+         #example-table-theme-simple{
+         border:1px solid #ddd;
+         }
+         .bootstrap.tabulator{
+         border-bottom:none !important;
+         }
+         .bootstrap.tabulator .tabulator-header{
+         background:#fff !important;
+         color:#000 !important;
+         }
+         .bootstrap .tabulator-header .tabulator-col{
+         background:#fff !important;
+         color:#000 !important;
+         border-left:none !important;
+         border-right:none !important;
+         }
+         .bootstrap .tabulator-row{
+         border-bottom:1px solid #ddd !important;
+         }
+         .bootstrap .tabulator-cell{
+         background:#fff !important;
+         color:#000 !important;
+         border-left:none !important;
+         border-right:none !important;
+         }
+         .tabulator .tabulator-row .tabulator-responsive-collapse table{
+         border: none !important;
+         width:auto !important;
+         }
+         .tabulator .tabulator-row .tabulator-responsive-collapse table tr{
+         position: relative !important;
+         border: none !important;
+         }
+         .tabulator .tabulator-row .tabulator-responsive-collapse table tr td{
+         position: relative !important;
+         border: none !important;
+         }
+         .tabulator .tabulator-row .tabulator-responsive-collapse table tr td:first-of-type{
+         padding-right:10px !important;
+         }
+         .example-table.intertable{
+         display: inline-block;
+         width:40%;
+         }
+         hr.new4 {
+         border: 1px solid red;
+         }
+         body {
+         width:95%;
+         margin:0 auto;
+         }
+         .btn {
+         border: none; /* Remove borders */
+         color: white; /* Add a text color */
+         padding: 14px 28px; /* Add some padding */
+         cursor: pointer; /* Add a pointer cursor on mouse-over */
+         }
+         .bthigh {background-color: #ff6666;} /* Green */
+         .bthigh:hover {background-color: #ff9800;}
+         .btinfo {background-color: #2196F3;} /* Blue */
+         .btinfo:hover {background: #0b7dda;}
+         .btmedium {background-color: #ff9800;} /* Orange */
+         .btmedium:hover {background: #e68a00;}
+         .btcritical {background-color: #f44336;} /* Red */
+         .btcritical:hover {background: #da190b;}
+         .btlow {background-color: #f5d142; color: black;} /* Gray */
+         .btlow:hover {background: #ddd;}
+         .btbestpractice {background-color: #99ccff; color: black;} /* Gray */
+         .btbestpractice:hover {background: #ddd;}
+         .btall {background-color: #e7e7e7; color: black;} /* Gray */
+         .btall:hover {background: #ddd;}
+         #myBtn {
+         display: none; /* Hidden by default */
+         position: fixed; /* Fixed/sticky position */
+         bottom: 20px; /* Place the button at the bottom of the page */
+         right: 30px; /* Place the button 30px from the right */
+         z-index: 99; /* Make sure it does not overlap */
+         border: none; /* Remove borders */
+         outline: none; /* Remove outline */
+         background-color: red; /* Set a background color */
+         color: white; /* Text color */
+         cursor: pointer; /* Add a mouse pointer on hover */
+         padding: 15px; /* Some padding */
+         border-radius: 10px; /* Rounded corners */
+         font-size: 18px; /* Increase font size */
+         }
+         #myBtn:hover {
+         background-color: #555; /* Add a dark-grey background on hover */
+         }
+         code {
+         background-color: #eee;
+         border-radius: 3px;
+         font-family: courier, monospace;
+         padding: 0 3px;
+         }
+         .filterDiv {
+         display: none;
+         }
+         .show {
+         display: block;
+         }
+         table
+{
+    table-layout: fixed;
+    width: 100px;
+}
+      </style>
+    <script>
+         var apidata = {{ api_data }};
+         var fuzzdata = {{ fuzz_data }};
+
+         //Get the button:
+         mybutton = document.getElementById("myBtn");
+
+         // When the user scrolls down 20px from the top of the document, show the button
+         window.onscroll = function() {scrollFunction()};
+
+         function scrollFunction() {
+         if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+         mybutton.style.display = "block";
+         } else {
+         mybutton.style.display = "none";
+         }
+         }
+
+         // When the user clicks on the button, scroll to the top of the document
+         function topFunction() {
+         document.body.scrollTop = 0; // For Safari
+         document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+         }
+
+
+      </script>
+</head>
+   <body>
+   <img src="https://www.cloudvector.com/wp-content/uploads/2020/02/Cloud-Vector-Color-Logo-1.png" width="90" height="70" align="right">
+      <h2>
+         <center>CVIAST Test Report</center>
+      </h2>
+      <br>
+      <p style="text-align:right;"><a href="{{ detailed_report }}" target="_blank">click here for detailed report</a></p>
+      <hr>
+      <br>
+      <div class="row">
+         <div class="column">
+            <div class="card">
+               <h3>APIs Scanned</h3>
+               <h2><p>{{ total_apis_scanned }}</p></h2>
+            </div>
+         </div>
+         <div class="column">
+            <div class="card">
+               <h3>Vulnerabilities/Observations</h3>
+               <p>Critical: <font color="#f44336"><b>{{ vulns_stats.get("critical",0) }}</b></font> | High: <font color="#ff6666"><b>{{ vulns_stats.get("high",0) }}</b></font> | Medium: <font color="#ff9800"><b>{{ vulns_stats.get("medium",0) }}</b></font> | Low: <font color="#f5d142"><b>{{ vulns_stats.get("low",0) }}</b></font></p>
+               <p> Info: <font color="#0b7dda"><b>{{ vulns_stats.get("info",0) }}</b></font> | Best Practices: <font color="#99ccff"><b>{{ vulns_stats.get("bestpractice",0) }}</b></font></p>
+            </div>
+         </div>
+         <div class="column">
+            <div class="card">
+               <h3>Test Execution</h3>
+               <p>Total time: {{ test_lapse_time }}  |  Total API calls: {{ total_api_calls }} </p>
+               <p>Executed On: {{ test_time }}</p>
+            </div>
+         </div>
+         <div class="column">
+            <div class="card">
+               <h3>Host</h3>
+               <p><a></a></p>
+            </div>
+         </div>
+      </div>
+      <br><br>
+      <h2>Summary by APIs: </h2>
+      <style type="text/css">
+         #apis-table .tabulator-header .tabulator-cell{
+         color:#000;
+         }
+      </style>
+      <div id="apis-table">
+         <script type="text/javascript">
+            //Formatter to generate line chart
+            var lineFormatter = function(cell, formatterParams, onRendered){
+            onRendered(function(){ //instantiate sparkline after the cell element has been aded to the DOM
+                $(cell.getElement()).sparkline(cell.getValue(), {width:"100%", type:"line", disableTooltips:true, tooltipFormat: ''});
+            });
+            };
+                    var table = new Tabulator("#apis-table", {
+            height:"311px",
+            layout:"fitColumns",
+            data:apidata,
+            columns:[
+            {title:"Summary", field:"progress", sorter:"number", hozAlign:"center", formatter:"tickCross", width:100},
+            {title:"API Endpoint", field:"name", width:450},
+            {title:"Method", field:"method", width:100},
+                        {//create column group
+                title:"\tTest Coverage", columnVertAlign:"center", hozAlign:"center",
+                columns:[
+                {title:"Total tests", field:"total_tests", width:120},
+                {title:"Success", field:"success_tests", width:140},
+                {title:"Failures", field:"failed_tests", hozAlign:"center", width:130},
+                {title:"Skipped", field:"skipped_tests", hozAlign:"center", width:130}
+                ],
+            },
+            {title:"Response time trend", field:"resp_duration", width:240, formatter:lineFormatter},
+            {title:"Response length trend", field:"resp_length", width:240, formatter:lineFormatter}
+            ],
+            dataLoaded:function(data){ //freeze first row on data load
+            var firstRow = this.getRows()[0];
+
+            if(firstRow){
+            firstRow.freeze();
+            }
+            }
+            });
+         </script>
+      </div>
+      <h2>Summary by Scan types: </h2>
+      <style type="text/css">
+         #fuzz-table .tabulator-header .tabulator-cell{
+         color:#000;
+         }
+         {% for type, info in fuzz_metadata.items() %}
+      #{{ type }}-overlay {
+  position: fixed; /* Sit on top of the page content */
+  display: none; /* Hidden by default */
+  width: 100%; /* Full width (cover the whole page) */
+  height: 100%; /* Full height (cover the whole page) */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5); /* Black background with opacity */
+  z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
+  cursor: pointer; /* Add a pointer on hover */
+}
+{% endfor %}
+#fuzztype{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 50px;
+  color: white;
+  transform: translate(-50%,-50%);
+  -ms-transform: translate(-50%,-50%);
+}
+.scroll-code td {
+  overflow: auto;
+}
+      </style>
+
+           {% for type, info in fuzz_metadata.items() %}
+                       <script>
+                         function {{ type | replace("-","_") }}_off() {
+                                  document.getElementById("{{ type }}-overlay").style.display = "none";
+                                }
+            </script>
+             <div id="{{ type }}-overlay" onclick="{{ type | replace("-","_") }}_off()">
+             <div id="fuzztype">
+            {{ type | upper }}<hr<br>
+            <hr style="border: 1px solid #99ccff;">
+            Description:
+            <h4>{{ info.get("description") }}</h4>
+            Impact:
+            <h4>{{ info.get("impact") }}</h4>
+            Severity:
+            <h4>{{ info.get("severity") }}</h4>
+            Ease of Exploitation:
+            <h4>{{ info.get("ease_of_exploitation") }}</h4>
+            Classification:
+            <h4>{{ info.get("classification") }}</h4>
+            </div>
+            </div>
+           {% endfor %}
+
+      <div id="fuzz-table">
+         <script type="text/javascript">
+            //Formatter to generate line chart
+            var lineFormatter = function(cell, formatterParams, onRendered){
+            onRendered(function(){ //instantiate sparkline after the cell element has been aded to the DOM
+                $(cell.getElement()).sparkline(cell.getValue(), {width:"100%", type:"line", disableTooltips:true});
+            });
+            };
+                    var table = new Tabulator("#fuzz-table", {
+            height:"311px",
+            layout:"fitColumns",
+            data:fuzzdata,
+            columns:[
+            {title:"Summary", field:"progress", sorter:"number", hozAlign:"center", formatter:"tickCross", width:100},
+            {title:"Fuzz type", field:"fuzz_type", width:450, cellClick:function(e, cell){document.getElementById(cell.getValue() + "-overlay").style.display = "block";}},
+            {//create column group
+                title:"\tAPI Coverage", columnVertAlign:"center", hozAlign:"center",
+                columns:[
+                {title:"Total APIs", field:"total_apis", width:120},
+                {title:"Success", field:"success_apis", width:120},
+                {title:"Failures", field:"failed_apis", hozAlign:"center", width:120},
+                ],
+            },
+            {//create column group
+                title:"\tTest Coverage", columnVertAlign:"center", hozAlign:"center",
+                columns:[
+                {title:"Total tests", field:"total_tests", width:120},
+                {title:"Success", field:"success_tests", width:120},
+                {title:"Failures", field:"failed_tests", hozAlign:"center", width:120},
+                {title:"Skipped", field:"skipped_tests", hozAlign:"center", width:120}
+                ],
+            },
+            {title:"Response time trend", field:"resp_duration", width:200, formatter:lineFormatter},
+            {title:"Response length trend", field:"resp_length", width:200, formatter:lineFormatter},
+
+            ],
+            dataLoaded:function(data){ //freeze first row on data load
+            var firstRow = this.getRows()[0];
+
+            if(firstRow){
+            firstRow.freeze();
+            }
+            }
+            });
+         </script>
+      </div>
+      <br><br>
+      <hr>
+      <h2>Scan Results: </h2>
+      <div id="myBtnContainer">
+         <button class="btn btall" onclick="filterSelection('all')">All (<b>{{ vulns_stats.get("all",0) }}</b>)</button>
+         <button class="btn btcritical" onclick="filterSelection('critical')">Critical (<b>{{ vulns_stats.get("critical",0) }}</b>)</button>
+         <button class="btn bthigh" onclick="filterSelection('high')">High (<b>{{ vulns_stats.get("high",0) }}</b>)</button>
+         <button class="btn btmedium" onclick="filterSelection('medium')">Medium (<b>{{ vulns_stats.get("medium",0) }}</b>)</button>
+         <button class="btn btlow" onclick="filterSelection('low')">Low (<b>{{ vulns_stats.get("low",0) }}</b>)</button>
+         <button class="btn btinfo" onclick="filterSelection('info')">Info (<b>{{ vulns_stats.get("info",0) }}</b>)</button>
+         <button class="btn btbestpractice" onclick="filterSelection('bestpractice')">Best Practice (<b>{{ vulns_stats.get("bestpractice",0) }}</b>)</button>
+      </div>
+      <br><br>
+      <div class="container-main">
+         <div class="filterDiv critical">
+         {% for type, info in fuzz_types.get("critical",{}).items() %}
+            <h3>{{ type | upper }}</h3>
+            <hr style="border: 1px solid red;">
+            <h4>Description:</h4>
+            {{ info.get("description") }}
+            <h4>Impact:</h4>
+            {{ info.get("impact") }}
+            <h4>Severity:</h4>
+            {{ info.get("severity") }}
+            <h4>Remedy:</h4>
+            {{ info.get("remedy") }}
+            <h4>Ease of Exploitation:</h4>
+            {{ info.get("ease_of_exploitation") }}
+            <h4>Classification:</h4>
+            {{ info.get("classification") }}
+            <br><br>
+            <table class="scroll-code">
+               <tr>
+                  <th width="10px">Status</th>
+                  <th width="50px">API</th>
+                  <th width="10px">API Method</th>
+                  <th width="50px">Response observed</th>
+                  <th width="100px">Curl command to reproduce</th>
+               </tr>
+               {% for execution_info in info.get("executions") %}
+               <tr>
+                  {% if execution_info.get("status") == "passed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:green"></i></td>
+                  {% elif execution_info.get("status") == "failed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:red"></i></td>
+                  {% endif %}
+                  <td>{{ execution_info.get("api") }}</td>
+                  <td>{{ execution_info.get("api_method") | upper }}</td>
+                  <td>{{ execution_info.get("api_response") }}</td>
+                  <td><code>{{ execution_info.get("req_curl") | replace("alert", "a l e r t")}}</code></td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         </div>
+         <div class="filterDiv high">
+         {% for type, info in fuzz_types.get("high",{}).items() %}
+            <h3>{{ type | upper }}</h3>
+            <hr style="border: 1px solid #ff6666;">
+            <h4>Description:</h4>
+            {{ info.get("description") }}
+            <h4>Impact:</h4>
+            {{ info.get("impact") }}
+            <h4>Severity:</h4>
+            {{ info.get("severity") }}
+            <h4>Remedy:</h4>
+            {{ info.get("remedy") }}
+            <h4>Ease of Exploitation:</h4>
+            {{ info.get("ease_of_exploitation") }}
+            <h4>Classification:</h4>
+            {{ info.get("classification") }}
+            <br><br>
+            <table class="scroll-code">
+               <tr>
+                  <th width="10px">Status</th>
+                  <th width="50px">API</th>
+                  <th width="10px">API Method</th>
+                  <th width="50px">Response observed</th>
+                  <th width="100px">Curl command to reproduce</th>
+               </tr>
+               {% for execution_info in info.get("executions") %}
+               <tr>
+                  {% if execution_info.get("status") == "passed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:green"></i></td>
+                  {% elif execution_info.get("status") == "failed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:red"></i></td>
+                  {% endif %}
+                  <td>{{ execution_info.get("api") }}</td>
+                  <td>{{ execution_info.get("api_method") | upper }}</td>
+                  <td>{{ execution_info.get("api_response") }}</td>
+                  <td><code>{{ execution_info.get("req_curl") | replace("alert", "a l e r t")}}</code></td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         </div>
+         <div class="filterDiv medium">
+         {% for type, info in fuzz_types.get("medium",{}).items() %}
+            <h3>{{ type | upper }}</h3>
+            <hr style="border: 1px solid #ff9800;">
+            <h4>Description:</h4>
+            {{ info.get("description") }}
+            <h4>Impact:</h4>
+            {{ info.get("impact") }}
+            <h4>Severity:</h4>
+            {{ info.get("severity") }}
+            <h4>Remedy:</h4>
+            {{ info.get("remedy") }}
+            <h4>Ease of Exploitation:</h4>
+            {{ info.get("ease_of_exploitation") }}
+            <h4>Classification:</h4>
+            {{ info.get("classification") }}
+            <br><br>
+            <table class="scroll-code">
+               <tr>
+                  <th width="10px">Status</th>
+                  <th width="50px">API</th>
+                  <th width="10px">API Method</th>
+                  <th width="50px">Response observed</th>
+                  <th width="100px">Curl command to reproduce</th>
+               </tr>
+               {% for execution_info in info.get("executions") %}
+               <tr>
+                  {% if execution_info.get("status") == "passed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:green"></i></td>
+                  {% elif execution_info.get("status") == "failed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:red"></i></td>
+                  {% endif %}
+                  <td>{{ execution_info.get("api") }}</td>
+                  <td>{{ execution_info.get("api_method") | upper }}</td>
+                  <td>{{ execution_info.get("api_response") }}</td>
+                  <td><code>{{ execution_info.get("req_curl") | replace("alert", "a l e r t")}}</code></td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         </div>
+         <div class="filterDiv low">
+         {% for type, info in fuzz_types.get("low",{}).items() %}
+            <h3>{{ type | upper }}</h3>
+            <hr style="border: 1px solid #f5d142;">
+            <h4>Description:</h4>
+            {{ info.get("description") }}
+            <h4>Impact:</h4>
+            {{ info.get("impact") }}
+            <h4>Severity:</h4>
+            {{ info.get("severity") }}
+            <h4>Remedy:</h4>
+            {{ info.get("remedy") }}
+            <h4>Ease of Exploitation:</h4>
+            {{ info.get("ease_of_exploitation") }}
+            <h4>Classification:</h4>
+            {{ info.get("classification") }}
+            <br><br>
+            <table class="scroll-code">
+               <tr>
+                  <th width="10px">Status</th>
+                  <th width="50px">API</th>
+                  <th width="10px">API Method</th>
+                  <th width="50px">Response observed</th>
+                  <th width="100px">Curl command to reproduce</th>
+               </tr>
+               {% for execution_info in info.get("executions") %}
+               <tr>
+                  {% if execution_info.get("status") == "passed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:green"></i></td>
+                  {% elif execution_info.get("status") == "failed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:red"></i></td>
+                  {% endif %}
+                  <td>{{ execution_info.get("api") }}</td>
+                  <td>{{ execution_info.get("api_method") | upper }}</td>
+                  <td>{{ execution_info.get("api_response") }}</td>
+                  <td><code>{{ execution_info.get("req_curl") | replace("alert", "a l e r t")}}</code></td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         </div>
+         <div class="filterDiv info">
+         {% if spaarc_findings %}
+         {% for api, vulns in spaarc_findings.items() %}
+            <table class="scroll-code">
+               <tr>
+                  <th>API</th>
+                  <th>RuleId</th>
+                  <th>Description</th>
+                  <th>Score</th>
+                  <th>Severity</th>
+                  <th>Risk Category</th>
+                  <th>Risk Sub-Category</th>
+                  <th>Entity</th>
+               </tr>
+               {% for vuln in vulns %}
+               <tr>
+                  <td>{{ api }}</td>
+                  <td>{{ vuln.get("v_ruleid") }}</td>
+                  <td>{{ vuln.get("v_description") }}</td>
+                  <td>{{ vuln.get("v_score") }}</td>
+                  <td>{{ vuln.get("v_severity") }}</td>
+                  <td>{{ vuln.get("v_risk_ctg") }}</td>
+                  <td>{{ vuln.get("v_risk_subctg") }}</td>
+                  <td>{{ vuln.get("v_entity") }}</td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         {% endif %}
+         </div>
+         <div class="filterDiv bestpractice">
+         {% for type, info in fuzz_types.get("bestpractice",{}).items() %}
+            <h3>{{ type | upper }}</h3>
+            <hr style="border: 1px solid #99ccff;">
+            <h4>Description:</h4>
+            {{ info.get("description") }}
+            <h4>Impact:</h4>
+            {{ info.get("impact") }}
+            <h4>Severity:</h4>
+            {{ info.get("severity") }}
+            <h4>Remedy:</h4>
+            {{ info.get("remedy") }}
+            <h4>Ease of Exploitation:</h4>
+            {{ info.get("ease_of_exploitation") }}
+            <h4>Classification:</h4>
+            {{ info.get("classification") }}
+            <br><br>
+            <table class="scroll-code">
+               <tr>
+                  <th width="10px">Status</th>
+                  <th width="50px">API</th>
+                  <th width="10px">API Method</th>
+                  <th width="50px">Response observed</th>
+                  <th width="100px">Curl command to reproduce</th>
+               </tr>
+               {% for execution_info in info.get("executions") %}
+               <tr>
+                  {% if execution_info.get("status") == "passed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:green"></i></td>
+                  {% elif execution_info.get("status") == "failed" %}
+                  <td><i class="fa fa-check-square-o" style="font-size:32px;color:red"></i></td>
+                  {% endif %}
+                  <td>{{ execution_info.get("api") }}</td>
+                  <td>{{ execution_info.get("api_method") | upper }}</td>
+                  <td>{{ execution_info.get("api_response") }}</td>
+                  <td><code>{{ execution_info.get("req_curl") | replace("alert", "a l e r t")}}</code></td>
+               </tr>
+               {% endfor %}
+            </table><hr>
+         {% endfor %}
+         </div>
+
+      </div>
+      <script>
+         filterSelection("all")
+         function filterSelection(c) {
+           var x, i;
+           x = document.getElementsByClassName("filterDiv");
+           if (c == "all") c = "";
+           for (i = 0; i < x.length; i++) {
+             w3RemoveClass(x[i], "show");
+             if (x[i].className.indexOf(c) > -1) w3AddClass(x[i], "show");
+           }
+         }
+
+         function w3AddClass(element, name) {
+           var i, arr1, arr2;
+           arr1 = element.className.split(" ");
+           arr2 = name.split(" ");
+           for (i = 0; i < arr2.length; i++) {
+             if (arr1.indexOf(arr2[i]) == -1) {element.className += " " + arr2[i];}
+           }
+         }
+
+         function w3RemoveClass(element, name) {
+           var i, arr1, arr2;
+           arr1 = element.className.split(" ");
+           arr2 = name.split(" ");
+           for (i = 0; i < arr2.length; i++) {
+             while (arr1.indexOf(arr2[i]) > -1) {
+               arr1.splice(arr1.indexOf(arr2[i]), 1);
+             }
+           }
+           element.className = arr1.join(" ");
+         }
+
+         // Add active class to the current button (highlight it)
+         var btnContainer = document.getElementById("myBtnContainer");
+         var btns = btnContainer.getElementsByClassName("btn");
+         for (var i = 0; i < btns.length; i++) {
+           btns[i].addEventListener("click", function(){
+             var current = document.getElementsByClassName("active");
+             current[0].className = current[0].className.replace(" active", "");
+             this.className += " active";
+           });
+         }
+      </script>
+      <button onclick="topFunction()" id="myBtn" title="Go to top">Summary...</button>
+      <script>
+         //Get the button
+         var mybutton = document.getElementById("myBtn");
+
+         // When the user scrolls down 20px from the top of the document, show the button
+         window.onscroll = function() {scrollFunction()};
+
+         function scrollFunction() {
+           if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+             mybutton.style.display = "block";
+           } else {
+             mybutton.style.display = "none";
+           }
+         }
+
+         // When the user clicks on the button, scroll to the top of the document
+         function topFunction() {
+           document.body.scrollTop = 0;
+           document.documentElement.scrollTop = 0;
+         }
+      </script>
+   </body>
+</html>
