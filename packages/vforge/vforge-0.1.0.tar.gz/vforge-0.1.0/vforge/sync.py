@@ -1,0 +1,96 @@
+from vforge import helpers
+import pathlib
+from stdlib_list import stdlib_list
+import subprocess
+import sys
+
+
+def main():
+    # BATCH SIZE FOR AUTO INSTALL SUBPROCESS CALLS (# packages at once)
+    # batch processing used to make installation errors easier to trace w/o using one call per package
+    BATCH = 8
+
+    log = helpers.make_logger()
+
+    # fetch arguments
+    args_dict = helpers.parse_args(["project-dir"])
+
+    # directory validation
+    project_dir = pathlib.Path(args_dict["project_dir"])
+    helpers.validate_directory(project_dir, False)
+
+    # find the virtual environment
+    venv_path = helpers.get_venv_path(project_dir)
+
+    # check for explicit requirements and excluded packages
+    explicit, exclude = helpers.load_user_config(project_dir)
+
+    # determine set of builtins
+    major, minor, *_ = sys.version_info
+    log.debug(f"Detected Python verson {major}.{minor}")
+    if (major, minor) < (3, 10):
+        stdlib_set = set(stdlib_list(f"{major}.{minor}"))
+    else:
+        # only available for >= 3.10
+        stdlib_set = set(sys.stdlib_module_names)
+
+    # upgrade pip
+    pip = helpers.program_path(venv_path, "pip")
+    subprocess.check_call([str(pip), "install", "--upgrade", "pip"])
+
+    # install explicit (one-by-one so failures are isolated)
+    for requirement in explicit:
+        subprocess.run([str(pip), "install", requirement], check=True)
+    log.info(f"Installed {len(explicit)} explicitly defined requirements.")
+
+    # discover imports but exclude stdlib and project-state dirs (scan_directory avoids venv & .vforge)
+    import_to_dist = helpers.map_imports_to_dists(pip)
+    unique_imports = helpers.scan_directory(project_dir)
+    log.debug(f"Scanned project directory for imports: {len(unique_imports)} roots found.")
+
+    # normalize exclude and stdlib to comparison set
+    exclude_set = {helpers.normalize_name(e) for e in exclude}
+    candidates = []
+    for pkg in unique_imports:
+        n = helpers.normalize_name(pkg)
+        if any([n in exclude_set, n in stdlib_set, pkg in stdlib_set, pkg in import_to_dist]):
+            continue
+
+        # final is_installable check using pip path
+        if is_installable(pkg, pip):
+            candidates.append(pkg)
+
+    # install auto candidates in small batches to make failures visible
+    for i in range(0, len(candidates), BATCH):
+        batch = candidates[i:i + BATCH]
+        log.debug(f"Installing batch {i//BATCH + 1}: {batch}")
+        subprocess.run([str(pip), "install", *batch], check=True)
+    log.info(f"Installed {len(candidates)} auto-detected packages.")
+
+    log.info("Sync complete!")
+
+
+def is_installable(package_name: str, pip_path) -> bool:
+    # checks if a package is installable via pip
+    pip_str = str(pip_path)
+
+    # prefer `pip index versions <pkg>` (does not install) when supported
+    try:
+        res = subprocess.run([pip_str, "index", "versions", package_name],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return res.returncode == 0
+    except Exception:
+        # fallback to pip install --dry-run if supported; otherwise assume installable
+        try:
+            subprocess.run([pip_str, "install", "--dry-run", package_name],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+        except Exception:
+            # unknown pip; optimistically allow installation
+            return True
+
+
+if __name__ == "__main__":
+    main()
