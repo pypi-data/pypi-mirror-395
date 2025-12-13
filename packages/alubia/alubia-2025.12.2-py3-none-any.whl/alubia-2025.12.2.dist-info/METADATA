@@ -1,0 +1,72 @@
+Metadata-Version: 2.4
+Name: alubia
+Version: 2025.12.2
+Summary: Bits and bobs for beancount benefit.
+Project-URL: Homepage, https://github.com/Julian/alubia
+Project-URL: Issues, https://github.com/Julian/alubia/issues/
+Project-URL: Funding, https://github.com/sponsors/Julian
+Project-URL: Source, https://github.com/Julian/alubia
+Author-email: Julian Berman <Julian+alubia@GrayVines.com>
+License-Expression: MIT
+License-File: COPYING
+Classifier: Development Status :: 3 - Alpha
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Requires-Python: >=3.13
+Requires-Dist: attrs>=25.4.0
+Requires-Dist: rpds-py>=0.29.0
+Description-Content-Type: text/x-rst
+
+==========
+``alubia``
+==========
+
+|PyPI| |Pythons| |CI|
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/alubia.svg
+  :alt: PyPI version
+  :target: https://pypi.org/project/alubia/
+
+.. |Pythons| image:: https://img.shields.io/pypi/pyversions/alubia.svg
+  :alt: Supported Python versions
+  :target: https://pypi.org/project/alubia/
+
+.. |CI| image:: https://github.com/Julian/alubia/workflows/CI/badge.svg
+  :alt: Build status
+  :target: https://github.com/Julian/alubia/actions?query=workflow%3ACI
+
+
+Example
+=======
+
+.. code-block:: python
+
+    from datetime import date
+
+    from alubia.data import Amount, Assets, Expenses
+
+    USD = Amount.for_commodity("USD")
+    CHECKING = Assets.Checking
+    GROCERIES = Expenses.Groceries
+
+    transaction = GROCERIES.transact(
+        CHECKING.posting(amount=USD("-50")),
+        date=date(2024, 1, 1),
+        payee="Grocery Store",
+    )
+
+    # Serialize the transaction to beancount format
+    print(tx.explicit().serialize())
+
+Outputs:
+
+.. code-block:: text
+
+    2024-01-01 * "Grocery Store"
+      Expenses:Groceries                                                                        50.00 USD
+      Assets:Checking                                                                          -50.00 USD
