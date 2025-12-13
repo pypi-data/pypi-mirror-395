@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+"""fetch gene-nm-np as tsv table using entrez
+
+This script queries NCBI for human gene records in Entrez.
+
+"""
+
+import lxml.etree as le
+import requests
+
+from eutils._internal.xmlfacades.entrezgeneset import EntrezgeneSet
+
+eutils_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+retmax_request = 250
+
+
+def fetch_gene(hgnc):
+    # search for all human genes, saving history at NCBI
+    esearch_url = (
+        eutils_base_url
+        + f"/esearch.fcgi?db=gene&usehistory=y&retmax=0&term=human[orgn] AND alive[property] AND {hgnc}[PREF]"
+    )
+    r1 = requests.get(esearch_url, timeout=10)
+    r1_x = le.XML(r1.content)
+    webenv_key = r1_x.find("WebEnv").text
+    query_key = r1_x.find("QueryKey").text
+    count = int(r1_x.find("Count").text)
+    assert count == 1, f"hgnc {hgnc} returned {count} hits"  # noqa: S101
+
+    efetch_url = (
+        eutils_base_url
+        + f"/efetch.fcgi?db=gene&usehistory=&retmode=XML&WebEnv={webenv_key}&query_key={query_key}&retmax={retmax_request}"
+    )
+    r2 = requests.get(efetch_url + "&retstart=" + str(0), timeout=10)
+    egs = EntrezgeneSet(le.XML(r2.content))
+    assert len(egs.entrezgenes) == 1, "more than one entrezgene entry in efetch reply"  # noqa: S101
+
+    return egs.entrezgenes[0]
+
+
+a = fetch_gene("ATXN8")
+b = fetch_gene("VHL")
+c = fetch_gene("LOC283357")
