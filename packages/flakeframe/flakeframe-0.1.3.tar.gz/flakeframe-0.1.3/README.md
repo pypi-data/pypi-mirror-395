@@ -1,0 +1,38 @@
+# flakeframe
+An aesthetic weather app for your CLI, with a fancy map!
+
+## demo
+LATER
+
+## what is it?
+A fast and easy to use CLI weather app with super neat map view!\
+Should work on basically everything, as long as you have Python and Internet access.\
+(a note: flakeframe was known as Mapfish before submitting!)
+
+## usage and installation
+`pip install flakeframe`, or `pipx` if you're on an externally managed system like Arch (btw).
+
+Then just pick a location (coordinates or an address/place) and run `flakeframe`!
+
+## controls
+Use WASD/arrow keys to navigate in the main menu, then +/- to change zoom levels.\
+Q to go back to the main menu, R to refresh your weather data.
+
+## features
+- Works basically anywhere
+- Hourly and daily forecasts
+- Color codes
+- Map display [anywhere*](https://xkcd.com/3173/) on earth
+- No API keys or weird configuration needed.
+- Smart aspect ratio detection, unless you use a weird font
+- Dynamic theming system
+- Coordinate lookup from (almost) any address or location
+- You can just steal the theme system lmao
+
+## credits
+- Geocoding by OpenStreetMap Nominatim
+- Map data from ArcGIS world imagery
+- Weather data from OpenMeteo
+- Uses img2unicode by matrach
+- Uses py-staticmaps by flopp
+- The guys in the live coding vc for fixing my oop-related crashouts
