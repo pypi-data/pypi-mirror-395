@@ -1,0 +1,79 @@
+unit:
+
+# Controller units
+- ampel.ztf.t0.ZTFAlertStreamController
+
+# Context units
+#- ampel.ztf.ingest.ZiT1ArchivalCompoundIngester
+- ampel.ztf.alert.ZTFGeneralActiveAlertRegister
+- ampel.ztf.alert.ZTFGeneralAlertRegister
+- ampel.ztf.t3.complement.ZTFCutoutImages
+- ampel.ztf.t3.complement.FritzReport
+- ampel.ztf.t3.complement.GROWTHMarshalReport
+- ampel.ztf.t3.complement.TNSNames
+- ampel.ztf.t3.complement.TNSReports
+- ampel.ztf.t3.select.T3AdHocStockSelector
+- ampel.ztf.t3.T3LegacyExtJournalAppender
+- ampel.ztf.ingest.ZiMongoMuxer
+- ampel.ztf.ingest.ZiArchiveMuxer
+
+# Logical units
+- ampel.ztf.t1.ZiT1Combiner
+- ampel.ztf.t0.DecentFilter
+- ampel.ztf.ingest.ZiDataPointShaper
+- ampel.ztf.base.CatalogMatchFilter
+- ampel.ztf.t2.T2LightCurveSummary
+- ampel.ztf.t2.T2CatalogMatch
+- ampel.ztf.t2.T2LightCurveFeatures
+- ampel.ztf.t3.skyportal.SkyPortalPublisher
+- ampel.ztf.t4.T4ZTFArchiveTokenGenerator
+
+# Ops units
+- ampel.ztf.t0.load.ZTFAlertArchiverV3
+
+# Aux units
+- ampel.ztf.alert.HealpixPathSupplier
+- ampel.ztf.alert.ZiAlertSupplier
+- ampel.ztf.alert.ZiTaggedAlertSupplier
+
+- ampel.ztf.alert.ZTFForcedPhotometryAlertSupplier
+- ampel.ztf.alert.ZTFFPbotForcedPhotometryAlertSupplier
+- ampel.ztf.alert.ZTFIPACForcedPhotometryAlertSupplier
+- ampel.ztf.alert.BTSForcedPhotometryAlertSupplier
+
+- ampel.ztf.t0.load.UWAlertLoader
+- ampel.ztf.t0.load.ZTFArchiveAlertLoader
+- ampel.ztf.util.ZTFIdMapper
+- ampel.ztf.util.ZTFNoisifiedIdMapper
+- ampel.ztf.ingest.ZiCompilerOptions
+- ampel.ztf.alert.load.ZTFHealpixAlertLoader
+- ampel.ztf.alert.ZiHealpixAlertSupplier
+
+- ampel.ztf.view.ZTFT2Tabulator
+- ampel.ztf.view.ZTFFPTabulator
+
+alias:
+  t2:
+    '%FIRST_ZTF_PHOTOPOINT':
+      filter: PPSFilter
+      sort: jd
+      select: first
+    '%FIRST_ZTF_UPPER_LIMIT':
+      filter: ULSFilter
+      sort: jd
+      select: first
+
+template:
+  ztf_uw_private: ampel.template.ZTFLegacyChannelTemplate
+  ztf_uw_public: ampel.template.ZTFLegacyChannelTemplate
+  ztf_uw_caltech: ampel.template.ZTFLegacyChannelTemplate
+  ztf_periodic_summary: ampel.template.ZTFPeriodicSummaryT3
+  ztf_local_alerts: ampel.template.ZTFProcessLocalAlerts
+
+resource:
+  archive: https://ampel.zeuthen.desy.de/api/ztf/archive/v3/
+  catalogmatch: https://ampel.zeuthen.desy.de/api/catalogmatch/
+  kafka:
+    bootstrap: partnership.alerts.ztf.uw.edu:9092
+    group_name: ampel-v0.7.1
+    timeout: 3600
