@@ -1,0 +1,235 @@
+# PyMacaroons2
+
+⚡ **Fast, secure Macaroons for modern Python 3.8+**
+
+[![PyPI version](https://badge.fury.io/py/pymacaroons2.svg)](https://badge.fury.io/py/pymacaroons2)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Hard fork of the unmaintained [pymacaroons](https://github.com/ecordell/pymacaroons) with **security fixes**, **performance improvements**, and **modern Python support**.
+
+## ✨ Features
+
+- 🔒 **Security fixes** - Constant-time comparison, fixed base64 bugs
+- 🚀 **Optional Rust acceleration** - 6-7x faster HMAC operations
+- 📦 **Modern packaging** - `pyproject.toml`, no `setup.py`
+- 🔄 **Async support** - `AsyncVerifier` for async/await workflows
+- 🎯 **Memory optimized** - `__slots__` on all classes (~40% memory reduction)
+- 🐍 **Python 3.8+** - Drops Python 2 support for cleaner code
+
+## 📦 Installation
+
+```bash
+pip install pymacaroons2
+```
+
+### Optional: Enable Rust acceleration
+
+For maximum performance, install with Rust extension:
+
+```bash
+pip install pymacaroons2[rust]
+```
+
+Or build from source:
+
+```bash
+cd src/pymacaroons2_rs
+maturin develop --release
+```
+
+## 🚀 Quick Start
+
+### Creating a Macaroon
+
+```python
+from pymacaroons2 import Macaroon, Verifier
+
+# Create a macaroon
+m = Macaroon(
+    location='https://api.example.com',
+    identifier='user-12345',
+    key=b'super-secret-key'
+)
+
+# Add caveats (restrictions)
+m.add_first_party_caveat('action = read')
+m.add_first_party_caveat('time < 2024-12-31T23:59:59Z')
+
+# Serialize for transmission
+token = m.serialize()
+print(f"Token: {token}")
+```
+
+### Verifying a Macaroon
+
+```python
+from pymacaroons2 import Macaroon, Verifier
+
+# Deserialize the token
+m = Macaroon.deserialize(token)
+
+# Create verifier
+v = Verifier()
+v.satisfy_exact('action = read')
+v.satisfy_general(lambda c: c.startswith('time < '))
+
+# Verify with the secret key
+try:
+    verified = v.verify(m, b'super-secret-key')
+    print("✅ Macaroon verified!")
+except Exception as e:
+    print(f"❌ Verification failed: {e}")
+```
+
+### Async Verification
+
+```python
+import asyncio
+from pymacaroons2 import Macaroon
+from pymacaroons2.async_verifier import AsyncVerifier
+
+async def verify_async():
+    m = Macaroon(
+        location='https://api.example.com',
+        identifier='user-12345',
+        key=b'super-secret-key'
+    )
+
+    v = AsyncVerifier()
+    await v.verify_async(m, b'super-secret-key')
+    print("✅ Async verification complete!")
+
+asyncio.run(verify_async())
+```
+
+## 🔄 Migration from pymacaroons
+
+### Package rename
+
+```python
+# Before (pymacaroons)
+from pymacaroons import Macaroon, Verifier
+
+# After (pymacaroons2)
+from pymacaroons2 import Macaroon, Verifier
+```
+
+### Breaking changes
+
+1. **Python 3.8+ required** - Python 2 and older Python 3 versions are no longer supported
+2. **Package renamed** - `pymacaroons` → `pymacaroons2`
+3. **`libnacl` replaced with `pynacl`** - For third-party caveats, install `pynacl`
+
+See [CHANGELOG.md](CHANGELOG.md) for complete list of changes.
+
+## ⚡ Performance
+
+With the optional Rust extension enabled:
+
+| Operation             | Python  | Rust   | Speedup  |
+| --------------------- | ------- | ------ | -------- |
+| HMAC-SHA256           | 0.12s   | 0.02s  | **6.4x** |
+| Key Derivation        | 0.11s   | 0.015s | **7.5x** |
+| Constant-Time Compare | 0.0075s | 0.005s | **1.4x** |
+
+_Benchmarks run with 50,000 iterations on Python 3.12_
+
+## 📚 Documentation
+
+### Macaroon versions
+
+```python
+from pymacaroons2 import Macaroon, MACAROON_V1, MACAROON_V2
+
+# V1 format (default, more compatible)
+m1 = Macaroon(location='...', identifier='...', key=b'...', version=MACAROON_V1)
+
+# V2 format (more compact, binary identifiers)
+m2 = Macaroon(location='...', identifier=b'\x00\x01\x02', key=b'...', version=MACAROON_V2)
+```
+
+### Serialization formats
+
+```python
+from pymacaroons2.serializers import JsonSerializer, BinarySerializer
+
+# Binary (default, URL-safe base64)
+token = m.serialize()
+
+# JSON
+token = m.serialize(serializer=JsonSerializer())
+
+# Deserialize
+m = Macaroon.deserialize(token)
+m = Macaroon.deserialize(json_token, serializer=JsonSerializer())
+```
+
+### Third-party caveats
+
+```python
+# Requires: pip install pynacl
+
+# Add third-party caveat
+m.add_third_party_caveat(
+    location='https://auth.example.com',
+    key=b'shared-secret-with-auth-service',
+    key_id='caveat-id-12345'
+)
+
+# Create discharge macaroon (at auth service)
+discharge = Macaroon(
+    location='https://auth.example.com',
+    key=b'shared-secret-with-auth-service',
+    identifier='caveat-id-12345'
+)
+
+# Bind discharge to original macaroon
+bound = m.prepare_for_request(discharge)
+
+# Verify with discharge
+v = Verifier(discharge_macaroons=[bound])
+v.verify(m, b'original-key')
+```
+
+## 🔐 Security
+
+This fork addresses several security issues in the original library:
+
+1. **Timing attack vulnerability** - Now uses `secrets.compare_digest()` (or Rust `subtle` crate) for constant-time comparison
+2. **Base64 decoding bug** - Fixed logic error that could cause incorrect decoding
+3. **Updated dependencies** - Uses modern `cryptography` library instead of deprecated `hashlib` for HMAC
+
+## 🛠️ Development
+
+```bash
+# Clone repository
+git clone https://github.com/TazakiN/pymacaroons2.git
+cd pymacaroons2
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Build Rust extension (optional)
+cd src/pymacaroons2_rs
+maturin develop --release
+```
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+Original work Copyright (c) 2014-2018 Evan Cordell  
+Modified work Copyright (c) 2024 Tazkia Nizami
+
+## 🙏 Credits
+
+- [Evan Cordell](https://github.com/ecordell) - Original pymacaroons author
+- [Macaroons paper](https://research.google/pubs/pub41892/) - Original research by Google
