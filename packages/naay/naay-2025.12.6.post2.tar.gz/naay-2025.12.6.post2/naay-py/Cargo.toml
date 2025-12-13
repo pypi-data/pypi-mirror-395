@@ -1,0 +1,24 @@
+[package]
+name = "naay-py"
+version = "0.2.0"
+edition = "2021"
+description = "Rust native extension exposed via PyO3 for the naay YAML subset"
+license = "LGPL-3.0-or-later"
+repository = "https://github.com/rbroderi/naay"
+homepage = "https://github.com/rbroderi/naay"
+documentation = "https://rbroderi.github.io/naay"
+
+[lib]
+name = "_naay_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.27", features = ["extension-module"] }
+naay-core = { path = "../naay-core" }
+
+[profile.release]
+debug-assertions = false
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
