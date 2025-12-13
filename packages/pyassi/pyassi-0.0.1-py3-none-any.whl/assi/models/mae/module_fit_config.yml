@@ -1,0 +1,60 @@
+# --- DataModule ---
+data:
+  class_path: assi.datasets.dataset_segmented.SegmentedDataModule
+  init_args:
+    storage:
+      class_path: assi.datasets.mimii.storage.MIMIIStorage
+      init_args:
+        dataset_base_folder: .cache/mimii
+        part_name: 6_dB_valve
+
+    frame_length: 16640
+    frame_hop: 1024
+    batch_size: 200
+    metadata_query: split == 'train' and machine_id == 0
+    num_workers: 1
+    use_cache: false
+
+# --- Model ---
+model:
+  class_path: assi.models.MAEModel
+  init_args:
+    frame_length: ${data.init_args.frame_length}
+    channels: [0, ]
+    patch_size_time: 4
+    patch_size_freq: 257
+    embed_dim: 16
+    encoder_nhead: 4
+    encoder_dim_feedforward: 128
+    encoder_num_layers: 2
+    decoder_nhead: 4
+    decoder_dim_feedforward: 128
+    decoder_num_layers: 2
+    mask_ratio: 0.75
+    transform_n_fft: 512
+    transform_hop_length: 256
+    mask_strategy: time
+
+
+# --- Seed ---
+seed_everything: 42
+
+# --- Trainer ---
+trainer:
+  max_epochs: 300
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        save_weights_only: true
+        save_top_k: 3
+        monitor: val_loss
+  logger:
+    class_path: lightning.pytorch.loggers.TensorBoardLogger
+    init_args:
+      save_dir: ${assi.lightning_logs_dir:}
+
+# --- Optimizer ---
+optimizer:
+  class_path: Adam
+  init_args:
+    lr: 0.001
