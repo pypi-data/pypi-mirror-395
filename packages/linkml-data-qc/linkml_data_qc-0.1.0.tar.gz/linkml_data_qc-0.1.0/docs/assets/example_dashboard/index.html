@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QC Dashboard - person_poor.yaml</title>
+    <style>
+        :root {
+            --green: #2ecc71;
+            --orange: #f39c12;
+            --red: #e74c3c;
+            --dark-red: #c0392b;
+            --bg: #f5f6fa;
+            --card-bg: #ffffff;
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+            --border: #dcdde1;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        .card .value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .card .value.good { color: var(--green); }
+        .card .value.warning { color: var(--orange); }
+        .card .value.bad { color: var(--red); }
+        .card .detail {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .violations {
+            background: #fff5f5;
+            border-left: 4px solid var(--red);
+        }
+        .violations.none {
+            background: #f0fff4;
+            border-left-color: var(--green);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--bg);
+            font-weight: 600;
+        }
+        tr:hover {
+            background: var(--bg);
+        }
+        .slot-table .bar {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border);
+        }
+        .slot-table .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        footer {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        footer a {
+            color: var(--text);
+        }
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .charts { grid-template-columns: 1fr; }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>QC Dashboard</h1>
+            <p class="subtitle">person_poor.yaml • Person • Schema: test_schema.yaml</p>
+        </header>
+
+        <section class="summary-cards">
+            <div class="card">
+                <h3>Global Compliance</h3>
+                <div class="value bad">12.5%</div>
+                <div class="detail">1/8 fields populated</div>
+            </div>
+            <div class="card">
+                <h3>Weighted Compliance</h3>
+                <div class="value bad">25.0%</div>
+                <div class="detail">Based on configured weights</div>
+            </div>
+            <div class="card">
+                <h3>Threshold Violations</h3>
+                <div class="value good">0</div>
+                <div class="detail">All thresholds met</div>
+            </div>
+            <div class="card">
+                <h3>Recommended Slots</h3>
+                <div class="value">4</div>
+                <div class="detail">Tracked across schema</div>
+            </div>
+        </section>
+
+        <section class="charts">
+            <div class="chart-card">
+                <h2>Overall Compliance</h2>
+                <img src="gauge.png" alt="Compliance Gauge">
+            </div>
+            <div class="chart-card">
+                <h2>Compliance by Slot</h2>
+                <img src="slot_bars.png" alt="Slot Compliance">
+            </div>
+        </section>
+
+        
+        <section class="charts">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+                <h2>Path × Slot Heatmap</h2>
+                <img src="path_heatmap.png" alt="Path Heatmap">
+            </div>
+        </section>
+
+
+        
+        <section class="chart-card violations none">
+            <h2>Threshold Violations</h2>
+            <p style='padding: 2rem; text-align: center; color: #2ecc71;'>No threshold violations detected.</p>
+        </section>
+
+
+        <section class="chart-card">
+            <h2>Slot Compliance Details</h2>
+            <table class="slot-table">
+                <thead>
+                    <tr>
+                        <th>Slot</th>
+                        <th>Compliance</th>
+                        <th style="width: 40%">Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                <td><code>description</code></td>
+                <td>0.0%</td>
+                <td>
+                    <div class="bar">
+                        <div class="bar-fill" style="width: 0.0%; background: #c0392b;"></div>
+                    </div>
+                </td>
+            </tr>
+<tr>
+                <td><code>street</code></td>
+                <td>0.0%</td>
+                <td>
+                    <div class="bar">
+                        <div class="bar-fill" style="width: 0.0%; background: #c0392b;"></div>
+                    </div>
+                </td>
+            </tr>
+<tr>
+                <td><code>city</code></td>
+                <td>0.0%</td>
+                <td>
+                    <div class="bar">
+                        <div class="bar-fill" style="width: 0.0%; background: #c0392b;"></div>
+                    </div>
+                </td>
+            </tr>
+<tr>
+                <td><code>email</code></td>
+                <td>33.3%</td>
+                <td>
+                    <div class="bar">
+                        <div class="bar-fill" style="width: 33.33333333333333%; background: #c0392b;"></div>
+                    </div>
+                </td>
+            </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p>Generated by <a href="https://github.com/linkml/linkml-data-qc">linkml-data-qc</a> on 2025-12-08 08:59</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

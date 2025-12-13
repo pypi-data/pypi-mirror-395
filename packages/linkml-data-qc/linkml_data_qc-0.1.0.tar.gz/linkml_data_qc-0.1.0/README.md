@@ -1,0 +1,227 @@
+# linkml-data-qc
+
+A compliance analysis tool for LinkML data files. Measures how well your data populates `recommended: true` slots defined in LinkML schemas.
+
+## Features
+
+- **Hierarchical scoring**: Calculate compliance at multiple levels (global, path-level, per-item)
+- **Aggregated list scoring**: Roll up scores across list elements using jq-style `[]` notation
+- **Configurable weights**: Assign importance weights to paths and slots
+- **Threshold violations**: Set minimum compliance requirements and detect violations
+- **Multiple output formats**: JSON, CSV, and human-readable text
+- **Multi-file reports**: Aggregate compliance across an entire knowledge base
+
+## Installation
+
+```bash
+pip install linkml-data-qc
+```
+
+Or with `uv`:
+
+```bash
+uv add linkml-data-qc
+```
+
+## Quick Start
+
+### Python API
+
+```python
+from linkml_data_qc import ComplianceAnalyzer
+
+# Basic usage
+analyzer = ComplianceAnalyzer("path/to/schema.yaml")
+report = analyzer.analyze_file("path/to/data.yaml", "TargetClass")
+
+print(f"Global compliance: {report.global_compliance:.1f}%")
+print(f"Total checks: {report.total_checks}")
+print(f"Total populated: {report.total_populated}")
+
+# With configuration for weights and thresholds
+from linkml_data_qc import QCConfig, SlotQCConfig
+
+config = QCConfig(
+    default_weight=1.0,
+    slots={
+        "term": SlotQCConfig(weight=2.0, min_compliance=80.0),
+        "description": SlotQCConfig(weight=0.5)
+    }
+)
+analyzer = ComplianceAnalyzer("schema.yaml", config)
+report = analyzer.analyze_file("data.yaml", "Disease")
+
+if report.threshold_violations:
+    print(f"Found {len(report.threshold_violations)} violations!")
+```
+
+### Command Line
+
+```bash
+# Single file analysis
+linkml-data-qc data.yaml -s schema.yaml -t TargetClass -f text
+
+# Analyze all files in a directory
+linkml-data-qc data/ -s schema.yaml -t TargetClass -f json
+
+# With configuration and threshold enforcement
+linkml-data-qc data/ -s schema.yaml -t TargetClass \
+    -c qc_config.yaml --fail-on-violations
+```
+
+## CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `DATA_PATH...` | Data file(s) or directory to analyze (positional) |
+| `-s, --schema` | Path to LinkML schema YAML (required) |
+| `-t, --target-class` | Target class name for validation (required) |
+| `-c, --config` | Path to QC configuration YAML file |
+| `-f, --format` | Output format: `json`, `csv`, `text` (default: text) |
+| `-o, --output` | Output file path (default: stdout) |
+| `--min-compliance` | Minimum global compliance percentage (exit 1 if below) |
+| `--fail-on-violations` | Exit with error code if any threshold violations occur |
+| `--pattern` | Glob pattern for directory search (default: `*.yaml`) |
+
+## How It Works
+
+### Schema Introspection
+
+The tool uses LinkML's `SchemaView` to identify slots marked with `recommended: true`:
+
+```yaml
+# In your LinkML schema
+slots:
+  description:
+    description: Human-readable description
+    recommended: true  # This slot will be tracked
+
+  term:
+    description: Ontology term binding
+    recommended: true  # This slot will be tracked
+```
+
+### Recursive Analysis
+
+The analyzer recursively traverses your data, tracking:
+- Which recommended slots are present at each location
+- The path to each object (e.g., `pathophysiology[0].cell_types[2]`)
+- The LinkML class of each object
+
+### Aggregation Levels
+
+Results are computed at multiple levels:
+
+1. **Per-item scores**: Each object gets compliance scores for its recommended slots
+2. **Aggregated list scores**: Rolled up by normalized path with `[]` notation
+3. **Global scores**: Overall compliance across all paths
+
+## Configuration
+
+Create a YAML configuration file to customize weights and thresholds:
+
+```yaml
+# qc_config.yaml
+default_weight: 1.0
+default_min_compliance: null
+
+# Per-slot configuration
+slots:
+  term:
+    weight: 2.0
+    min_compliance: 80.0
+  description:
+    weight: 0.5
+
+# Per-path overrides
+paths:
+  "phenotypes[].phenotype_term.term":
+    weight: 3.0
+    min_compliance: 95.0
+```
+
+### Configuration Precedence
+
+1. **Path-specific config** (highest priority)
+2. **Slot-specific config**
+3. **Default values**
+
+## Output Formats
+
+### Text Output
+
+```
+Compliance Report: data/Asthma.yaml
+Target Class: Disease
+Global Compliance: 65.3% (125/191)
+Weighted Compliance: 71.2%
+
+Summary by Slot:
+  description: 78.4%
+  term: 72.1%
+
+Aggregated Scores by List Path:
+  pathophysiology[].description: 100.0% (5/5)
+  pathophysiology[].term: 80.0% (4/5)
+```
+
+### JSON Output
+
+```json
+{
+  "file_path": "data/Asthma.yaml",
+  "target_class": "Disease",
+  "global_compliance": 65.3,
+  "weighted_compliance": 71.2,
+  "total_checks": 191,
+  "total_populated": 125,
+  "summary_by_slot": {
+    "description": 78.4,
+    "term": 72.1
+  }
+}
+```
+
+## CI/CD Integration
+
+Use exit codes for CI integration:
+
+```bash
+# Fail if global compliance is below 70%
+linkml-data-qc data/ -s schema.yaml -t Disease --min-compliance 70
+
+# Fail if any configured threshold is violated
+linkml-data-qc data/ -s schema.yaml -t Disease \
+    -c qc_config.yaml --fail-on-violations
+```
+
+Exit codes:
+- `0`: All checks passed
+- `1`: Compliance below threshold or violations detected
+
+## Documentation
+
+[https://linkml.github.io/linkml-data-qc](https://linkml.github.io/linkml-data-qc)
+
+## Development
+
+```bash
+# Install dependencies
+uv sync --group dev
+
+# Run tests
+just test
+
+# Run doctests only
+just doctest
+
+# Run type checking
+just mypy
+
+# Run linting
+just format
+```
+
+## Credits
+
+This project uses the template [monarch-project-copier](https://github.com/monarch-initiative/monarch-project-copier)
