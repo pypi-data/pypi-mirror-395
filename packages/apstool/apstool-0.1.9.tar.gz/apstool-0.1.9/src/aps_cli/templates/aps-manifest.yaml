@@ -1,0 +1,65 @@
+# APS Agent Manifest (spec v0.1)
+# See: docs/specs/APS-v0.1.md for full specification
+
+# Required fields
+id: org.example.agent                   # Globally unique identifier (reverse-DNS)
+name: Example APS Agent                 # Human-readable name
+version: 0.1.0                          # Semantic version
+description: A template APS agent.      # Concise summary
+
+# Runtime configuration
+runtime: python3                        # Target runtime (python3, nodejs, bash, etc.)
+entrypoint: src/agent/main.py           # Relative path to executable
+
+# Optional: Dependencies
+dependencies:
+  python: ">=3.10"                      # Minimum Python version
+  packages:                             # Python packages
+    - "requests>=2.31"
+  system: []                            # System-level tools (e.g., ffmpeg, tesseract)
+  models: []                            # Model dependencies
+    # - id: "openai:gpt-4o-mini"
+    #   provider: "openai"
+    #   purpose: "llm"
+    #   required: true
+  datasets: []                          # Data dependencies
+    # - id: "registry://datasets/example-index"
+    #   kind: "vector_index"
+    #   required: false
+
+# Optional: Environment variables
+environment:
+  required: []                          # Required env vars
+    # - name: API_KEY
+    #   description: "API key for external service"
+  optional: []                          # Optional env vars
+    # - name: LOG_LEVEL
+    #   default: "INFO"
+    #   description: "Logging verbosity"
+
+# Optional: Input/output schema
+inputs:
+  - name: text
+    type: string
+    description: "Input text to process"
+
+outputs:
+  - name: text
+    type: string
+    description: "Processed output text"
+
+# Optional: Metadata
+author: "Your Name <your.email@example.com>"
+license: "Apache-2.0"
+metadata:
+  tags: [template, python]
+  homepage: ""
+  repository: ""
+
+# Optional: Policies (extended spec)
+policies:
+  network: "none"                       # none | outbound | restricted | full
+  sandbox: false
+  secrets: []
+  filesystem: "read-only"
+
