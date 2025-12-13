@@ -1,0 +1,142 @@
+# Agent Navigation Challenges
+#
+# PURPOSE: Test whether grepmap helps agents understand codebases SEMANTICALLY.
+# These are NOT grep-solvable questions. They require architectural understanding.
+#
+# Good challenges:
+#   - Require understanding relationships, not just finding strings
+#   - Need context about what's important vs noise
+#   - Benefit from knowing the "shape" of the codebase
+#
+# Bad challenges (don't add these):
+#   - "Find class X" (grep solves this)
+#   - "What line has error Y" (grep solves this)
+#   - Anything with an obvious search term
+#
+# Run with: ./run_challenges.py <target_repo> [--tools grepmap|grep-only|both]
+
+challenges:
+
+  # === ARCHITECTURAL UNDERSTANDING ===
+  # These require grasping the overall structure, not finding specific strings
+
+  - id: explain_architecture
+    category: architecture
+    difficulty: medium
+    question: |
+      Explain the high-level architecture of this codebase in 3-4 sentences.
+      What are the major subsystems and how do they relate?
+    validation: "must identify key modules and their relationships"
+
+  - id: extension_point
+    category: architecture
+    difficulty: medium
+    question: |
+      If I wanted to add a new output format (like XML export),
+      where would I hook into the existing code? What patterns should I follow?
+    validation: "must identify correct abstraction layer and existing patterns"
+
+  - id: data_journey
+    category: architecture
+    difficulty: hard
+    question: |
+      Trace the journey of the primary data structure from input to output.
+      What transformations does it undergo? Where are the key decision points?
+    validation: "must describe transformation pipeline accurately"
+
+  # === SEMANTIC DISCOVERY ===
+  # Finding things when you don't know what to search for
+
+  - id: find_the_brain
+    category: discovery
+    difficulty: medium
+    question: |
+      What's the most important file in this codebase - the one that
+      orchestrates everything else? How did you determine this?
+    validation: "must identify central orchestrator with reasoning"
+
+  - id: hidden_coupling
+    category: discovery
+    difficulty: hard
+    question: |
+      Are there any files that seem unrelated but actually change together frequently?
+      What implicit coupling might this reveal?
+    validation: "must identify non-obvious relationships"
+
+  - id: stability_assessment
+    category: discovery
+    difficulty: medium
+    question: |
+      Which parts of this codebase are stable foundations vs actively evolving?
+      Where would you be most/least confident making changes?
+    validation: "must distinguish stable vs volatile areas with reasoning"
+
+  # === DEBUGGING INTUITION ===
+  # Where to look when something goes wrong
+
+  - id: error_provenance
+    category: debugging
+    difficulty: hard
+    question: |
+      If users reported that output was sometimes incomplete or truncated,
+      what are the most likely culprits? Where would you start investigating?
+    validation: "must identify plausible failure points in data flow"
+
+  - id: performance_suspects
+    category: debugging
+    difficulty: medium
+    question: |
+      If this tool was running slowly, what are the likely bottlenecks?
+      What would you profile first?
+    validation: "must identify computational hotspots with reasoning"
+
+  # === MODIFICATION PLANNING ===
+  # Understanding impact of changes
+
+  - id: ripple_effect
+    category: modification
+    difficulty: hard
+    question: |
+      If I changed the signature of the main data structure,
+      what's the blast radius? Which files would need updates?
+    validation: "must identify dependent code accurately"
+
+  - id: safe_refactor
+    category: modification
+    difficulty: medium
+    question: |
+      What's one refactoring you'd suggest that would improve code quality
+      with minimal risk? Why is it low-risk?
+    validation: "suggestion must be specific and risk assessment reasonable"
+
+  - id: test_coverage_gaps
+    category: modification
+    difficulty: medium
+    question: |
+      Looking at the structure of this codebase, what functionality
+      appears to be undertested or has no tests at all?
+    validation: "must identify specific untested areas"
+
+# === META CONFIG ===
+config:
+  timeout_seconds: 300
+  max_tokens: 50000  # budget ceiling
+
+  # Tool configurations to test
+  tool_configs:
+    grepmap:
+      setup: |
+        Available tool: grepmap <path> [--focus file1 file2] [--map-tokens N] [--diag]
+        Shows ranked map with annotations: [bridge] [api] [recent] [crystal/rotting/emergent]
+      allowed_commands: ["grepmap", "cat", "head"]
+
+    grep_only:
+      setup: "Available tools: rg (ripgrep), find, cat, head, tail"
+      allowed_commands: ["rg", "find", "cat", "head", "tail", "ls"]
+
+    both:
+      setup: |
+        Available tools:
+        - grepmap <path> [--focus ...] [--map-tokens N] - ranked map with [bridge] [api] [recent] annotations
+        - rg (ripgrep), find, cat, head, tail
+      allowed_commands: ["grepmap", "rg", "find", "cat", "head", "tail", "ls"]
