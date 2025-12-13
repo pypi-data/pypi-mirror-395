@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreatWinds Pentest Terminal</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <span class="title">THREATWINDS PENTEST TERMINAL V1.0</span>
+            </div>
+            <div class="header-center">
+                <span id="current-ip" class="ip-address">---</span>
+            </div>
+            <div class="header-right">
+                <button id="switch-ui-btn" class="icon-btn" title="Switch to Simplified UI" style="margin-right: 1rem;">UI</button>
+                <span id="current-datetime" class="datetime">--.--.----</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="content-wrapper">
+            <!-- Left Panel - Pentests List & Connection Status -->
+            <aside class="left-panel">
+                <div class="panel-section servers-section">
+                    <div class="section-header">
+                        <span class="section-title">SERVERS</span>
+                        <button id="add-server" class="icon-btn" title="Add Server">+</button>
+                    </div>
+                    <div class="servers-list" id="servers-list">
+                        <!-- Servers will be populated here -->
+                    </div>
+                </div>
+
+                <div class="panel-section pentests-section">
+                    <div class="section-header">
+                        <span class="section-title">PENTEST TARGETS</span>
+                        <button id="refresh-pentests" class="icon-btn" title="Refresh">&#8635;</button>
+                    </div>
+                    <div class="pentests-list" id="pentests-list">
+                        <!-- Pentests will be populated here -->
+                        <div class="loading-indicator">Loading pentests...</div>
+                    </div>
+                </div>
+
+                <div class="panel-section pentest-details-section">
+                    <div class="section-header">
+                        <span class="section-title">PENTEST DETAILS</span>
+                    </div>
+                    <div class="pentest-details" id="pentest-details">
+                        <div class="detail-row">
+                            <span class="detail-label">ID:</span>
+                            <span class="detail-value" id="detail-id">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status:</span>
+                            <span class="detail-value" id="detail-status">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Mode:</span>
+                            <span class="detail-value" id="detail-mode">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Style:</span>
+                            <span class="detail-value" id="detail-style">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Phase:</span>
+                            <span class="detail-value" id="detail-phase">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Severity:</span>
+                            <span class="detail-value" id="detail-severity">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Findings:</span>
+                            <span class="detail-value" id="detail-findings">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Created:</span>
+                            <span class="detail-value" id="detail-created">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Started:</span>
+                            <span class="detail-value" id="detail-started">---</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Finished:</span>
+                            <span class="detail-value" id="detail-finished">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section connection-section">
+                    <div class="section-header">
+                        <span class="section-title">CONNECTION STATUS</span>
+                    </div>
+                    <div class="connection-status">
+                        <div class="connection-indicator">
+                            <svg class="globe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"/>
+                                <ellipse cx="12" cy="12" rx="10" ry="4"/>
+                                <path d="M12 2v20"/>
+                                <path d="M2 12h20"/>
+                                <path d="M4.93 4.93c4.08 2.4 10.06 2.4 14.14 0"/>
+                                <path d="M4.93 19.07c4.08-2.4 10.06-2.4 14.14 0"/>
+                            </svg>
+                            <span class="status-text" id="connection-text">Disconnected</span>
+                            <span class="country-name" id="server-country">---</span>
+                        </div>
+                        <div class="server-info">
+                            <span class="server-label">SERVER</span>
+                            <span class="server-address" id="server-address">---</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel - Console Output & Input -->
+            <main class="center-panel">
+                <div class="panel-section console-output-section">
+                    <div class="section-header">
+                        <span class="section-title">CONSOLE OUTPUT</span>
+                        <div class="header-actions">
+                            <button id="new-tab" class="icon-btn" title="New Tab">+</button>
+                            <button id="clear-console" class="icon-btn" title="Clear">CLR</button>
+                            <button id="toggle-autoscroll" class="icon-btn active" title="Auto-scroll">AUTO</button>
+                        </div>
+                    </div>
+                    <!-- Tab Bar -->
+                    <div class="console-tabs" id="console-tabs">
+                        <div class="tab active" data-tab-id="main">
+                            <span class="tab-title">MAIN</span>
+                        </div>
+                    </div>
+                    <!-- Tab Content Container -->
+                    <div class="console-tabs-content" id="console-tabs-content">
+                        <div class="console-output active" id="console-output-main" data-tab-id="main">
+                            <div class="console-line system">ThreatWinds Pentest Terminal initialized...</div>
+                            <div class="console-line system">Type 'help' for available commands.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span class="progress-text" id="progress-text">0%</span>
+                </div>
+
+                <div class="panel-section console-input-section">
+                    <div class="console-input-wrapper">
+                        <span class="prompt">twpt&gt;</span>
+                        <div class="input-autocomplete-container">
+                            <input type="text" id="console-input" class="console-input" placeholder="Enter command..." autocomplete="off">
+                            <span class="autocomplete-suggestion" id="autocomplete-suggestion"></span>
+                        </div>
+                    </div>
+                    <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
+                </div>
+            </main>
+
+            <!-- Right Panel - Chat & Actions -->
+            <aside class="right-panel">
+                <!-- Pentest Chat Section -->
+                <div class="panel-section chat-section">
+                    <div class="section-header">
+                        <span class="section-title">PENTEST ASSISTANT</span>
+                        <button id="clear-chat" class="icon-btn" title="Clear Chat">CLR</button>
+                    </div>
+                    <div class="chat-context" id="chat-context">
+                        <span class="context-label">Context:</span>
+                        <span class="context-value" id="chat-pentest-context">No pentest selected</span>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message assistant">
+                            <div class="message-content">
+                                Welcome! Select a completed pentest to ask questions about its findings, vulnerabilities, and recommendations.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-section">
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="chat-input" class="chat-input" placeholder="Ask about this pentest..." autocomplete="off" disabled>
+                            <button id="chat-send" class="chat-send-btn" title="Send" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Section -->
+                <div class="panel-section actions-section">
+                    <div class="section-header">
+                        <span class="section-title">QUICK ACTIONS</span>
+                    </div>
+                    <div class="quick-actions">
+                        <button class="action-btn" id="btn-new-pentest" title="New Pentest">
+                            <span class="btn-icon">+</span>
+                            <span class="btn-text">NEW</span>
+                        </button>
+                        <button class="action-btn" id="btn-watch" title="Watch Pentest">
+                            <span class="btn-icon">&#9654;</span>
+                            <span class="btn-text">WATCH</span>
+                        </button>
+                        <button class="action-btn" id="btn-stop" title="Stop">
+                            <span class="btn-icon">&#9632;</span>
+                            <span class="btn-text">STOP</span>
+                        </button>
+                        <button class="action-btn" id="btn-export" title="Export Report">
+                            <span class="btn-icon">&#8681;</span>
+                            <span class="btn-text">EXPORT</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-left">
+                <span class="footer-text">ThreatWinds Pentest CLI</span>
+            </div>
+            <div class="footer-center">
+                <span class="version" id="version-info">v1.0.0</span>
+            </div>
+            <div class="footer-right">
+                <span class="footer-status" id="footer-status">Ready</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- New Pentest Modal -->
+    <div class="modal" id="new-pentest-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">SCHEDULE NEW PENTEST</span>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="target-input">Target:</label>
+                    <input type="text" id="target-input" class="form-input" placeholder="example.com">
+                </div>
+                <div class="form-group">
+                    <label for="scope-select">Scope:</label>
+                    <select id="scope-select" class="form-select">
+                        <option value="TARGETED">TARGETED</option>
+                        <option value="HOLISTIC">HOLISTIC</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="type-select">Type:</label>
+                    <select id="type-select" class="form-select">
+                        <option value="BLACK_BOX">BLACK BOX</option>
+                        <option value="WHITE_BOX">WHITE BOX</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="style-select">Style:</label>
+                    <select id="style-select" class="form-select">
+                        <option value="AGGRESSIVE">AGGRESSIVE</option>
+                        <option value="SAFE">SAFE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="playbook-select">Playbook (optional):</label>
+                    <select id="playbook-select" class="form-select">
+                        <option value="">None (Standard Pentest)</option>
+                    </select>
+                    <span class="form-hint">Custom pentest methodology</span>
+                </div>
+                <div class="form-group">
+                    <label for="memory-select">Memory Context:</label>
+                    <select id="memory-select" class="form-select" multiple size="3">
+                    </select>
+                    <span class="form-hint">Hold Ctrl/Cmd to select multiple</span>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="exploit-checkbox" checked>
+                        Enable Exploitation
+                    </label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-default-memory" checked>
+                        Include default memory (memory/default.md)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">CANCEL</button>
+                <button class="btn btn-primary" id="modal-submit">EXECUTE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credentials Modal (shown on first use) -->
+    <div class="modal" id="credentials-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">API CREDENTIALS REQUIRED</span>
+            </div>
+            <div class="modal-body">
+                <p class="modal-info">Enter your ThreatWinds API credentials to continue.</p>
+                <div class="form-group">
+                    <label for="cred-api-key">API Key:</label>
+                    <input type="text" id="cred-api-key" class="form-input" placeholder="Enter API key">
+                </div>
+                <div class="form-group">
+                    <label for="cred-api-secret">API Secret:</label>
+                    <input type="password" id="cred-api-secret" class="form-input" placeholder="Enter API secret">
+                </div>
+                <div class="form-group">
+                    <label for="cred-server-host">Server Host:</label>
+                    <input type="text" id="cred-server-host" class="form-input" placeholder="localhost" value="localhost">
+                </div>
+                <div class="form-group">
+                    <label for="cred-server-port">Server Port:</label>
+                    <input type="text" id="cred-server-port" class="form-input" placeholder="9741" value="9741">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="cred-submit">CONNECT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Server Modal -->
+    <div class="modal" id="add-server-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">ADD SERVER CONNECTION</span>
+                <button class="modal-close" id="server-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="server-name">Server Name:</label>
+                    <input type="text" id="server-name" class="form-input" placeholder="Production Server">
+                </div>
+                <div class="form-group">
+                    <label for="server-host">Host:</label>
+                    <input type="text" id="server-host" class="form-input" placeholder="example.com">
+                </div>
+                <div class="form-group">
+                    <label for="server-port">API Port:</label>
+                    <input type="text" id="server-port" class="form-input" placeholder="9741" value="9741">
+                </div>
+                <div class="form-group">
+                    <label for="server-grpc-port">gRPC Port:</label>
+                    <input type="text" id="server-grpc-port" class="form-input" placeholder="9742" value="9742">
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="server-use-existing-creds" checked>
+                        Use existing credentials
+                    </label>
+                </div>
+                <div id="server-new-creds" style="display: none;">
+                    <div class="form-group">
+                        <label for="server-api-key">API Key:</label>
+                        <input type="text" id="server-api-key" class="form-input" placeholder="Enter API key">
+                    </div>
+                    <div class="form-group">
+                        <label for="server-api-secret">API Secret:</label>
+                        <input type="password" id="server-api-secret" class="form-input" placeholder="Enter API secret">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="server-modal-cancel">CANCEL</button>
+                <button class="btn btn-primary" id="server-modal-submit">ADD SERVER</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
