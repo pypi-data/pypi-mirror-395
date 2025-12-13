@@ -1,0 +1,79 @@
+@startuml
+  participant LOADERS as "Loaders"
+  participant STORAGE as "Graph Storage"
+  participant JOURNAL as "Journal"
+  participant IDX_ORIG_META as "Origin Metadata Indexer"
+  participant IDX_ORIG_HEAD as "Origin-Head Indexer"
+  participant IDX_DIR_META as "Directory Metadata Indexer"
+  participant IDX_CONT_META as "Content Metadata Indexer"
+  participant IDX_STORAGE as "Indexer Storage"
+  participant OBJ_STORAGE as "Object Storage"
+
+  activate OBJ_STORAGE
+  activate IDX_STORAGE
+  activate STORAGE
+  activate JOURNAL
+  activate IDX_ORIG_META
+
+  activate LOADERS
+
+  LOADERS->>STORAGE: Repository content
+  LOADERS->>STORAGE: Origin http://example.org/repo.git\nwas added/revisited
+  STORAGE->>JOURNAL: Origin http://example.org/repo.git\nwas added/revisited
+  deactivate LOADERS
+
+  JOURNAL->>IDX_ORIG_META: run indexers on origin\nhttp://example.org/repo.git
+
+  IDX_ORIG_META->>IDX_ORIG_HEAD: Find HEAD revision of\nhttp://example.org/repo.git
+  activate IDX_ORIG_HEAD
+
+  IDX_ORIG_HEAD->>STORAGE: snapshot_get_latest(origin="http://example.org/repo.git")
+
+  STORAGE->>IDX_ORIG_HEAD: branches
+
+  IDX_ORIG_HEAD->>IDX_ORIG_META: run Revision Metadata Indexer\non revision 42abcdef (head of origin\nhttp://example.org/repo.git)
+  deactivate IDX_ORIG_HEAD
+
+  IDX_ORIG_META->>STORAGE: revision_get(sha1=42abcdef)
+  STORAGE->>IDX_ORIG_META: {id: 42abcdef, message: "Commit message", directory: 456789ab, ...}
+
+  IDX_ORIG_META->>IDX_DIR_META: Index directory 456789ab\n(head of origin http://example.org/repo.git)
+  activate IDX_DIR_META
+
+  IDX_DIR_META->>STORAGE: directory_ls(sha1=456789ab)
+  STORAGE->>IDX_DIR_META: [{id: 1234cafe, name: "package.json", type: file, ...}, {id: cafe4321, name: "README", type: file, ...}, ...]
+
+  IDX_DIR_META->>IDX_DIR_META: package.json is a metadata file
+
+  IDX_DIR_META->>IDX_STORAGE: content_metadata_get(sha1=1234cafe)
+  IDX_STORAGE->>IDX_DIR_META: none / {author: "Jane Doe", ...}
+
+  alt If the storage answered "none"
+    IDX_DIR_META->>IDX_CONT_META: Index file 1234cafe as an NPM metadata file
+    activate IDX_CONT_META
+
+    IDX_CONT_META->>OBJ_STORAGE: content_get 1234cafe
+
+    OBJ_STORAGE->>IDX_CONT_META: raw content is: '{"name": "FooPackage", "author": "Jane Doe"...'
+
+    IDX_CONT_META->>IDX_CONT_META: "Jane Doe" is the author
+
+    IDX_CONT_META->>IDX_STORAGE: content_metadata_add(sha1=1234cafe, {author: "Jane Doe", ...})
+    IDX_STORAGE->>IDX_CONT_META: ok
+
+    IDX_CONT_META->>IDX_DIR_META: extracted: {author: "Jane Doe", ...}
+    deactivate IDX_CONT_META
+
+    IDX_DIR_META->>IDX_STORAGE: directory_metadata_add(sha1=456789ab, {author: "Jane Doe", ...})
+    IDX_STORAGE->>IDX_DIR_META: ok
+  end
+
+  IDX_DIR_META->>IDX_ORIG_META: extracted: {author: "Jane Doe", ...}
+  deactivate IDX_DIR_META
+
+  IDX_ORIG_META->>IDX_STORAGE: origin_metadata_add(id="http://example.org/repo.git", {author: "Jane Doe", ...}, from_directory=456789ab)
+  IDX_STORAGE->>IDX_ORIG_META: ok
+  deactivate IDX_ORIG_META
+
+
+@enduml
