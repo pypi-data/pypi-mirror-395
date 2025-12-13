@@ -1,0 +1,35 @@
+[flask.commands]
+tokens = invenio_oauth2server.cli:tokens
+
+[invenio_admin.views]
+invenio_oauth2server_clients_adminview = invenio_oauth2server.admin:oauth2server_clients_adminview
+invenio_oauth2server_tokens_adminview = invenio_oauth2server.admin:oauth2server_tokens_adminview
+
+[invenio_base.api_apps]
+invenio_oauth2server = invenio_oauth2server:InvenioOAuth2Server
+invenio_oauth2server_rest = invenio_oauth2server:InvenioOAuth2ServerREST
+
+[invenio_base.apps]
+invenio_oauth2server = invenio_oauth2server:InvenioOAuth2Server
+
+[invenio_base.blueprints]
+invenio_oauth2server = invenio_oauth2server.views.server:blueprint
+invenio_oauth2server_settings = invenio_oauth2server.views.settings:blueprint
+
+[invenio_base.finalize_app]
+invenio_oauth2server = invenio_oauth2server.ext:finalize_app
+
+[invenio_base.secret_key]
+invenio_oauth2server = invenio_oauth2server.utils:rebuild_access_tokens
+
+[invenio_db.alembic]
+invenio_oauth2server = invenio_oauth2server:alembic
+
+[invenio_db.models]
+invenio_oauth2server = invenio_oauth2server.models
+
+[invenio_i18n.translations]
+messages = invenio_oauth2server
+
+[invenio_oauth2server.scopes]
+oauth_email = invenio_oauth2server.scopes:email_scope
