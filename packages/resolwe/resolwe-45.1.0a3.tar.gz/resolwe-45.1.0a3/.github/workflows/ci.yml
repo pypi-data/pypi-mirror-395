@@ -1,0 +1,107 @@
+name: Resolwe CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+
+  pull_request:
+  schedule:
+    - cron: "30 2 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    env:
+      RESOLWE_COMMUNICATOR_IMAGE: "resolwe/com:testing"
+
+    runs-on: public-docker-runner
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toxenv: "py312"
+            description: "Unit tests (Python 3.12)"
+          - toxenv: "py313"
+            description: "Unit tests (Python 3.13)"
+          - toxenv: "py314"
+            description: "Unit tests (Python 3.14)"
+          - toxenv: "linters"
+            description: "Linters (Python 3.14)"
+          - toxenv: "packaging"
+            description: "Packaging (Python 3.14)"
+          - toxenv: "migrations"
+            description: "Migrations (Python 3.14)"
+    name: ${{ matrix.description }}
+
+    services:
+      postgres: 
+        image: public.ecr.aws/docker/library/postgres:16
+        ports:
+          - 55432:5432
+        env:
+          POSTGRES_USER: resolwe
+          POSTGRES_DB: resolwe
+          POSTGRES_PASSWORD: resolwe
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: public.ecr.aws/docker/library/redis:7-alpine
+        ports:
+          - 56379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build communication container
+        if: matrix.toxenv == 'py312' || matrix.toxenv == 'py313' || matrix.toxenv == 'py314'
+        working-directory: ./resolwe/flow/docker_images
+        run: docker build -f Dockerfile.communication -t ${{ env.RESOLWE_COMMUNICATOR_IMAGE }} ../../
+
+      - name: ${{ matrix.description }}
+        env:  
+          GITHUB_ACTIONS_DEBUG: ${{ runner.debug || false }}
+        run: |
+          tox -e ${{ matrix.toxenv }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: startsWith(github.ref, 'refs/tags') && (matrix.toxenv == 'py312' || matrix.toxenv == 'py313' || matrix.toxenv == 'py314')
+        with:
+          files: .coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          
+  build:
+    runs-on: public-docker-runner
+    needs: test
+
+    permissions:
+      id-token: write
+      contents: read
+
+    if: startsWith(github.ref, 'refs/tags')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build a binary wheel and a source tarball
+        run: uv build
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,0 +1,91 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGISTRY: public.ecr.aws/genialis
+  AWS_IAM_ROLE: ${{ vars.AWS_IAM_ROLE }}
+  AWS_REGION: us-east-1
+  PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  build:
+    env:
+      TAGS:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [fedora-40, ubuntu-24.04, communication]
+        include:
+          - image: fedora-40
+            context: resolwe/toolkit/docker_images/base/
+            file: resolwe/toolkit/docker_images/base/Dockerfile.fedora-40
+            repository: resolwe/base
+            suffix: -fedora
+          - image: ubuntu-24.04
+            context: resolwe/toolkit/docker_images/base/
+            file: resolwe/toolkit/docker_images/base/Dockerfile.ubuntu-24.04
+            repository: resolwe/base
+            suffix: ""
+          - image: communication
+            context: resolwe/
+            file: resolwe/flow/docker_images/Dockerfile.communication
+            repository: resolwe/com
+            suffix: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_IAM_ROLE }}
+          role-session-name: GithubOIDCSession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Public ECR
+        uses: docker/login-action@v3
+        with:
+          registry: public.ecr.aws
+
+      - name: Generate tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.AWS_REGISTRY }}/${{ matrix.repository }}
+          flavor: |
+            latest=false
+            suffix=${{ matrix.suffix }}
+
+          tags: |
+            type=raw,value=latest${{ matrix.suffix }}
+            type=pep440,pattern={{version}}
+            type=raw,value=staging,enable=${{ startsWith(github.ref, 'refs/tags') }}
+            type=match,group=1,value=${{ github.ref }}stable,pattern=refs/tags/[0-9]+\.[0-9]+\.[0-9]+(stable)$
+
+      - name: Build and push tagged image ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        if: tojson(steps.meta.outputs.tags) != '[]'
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
