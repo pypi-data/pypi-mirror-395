@@ -1,0 +1,359 @@
+# Changelog
+
+All notable changes to prism-view will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [Unreleased]
+
+---
+
+## [1.0.0] - 2025-12-07
+
+### Added
+- **Packaging & Distribution (Iteration 14)**
+  - VERSION 1.0.0 - First stable release
+  - LICENSE file (MIT)
+  - GitHub Actions CI/CD workflows:
+    - `test.yml` - Tests on Python 3.10-3.12, Ubuntu/Windows/macOS
+    - `publish.yml` - Automated PyPI publishing on release
+  - Build configuration:
+    - Source distribution and wheel builds
+    - Proper package exclusions (.claude/, .venv/, etc.)
+  - Updated README with badges (PyPI, tests, license)
+  - Development status: Production/Stable
+
+- **Documentation & Examples (Iteration 13)**
+  - Comprehensive example files:
+    - `01_basic_logging.py` - Getting started with logging, log levels, dev/prod modes
+    - `02_custom_errors.py` - Creating custom error classes with codes and recovery hints
+    - `03_context_tracking.py` - Using LogContext for request, user, session tracking
+    - `04_secret_scrubbing.py` - Automatic PII/secret redaction
+    - `05_custom_palette.py` - Color themes, emojis, and box drawing characters
+    - `06_error_recovery.py` - Retry logic, circuit breakers, error cause chains
+    - `07_batch_processing.py` - Batch context, chunked processing, transactions
+  - Framework integration examples:
+    - `fastapi_middleware.py` - FastAPI with middleware and exception handlers
+    - `flask_integration.py` - Flask with request hooks and error handlers
+  - Examples README with quick start guide
+  - All modules have comprehensive Google-style docstrings
+  - Usage examples in docstrings for all public APIs
+
+- **Property-Based Testing (Iteration 12)**
+  - Comprehensive property tests using Hypothesis:
+    - Error serialization: Any PrismError serializes to valid dict/JSON
+    - Context propagation: Context always propagates and never leaks
+    - Scrubber: Never leaks secrets, always valid JSON, idempotent
+    - Logger: Never crashes, JSON always parseable, output printable
+    - Duration tracking: Always non-negative, accurate, no overflow
+  - Edge case tests:
+    - Messages of any length
+    - Deeply nested structures
+    - Multiple nested context levels
+  - Fixed edge case: Reserved context keys now properly filtered
+- 19 property tests (465 total tests)
+
+- **Integration & Setup (Iteration 11)**
+  - `setup_logging()` function for one-call initialization:
+    - Sets global mode (dev vs prod)
+    - Loads palette
+    - Displays VIEW LOADED banner (dev mode)
+    - Accepts optional configuration dict
+  - `PrismHandler` for stdlib logging integration:
+    - Works with Python's logging module
+    - Dev mode: Pretty colored output
+    - Prod mode: JSON output
+    - Includes LogContext in log messages
+    - Respects log level filtering
+  - `@operation` decorator for function tracking:
+    - Sets operation context automatically
+    - Tracks execution duration
+    - Works with sync and async functions
+    - Optional on_complete callback
+    - Preserves function signature
+  - Golden path tests validating end-to-end workflow
+  - FastAPI middleware example (`examples/fastapi_middleware.py`):
+    - Request context with trace_id
+    - User context from headers
+    - Exception formatting
+    - Trace ID in responses
+  - Flask integration example (`examples/flask_integration.py`):
+    - Request hooks for context
+    - Error handlers
+    - Operation tracking decorator
+- 40 comprehensive tests for integration (446 total)
+
+- **Exception Formatter (Iteration 10)**
+  - `ExceptionFormatter` class for formatting exceptions:
+    - Dev mode: Beautiful, colorful, human-readable output
+    - Prod mode: JSON output for production logging
+  - Dev mode features:
+    - Error type with emoji and color
+    - Error code and category badge
+    - Formatted message
+    - Details section
+    - Suggestions with arrows
+    - Cause chain with tree visualization
+    - Root cause highlighting
+    - Location/stack info (file, line, function)
+    - Recovery hints (retryable, max_retries, delay)
+    - Documentation URL
+  - Prod mode features:
+    - Single-line JSON output
+    - All error fields included
+    - No colors, emojis, or stack traces
+    - No debug info (security)
+  - `format_exception(exc, mode, ...)` convenience function
+  - `handle_exception(exc, mode, ...)` utility for exception handlers
+  - Respects NO_COLOR environment variable
+  - Full support for standard Python exceptions
+  - Palette integration for colors and emojis
+- 45 comprehensive tests for formatter (406 total)
+
+- **Console Display Utilities (Iteration 9)**
+  - `console_table(data, ...)` function:
+    - Renders data as formatted console tables
+    - Supports list of dicts or list of lists
+    - Optional title, headers, and styling
+    - Box drawing styles: single, double, rounded, ascii
+    - Palette integration for colors
+    - Auto-detects numeric columns for right alignment
+    - Custom alignment per column (left, right, center)
+    - Column width constraints (max_col_width, max_width)
+  - `display_width(text)` function:
+    - Calculates display width of Unicode strings
+    - Handles ASCII (width 1), CJK (width 2), emojis (width 2)
+    - Zero-width characters and variation selectors (width 0)
+  - `pad_to_width(text, width, align)` function:
+    - Pads strings to target display width
+    - Supports left, right, center alignment
+  - `truncate_to_width(text, max_width, suffix)` function:
+    - Truncates strings to max display width
+    - Adds suffix (default "...") when truncated
+  - `render_banner(palette, use_color, show_version)` function:
+    - Renders PRISM ASCII art banner
+    - "VIEW LOADED (vX.X.X)" subtitle
+    - Vaporwave gradient colors (pink -> cyan)
+    - Respects NO_COLOR environment variable
+    - Custom palette support
+- 41 comprehensive tests for display utilities (361 total)
+
+- **Palette System (Iteration 8)**
+  - `Palette` dataclass for colors, emojis, and styles:
+    - `colors`: Dict of ANSI 256 color codes (0-255)
+    - `emojis`: Dict of emoji/text symbols
+    - `styles`: Dict of style settings (box style, etc.)
+  - `load_palette(path)` function:
+    - Loads palette from TOML file
+    - Caches based on file mtime (invalidates on change)
+    - Falls back to default palette if file missing
+    - Merges with defaults for missing sections
+  - `get_palette(name)` for built-in palettes:
+    - "vaporwave": Pink/cyan aesthetic (default)
+    - "monochrome": Grayscale for production
+    - "solarized-dark": Solarized dark theme
+    - "high-contrast": High contrast for accessibility
+  - `colorize(text, color, palette)` function:
+    - Applies ANSI 256 colors to text
+    - Accepts color code (int) or name (str) from palette
+    - Respects NO_COLOR environment variable
+  - `get_emoji(name, palette, use_emoji)` function:
+    - Returns emoji from palette or ASCII fallback
+    - Graceful fallback when emoji not supported
+  - `get_box_chars(style)` function:
+    - Returns box drawing characters for table/border rendering
+    - Styles: single, double, rounded, ascii
+  - `should_use_color(stream)` utility:
+    - Checks NO_COLOR env var (disables colors)
+    - Checks FORCE_COLOR env var (forces colors)
+    - Falls back to TTY detection
+  - Logger integration:
+    - `Logger(palette=...)` parameter for custom palettes
+    - Uses palette colors and emojis in dev mode output
+    - Falls back to defaults if no palette specified
+- 36 comprehensive tests for palette (320 total)
+
+- **Secret Scrubber (Iteration 7)**
+  - `Scrubber` class for automatic PII/secret redaction:
+    - Key-based scrubbing: password, secret, token, api_key, credential, auth
+    - Pattern-based scrubbing: JWT tokens, credit cards, AWS keys
+    - Case-insensitive key detection
+    - Deep scrubbing for nested dicts and lists
+    - Non-mutating (creates copies, never modifies original)
+  - `scrub(data)` convenience function:
+    - Uses module-level `default_scrubber` instance
+  - Extensible pattern system:
+    - `add_key_pattern(key)` for custom sensitive keys
+    - `add_value_pattern(name, regex, replacement)` for custom value patterns
+  - Logger integration:
+    - Logger automatically scrubs context and extra fields
+    - Logger scrubs error details
+    - Scrubbing can be disabled via `Logger(scrub=False)`
+  - Default patterns detect:
+    - Passwords, secrets, tokens, API keys, credentials
+    - JWT tokens (eyJ...)
+    - Bearer tokens
+    - AWS access keys (AKIA...)
+    - Credit card numbers
+    - password= in query strings
+- 43 comprehensive tests for scrubber (284 total)
+
+- **Logger Implementation - Prod Mode (Iteration 6)**
+  - JSON output format for production environments:
+    - Single-line JSON for each log entry
+    - Standard fields: `ts`, `level`, `logger`, `msg`
+    - Context fields flattened into top level
+    - Extra fields from kwargs included
+  - ISO 8601 timestamp formatting:
+    - UTC timezone with `Z` suffix
+    - Millisecond precision
+    - Format: `YYYY-MM-DDTHH:MM:SS.sssZ`
+  - `get_default_mode()` function:
+    - Checks `PRISM_LOG_MODE` environment variable
+    - Supports `dev`, `prod`, `production` values
+    - Case-insensitive
+  - `Logger.is_prod_mode()` method:
+    - Returns True when mode is "prod"
+  - Error formatting for prod mode:
+    - Error object nested under `error` key
+    - Includes type, message, error_code, details
+    - Includes cause_chain, root_cause, recovery hints
+    - Excludes debug_info and stack trace (security)
+  - Special character handling:
+    - Unicode support (ensure_ascii=False)
+    - Proper JSON escaping for quotes, backslashes, newlines
+    - Nested dicts and None values handled
+- 45 comprehensive tests for prod mode (241 total)
+
+- **Logger Implementation - Dev Mode (Iteration 5)**
+  - `Logger` class with context integration:
+    - `info()`, `debug()`, `warn()`, `error()`, `critical()` methods
+    - Automatic `LogContext` integration in all log messages
+    - Level filtering (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    - `with_context()` for creating child loggers with bound context
+    - PrismError-aware error logging with formatted output
+  - `get_logger(name)` factory function:
+    - Caches loggers by name (same name returns same instance)
+    - Accepts optional level and mode parameters
+  - `LogLevel` enum with numeric ordering:
+    - DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
+  - Dev mode pretty formatting:
+    - Colorful output with ANSI 256 colors
+    - Emoji indicators for each log level
+    - Timestamp (HH:MM:SS.mmm format)
+    - Logger name in brackets
+    - Context fields formatted with key=value pairs
+  - PrismError formatting:
+    - Error code display
+    - Suggestions list
+    - Cause chain with tree-style display
+    - Details section
+  - Child loggers:
+    - `with_context()` creates new logger with bound fields
+    - Inherits parent name, level, and mode
+    - Bound context merged with LogContext
+- 41 comprehensive tests for logger (196 total)
+
+- **Enhanced Error Features (Iteration 4)**
+  - Automatic `LogContext` capture in `PrismError`:
+    - Captures current context (service, request, user, etc.) when error is created
+    - `context` attribute contains merged context
+    - Can be disabled via `capture_context=False`
+  - Stack information capture:
+    - `location` attribute with file, line, function, module
+    - Smart frame detection that finds actual error creation site
+    - Can be disabled via `capture_stack=False`
+  - Cause chain tracking:
+    - `cause_chain` list with all causes (type, message, error_code)
+    - `root_cause` extracts the deepest cause
+    - Follows both `PrismError.cause` and `__cause__`/`__context__`
+  - Recovery hints (class attributes):
+    - `retryable` (bool, default False)
+    - `max_retries` (int, default 0)
+    - `retry_delay_seconds` (float, default 0.0)
+    - Included in `to_dict()` under `recovery` key
+  - Debug information:
+    - `debug_info` parameter for dev-only data
+    - Excluded by default in `to_dict()`, included via `include_debug=True`
+  - Documentation URL generation:
+    - `get_docs_url()` returns URL for error documentation
+    - `docs_base_url` class attribute for customization
+    - Converts error code name to URL-friendly format
+  - Enhanced `to_dict()` serialization:
+    - Includes context, location, cause_chain, root_cause
+    - Includes recovery hints, docs_url
+    - Optionally includes debug_info
+- 40 comprehensive tests for enhanced error features (155 total)
+
+- **Error Taxonomy - Base Classes (Iteration 2)**
+  - `PrismError` base exception class with:
+    - Message, details, and suggestions
+    - Error code tuple support (number, category, name)
+    - Timestamp (UTC)
+    - Cause tracking for exception chaining
+    - `to_dict()` method for serialization
+    - `with_context()` method for fluent context addition
+    - `get_error_code()` returns formatted code like "E-CFG-001"
+    - `get_code_name()` returns the error name
+  - `ErrorCategory` with 8 standard categories:
+    - CONFIGURATION, SECURITY, DATABASE, NETWORK
+    - VALIDATION, FILESYSTEM, RUNTIME, EXTERNAL
+  - `ErrorSeverity` with 5 levels:
+    - DEBUG, INFO, WARNING, ERROR, CRITICAL
+  - `StandardErrorCode` with 37+ built-in error codes:
+    - Configuration errors (CFG): 001-006
+    - Security errors (SEC): 100-106
+    - Database errors (DB): 200-205
+    - Network errors (NET): 300-305
+    - Validation errors (VAL): 400-405
+    - Filesystem errors (FS): 500-505
+    - Runtime errors (RUN): 600-605
+    - `format()` class method for code formatting
+- 66 comprehensive tests for error taxonomy
+- **Context System - LogContext (Iteration 3)**
+  - `LogContext` class for structured context management:
+    - `set_service(name, version, environment, **kwargs)` - Global service context
+    - `get_current()` - Get merged context from all active scopes
+    - `clear()` - Clear all context (useful for testing)
+    - `request(trace_id, span_id, **kwargs)` - Request-scoped context (auto-generates trace_id)
+    - `user(user_id, **kwargs)` - User-scoped context
+    - `session(session_id, **kwargs)` - Session-scoped context
+    - `transaction(transaction_id, transaction_type, **kwargs)` - Transaction-scoped context
+    - `batch(batch_id, item_index, total_items, **kwargs)` - Batch processing context
+    - `operation(name, **kwargs)` - Operation context with automatic duration tracking
+    - `add(**kwargs)` - Add custom fields to current context
+  - Features:
+    - Uses `contextvars` for async-safe, thread-safe propagation
+    - Proper context nesting and merging
+    - Scoped custom fields (cleared when context exits)
+    - Automatic duration tracking in milliseconds for operations
+    - Full async/await support including `asyncio.gather()` and `create_task()`
+- 49 comprehensive tests for context system (115 total)
+
+---
+
+## [0.1.0] - 2025-12-06
+
+### Added
+- Project initialization
+- `pyproject.toml` with dependencies
+- Module structure:
+  - `prism.view` - Main package
+  - `prism.view.errors` - Error taxonomy subpackage
+  - `prism.view.logger` - Logger placeholder
+  - `prism.view.context` - Context management placeholder
+  - `prism.view.display` - Display utilities placeholder
+  - `prism.view.palette` - Palette system placeholder
+  - `prism.view.scrubber` - Secret scrubber placeholder
+  - `prism.view.formatter` - Exception formatter placeholder
+- Test fixtures in `conftest.py`
+- Development setup scripts for Windows and Linux/Mac
+
+---
+
+[Unreleased]: https://github.com/lukeudell/prism-view/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/lukeudell/prism-view/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/lukeudell/prism-view/releases/tag/v0.1.0
