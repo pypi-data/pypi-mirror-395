@@ -1,0 +1,164 @@
+Metadata-Version: 2.4
+Name: django-q-monitor
+Version: 0.1.0
+Summary: A REST API monitoring tool for Django Q2 queues
+Author-email: Alex Previato <245272337+previa1998@users.noreply.github.com>
+License: MIT License
+        
+        Copyright (c) 2025 Alex Previato
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/previa1998/django-q-monitor
+Project-URL: Source, https://github.com/previa1998/django-q-monitor
+Project-URL: Bug Tracker, https://github.com/previa1998/django-q-monitor/issues
+Keywords: django,django-q,monitoring,tasks,queue,api,rest-framework
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 4.0
+Classifier: Framework :: Django :: 5.0
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: django>=4.0
+Requires-Dist: djangorestframework
+Requires-Dist: django-q2
+Dynamic: license-file
+
+# 🛡️ Django Q Monitor
+
+A reusable Django app that provides a complete **REST API** to monitor and manage **Django Q2** tasks, schedules, and failures.
+
+It decouples the monitoring logic from the backend, allowing you to build custom dashboards (React, Vue, Mobile) without exposing the Django Admin.
+
+---
+
+## 🚀 Features
+
+* **Task Monitoring:** View execution history, status, args, and results.
+* **Schedules:** View upcoming scheduled tasks (Cron/Repeated).
+* **Failures:** Dedicated endpoint for failed tasks.
+* **Interactivity:**
+    * 🔄 **Retry:** Re-queue failed or finished tasks directly via API.
+    * 🧹 **Cleanup:** Delete old tasks to free up database space.
+* **Standard JSON:** Built on Django REST Framework.
+
+---
+
+## 📦 Installation
+
+### 1. Install the package
+
+You can install it directly from the source (or PyPI if published):
+```bash
+pip install django-q-monitor
+# OR via git for the latest version
+pip install git+https://github.com/YOUR_USERNAME/django-q-monitor.git
+```
+
+### 2. Add to Installed Apps
+
+Add `q_monitor` and `rest_framework` to your `settings.py`:
+```python
+INSTALLED_APPS = [
+    ...
+    'rest_framework',
+    'django_q',
+    'q_monitor',  # <--- Add this
+]
+```
+
+### 3. Include URLs
+
+Map the API endpoints in your project's `urls.py`:
+```python
+from django.urls import path, include
+
+urlpatterns = [
+    ...
+    path('api/monitor/', include('q_monitor.urls')),
+]
+```
+
+---
+
+## 🔌 API Reference
+
+By default, endpoints are restricted to Admin users (`IsAdminUser`).
+
+### Tasks
+
+| Method   | Endpoint                        | Description                                  |
+|----------|---------------------------------|----------------------------------------------|
+| `GET`    | `/api/monitor/tasks/`           | List all tasks (ordered by start time).      |
+| `GET`    | `/api/monitor/tasks/{id}/`      | Retrieve task details.                       |
+| `POST`   | `/api/monitor/tasks/{id}/retry/`| Action: Re-queue the task with original args.|
+| `DELETE` | `/api/monitor/tasks/cleanup/`   | Action: Delete all finished/failed tasks.    |
+
+### Schedules
+
+| Method | Endpoint                      | Description                  |
+|--------|-------------------------------|------------------------------|
+| `GET`  | `/api/monitor/schedules/`     | List all scheduled jobs.     |
+| `GET`  | `/api/monitor/schedules/{id}/`| Retrieve schedule details.   |
+
+### Failures
+
+| Method | Endpoint                   | Description               |
+|--------|----------------------------|---------------------------|
+| `GET`  | `/api/monitor/failures/`   | List only failed tasks.   |
+
+---
+
+## ⚙️ Configuration
+
+No extra configuration is needed if Django Q is already set up. The API respects your existing `Q_CLUSTER` settings.
+
+---
+
+## 🛠️ Development
+
+To run this package locally within another project:
+
+1. Clone the repo.
+2. Install in editable mode:
+```bash
+pip install -e /path/to/django-q-monitor
+```
+
+---
+
+## 📄 License
+
+MIT License - feel free to use and modify as needed.
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+
+---
+
+## 📧 Contact
+
+For questions or support, please open an issue on GitHub.
