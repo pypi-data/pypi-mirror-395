@@ -1,0 +1,1 @@
+export { default as component } from "../../../../src/routes/projects/[project_id]/shf/+page.svelte";
