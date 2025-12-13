@@ -1,0 +1,26 @@
+print("****************************hill climbing*****************************************")
+
+print("import math")
+print("import random")
+print("import matplotlib.pyplot as plt\n")
+
+print("def objective_function(x):")
+print("    return -x**2 + 4*x - 4\n")
+
+print("def hill_climbing(max_iterations=100, step_size=0.1):")
+print("    current_solution = random.uniform(-10, 10)  # Random initial solution")
+print("    for _ in range(max_iterations):")
+print("        current_value = objective_function(current_solution)  # Evaluate current solution")
+print("        neighbor_solution = current_solution + random.uniform(-step_size, step_size)  # Generate neighbor solution")
+print("        neighbor_value = objective_function(neighbor_solution)  # Evaluate neighbor solution")
+print("        if neighbor_value > current_value:  # If neighbor is better, move to it")
+print("            current_solution = neighbor_solution")
+print("    return current_solution, objective_function(current_solution)\n")
+
+print("if __name__ == '__main__':")
+print("    max_iterations = 100")
+print("    step_size = 0.1")
+print("    best_solution, best_value = hill_climbing(max_iterations, step_size)")
+print("    print(f'Best solution: {best_solution}')")
+print("    print(f'Best value: {best_value}')")
+print("*********************************************************************************")

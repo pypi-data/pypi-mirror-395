@@ -1,0 +1,18 @@
+print("****************************Towers of Hanoi*****************************************")
+
+print("def towers_of_hanoi(n, source_rod, target_rod, auxiliary_rod):")
+print("    if n == 1:")
+print("        print(f'Move disk 1 from {source_rod} to {target_rod}')")
+print("        return")
+print("    towers_of_hanoi(n - 1, source_rod, auxiliary_rod, target_rod)")
+print("    print(f'Move disk {n} from {source_rod} to {target_rod}')")
+print("    towers_of_hanoi(n - 1, auxiliary_rod, target_rod, source_rod)\n")
+
+print("if __name__ == '__main__':")
+print("    num_disks = 3")
+print("    source_rod = 'A'")
+print("    target_rod = 'C'")
+print("    auxiliary_rod = 'B'")
+print("    print(f'Solving Towers of Hanoi for {num_disks} disks:')")
+print("    towers_of_hanoi(num_disks, source_rod, target_rod, auxiliary_rod)")
+print("*********************************************************************************")
