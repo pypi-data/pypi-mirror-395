@@ -1,0 +1,38 @@
+name: Python Test System
+
+# 언제 로봇이 출동할지 정합니다.
+on:
+  push:
+    branches: [ "main" ]       # main에 코드가 푸시될 때
+  pull_request:
+    branches: [ "main" ]       # main으로 가는 PR이 열릴 때
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest     # 최신 리눅스 환경을 빌려옵니다.
+
+    steps:
+    # 1. 우리 저장소의 코드를 내려받습니다.
+    - uses: actions/checkout@v3
+
+    # 2. 파이썬 환경을 세팅합니다 (3.9 버전 사용).
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    # 3. 필요한 라이브러리(pytest)를 설치합니다.
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        # 만약 requirements.txt가 있다면 설치 (없으면 패스)
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # 4. 테스트를 실행합니다. (우리가 터미널에 치던 그 명령어!)
+    - name: Run tests with pytest
+      run: |
+        pytest

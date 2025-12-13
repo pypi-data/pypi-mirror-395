@@ -1,0 +1,15 @@
+Welcome to Word Frequency Lib's documentation!
+==============================================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   modules
+
+Indices and tables
+==================
+
+* :ref:
+* :ref:
+* :ref:
