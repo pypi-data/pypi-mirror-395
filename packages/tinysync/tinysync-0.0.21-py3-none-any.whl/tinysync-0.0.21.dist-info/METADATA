@@ -1,0 +1,126 @@
+Metadata-Version: 2.4
+Name: tinysync
+Version: 0.0.21
+Summary: TinySync is a two-path (bi-direction) synchronization algorithm implemented in pure Python that can synchronize files between any two kinds of backends.
+Home-page: https://github.com/HengyueLi/tinysync
+License: LICENSE.md
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-python
+Dynamic: summary
+
+# TinySync README
+
+# TinySync
+
+TinySync is a two-way synchronization algorithm implemented in pure Python, enabling file synchronization between any two types of **backends**. A **backend** can be a local file system, a WebDAV server, or any other user-defined storage medium. The synchronization algorithm is adapted from the [syncrclone](https://github.com/Jwink3101/syncrclone) project. In principle, this project is compatible with all operating systems, though most testing has been performed on Ubuntu.
+
+# Installation
+
+```bash
+
+pip install tinysync
+```
+
+# Examples
+
+## Synchronization between Local Directory and WebDAV
+
+This example illustrates how to synchronize a remote WebDAV storage with a local directory.
+
+```python
+
+import tinysync
+
+
+# set a local dir
+backendA = tinysync.backend.LocalFS(dirPath="/home/XXX/Desktop/p1")
+
+
+# set another backend on webdav
+options = {'webdav_hostname': "...",'webdav_login': "...",'webdav_password':"..."}
+backendB = tinysync.backend._WebDAV(dirPath='p2',options=options)
+
+
+# run sync method
+tinysync.synchronization(backendA,backendB)
+
+```
+
+## Synchronization between Local Directory and SSH Server
+
+This example demonstrates file synchronization between a local directory and a remote directory on an SSH server.
+
+```python
+import tinysync
+
+# set one backend
+config={"hostname":'...',"username":'...',"password":'...',}
+remote_path = '/home/user/path'  # the remote directory to list
+backendA = tinysync.backend.NixSSH(dirPath=remote_path,paramikoConfig=config)
+
+
+# set another backend 
+options = {'webdav_hostname':"...",'webdav_login':"...",'webdav_password':"...",}
+backendB = tinysync.backend._WebDAV(dirPath='p2',options=options)
+
+
+# run sync method
+tinysync.synchronization(backendA,backendB)
+
+```
+
+## Synchronization between Any Two Backends
+
+This feature supports synchronization between any two remote storage locations. The machine executing this code acts as a "working machine" and does not retain any information about the two backends. All state data is stored on the backend side.
+
+## Other Backends
+
+Rclone example:
+
+```python
+rclone = tinysync.backend.Rclone(dirPath="disk:path/to/here")
+```
+
+# User-defined Backend
+
+For general use cases, you can define a custom backend interface by creating a new backend class. Detailed methods and implementation examples are available in `tinysync.backend.abc`.
+
+```python
+
+from tinysync.backend.abc import Backend
+
+class YourBackend(Backend):
+    
+    def __init__(...):
+        ...
+
+
+    def listPath(self,...):
+        ...
+
+    ...
+
+```
+
+# Notice
+
+Do NOT delete the workdir (default: .tinysync) from one backend while retaining it on the other. This will result in the deletion of all files in the backend where the workdir was retained. This behavior, inherited from [syncrclone](https://github.com/Jwink3101/syncrclone), is not ideal, but it will not be modified. To perform a full resynchronization, it is safe to delete the workdir from both backends.
+
+# Currently Implemented Backends
+
+- `tinysync.backend.LocalFS`
+
+- `tinysync.backend._WebDAV`
+
+- `tinysync.backend.NixSSH`
+
+- `tinysync.backend.FTP` (Example: `FTP(dirPath="", host='127.0.0.1', username='123', password='456')`)
+
+- `tinysync.backend.Rclone` (consider using [syncrclone](https://github.com/Jwink3101/syncrclone))
+
+More backends coming soon...
