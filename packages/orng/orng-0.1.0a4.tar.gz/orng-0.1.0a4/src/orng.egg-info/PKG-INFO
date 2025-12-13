@@ -1,0 +1,122 @@
+Metadata-Version: 2.4
+Name: orng
+Version: 0.1.0a4
+Summary: Omni RNG: A unified, cross-backend random number generator built on the Array API standard.
+Author: Michael J. Williams, Christian Chapman-Bird
+License: MIT License
+        
+        Copyright (c) 2025 Michael J. Williams, Christian Chapman-Bird
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/sequince-dev/orng
+Project-URL: Repository, https://github.com/sequince-dev/orng
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: numpy
+Requires-Dist: numpy>=1.22; extra == "numpy"
+Provides-Extra: torch
+Requires-Dist: torch>=2.0; extra == "torch"
+Provides-Extra: cupy
+Requires-Dist: cupy>=12.0; extra == "cupy"
+Provides-Extra: jax
+Requires-Dist: jax>=0.4; extra == "jax"
+Dynamic: license-file
+
+# Omni RNG (`orng`)
+
+`orng` provides a thin facade over several Array API–compatible random number
+generators. It mirrors the subset of the `numpy.random.Generator` API:
+
+- `random`
+- `uniform`
+- `normal`
+- `choice`
+- `gamma`
+
+letting you pick the underlying backend at runtime. The following backends are
+currently supported:
+
+- `numpy`
+- `torch`
+- `cupy`
+- `jax`
+
+## Installation
+
+The core package only depends on the standard Python library:
+
+```bash
+pip install orng
+```
+
+Backends are optional extras that you can install on demand:
+
+```bash
+pip install "orng[numpy]"   # NumPy RNG support
+pip install "orng[torch]"   # PyTorch RNG support
+pip install "orng[cupy]"    # CuPy RNG support
+pip install "orng[jax]"     # JAX RNG support
+```
+
+You can also combine extras, e.g. `pip install "orng[numpy,torch]"`.
+
+## Quick Start
+
+```python
+from orng import ArrayRNG
+
+rng = ArrayRNG(backend="numpy", seed=42)
+samples = rng.normal(loc=0.0, scale=1.0, size=5)
+uniform = rng.uniform(low=-1.0, high=1.0, size=(2, 2))
+```
+
+The backend module is imported lazily. If the requested library is missing,
+`ArrayRNG` will raise an informative `ImportError` that points to the matching
+extra.
+
+### Backend State Reference
+
+When you pass the optional `generator` argument to `ArrayRNG`, the expected
+object depends on the backend:
+
+| Backend | Generator argument |
+|---------|--------------------|
+| `numpy` | `numpy.random.Generator` |
+| `torch` | `torch.Generator` |
+| `cupy`  | `cupy.random.Generator` |
+| `jax`   | `jax.random.KeyArray` (from `jax.random.key`) |
+
+This lets you wrap an existing RNG/key instead of seeding a new one.
+
+## Project Layout
+
+```
+orng/
+├── src/orng/
+│   ├── __init__.py      # package exports
+│   ├── _utils.py        # shared helpers (internal)
+│   ├── orng.py          # ArrayRNG facade
+│   └── backends/        # backend-specific implementations
+└── README.md
+```
+
+Each backend class lives in its own module under `orng/backends/`, keeping the
+core facade compact and making optional dependencies easy to manage.
