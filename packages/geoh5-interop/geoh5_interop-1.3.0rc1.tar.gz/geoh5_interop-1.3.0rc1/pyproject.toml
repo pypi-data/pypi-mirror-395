@@ -1,0 +1,140 @@
+[build-system]
+requires = [
+  "poetry-core>=1.8.0",
+  "poetry-dynamic-versioning>=1.9.1,<2.0",
+  # list dependencies to work with PIP_NO_DEPS=1
+  "MarkupSafe>=2.0",
+  "dunamai>=1.25,<2.0",
+  "jinja2>=3.0,<4.0",
+  "packaging>=24.0",
+  "tomlkit>=0.13",
+]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[project]
+name = "geoh5-interop"
+requires-python = ">=3.10,<4.0"
+
+description = "A meta-package that groups together packages for interoperability between GEOH5 and other file formats."
+license = "MIT"
+license-files = [
+    "LICENSE",
+]
+readme = "README.rst"
+authors = [{ name = "Mira Geoscience", email = "support@mirageoscience.com" }]
+
+dynamic = ["dependencies", "classifiers"]
+
+keywords = [
+    "data format",
+    "data",
+    "earth science",
+    "open science",
+    "geoh5",
+    "geology",
+    "geophysics",
+    "geoscience",
+    "interoperability",
+    "io",
+    "lasio",
+    "las-files",
+    "log-ascii-standard",
+    "mining",
+    "well-logs",
+    "wireline",
+    "well-log",
+]
+version = "1.3.0rc1"
+
+[project.urls]
+homepage = "https://www.mirageoscience.com/mining-industry-software/python-integration/"
+repository = "https://github.com/MiraGeoscience/geoh5py-interop"
+
+[tool.poetry]
+requires-poetry = '>=2.0,<3.0'
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+include = [
+    { path = "geoh5_interop/_version.py", format = ["sdist", "wheel"] },
+]
+
+[tool.poetry.dependencies]
+# geoh5py is a dependency of other apps: not strictly needed here, but good to ensure version
+geoh5py = {version = ">=0.12.0rc2, 0.12.*", allow-prereleases = true}
+#geoh5py = {git = "https://github.com/MiraGeoscience/geoh5py.git", rev = "develop"}
+
+las-geoh5 = { version = ">=0.3.2rc1, 0.3.2.*", allow-prereleases = true}
+#las-geoh5 = {git = "https://github.com/MiraGeoscience/las-geoh5.git", rev = "develop"}
+
+mira-omf = {version = ">=3.3.2rc1, 3.3.*", allow-prereleases = true}
+#mira-omf = {git = "https://github.com/MiraGeoscience/omf.git", rev = "develop"}
+
+[tool.poetry.group.dev.dependencies]
+packaging = '*'
+Pygments = "*"
+pylint = ">=3.3.1"
+pytest = "*"
+pytest-cov = "*"
+pyyaml = '*'
+
+
+[[tool.poetry.source]]
+name = "public"
+url = "https://mirageoscienceltd.jfrog.io/artifactory/api/pypi/public-pypi-dev/simple"
+priority = "supplemental"
+
+
+[[tool.poetry.source]]
+name = "test"
+url = "https://mirageoscienceltd.jfrog.io/artifactory/api/pypi/test-pypi/simple"
+priority = "supplemental"
+
+[tool.conda-lock]
+platforms = ['win-64', 'linux-64']
+
+channels = [
+    'https://$GEOPY_PACKAGING_ARTIFACTORY_USER:$GEOPY_PACKAGING_ARTIFACTORY_TOKEN@mirageoscienceltd.jfrog.io/artifactory/api/conda/public-noremote-conda-dev',
+    'conda-forge',  # with MAMBA_CHANNEL_ALIAS=https://repo.prefix.dev
+]
+
+[tool.conda-lock.dependencies]
+libblas = "*=*mkl"  # because simpeg already brings in the MKL
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.9.1,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+bump = true
+enable = false
+fix-shallow-repository = true
+strict = true
+style = "pep440"
+vcs = "git"
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["geoh5_interop/_version.py", "recipe.yaml"]
+patterns = [
+    { value = '''(^__version__\s*(?::.*?)?=\s*['"])[^'"]*(['"])''', mode = "str" },
+    { value = '''(^\s*version\s*(?::.*?)?:\s*['"])[^'"]*(['"])''', mode = "str" },
+]
+
+[tool.poetry-dynamic-versioning.files."geoh5_interop/_version.py"]
+persistent-substitution = true
+initial-content = """
+  # Version placeholder that will be replaced during substitution
+  __version__ = "0.0.0"
+"""
+
+[tool.poetry-dynamic-versioning.files."recipe.yaml"]
+persistent-substitution = true
