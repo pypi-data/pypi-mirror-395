@@ -1,0 +1,500 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evolvishub-outlook-ingestor"
+version = "2.2.3"
+description = "Enterprise-ready email ingestion system with unified database connector architecture supporting 8 database types with equal implementation quality"
+readme = "README.md"
+license = {text = "Evolvis AI License"}
+authors = [
+    {name = "Alban Maxhuni, PhD", email = "a.maxhuni@evolvis.ai"}
+]
+maintainers = [
+    {name = "Kevin Medina Gómez", email = "k.medina@evolvis.ai"}
+]
+keywords = [
+    "outlook",
+    "email",
+    "ingestion",
+    "exchange",
+    "graph-api",
+    "imap",
+    "pop3",
+    "database",
+    "async",
+    "batch-processing",
+    "security",
+    "monitoring",
+    "performance",
+    "postgresql",
+    "mongodb",
+    "sqlite",
+    "cockroachdb",
+    "mariadb",
+    "mssql",
+    "oracle",
+    "clickhouse",
+    "database-connector",
+    "enterprise",
+    "standardization"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email",
+    "Topic :: Communications :: Email :: Filters",
+    "Topic :: Database",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Archiving",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Security",
+    "Topic :: Security :: Cryptography",
+    "Framework :: AsyncIO",
+    "Framework :: Pydantic",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Typing :: Typed",
+]
+requires-python = ">=3.9"
+
+dependencies = [
+    # Core dependencies
+    "pydantic>=2.0.0,<3.0.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "typing-extensions>=4.0.0",
+    "PyYAML>=6.0",
+    
+    # Async support
+    "aiohttp>=3.8.0",
+    "aiofiles>=23.0.0",
+    "asyncio-throttle>=1.0.0",
+    
+    # Outlook protocol support
+    "exchangelib>=5.0.0",  # Exchange Web Services
+    "msal>=1.20.0",        # Microsoft Authentication Library
+    "requests>=2.28.0",
+    "aioimaplib>=1.0.0",   # Async IMAP
+    
+    # Database connectors
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.28.0",     # PostgreSQL async driver
+    "aiomysql>=0.2.0",     # MySQL async driver
+    "motor>=3.0.0",        # MongoDB async driver
+    
+    # Performance and monitoring
+    "prometheus-client>=0.17.0",
+    "structlog>=23.0.0",
+    "tenacity>=8.0.0",     # Retry mechanisms
+    "psutil>=5.9.0",       # System monitoring
+    
+    # Utilities
+    "python-dateutil>=2.8.0",
+    "email-validator>=2.0.0",
+    "chardet>=5.0.0",      # Character encoding detection
+    "python-magic>=0.4.0", # File type detection
+    "cryptography>=41.0.0", # Secure credential management
+    "beautifulsoup4>=4.11.0",  # HTML parsing
+    "Pillow>=9.0.0",       # Image processing
+
+    # CLI dependencies
+    "click>=8.0.0",        # Command line interface
+    "rich>=13.0.0",        # Rich text and beautiful formatting
+
+    # Advanced features dependencies
+    "redis>=4.5.0",        # Caching and real-time features
+    "websockets>=11.0.0",  # Real-time streaming
+    "fastapi>=0.100.0",    # API framework for streaming endpoints
+    "uvicorn>=0.23.0",     # ASGI server
+    "pandas>=2.0.0",       # Data analysis and transformation
+    "numpy>=1.24.0",       # Numerical computing
+    "scikit-learn>=1.3.0", # Machine learning
+    "spacy>=3.6.0",        # NLP processing
+    "textblob>=0.17.0",    # Text processing and sentiment analysis
+    "langdetect>=1.0.9",   # Language detection
+    "opentelemetry-api>=1.20.0",  # Observability and tracing
+    "opentelemetry-sdk>=1.20.0",  # Observability SDK
+    "prometheus-client>=0.17.0",  # Metrics (already included but ensuring)
+    "schedule>=1.2.0",     # Task scheduling
+    "cachetools>=5.3.0",   # Advanced caching utilities
+]
+
+[project.urls]
+Homepage = "https://github.com/evolvisai/metcal"
+Documentation = "https://github.com/evolvisai/metcal/tree/main/shared/libs/evolvis-outlook-ingestor/docs"
+Repository = "https://github.com/evolvisai/metcal.git"
+Issues = "https://github.com/evolvisai/metcal/issues"
+Changelog = "https://github.com/evolvisai/metcal/blob/main/shared/libs/evolvis-outlook-ingestor/CHANGELOG.md"
+Examples = "https://github.com/evolvisai/metcal/tree/main/shared/libs/evolvis-outlook-ingestor/examples"
+
+[project.optional-dependencies]
+# Protocol adapter dependencies
+protocols = [
+    "msal>=1.20.0",        # Microsoft Graph API authentication
+    "aiohttp>=3.8.0",      # Async HTTP client
+    "exchangelib>=5.0.0",  # Exchange Web Services
+    "aioimaplib>=1.0.0",   # Async IMAP client
+]
+
+# Database connector dependencies
+database = [
+    "asyncpg>=0.28.0",     # PostgreSQL async driver
+    "motor>=3.1.0",        # MongoDB async driver
+    "aiomysql>=0.1.0",     # MySQL async driver
+]
+
+# Individual database connector dependencies
+database-sqlite = [
+    "aiosqlite>=0.19.0",   # SQLite async driver
+]
+
+database-mssql = [
+    "aioodbc>=0.4.0",      # SQL Server async driver via ODBC
+    "pyodbc>=4.0.0",       # ODBC driver for SQL Server
+]
+
+database-mariadb = [
+    "aiomysql>=0.2.0",     # MariaDB async driver (same as MySQL)
+]
+
+database-oracle = [
+    "cx_Oracle>=8.3.0",    # Oracle database driver
+]
+
+database-cockroachdb = [
+    "asyncpg>=0.28.0",     # CockroachDB uses PostgreSQL protocol
+]
+
+# All database dependencies
+database-all = [
+    "asyncpg>=0.28.0",     # PostgreSQL and CockroachDB
+    "motor>=3.1.0",        # MongoDB
+    "aiomysql>=0.2.0",     # MySQL and MariaDB
+    "aiosqlite>=0.19.0",   # SQLite
+    "aioodbc>=0.4.0",      # SQL Server
+    "pyodbc>=4.0.0",       # ODBC for SQL Server
+    "cx_Oracle>=8.3.0",    # Oracle
+]
+
+# Data Lake connector dependencies
+datalake-delta = [
+    "delta-spark>=2.4.0",  # Delta Lake with Spark
+    "pyspark>=3.4.0",      # Apache Spark
+    "pyarrow>=12.0.0",     # Arrow for data interchange
+]
+
+datalake-iceberg = [
+    "pyiceberg>=0.5.0",    # Apache Iceberg Python client
+    "pyarrow>=12.0.0",     # Arrow for data interchange
+]
+
+# ClickHouse database dependencies
+database-clickhouse = [
+    "clickhouse-connect>=0.6.0",  # ClickHouse client
+    "aiohttp>=3.8.0",             # Async HTTP client
+]
+
+# All data lake dependencies
+datalake-all = [
+    "delta-spark>=2.4.0",
+    "pyspark>=3.4.0",
+    "pyiceberg>=0.5.0",
+    "pyarrow>=12.0.0",
+    "clickhouse-connect>=0.6.0",
+    "aiohttp>=3.8.0",
+]
+
+# Processing dependencies
+processing = [
+    "beautifulsoup4>=4.11.0",  # HTML parsing
+    "Pillow>=9.0.0",       # Image processing
+]
+
+# Object storage dependencies
+storage = [
+    "minio>=7.1.0",                # MinIO S3-compatible storage
+]
+
+# AWS cloud storage dependencies
+cloud-aws = [
+    "boto3>=1.26.0",               # AWS SDK
+    "botocore>=1.29.0",            # AWS core library
+]
+
+# Azure cloud storage dependencies
+cloud-azure = [
+    "azure-storage-blob>=12.14.0", # Azure Blob Storage
+    "azure-identity>=1.12.0",      # Azure authentication
+]
+
+# Google Cloud storage dependencies
+cloud-gcp = [
+    "google-cloud-storage>=2.7.0", # Google Cloud Storage
+    "google-auth>=2.16.0",          # Google authentication
+]
+
+# All cloud storage dependencies
+cloud-all = [
+    "minio>=7.1.0",
+    "boto3>=1.26.0",
+    "botocore>=1.29.0",
+    "azure-storage-blob>=12.14.0",
+    "azure-identity>=1.12.0",
+    "google-cloud-storage>=2.7.0",
+    "google-auth>=2.16.0",
+]
+
+# Advanced features dependencies
+streaming = [
+    "redis>=4.5.0",
+    "websockets>=11.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "aiokafka>=0.8.0",        # Kafka async client
+    "kafka-python>=2.0.0",   # Kafka administrative operations
+]
+
+analytics = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "networkx>=3.0",          # Graph analysis for communication networks
+    "scipy>=1.10.0",          # Statistical analysis
+]
+
+ml = [
+    "spacy>=3.6.0",
+    "textblob>=0.17.0",
+    "langdetect>=1.0.9",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+]
+
+observability = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation>=0.41b0",
+    "jaeger-client>=4.8.0",
+]
+
+caching = [
+    "redis>=4.5.0",
+    "cachetools>=5.3.0",
+    "diskcache>=5.6.0",
+]
+
+governance = [
+    "apache-airflow>=2.7.0",
+    "great-expectations>=0.17.0",
+    "dbt-core>=1.6.0",
+]
+
+# All optional dependencies
+all = [
+    # Protocols
+    "msal>=1.20.0",
+    "aiohttp>=3.8.0",
+    "exchangelib>=5.0.0",
+    "aioimaplib>=1.0.0",
+    # Database - Core
+    "asyncpg>=0.28.0",
+    "motor>=3.1.0",
+    "aiomysql>=0.2.0",
+    # Database - Extended
+    "aiosqlite>=0.19.0",
+    "aioodbc>=0.4.0",
+    "pyodbc>=4.0.0",
+    "cx_Oracle>=8.3.0",
+    "clickhouse-connect>=0.6.0",
+    # Data Lakes
+    "delta-spark>=2.4.0",
+    "pyspark>=3.4.0",
+    "pyiceberg>=0.5.0",
+    "pyarrow>=12.0.0",
+    # Processing
+    "beautifulsoup4>=4.11.0",
+    "Pillow>=9.0.0",
+    # Storage
+    "minio>=7.1.0",
+    "boto3>=1.26.0",
+    "botocore>=1.29.0",
+    "azure-storage-blob>=12.14.0",
+    "azure-identity>=1.12.0",
+    "google-cloud-storage>=2.7.0",
+    "google-auth>=2.16.0",
+]
+
+dev = [
+    # Testing
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",  # Parallel testing
+    "pytest-benchmark>=4.0.0",
+
+    # Code quality
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+    "bandit>=1.7.0",       # Security linting
+
+    # Documentation
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=1.0.0",
+
+    # Include all optional dependencies for development
+    "msal>=1.20.0",
+    "aiohttp>=3.8.0",
+    "exchangelib>=5.0.0",
+    "aioimaplib>=1.0.0",
+    "asyncpg>=0.28.0",
+    "motor>=3.1.0",
+    "aiomysql>=0.1.0",
+    "beautifulsoup4>=4.11.0",
+    "Pillow>=9.0.0",
+]
+
+performance = [
+    "uvloop>=0.17.0; sys_platform != 'win32'",  # High-performance event loop
+    "orjson>=3.8.0",       # Fast JSON serialization
+    "msgpack>=1.0.0",      # Efficient serialization
+]
+
+monitoring = [
+    "grafana-client>=3.5.0",
+    "elasticsearch>=8.0.0",
+    "redis>=4.5.0",
+]
+
+
+
+[project.scripts]
+outlook-ingestor = "evolvishub_outlook_ingestor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["evolvishub_outlook_ingestor*"]
+
+[tool.setuptools.package-data]
+evolvishub_outlook_ingestor = ["py.typed", "config/*.yaml"]
+
+# Black configuration
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["evolvishub_outlook_ingestor"]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "exchangelib.*",
+    "aioimaplib.*",
+    "motor.*",
+    "asyncpg.*",
+    "aiomysql.*",
+    "python_magic.*",
+]
+ignore_missing_imports = true
+
+# pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=evolvishub_outlook_ingestor",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests", 
+    "performance: Performance tests",
+    "slow: Slow running tests",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["evolvishub_outlook_ingestor"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Bandit security linting
+[tool.bandit]
+exclude_dirs = ["tests", "test_*"]
+skips = ["B101", "B601"]  # Skip assert_used and shell_injection_subprocess
