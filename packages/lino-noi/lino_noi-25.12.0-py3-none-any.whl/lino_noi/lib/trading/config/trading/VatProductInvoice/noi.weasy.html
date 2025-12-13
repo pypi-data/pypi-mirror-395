@@ -1,0 +1,59 @@
+{%- extends "trading/VatProductInvoice/default.weasy.html" -%}
+
+{% block ending %}
+{% if obj.invoicing_max_date %}
+This is a custom ending for Noi.
+
+<h2>Service report</h2>
+{#as_table(rt.models.working.SessionsByReport.request(master_instance=obj))#}
+{% if True %}
+{{ar.show(rt.models.working.SessionsByReport, master_instance=obj, header_level=3)}}
+{{ar.show(rt.models.working.TicketsByReport, master_instance=obj, header_level=3)}}
+{% else %}
+<table border="1" width="100%">
+<tr>
+<th>{{_("Date")}}</th>
+<th>{{_("Start time")}}</th>
+<th>{{_("End time")}}</th>
+<th>{{_("Break time")}}</th>
+<th>{{_("Description")}}</th>
+<th>{{_("Duration")}}</th>
+{% if True %}
+<th>{{_("Worker")}}</th>
+{% endif %}
+</tr>
+{% for item in obj.items.order_by('seqno') %}
+<tr>
+<td>
+{% if item.description %}
+<p><b>{{item.title}}</b></p>
+{% if item.description.startswith("<") %}
+{{item.description}}
+{% else %}
+{{restify(item.description)}}
+{% endif %}
+{% else %}
+<p>{{item.title}}</p>
+{% endif %}
+</td>
+<td class="number-cell">
+{{decfmt(item.unit_price)}}
+</td>
+<td class="number-cell">
+{% if item.unit_price %}
+{{decfmt(item.qty)}}
+{% endif %}
+</td>
+<td class="number-cell">
+{% if dd.plugins.vat.item_vat %}
+{{decfmt(item.total_incl)}}
+{% else %}
+{{decfmt(item.total_base)}}
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+{% endif %}
+{% endblock %}
