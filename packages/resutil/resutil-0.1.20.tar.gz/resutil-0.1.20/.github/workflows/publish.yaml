@@ -1,0 +1,33 @@
+name: Publish Python Package
+
+on:
+  push:
+    tags:
+      - "v*" # タグが v で始まる場合にトリガー
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build (wheel and sdist)
+        run: uv build --no-sources
+
+      - name: Save build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          uvx --from twine==6.2.0 twine upload --skip-existing --non-interactive dist/*
