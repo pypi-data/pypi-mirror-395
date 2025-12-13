@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<title>rna-tools.online</title>
+
+<style>
+ .hint {color:#808080;font-size:12px;}
+
+.dz {
+    border: dashed !important;
+    background-color: white !important;
+    border-radius: 10px !important;
+}
+
+.dz:hover {
+    background-color: aliceblue !important;
+}
+</style>
+
+<script>
+
+    var progress_interval;
+
+    $(document).ready( function(){
+        progress_interval = setInterval(checkProgress, 1000);
+    });
+
+    function checkProgress() {
+        $.ajax({
+            url: "{% url 'ajax_job_status' job_id=j.job_id tool='diffpdb' %}",
+            success: function(d) {
+		if ($('#log_txt').html().length != d['log'].length ) {
+                    $("#log_txt").html(d['log']);}
+                if (d['reload']==true){
+		    location.href="/tools/{{ tool }}/{{ j.job_id }}";
+                }
+            }
+    })
+    };
+
+    function fetch() {
+        $.ajax({
+            url: "/fetch/{{ j.job_id }}",
+	    data: { 
+		    fetch: $("#fetch").val(),
+		  },
+        }
+	      )
+             };
+
+
+  function rm(){
+        $.ajax({
+            url: "/run/clear/{{ j.job_id }}",
+	})
+    };
+
+   function demo(){
+        $.ajax({
+            url: "/demo/{{ tool }}/{{ j.job_id }}",
+	})
+    };
+
+  function go() {
+        $('#go').prop('disabled', true);
+        $.ajax({
+            url: "/run/diffpdb/{{ j.job_id }}",
+	    data: { names: $('#names').is(':checked')},
+            success: function(d) {
+                $("#log_txt").html(d['log']);
+                if (d['reload']==true){
+                    window.location.reload()
+                }
+            }
+        })
+    };
+
+</script>
+
+
+<h2>diffpdb</h2>
+
+<div align="right">
+  <button onclick="demo()" class="btn btn-small btn-ok">Load demo</button>
+  <button onclick="rm()" class="btn btn-small btn-ok">Remove All Files</button>
+  <button onclick="javascript:location.reload();" class="btn btn-small btn-ok">Reset</button>  
+</div>
+
+<p>
+ <button onclick="fetch()" class="btn btn-small" size="height:12px">Fetch</button> files from another job <input id="fetch" type="text" class="form-control" style="font-family:Monospace;width:150px;height:13px;" name="xxx" placeholder="" value=""></a><small class="hint"> e.g., 614e0a1b</small>
+    <!--http://rna-tools.online/tools/seq/614e0a1b or-->
+</p>
+
+<label for="comment">Upload two structures you want to compare (in the PDB format)</label>
+
+<form enctype='multipart/form-data' action="/upload/{{ j.job_id }}" method='POST' class="dropzone dz" id="my-dropzone" >
+  {% csrf_token %}
+  <input type="hidden" id="job_id" name="job_id" value="{{ j.job_id }}" />
+    <div class="fallback">
+      <input name="file" type="file" multiple />
+    </div>
+</form>
+
+<label class="checkbox" type="checkbox" >
+      <input type="checkbox" id="names"> use atom names and residues only
+</label>
+
+<pre style="background:none;border:none"><div id="log_txt" class='log'>{{ log | safe }}</div></pre>
+    
+<p>
+    <button id="go" onclick="go()" class="btn btn-success">Run!</button>
+</p>
+
+<p>The raw output files for each step of the pipeline can be found  <a href="https://rna-tools.online/media/jobs/{{ j.job_id }}/">here</a> and downloaded as a ZIP file <a href="{% url 'download_project_dir' job_id=j.job_id %}">here</a>.</p>
+    <small class="hint">
+
+  <p>
+    <h5>Documentation</h5>
+  </p>
+<p>
+  The tool uses 'diff' comment for text-based comparison of files. Read more on 'diff' <a href="https://en.wikipedia.org/wiki/Diff#Usage">here</a>
+</p>
+      <p>
+	diffpdb checks the consistency between annotations of two structural files. The tool ignores 3D coordinates of atoms and compares only text-content of two files in the PDB to identify the difference in the annotation of atoms, missing atoms (missing the O2′ atom) and missing fragment (shown on the left side with the gray-red bar).
+      </p>
+
+      <pre>
+ATOM      8  C2'   G A  57					ATOM      8  C2'   G A  57
+# this is when these two files differe, this is the place when O2' atom exists on the left 
+# (crystal structure) and not on the right (SimRNA model)
+ATOM      9  C1'   G A  57				      |	ATOM      9  O2'   G A  57
+ATOM     10  N1    G A  57				      |	ATOM     10  C1'   G A  57
+    </pre>
+<p>
+  diffpdb can be also used locally with a diff viewer of choince. Here the detection of missing O2' atom in one of the structure can be easily detected. This is
+</p>
+<p>
+  Read more on this puzzle here <a href="https://github.com/mmagnus/RNA-Puzzles-Standardized-Submissions/tree/master/rp17">https://github.com/mmagnus/RNA-Puzzles-Standardized-Submissions/tree/master/rp17</a>
+</p>
+Slightly different presentation of the same information can be viewed with other diff viewers, like DiffMerge here:
+ 	<center>
+          <img src="{{ STATIC_URL }}app/img/diffpdb.jpg" width="60%"  alt="">
+	</center>
+	
+</p>
+More at <a href="https://rna-tools.readthedocs.io/en/latest/tools.html?highlight=diffpdb#module-rna_tools.tools.diffpdb.diffpdb">https://rna-tools.readthedocs.io/en/latest/tools.html?highlight=diffpdb#module-rna_tools.tools.diffpdb.diffpdb</a>
+    </small>
+    
+{% endblock %}
