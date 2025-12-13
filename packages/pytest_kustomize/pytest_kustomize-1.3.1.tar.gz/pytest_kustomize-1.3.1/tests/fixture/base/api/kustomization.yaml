@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../base
+labels:
+- pairs:
+    app: api
+  includeSelectors: true
+patches:
+- path: initcontainer.yaml
+- target:
+    kind: Deployment
+    name: base
+  patch: |-
+    - op: replace
+      path: /metadata/name
+      value: api
