@@ -1,0 +1,239 @@
+# SDF Loss
+
+Signed Distance Function (SDF) based loss functions for deep learning semantic segmentation.
+
+## Overview
+
+This library provides PyTorch loss functions that use Signed Distance Functions to weight pixels based on their distance from object boundaries. This approach puts heavier penalties on false positives and false negatives that are farther from the correct boundary, leading to more accurate segmentation results.
+
+## Installation
+
+Install directly from PyPI:
+
+```bash
+pip install sdf-loss
+```
+
+Or using uv:
+
+```bash
+uv add sdf-loss
+```
+
+For development:
+
+```bash
+git clone https://github.com/Halyjo/sdf_loss.git
+cd sdf_loss
+uv sync
+```
+
+## Quick Start
+
+```python
+import torch
+from sdf_loss import DiSCoLoss
+
+# Initialize the loss function
+criterion = DiSCoLoss()
+
+# Your model predictions (logits) and ground truth
+pred_logits = model(images)  # Shape: (B, 1, H, W)
+target = ground_truth         # Shape: (B, 1, H, W), binary mask
+
+# Compute loss
+loss = criterion(pred_logits, target)
+loss.backward()
+```
+
+## Available Loss Functions
+
+### DiSCoLoss (Recommended)
+
+Distance-scaled combination loss that combines BCE, Dice, and their SDF-weighted variants.
+
+```python
+from sdf_loss import DiSCoLoss
+
+# Default: only SDF-weighted losses
+criterion = DiSCoLoss(
+    normalize=True,           # Normalize SDF to [-1, 1]
+    baseloss_weight=0,       # Weight for BCE + Dice
+    sdfweighted_weight=1,    # Weight for SDF-weighted losses
+    clip_negatives=False     # Clip negative distances
+)
+
+loss = criterion(pred_logits, target)
+```
+
+### SDFWeightedBCELoss
+
+Binary cross-entropy loss weighted by SDF differences.
+
+```python
+from sdf_loss import SDFWeightedBCELoss
+
+criterion = SDFWeightedBCELoss(
+    reduction="mean",        # 'mean', 'sum', or 'none'
+    normalize=True,
+    clip_negatives=False
+)
+
+loss = criterion(pred_logits, target)
+```
+
+### SDFWeightedDiceLoss
+
+Dice loss weighted by SDF differences.
+
+```python
+from sdf_loss import SDFWeightedDiceLoss
+
+criterion = SDFWeightedDiceLoss(
+    from_logits=True,
+    normalize=True,
+    clip_negatives=False
+)
+
+loss = criterion(pred_logits, target)
+```
+
+### DiceLoss
+
+Standard Dice loss with optional custom weighting function.
+
+```python
+from sdf_loss import DiceLoss
+
+criterion = DiceLoss(
+    from_logits=True,
+    smooth=0.0
+)
+
+loss = criterion(pred_logits, target)
+```
+
+## Drop-in Replacement for BCE Loss
+
+You can easily replace `torch.nn.BCEWithLogitsLoss` with `DiSCoLoss`:
+
+```python
+# Before
+criterion = torch.nn.BCEWithLogitsLoss()
+
+# After - simple drop-in replacement
+criterion = DiSCoLoss()
+
+# Usage remains the same
+loss = criterion(pred_logits, target)
+```
+
+## Key Features
+
+- **Boundary-aware**: Focuses on pixels near object boundaries
+- **Distance-weighted**: Penalizes errors proportional to distance from correct boundary
+- **PyTorch native**: Fully compatible with PyTorch training loops
+- **GPU compatible**: Works with CUDA tensors
+- **Differentiable**: Full gradient flow for backpropagation
+- **Flexible**: Multiple loss functions and customizable parameters
+
+## Parameters
+
+### Common Parameters
+
+- `normalize` (bool): Normalize SDF values to [-1, 1] range. Default: `True`
+- `clip_negatives` (bool): Clip negative distance values to 0. Default: `False`
+- `from_logits` (bool): Whether input is logits (before sigmoid). Default: `True`
+
+### DiSCoLoss Specific
+
+- `baseloss_weight` (float): Weight for standard BCE + Dice losses. Default: `0`
+- `sdfweighted_weight` (float): Weight for SDF-weighted losses. Default: `1`
+
+## Examples
+
+### Basic Training Loop
+
+```python
+import torch
+from sdf_loss import DiSCoLoss
+
+model = YourSegmentationModel()
+criterion = DiSCoLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+for epoch in range(num_epochs):
+    for images, masks in dataloader:
+        optimizer.zero_grad()
+
+        pred_logits = model(images)
+        loss = criterion(pred_logits, masks)
+
+        loss.backward()
+        optimizer.step()
+```
+
+### Combining Base and SDF-weighted Losses
+
+```python
+# Use both base losses and SDF-weighted losses
+criterion = DiSCoLoss(
+    baseloss_weight=0.3,      # 30% base losses
+    sdfweighted_weight=0.7    # 70% SDF-weighted losses
+)
+```
+
+### Custom Reduction
+
+```python
+from sdf_loss import SDFWeightedBCELoss
+
+# Get per-pixel losses for custom weighting
+criterion = SDFWeightedBCELoss(reduction="none")
+loss = criterion(pred_logits, target)  # Shape: (B, 1, H, W)
+
+# Apply custom weighting
+custom_weights = compute_your_weights(target)
+weighted_loss = (loss * custom_weights).mean()
+```
+
+## Requirements
+
+- Python >= 3.10
+- PyTorch >= 1.10.0
+- NumPy >= 1.20.0
+- SciPy >= 1.7.0
+- scikit-image >= 0.19.0
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest tests/ -v
+```
+
+## Citation
+
+If you use this library in your research, please cite:
+
+```bibtex
+@article{your_paper,
+  title={Your Paper Title},
+  author={Your Name},
+  journal={Your Journal},
+  year={2025}
+}
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgments
+
+The DiceLoss implementation is inspired by segmentation-models-pytorch (SMP).
