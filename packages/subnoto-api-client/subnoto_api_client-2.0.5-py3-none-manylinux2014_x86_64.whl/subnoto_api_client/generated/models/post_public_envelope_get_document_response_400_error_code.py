@@ -1,0 +1,12 @@
+from enum import Enum
+
+class PostPublicEnvelopeGetDocumentResponse400ErrorCode(str, Enum):
+    DOCUMENT_CORRUPTED = "DOCUMENT_CORRUPTED"
+    DOCUMENT_NOT_FOUND = "DOCUMENT_NOT_FOUND"
+    DOCUMENT_REVISION_NOT_FOUND = "DOCUMENT_REVISION_NOT_FOUND"
+    ENVELOPE_NOT_FOUND = "ENVELOPE_NOT_FOUND"
+    INVALID_REQUEST_FORMAT = "INVALID_REQUEST_FORMAT"
+    WORKSPACE_NOT_FOUND = "WORKSPACE_NOT_FOUND"
+
+    def __str__(self) -> str:
+        return str(self.value)
