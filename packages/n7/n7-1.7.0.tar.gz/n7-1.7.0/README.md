@@ -1,0 +1,87 @@
+# N7 CLI
+
+CLI moderne pour gérer les projets N7 avec Docker Compose, tests, formatage et qualité de code.
+
+## Table des matières
+
+- [Installation](#installation)
+- [Mise à jour](#mise-à-jour)
+
+---
+
+## Installation
+
+### Installation depuis PyPI (Production)
+
+#### Avec uv (recommandé - ultra rapide ⚡)
+
+[uv](https://docs.astral.sh/uv/) est un gestionnaire de paquets Python moderne, 10-100x plus rapide que pip.
+
+```bash
+# Installation de uv si nécessaire
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Installation de n7
+uv tool install n7
+```
+
+#### Avec pipx (alternative isolée)
+
+[pipx](https://pipx.pypa.io/) installe les outils CLI dans des environnements virtuels isolés.
+
+```bash
+# Installation de pipx si nécessaire
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+
+# Installation de n7
+pipx install n7
+```
+
+#### Avec pip
+
+```bash
+pip install n7
+```
+
+### Installation depuis PyPI Test
+
+Pour tester la dernière version en développement :
+
+```bash
+# Avec uv
+uv tool install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ n7
+
+# Avec pipx
+pipx install --index-url https://test.pypi.org/simple/ --pip-args="--extra-index-url https://pypi.org/simple/" n7
+```
+
+---
+
+## Mise à jour
+
+### Avec uv
+
+```bash
+uv tool upgrade n7
+```
+
+### Avec pipx
+
+```bash
+pipx upgrade n7
+```
+
+Pour forcer la réinstallation :
+
+```bash
+pipx reinstall n7
+```
+
+### Avec pip
+
+```bash
+pip install --upgrade n7
+```
+
+---
