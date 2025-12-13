@@ -1,0 +1,146 @@
+Metadata-Version: 2.4
+Name: extremal-packings
+Version: 0.1.1
+Summary: Análisis geométrico y espectral de configuraciones extremales de discos tangentes
+Home-page: https://github.com/Fhv75/disk-packing-analysis
+Author: Fabián Andrés Henry Vilaxa
+Author-email: Fabián Andrés Henry Vilaxa <fabian.henry.vilaxa@alumnos.uta.cl>
+License: MIT
+Project-URL: Homepage, https://github.com/Fhv75/disk-packing-analysis
+Project-URL: Documentation, https://github.com/Fhv75/disk-packing-analysis/blob/main/docs/index.md
+Project-URL: Repository, https://github.com/Fhv75/disk-packing-analysis
+Project-URL: Bug Tracker, https://github.com/Fhv75/disk-packing-analysis/issues
+Keywords: geometry,disk packing,rigid configurations,spectral analysis,contact graphs
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: matplotlib>=3.3.0
+Requires-Dist: networkx>=2.5
+Requires-Dist: click>=8.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=3.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Extremal Packings - Análisis de Discos Tangentes
+
+Paquete Python para análisis geométrico y espectral de configuraciones de discos unitarios tangentes en el plano.
+
+## Características
+
+- Catálogo de configuraciones predefinidas de 3 a 6 discos
+- Calculo de Matriz de contacto, rolling space, gradiente proyectado, Hessiano intrínseco
+- Visualización en plots
+- API y utilidad CLI
+
+## Instalación
+
+### Desde PyPI
+```bash
+pip install extremal-packings
+```
+
+### Desde el repositorio
+```bash
+git clone https://github.com/fhenr/disk-packing-analysis.git
+cd disk-packing-analysis
+pip install -e .
+```
+
+## Uso Rápido
+
+### Desde Python
+
+```python
+from extremal_packings import load_configuration, analyze_configuration
+
+# Cargar configuración del catálogo
+config = load_configuration("D5-7")  # Pentágono regular
+
+# Análisis completo
+result = analyze_configuration(config)
+
+# Ver resultados
+print(f"Rolling space dimension: {result.R.shape[1]}")
+print(f"Eigenvalues: {result.eigenvalues}")
+print(f"Perimeter: {result.perimeter_disks:.4f}")
+```
+
+### Desde CLI (Línea de Comandos)
+
+```bash
+# Listar configuraciones disponibles
+epack list
+
+# Analizar una configuración específica
+epack analyze D5-7
+
+# Comparar configuraciones de 5 discos
+epack compare -s 5
+
+# Ver información detallada
+epack info D5-7
+
+# Visualizar con gráficos
+epack plot D5-7
+```
+## Docs
+
+- **[Docs](docs/index.md)** - Guía completa de uso. Incluye fundamentos matemáticos.
+- **[CLI](docs/cli.md)** - Guía de la interfaz de línea de comandos.
+- **[Ejemplos Básicos](examples/basic_usage.py)**
+- **[Ejemplos Avanzados](examples/advanced_usage.py)**
+
+Ver [`examples/basic_usage.py`](examples/basic_usage.py) para casos de uso completos:
+
+## Estructura del Proyecto
+
+```
+extremal_packings/        
+├── __init__.py            # API pública
+├── analysis.py            # Pipeline de análisis
+├── catalog.py             # Catálogo de configuraciones
+├── cli.py                 # Interfaz de línea de comandos
+├── configurations.py      # Clase Configuration
+├── constraints.py         # Matriz A y rolling space
+├── contact_graphs.py      # Validación de grafos
+├── hessian.py             # Hessiano K y H
+├── interface.py           # Funciones de alto nivel
+├── json_loader.py         # Carga desde JSON
+├── perimeter.py           # Perímetros y convex hull
+└── plotting.py            # Visualización
+```
+
+## Testing
+
+```bash
+pytest tests/
+```
+
+## Licencia
+
+MIT License. [LICENSE](LICENSE).
+
+## Autores
+
+- **Fabián Andrés Henry Vilaxa**
+- **Jose Ayala Hoffman**
