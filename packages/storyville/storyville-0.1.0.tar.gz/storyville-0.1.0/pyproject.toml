@@ -1,0 +1,63 @@
+[project]
+name = "storyville"
+version = "0.1.0"
+description = "Story-based component development for Python."
+authors = [{ name = "Paul Everitt", email = "pauleveritt@me.com" }]
+license = "MIT"
+repository = "https://github.com/pauleveritt/storyville"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.14"
+dependencies = [
+    "starlette>=0.50.0",
+    "tdom",
+    "uvicorn[standard]>=0.38.0",
+    "watchfiles>=1.1.1",
+]
+
+[project.entry-points.pytest11]
+storyville = "storyville.pytest_plugin"
+
+[tool.pytest.ini_options]
+testpaths = ["src", "tests", "examples/complete"]
+python_files = ["*_test.py", "test_*.py"]
+addopts = "-p no:doctest -m \"not playwright\""
+anyio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "playwright: marks tests that use playwright (conflicts with anyio tests)",
+]
+
+[tool.storyville.pytest]
+enabled = true
+
+[tool.anyio]
+backends = ["asyncio"]
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "aria-testing",
+    "click>=8.3.0",
+    "coverage>=7.11.2",
+    "httpx>=0.28.1",
+    "myst-parser>=2.0.0",
+    "playwright>=1.56.0",
+    "pytest>=9.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-playwright>=0.3.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.14.4",
+    "sphinx>=7.0.0",
+    "furo>=2024.1.29",
+    "ty>=0.0.1a25",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+storyville = "storyville.__main__:main"
