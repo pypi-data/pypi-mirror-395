@@ -1,0 +1,188 @@
+"""Unit tests for the `SessionConverter` class and its methods."""
+
+import json
+import pathlib
+
+import pandas
+
+import nwb2bids
+
+
+def test_session_converter_directory_initialization(
+    minimal_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [minimal_nwbfile_path.parent]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+
+    assert isinstance(session_converters, list)
+    assert len(session_converters) == 1
+    assert isinstance(session_converters[0], nwb2bids.SessionConverter)
+
+
+def test_session_converter_file_path_initialization(
+    minimal_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [minimal_nwbfile_path]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+
+    assert isinstance(session_converters, list)
+    assert len(session_converters) == 1
+    assert isinstance(session_converters[0], nwb2bids.SessionConverter)
+
+
+def test_session_converter_both_file_and_directory_initialization(
+    minimal_nwbfile_path: pathlib.Path, ecephys_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [minimal_nwbfile_path.parent, ecephys_nwbfile_path]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+
+    assert isinstance(session_converters, list)
+    assert len(session_converters) == 2
+    assert all(isinstance(converter, nwb2bids.SessionConverter) for converter in session_converters)
+
+
+def test_session_converter_defaults_missing_session_id(
+    problematic_nwbfile_path_missing_session_id: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(
+        nwb_paths=[problematic_nwbfile_path_missing_session_id], run_config=run_config
+    )
+
+    assert isinstance(session_converters, list)
+    assert len(session_converters) == 1
+    assert isinstance(session_converters[0], nwb2bids.SessionConverter)
+    assert session_converters[0].session_id == "0"
+
+
+def test_session_converter_metadata_extraction(
+    minimal_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [minimal_nwbfile_path]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+    session_converters[0].extract_metadata()
+
+    expected_session_metadata = nwb2bids.bids_models.BidsSessionMetadata(
+        session_id="456",
+        participant=nwb2bids.bids_models.Participant(participant_id="123", species="Mus musculus", sex="M"),
+    )
+    assert session_converters[0].session_metadata == expected_session_metadata
+
+
+def test_session_converter_write_ecephys_metadata(
+    ecephys_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [ecephys_nwbfile_path]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+    session_converter = session_converters[0]
+    session_converter.extract_metadata()
+    session_converter.write_ecephys_files()
+
+    expected_structure = {
+        temporary_bids_directory: {"directories": {"sub-123"}, "files": {"dataset_description.json"}},
+        temporary_bids_directory
+        / "sub-123": {
+            "directories": {"ses-789"},
+            "files": set(),
+        },
+        temporary_bids_directory
+        / "sub-123"
+        / "ses-789": {
+            "directories": {"ecephys"},
+            "files": set(),
+        },
+        temporary_bids_directory
+        / "sub-123"
+        / "ses-789"
+        / "ecephys": {
+            "directories": set(),
+            "files": {
+                "sub-123_ses-789_probes.tsv",
+                "sub-123_ses-789_probes.json",
+                "sub-123_ses-789_channels.tsv",
+                "sub-123_ses-789_channels.json",
+                "sub-123_ses-789_electrodes.tsv",
+                "sub-123_ses-789_electrodes.json",
+            },
+        },
+    }
+    nwb2bids.testing.assert_subdirectory_structure(
+        directory=temporary_bids_directory, expected_structure=expected_structure
+    )
+
+    # TODO: assert contents of TSV and JSON files
+
+
+def test_session_converter_write_events_metadata(
+    trials_events_nwbfile_path: pathlib.Path, temporary_bids_directory: pathlib.Path
+):
+    nwb_paths = [trials_events_nwbfile_path]
+    run_config = nwb2bids.RunConfig(bids_directory=temporary_bids_directory)
+    session_converters = nwb2bids.SessionConverter.from_nwb_paths(nwb_paths=nwb_paths, run_config=run_config)
+    session_converter = session_converters[0]
+    session_converter.extract_metadata()
+    session_converter.write_events_files()
+
+    expected_structure = {
+        temporary_bids_directory: {"directories": {"sub-123"}, "files": {"dataset_description.json"}},
+        temporary_bids_directory
+        / "sub-123": {
+            "directories": {"ses-456"},
+            "files": set(),
+        },
+        temporary_bids_directory
+        / "sub-123"
+        / "ses-456": {
+            "directories": {"ecephys"},
+            "files": set(),
+        },
+        temporary_bids_directory
+        / "sub-123"
+        / "ses-456"
+        / "ecephys": {
+            "directories": set(),
+            "files": {"sub-123_ses-456_events.tsv", "sub-123_ses-456_events.json"},
+        },
+    }
+    nwb2bids.testing.assert_subdirectory_structure(
+        directory=temporary_bids_directory, expected_structure=expected_structure
+    )
+
+    sessions_tsv_file_path = temporary_bids_directory / "sub-123" / "ses-456" / "ecephys" / "sub-123_ses-456_events.tsv"
+    sessions_data_frame = pandas.read_csv(filepath_or_buffer=sessions_tsv_file_path, sep="\t")
+
+    expected_data_frame = pandas.DataFrame(
+        {
+            "onset": [0.0, 2.0, 5.0, 5.5],
+            "duration": [1.0, 1.0, 0.5, 0.5],
+            "nwb_table": ["trials", "trials", "trials", "trials"],
+            "trial_condition": ["A", "B", "C", "D"],
+        },
+    )
+    pandas.testing.assert_frame_equal(left=sessions_data_frame, right=expected_data_frame)
+
+    sessions_json_file_path = (
+        temporary_bids_directory / "sub-123" / "ses-456" / "ecephys" / "sub-123_ses-456_events.json"
+    )
+    with sessions_json_file_path.open(mode="r") as file_stream:
+        sessions_json = json.load(fp=file_stream)
+    expected_sessions_json = {
+        "duration": {"Description": "Duration of the event (measured from onset).", "Units": "s"},
+        "nwb_table": {
+            "Description": "The name of the NWB table from which this event " "was extracted.",
+            "HED": {"trials": "Experimental-trial"},
+            "Levels": {"trials": "The 'trials' table in the NWB file."},
+        },
+        "onset": {
+            "Description": "Onset of the event, measured from the beginning of " "the acquisition.",
+            "Units": "s",
+        },
+        "trial_condition": {"Description": "Extra information per trial."},
+        "trials": {"Description": "A mock trials table."},
+    }
+    assert sessions_json == expected_sessions_json
