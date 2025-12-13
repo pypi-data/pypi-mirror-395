@@ -1,0 +1,1 @@
+"""HR Platform SDK Tests."""

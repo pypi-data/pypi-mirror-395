@@ -1,0 +1,137 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hr-platform-sdk"
+version = "0.1.0"
+description = "Python SDK for HR Platform API - Type-safe access with async support and pandas integration"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Vollers Group IT", email = "it@vollers.de" }
+]
+keywords = ["hr-platform", "api", "sdk", "hr", "analytics", "pydantic", "httpx"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+pandas = [
+    "pandas>=2.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-httpx>=0.30.0",
+    "mypy>=1.0.0",
+    "ruff>=0.3.0",
+    "pandas>=2.0.0",
+    "pandas-stubs>=2.0.0",
+]
+codegen = [
+    "datamodel-code-generator>=0.25.0",
+]
+all = [
+    "hr-platform-sdk[pandas,dev,codegen]",
+]
+
+[project.urls]
+Homepage = "https://github.com/vollers-group/hr-platform"
+Documentation = "https://github.com/vollers-group/hr-platform/tree/main/packages/sdk-python"
+Repository = "https://github.com/vollers-group/hr-platform"
+Changelog = "https://github.com/vollers-group/hr-platform/blob/main/packages/sdk-python/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/vollers-group/hr-platform/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hr_platform"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/hr_platform",
+    "/tests",
+    "/examples",
+    "/README.md",
+    "/CHANGELOG.md",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=hr_platform --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["tests", "examples"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "W",      # pycodestyle warnings
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hr_platform"]
+
+[tool.coverage.run]
+source = ["hr_platform"]
+branch = true
+omit = [
+    "hr_platform/models/generated.py",  # Auto-generated
+]
+
+[tool.coverage.report]
+fail_under = 70  # Initial release; target 90% in future
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "\\.\\.\\.",
+]
