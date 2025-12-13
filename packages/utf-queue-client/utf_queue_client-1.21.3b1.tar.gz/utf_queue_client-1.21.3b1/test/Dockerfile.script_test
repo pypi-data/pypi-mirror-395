@@ -1,0 +1,14 @@
+FROM python:3.8
+
+RUN apt update && apt install -y curl
+WORKDIR /usr/share/ca-certificates
+COPY test/silabs-root.pem ./silabs/silabs-root.crt
+COPY test/silabs-intermediate.pem ./silabs/silabs-intermediate.crt
+RUN curl --fail -k https://vault.dev.silabs.net/v1/pki/ca/pem -o ./silabs/silabs-net-dev.crt && \
+    curl --fail -k https://vault.silabs.net/v1/pki/ca/pem -o ./silabs/silabs-net-prod.crt && \
+    echo "silabs/silabs-net-dev.crt" >> /etc/ca-certificates.conf && \
+    echo "silabs/silabs-net-prod.crt" >> /etc/ca-certificates.conf && \
+    echo "silabs/silabs-root.crt" >> /etc/ca-certificates.conf && \
+    echo "silabs/silabs-intermediate.crt" >> /etc/ca-certificates.conf && \
+    /usr/sbin/update-ca-certificates
+
