@@ -1,0 +1,101 @@
+spec214:
+  section_122: compression
+  copy: false
+  required: false
+  units: null
+  expand: false
+  fitsreference: "10.1: Tiled image compression"
+  title: Compression
+  summary: Keys added when the data is RICE compressed as described in FITS 4.0 Section 10.
+  long_description: |
+    This table contains the keys describing tiled image compression.
+
+    Also included in this table are the keys used to describe a FITS binary table, as these are only used in DKIST data when using tiled image compression.
+---
+ZIMAGE:
+  description: "The value field of this keyword shall contain the logical value T to indicate that the FITS binary-table extension contains a compressed image, and that logically this extension should be interpreted as an image rather than a table."
+  copy: true
+ZTENSION:
+  description: "This keyword must contain the original XTENSION keyword in the uncompressed image."
+  type: str
+ZPCOUNT:
+  description: "This keyword must contain the original PCOUNT keyword in the uncompressed image."
+  type: int
+ZGCOUNT:
+  description: "This keyword must contain the original GCOUNT keyword in the uncompressed image"
+  type: int
+ZQUANTIZ:
+  description: "This keyword shall contain the name of the algorithm that was used to quantize floating-point image pixels into integer values, which were then passed to the compression algorithm. If this keyword is not present, the default is to assume that no dithering was applied during quantization."
+  type: str
+ZCMPTYPE:
+  description: "The value field of this keyword shall contain a character string giving the name of the algorithm that was used to compress the image. Only these values are permitted; [RICE_1, GZIP_1, GZIP_2, PLIO_1, HCOMPRESS_1, NOCOMPRESS]. Each value references a compression algorithm, with NOCOMPRESS meaning the HDU remains uncompressed."
+  copy: true
+ZBITPIX:
+  description: "Mandatory keyword describing the number of bits per pixel in the data. Permitted values are: 8, 16, 32, 64, -32, -64"
+  copy: true
+  units: bit/pix
+ZNAXIS:
+  description: "Mandatory keyword. Value depends on keyword position in file, i.e. whether the keyword is located in the primary HDU, or an extension HDU.
+   Generally, the value field shall contain a non-negative integer no greater than 999 representing the number of axes in the associated data array. A value of zero signifies that no data follow the header in the HDU."
+  copy: true
+ZNAXIS<n>:
+  description: "ZNAXISn keywords. The ZNAXISn keywords must be present for all values n = 1, ..., ZNAXIS, in increasing order of n, and for no other values of n. The value field of this indexed keyword shall contain a non-negative integer representing the number of elements along axis n of a data array. A value of zero for any of the ZNAXISn signifies that no data follow the header in the HDU (however, the random groups structure has ZNAXIS1 = 0, but will have data following the header if the other ZNAXISn keywords are non-zero). If ZNAXIS is equal to 0, there shall not be any ZNAXISn keywords."
+  copy: true
+  expand: true
+ZTILE<n>:
+  description: "This keyword shall contain a positive integer representing the number of pixels along axis n of the compression tiles. Each tile of pixels is compressed separately and stored in a row of a variable-length vector column in the binary table. The size of each image dimension (given by ZNAXISn) is not required to be an integer multiple of ZTILEn, and if it is not, then the last tile along that dimension of the image will contain fewer image pixels than the other tiles.
+                If the ZTILEn keywords are not present then the default ’row by row’ tiling will be assumed such that ZTILE1 = ZNAXIS1, and the value of all the other ZTILEn keywords equals 1.
+                The compressed image tiles are stored in the binary table in the same order that the first pixel in each tile appears in the FITS image; the tile containing the first pixel in the image appears in the first row of the table, and the tile containing the last pixel in the image appears in the last row of the binary table."
+  type: int
+  units: pix
+  expand: true
+ZHECKSUM:
+  description: "The value field of this keyword must contain the original CHECKSUM keyword in the uncompressed image."
+  type: str
+ZDATASUM:
+  description: "The value field of this keyword must contain the original DATASUM keyword in the uncompressed image."
+  type: str
+ZSIMPLE:
+  description: "The value field of this keyword must contain the value of the original SIMPLE keyword in the uncompressed image."
+  type: bool
+ZEXTEND:
+  description: "The value field of this keyword must contain the value of the original EXTEND keyword in the uncompressed image."
+  type: str
+# The z index here is to differentiate it from the i index used in PCi_j.
+# This z index is not NAXIS it can be any number and there is no key which tells
+# you how many of them there are, it's just a free "number of compression
+# parameters".
+# In practice for RICE compression it seems to be equal to ZNAXIS, but the
+# specifications repo expands the schema to match the highest number in all the
+# ZVAL keys
+ZNAME<z>:
+  description: "This is a keyword with ZVALz. This pair of optional array keywords supply the compression block size and the pixels per block, respectively."
+  type: str
+  expand: true
+ZVAL<z>:
+  description: "This is a keyword with ZNAMEz. This pair of optional array keywords supply the pixels per block and the compression block size, respectively. Possible values: 1, 2, 4, or 8."
+  type: int
+  expand: true
+
+# FITS Binary Table keys
+# Included here and not in the fits table to make it clear we only use these for compressed data.
+TFIELDS:
+  description: "The value field shall contain a non-negative integer representing the number of fields in each row."
+  fitsreference: "7.3: Binary Table Extension"
+  type: int
+TFORM<f>:
+  description: "Contains a character string of the form rTa. The repeat count r is the ASCII representation of a non-negative integer specifying the number of elements in Field n."
+  fitsreference: "7.3: Binary Table Extension"
+  type: str
+  expand: true
+TTYPE<f>:
+  description: "A character string giving the name of Field n."
+  fitsreference: "7.3: Binary Table Extension"
+  expand: true
+  type: str
+THEAP:
+  description: "When present, the value field of this keyword shall contain an integer providing the separation, in bytes, between the start of the main data table and the start of a supplemental data area called the heap."
+  type: int
+ZBLANK:
+  description: "When present, this header shall be used to store the integer value that represents undefined pixels in the scaled integer array"
+  type: int

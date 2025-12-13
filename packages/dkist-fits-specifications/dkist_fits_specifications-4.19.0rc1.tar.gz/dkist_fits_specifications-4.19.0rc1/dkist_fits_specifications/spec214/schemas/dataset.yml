@@ -1,0 +1,99 @@
+spec214:
+  section_122: null
+  copy: false
+  required: true
+  units: null
+  expand: false
+  title: Dataset
+  summary: Keys describing the dataset that this FITS file forms a part of.
+  long_description: |
+    Each dataset has a given number of axes ``DNAXIS``, ``DAAXES`` of which are contained in the array in a given FITS file, ``DEAXES`` of which are "striped" along all the FITS files that comprise the dataset.
+    The keys in this table give information about all the dataset axes, both inside and outside of the array in a given FITS file.
+---
+DNAXIS:
+  description: "The number of axes in the dataset. Normally between three and five, depending on instrument mode."
+  type: int
+DNAXIS<d>:
+  description: "The length of the nth dataset axis. The length of the axes contained in the FITS file will also be stored in the NAXISn key, but will be duplicated here for clarity."
+  type: int
+  units: pix
+  expand: true
+DTYPE<d>:
+  description: "The physical type of the nth axis in the dataset"
+  type: str
+  values:
+    - 'SPATIAL'
+    - 'SPECTRAL'
+    - 'TEMPORAL'
+    - 'STOKES'
+  expand: true
+DPNAME<d>:
+  description: "The name of the nth pixel axis. This is a description of the axis in pixel units. For example it might be 'slit position' or 'scan number'. This is to aid identification of the axes based on the operation of the instrument rather than the world coordinate of that axes."
+  type: str
+  expand: true
+DWNAME<d>:
+  type: str
+  description: "The name of the nth world coordinate axis. This is the description of the world coordinate corresponding to the nth pixel axis. For example this might be 'helioprojective longitude' or 'wavelength'."
+  expand: true
+DUNIT<d>:
+  type: str
+  description: "The unit of the nth world coordinate axis. This should follow the same specification as the FITS standard key CUNITn, and will duplicate the values in CUNITn for the dataset axes which are in the FITS array."
+  expand: true
+  format: 'unit'
+DAAXES:
+  type: int
+  description: "The number of dataset axes which are contained in the FITS array. This should also equal the number of non-unity length axes in the FITS array. This is included to facilitate the correct encoding of slit-spectrograph frames, which while they are stored as two dimensional arrays have three world coordinate axes (two spatial dimensions for one spatial array axis). FITS-WCS requires the number of pixel and world axes to match, so an extra length unity dimension is added in this situation."
+DEAXES:
+  type: int
+  description: "The number of dataset pixel axes not present in the FITS array. This is included as it prevents needing to calculate this number by doing DNAXIS - DAAXES."
+DINDEX<k>:
+  type: int
+  description: "The k index is the range of values between DAAXES + 1 and DAAXES + DEAXES + 1, i.e. the indices of the dataset axes not in the FITS array. This number gives the position of the current frame in the axes of the dataset that are not contained within the array in the FITS file."
+  units: pix
+  expand: true
+LINEWAV:
+  section_122: "fits"
+  copy: true
+  rename: "WAVELNTH"
+  description: "The central wavelength being observed. This could be the center of a filter or the center of a wavelength range. It should be the same for all frames in a dataset."
+FRAMEWAV:
+  type: float
+  required: false
+  description: "The wavelength observed by this frame. Used when a frame is a narrowband observation observed at a single wavelength. For instance one frame in a sequence of frames scanning a line."
+  units: nm
+WAVEBAND:
+  description: "Strongest emission line in data"
+  type: str
+  copy: false
+  required: false
+WAVEUNIT:
+  description: "Wavelength related keywords have unit: 10^(WAVEUNIT)"
+  type: int
+  copy: false
+  required: true
+  values:
+    - -9
+WAVEREF:
+  description: "Medium wavelength was measured in: air or vacuum"
+  type: str
+  copy: false
+  required: true
+  values:
+    - 'Air'
+WAVEMIN:
+  description: "Minimum wavelength covered by filter"
+  units: nm
+  type: float
+  copy: false
+  required: true
+WAVEMAX:
+  description: "Maximum wavelength covered by filter"
+  units: nm
+  type: float
+  copy: false
+  required: true
+CNAME<n>:
+  type: str
+  description: "The name of the nth world coordinate axis. This is the description of the world coordinate corresponding to the nth pixel axis. For example this might be 'helioprojective longitude' or 'wavelength'. Same as DWNAME<d>. Helpful for WCS."
+  expand: true
+  required: false
