@@ -1,0 +1,96 @@
+# Django-style Settings Configuration
+# Demonstrates prism-config for Django applications with familiar settings patterns
+
+# Basic Django settings
+django:
+  secret_key: REF::ENV::DJANGO_SECRET_KEY
+  debug: true
+  allowed_hosts:
+    - localhost
+    - 127.0.0.1
+    - .example.com
+  language_code: en-us
+  time_zone: UTC
+  use_i18n: true
+  use_tz: true
+
+# Database configuration (matches Django's DATABASES format)
+database:
+  host: localhost
+  port: 5432
+  name: django_db
+  username: django_user
+  password: REF::ENV::DB_PASSWORD
+  engine: postgresql
+  options:
+    connect_timeout: 10
+    sslmode: prefer
+
+# Static and media files
+static:
+  url: /static/
+  root: /var/www/static/
+  dirs:
+    - assets/
+    - vendor/
+
+media:
+  url: /media/
+  root: /var/www/media/
+
+# Email configuration (matches Django's EMAIL_* settings)
+email:
+  backend: smtp
+  host: smtp.gmail.com
+  port: 587
+  use_tls: true
+  host_user: REF::ENV::EMAIL_HOST_USER
+  host_password: REF::ENV::EMAIL_HOST_PASSWORD
+  default_from: noreply@example.com
+
+# Caching (matches Django's CACHES format)
+cache:
+  backend: redis
+  location: redis://localhost:6379/1
+  timeout: 300
+  options:
+    client_class: django_redis.client.DefaultClient
+
+# Session configuration
+session:
+  engine: django.contrib.sessions.backends.cache
+  cache_alias: default
+  cookie_age: 1209600  # 2 weeks
+  cookie_secure: true
+  cookie_httponly: true
+
+# Logging configuration (matches Django's LOGGING format)
+logging:
+  version: 1
+  disable_existing_loggers: false
+  root_level: INFO
+  handlers:
+    - console
+    - file
+  file_path: /var/log/django/app.log
+
+# Security middleware settings
+security:
+  csrf_cookie_secure: true
+  session_cookie_secure: true
+  secure_browser_xss_filter: true
+  secure_content_type_nosniff: true
+  x_frame_options: DENY
+  hsts_seconds: 31536000
+  hsts_include_subdomains: true
+
+# Third-party integrations
+integrations:
+  sentry:
+    dsn: REF::ENV::SENTRY_DSN
+    environment: development
+    traces_sample_rate: 0.1
+  celery:
+    broker_url: redis://localhost:6379/0
+    result_backend: redis://localhost:6379/0
+    task_always_eager: false

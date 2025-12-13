@@ -1,0 +1,109 @@
+[project]
+name = "prism-config"
+version = "2.1.2"
+description = "🔮 Prism Config - Type-safe configuration with tiered loading, environment overrides, and secret resolution"
+authors = [{name = "Luke Udell", email = "luke.t.udell@gmail.com"}]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = [
+    "config",
+    "configuration",
+    "settings",
+    "environment",
+    "secrets",
+    "yaml",
+    "pydantic",
+    "12-factor",
+    "docker",
+    "kubernetes"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "pydantic>=2.0.0,<3.0.0",
+    "pyyaml>=6.0.0,<7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lukeudell/prism-config"
+Documentation = "https://github.com/lukeudell/prism-config#readme"
+Repository = "https://github.com/lukeudell/prism-config"
+Issues = "https://github.com/lukeudell/prism-config/issues"
+Changelog = "https://github.com/lukeudell/prism-config/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "pytest-mock>=3.11.1,<4.0.0",
+    "hypothesis>=6.82.0,<7.0.0",
+    "ruff>=0.1.0,<1.0.0",
+    "mypy>=1.5.0,<2.0.0",
+    "build>=1.0.0,<2.0.0",
+    "twine>=4.0.0,<5.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ============================================================================
+# Tell Hatchling where to find our package
+# ============================================================================
+[tool.hatch.build.targets.wheel]
+packages = ["src/prism"]
+
+# ============================================================================
+# Pytest Configuration
+# ============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "-v",
+]
+# Coverage options moved to command line:
+# pytest --cov=src/prism/config --cov-report=term-missing --cov-report=xml
+
+# ============================================================================
+# Ruff Configuration
+# ============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "C4"]
+ignore = ["I001"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+force-single-line = false
+lines-between-types = 0
+
+# ============================================================================
+# MyPy Configuration
+# ============================================================================
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start lenient, tighten later

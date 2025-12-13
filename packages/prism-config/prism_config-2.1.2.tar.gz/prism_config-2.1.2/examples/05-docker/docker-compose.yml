@@ -1,0 +1,43 @@
+# Docker Compose configuration with secrets
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: prism-config-example:latest
+    secrets:
+      - api_key
+      - db_password
+    environment:
+      # Override config values via environment variables
+      - APP_APP__ENVIRONMENT=production
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16-alpine
+    secrets:
+      - db_password
+    environment:
+      - POSTGRES_DB=production_db
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+secrets:
+  api_key:
+    file: ./secrets/api_key.txt
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge

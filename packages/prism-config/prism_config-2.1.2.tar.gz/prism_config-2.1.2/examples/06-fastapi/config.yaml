@@ -1,0 +1,82 @@
+# FastAPI Application Configuration
+# Demonstrates prism-config v2.0.0 custom schema features
+
+app:
+  name: fastapi-example
+  environment: development
+  debug: true
+  version: "1.0.0"
+
+database:
+  host: localhost
+  port: 5432
+  name: fastapi_db
+  username: app_user
+  password: REF::ENV::DB_PASSWORD
+
+# Custom auth section (v2.0.0 custom schema)
+auth:
+  jwt:
+    secret_key: REF::ENV::JWT_SECRET
+    algorithm: HS256
+    access_token_expire_minutes: 30
+    refresh_token_expire_days: 7
+  oauth:
+    enabled: true
+    providers:
+      - google
+      - github
+    google_client_id: REF::ENV::GOOGLE_CLIENT_ID
+    github_client_id: REF::ENV::GITHUB_CLIENT_ID
+  session:
+    cookie_name: session_id
+    max_age_hours: 24
+    secure: true
+    http_only: true
+
+# Custom rate limiting section (v2.0.0 custom schema)
+rate_limit:
+  enabled: true
+  default:
+    requests_per_minute: 60
+    burst: 10
+  endpoints:
+    "/api/v1/login":
+      requests_per_minute: 5
+      burst: 2
+    "/api/v1/signup":
+      requests_per_minute: 3
+      burst: 1
+    "/api/v1/public":
+      requests_per_minute: 100
+      burst: 20
+
+# Redis for caching and rate limiting
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  password: REF::ENV::REDIS_PASSWORD
+
+# Logging configuration
+logging:
+  level: DEBUG
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    - console
+    - file
+  file_path: /var/log/app/fastapi.log
+
+# CORS settings
+cors:
+  allowed_origins:
+    - http://localhost:3000
+    - https://app.example.com
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+  allowed_headers:
+    - "*"
+  allow_credentials: true
