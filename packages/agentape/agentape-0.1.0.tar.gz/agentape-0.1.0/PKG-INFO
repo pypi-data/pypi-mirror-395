@@ -1,0 +1,96 @@
+Metadata-Version: 2.4
+Name: agentape
+Version: 0.1.0
+Summary: Record/replay testing for LLM agents - VCR.py but for LLM SDKs
+Project-URL: Homepage, https://github.com/agentape/agentape
+Project-URL: Documentation, https://github.com/agentape/agentape#readme
+Project-URL: Repository, https://github.com/agentape/agentape
+Project-URL: Issues, https://github.com/agentape/agentape/issues
+Author: agentape contributors
+License-Expression: MIT
+License-File: LICENSE
+Keywords: anthropic,llm,openai,record,replay,testing,vcr
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Testing
+Requires-Python: >=3.10
+Requires-Dist: openai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.18.0; extra == 'anthropic'
+Provides-Extra: dev
+Requires-Dist: mypy; extra == 'dev'
+Requires-Dist: pytest-asyncio; extra == 'dev'
+Requires-Dist: pytest>=7.0; extra == 'dev'
+Requires-Dist: ruff; extra == 'dev'
+Requires-Dist: types-pyyaml; extra == 'dev'
+Provides-Extra: semantic
+Requires-Dist: numpy; extra == 'semantic'
+Requires-Dist: openai; extra == 'semantic'
+Description-Content-Type: text/markdown
+
+# agentape
+
+Record/replay testing for LLM agents. Think "VCR.py but for LLM SDKs" with semantic matching.
+
+## Installation
+
+```bash
+pip install agentape
+```
+
+## Quick Start
+
+```python
+import agentape
+from openai import OpenAI
+
+# Wrap the client
+client = agentape.wrap(OpenAI())
+
+# Record interactions
+with agentape.record("tapes/my_flow.yaml"):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+
+# Replay interactions (no API calls made)
+with agentape.replay("tapes/my_flow.yaml"):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+```
+
+## pytest Integration
+
+```python
+import agentape
+
+@agentape.use_tape("tapes/{test_name}.yaml")
+def test_my_feature(openai_client):
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+    assert "hello" in response.choices[0].message.content.lower()
+```
+
+Run tests with:
+
+```bash
+pytest tests/ --tape-mode=record   # Record new tapes
+pytest tests/ --tape-mode=replay   # Replay existing (default)
+pytest tests/ --tape-mode=off      # Pass-through, no taping
+```
+
+## License
+
+MIT
