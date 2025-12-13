@@ -1,0 +1,185 @@
+# pytest-playwright-json
+
+[![PyPI version](https://badge.fury.io/py/pytest-playwright-json.svg)](https://pypi.org/project/pytest-playwright-json/)
+[![Python](https://img.shields.io/pypi/pyversions/pytest-playwright-json.svg)](https://pypi.org/project/pytest-playwright-json/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> Generate Playwright-compatible JSON reports from your Python tests
+
+## Quick Start
+
+### 1. Install
+
+```bash
+pip install pytest-playwright-json
+```
+
+### 2. Run Tests
+
+```bash
+pytest --playwright-json=test-results/report.json
+```
+
+That's it! Your test results are now in Playwright's JSON format.
+
+## Why Use This?
+
+- **TestDino Integration**: Upload Python test results to TestDino dashboard
+- **Playwright Format**: Use tools designed for Playwright's native JSON reporter
+- **Automatic Attachments**: Screenshots, videos, and traces are included automatically
+- **Zero Config**: Works out of the box with sensible defaults
+
+## Installation
+
+```bash
+pip install pytest-playwright-json
+```
+
+**Requirements:**
+- Python 3.9 or higher
+- pytest 7.0 or higher
+- pytest-playwright (optional, for browser tests)
+
+## Usage
+
+### Basic Usage
+
+```bash
+# Generate JSON report
+pytest --playwright-json=test-results/report.json
+
+# With Playwright browser tests
+pytest --playwright-json=test-results/report.json --browser=chromium
+```
+
+### With pytest-html (Recommended)
+
+```bash
+pip install pytest-html
+
+pytest \
+  --playwright-json=test-results/report.json \
+  --html=test-results/index.html \
+  --self-contained-html
+```
+
+### Configuration File
+
+Add to your `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+addopts = [
+    "--playwright-json=test-results/report.json",
+    "--playwright-json-test-results-dir=test-results",
+]
+```
+
+Or `pytest.ini`:
+
+```ini
+[pytest]
+addopts = --playwright-json=test-results/report.json
+```
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--playwright-json=PATH` | Output path for JSON report |
+| `--playwright-json-test-results-dir=PATH` | Directory with test artifacts (auto-detected, rarely needed) |
+| `--playwright-json-include-attachments` | Include attachments in report (default: enabled) |
+
+**Smart Defaults:** The plugin automatically finds test artifacts by:
+1. Using pytest-playwright's `--output` directory if set
+2. Using the parent directory of your JSON report path
+3. Falling back to `test-results`
+
+## Attachments
+
+The plugin automatically includes these attachments in your report:
+
+| Type | Extensions |
+|------|------------|
+| Screenshots | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp` |
+| Videos | `.webm`, `.mp4` |
+| Traces | `.zip` |
+
+## Upload to TestDino
+
+Use with [testdino](https://pypi.org/project/testdino/) CLI to upload results:
+
+```bash
+# Install testdino
+pip install testdino
+
+# Run tests
+pytest --playwright-json=test-results/report.json
+
+# Upload to TestDino
+testdino upload test-results --token="your-token"
+```
+
+## Example Test
+
+```python
+from playwright.sync_api import Page, expect
+
+def test_homepage(page: Page):
+    page.goto("https://example.com")
+    expect(page).to_have_title("Example Domain")
+
+def test_navigation(page: Page):
+    page.goto("https://example.com")
+    page.click("a")
+    expect(page).to_have_url("https://www.iana.org/domains/example")
+```
+
+Run with:
+
+```bash
+pytest tests/ --playwright-json=test-results/report.json --browser=chromium
+```
+
+## Test Results
+
+After running, you'll find:
+
+```
+test-results/
+  report.json          # JSON report (Playwright format)
+  index.html           # HTML report (if using pytest-html)
+  test-name-chromium/  # Attachments for failed tests
+    screenshot.png
+    video.webm
+    trace.zip
+```
+
+## Troubleshooting
+
+### No attachments in report?
+
+Make sure your JSON report is in the same directory as test artifacts:
+
+```bash
+# Recommended: Put report.json inside test-results/
+pytest --playwright-json=test-results/report.json --output=test-results
+```
+
+### pytest-playwright not found?
+
+Install it:
+
+```bash
+pip install pytest-playwright
+playwright install chromium
+```
+
+## Support
+
+- **Documentation**: [testdino.com/docs](https://testdino.com/docs)
+- **Issues**: [GitHub Issues](https://github.com/testdino-inc/pytest-playwright-json/issues)
+
+---
+
+**Made with love by the [TestDino](https://testdino.com) team**
