@@ -1,0 +1,693 @@
+"""
+Fastpy Setup CLI Commands.
+
+Provides interactive project setup, database configuration, secret generation,
+admin user creation, and pre-commit hooks installation.
+
+These are standalone commands that work within a Fastpy project.
+"""
+
+import os
+import secrets
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm, Prompt
+
+console = Console()
+
+
+@dataclass
+class DatabaseConfig:
+    """Database configuration."""
+
+    driver: str
+    host: str
+    port: int
+    username: str
+    password: str
+    database: str
+
+    @property
+    def url(self) -> str:
+        """Generate database URL."""
+        if self.driver == "sqlite":
+            return f"sqlite:///./{self.database}.db"
+
+        if self.password:
+            return f"{self.driver}://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
+        return f"{self.driver}://{self.username}@{self.host}:{self.port}/{self.database}"
+
+    @property
+    def masked_url(self) -> str:
+        """URL with masked password for display."""
+        if self.driver == "sqlite":
+            return self.url
+        if self.password:
+            return f"{self.driver}://{self.username}:****@{self.host}:{self.port}/{self.database}"
+        return self.url
+
+
+def check_command_exists(cmd: str) -> bool:
+    """Check if a command exists in PATH."""
+    try:
+        subprocess.run(
+            ["which", cmd] if sys.platform != "win32" else ["where", cmd],
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def run_command(
+    cmd: list, capture: bool = True, check: bool = True, **kwargs
+) -> subprocess.CompletedProcess:
+    """Run a shell command."""
+    return subprocess.run(cmd, capture_output=capture, text=True, check=check, **kwargs)
+
+
+def get_env_path() -> Path:
+    """Get .env file path."""
+    return Path.cwd() / ".env"
+
+
+def read_env() -> dict:
+    """Read .env file into dict."""
+    env_path = get_env_path()
+    env_vars = {}
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    env_vars[key.strip()] = value.strip()
+    return env_vars
+
+
+def update_env(key: str, value: str):
+    """Update a single key in .env file."""
+    env_path = get_env_path()
+
+    if not env_path.exists():
+        # Copy from .env.example if exists
+        example_path = Path.cwd() / ".env.example"
+        if example_path.exists():
+            env_path.write_text(example_path.read_text())
+        else:
+            env_path.write_text("")
+
+    content = env_path.read_text()
+    lines = content.split("\n")
+    key_found = False
+
+    for i, line in enumerate(lines):
+        if line.startswith(f"{key}="):
+            lines[i] = f"{key}={value}"
+            key_found = True
+            break
+
+    if not key_found:
+        lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(lines))
+
+
+def is_fastpy_project() -> bool:
+    """Check if current directory is a Fastpy project."""
+    indicators = [
+        Path("main.py").exists(),
+        Path("app").is_dir(),
+        Path("requirements.txt").exists() or Path("pyproject.toml").exists(),
+    ]
+    return all(indicators)
+
+
+def check_database_server(driver: str) -> tuple[bool, str]:
+    """Check if database server is running."""
+    if driver == "postgresql":
+        if check_command_exists("psql"):
+            try:
+                result = run_command(["psql", "-U", "postgres", "-c", "SELECT 1"], check=False)
+                if result.returncode == 0:
+                    return True, "PostgreSQL server is running"
+                result = run_command(["psql", "-h", "localhost", "-c", "SELECT 1"], check=False)
+                if result.returncode == 0:
+                    return True, "PostgreSQL server is running"
+            except Exception:
+                pass
+        return False, "PostgreSQL server may not be running"
+
+    elif driver == "mysql":
+        if check_command_exists("mysql"):
+            try:
+                result = run_command(["mysql", "-e", "SELECT 1"], check=False)
+                if result.returncode == 0:
+                    return True, "MySQL server is running"
+            except Exception:
+                pass
+        return False, "MySQL server may not be running"
+
+    return True, "SQLite requires no server"
+
+
+def check_database_exists(config: DatabaseConfig) -> bool:
+    """Check if database exists."""
+    if config.driver == "sqlite":
+        return Path(f"{config.database}.db").exists()
+
+    if config.driver == "postgresql":
+        cmd = ["psql", "-h", config.host, "-p", str(config.port), "-U", config.username, "-lqt"]
+        env = os.environ.copy()
+        if config.password:
+            env["PGPASSWORD"] = config.password
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
+            # Parse psql output: each line is "dbname | owner | encoding | ..."
+            # Use exact match to avoid false positives (e.g., "app" matching "myapp")
+            for line in result.stdout.split("\n"):
+                if "|" in line:
+                    db_name = line.split("|")[0].strip()
+                    if db_name == config.database:
+                        return True
+            return False
+        except Exception:
+            return False
+
+    elif config.driver == "mysql":
+        cmd = ["mysql", "-h", config.host, "-P", str(config.port), "-u", config.username]
+        cmd.extend(["-e", f"USE {config.database}"])
+        env = os.environ.copy()
+        if config.password:
+            # Use environment variable instead of command line for security
+            # (password on command line is visible in process list)
+            env["MYSQL_PWD"] = config.password
+        try:
+            result = subprocess.run(cmd, capture_output=True, env=env, check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    return False
+
+
+def create_database(config: DatabaseConfig) -> bool:
+    """Create database if it doesn't exist."""
+    if config.driver == "sqlite":
+        return True
+
+    console.print(f"[blue]Creating database '{config.database}'...[/blue]")
+
+    if config.driver == "postgresql":
+        cmd = [
+            "createdb",
+            "-h",
+            config.host,
+            "-p",
+            str(config.port),
+            "-U",
+            config.username,
+            config.database,
+        ]
+        env = os.environ.copy()
+        if config.password:
+            env["PGPASSWORD"] = config.password
+        try:
+            subprocess.run(cmd, env=env, check=True, capture_output=True)
+            console.print(f"[green]✓[/green] Database '{config.database}' created successfully")
+            return True
+        except subprocess.CalledProcessError:
+            console.print(
+                "[yellow]⚠[/yellow] Could not create database. You may need to create it manually."
+            )
+            return False
+
+    elif config.driver == "mysql":
+        cmd = ["mysql", "-h", config.host, "-P", str(config.port), "-u", config.username]
+        cmd.extend(["-e", f"CREATE DATABASE IF NOT EXISTS `{config.database}`"])
+        env = os.environ.copy()
+        if config.password:
+            # Use environment variable instead of command line for security
+            env["MYSQL_PWD"] = config.password
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, env=env)
+            console.print(f"[green]✓[/green] Database '{config.database}' created successfully")
+            return True
+        except subprocess.CalledProcessError:
+            console.print(
+                "[yellow]⚠[/yellow] Could not create database. You may need to create it manually."
+            )
+            return False
+
+    return False
+
+
+# ============================================
+# Setup Functions
+# ============================================
+
+
+def setup_env(show_header: bool = True) -> bool:
+    """
+    Initialize .env file from .env.example.
+    """
+    if show_header:
+        console.print(Panel.fit("[bold cyan]Environment Setup[/bold cyan]", border_style="cyan"))
+
+    env_path = get_env_path()
+    example_path = Path.cwd() / ".env.example"
+
+    if env_path.exists():
+        console.print("[yellow]⚠[/yellow] .env file already exists")
+        if Confirm.ask("Backup and recreate?", default=False):
+            import time
+
+            backup_path = env_path.with_suffix(f".backup.{int(time.time())}")
+            env_path.rename(backup_path)
+            console.print(f"[dim]Backed up to: {backup_path}[/dim]")
+        else:
+            console.print("[dim]Keeping existing .env[/dim]")
+            return True
+
+    if example_path.exists():
+        env_path.write_text(example_path.read_text())
+        console.print("[green]✓[/green] Created .env from .env.example")
+        return True
+    else:
+        console.print("[red]✗[/red] .env.example not found")
+        return False
+
+
+def setup_db(
+    driver: Optional[str] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    database: Optional[str] = None,
+    create: bool = True,
+    interactive: bool = True,
+    show_header: bool = True,
+) -> Optional[DatabaseConfig]:
+    """
+    Configure database connection.
+    """
+    if show_header:
+        console.print(Panel.fit("[bold cyan]Database Configuration[/bold cyan]", border_style="cyan"))
+
+    # Database driver selection
+    if not driver and interactive:
+        console.print("\n[cyan]Select database driver:[/cyan]")
+        console.print("  [1] MySQL (recommended)")
+        console.print("  [2] PostgreSQL")
+        console.print("  [3] SQLite (development only)")
+
+        choice = Prompt.ask("\nChoice", default="1")
+        driver_map = {"1": "mysql", "2": "postgresql", "3": "sqlite"}
+        driver = driver_map.get(choice, "mysql")
+
+    driver = driver or "mysql"
+    console.print(f"[green]✓[/green] Selected: {driver}")
+
+    # SQLite configuration
+    if driver == "sqlite":
+        database = database or (
+            Prompt.ask("Database file name", default="fastpy") if interactive else "fastpy"
+        )
+        config = DatabaseConfig(
+            driver=driver, host="", port=0, username="", password="", database=database
+        )
+        update_env("DB_DRIVER", driver)
+        update_env("DATABASE_URL", config.url)
+        console.print(f"[green]✓[/green] SQLite configured: {config.url}")
+        return config
+
+    # Default values per driver
+    defaults = {
+        "mysql": {"host": "localhost", "port": 3306, "username": "root"},
+        "postgresql": {"host": "localhost", "port": 5432, "username": "postgres"},
+    }
+
+    d = defaults.get(driver, defaults["mysql"])
+
+    # Check server status
+    running, message = check_database_server(driver)
+    if running:
+        console.print(f"[green]✓[/green] {message}")
+    else:
+        console.print(f"[yellow]⚠[/yellow] {message}")
+        if driver == "mysql":
+            console.print(
+                "  [dim]Start with: mysql.server start or brew services start mysql[/dim]"
+            )
+        else:
+            console.print("  [dim]Start with: brew services start postgresql[/dim]")
+
+    # Interactive configuration
+    if interactive:
+        console.print("\n[cyan]Configure connection:[/cyan]")
+        host = Prompt.ask("Host", default=host or d["host"])
+        port = int(Prompt.ask("Port", default=str(port or d["port"])))
+        username = Prompt.ask("Username", default=username or d["username"])
+        password = Prompt.ask("Password", password=True, default=password or "")
+        database = Prompt.ask("Database name", default=database or "fastpy_db")
+    else:
+        host = host or d["host"]
+        port = port or d["port"]
+        username = username or d["username"]
+        password = password or ""
+        database = database or "fastpy_db"
+
+    config = DatabaseConfig(
+        driver=driver, host=host, port=port, username=username, password=password, database=database
+    )
+
+    # Update .env
+    update_env("DB_DRIVER", driver)
+    update_env("DATABASE_URL", config.url)
+    console.print(f"\n[green]✓[/green] Database URL: {config.masked_url}")
+
+    # Check/create database
+    if check_database_exists(config):
+        console.print(f"[green]✓[/green] Database '{config.database}' exists")
+    elif create:
+        if interactive:
+            if Confirm.ask(
+                f"Database '{config.database}' does not exist. Create it?", default=True
+            ):
+                create_database(config)
+        else:
+            create_database(config)
+
+    return config
+
+
+def setup_secret(length: int = 64, show_header: bool = True) -> str:
+    """
+    Generate a secure secret key for JWT tokens.
+    """
+    if show_header:
+        console.print(Panel.fit("[bold cyan]Secret Key Generation[/bold cyan]", border_style="cyan"))
+
+    secret_key = secrets.token_hex(length // 2)
+    update_env("SECRET_KEY", secret_key)
+
+    console.print(f"[green]✓[/green] Secure secret key generated ({length} characters)")
+    console.print("[dim]Key saved to .env[/dim]")
+
+    return secret_key
+
+
+def setup_hooks(show_header: bool = True) -> bool:
+    """
+    Install pre-commit hooks for code quality.
+    """
+    if show_header:
+        console.print(Panel.fit("[bold cyan]Pre-commit Hooks Setup[/bold cyan]", border_style="cyan"))
+
+    if not Path(".git").exists():
+        console.print("[dim]Skipped: Not a git repository[/dim]")
+        return False
+
+    if not check_command_exists("pre-commit"):
+        console.print("[dim]Skipped: pre-commit not installed[/dim]")
+        return False
+
+    if not Path(".pre-commit-config.yaml").exists():
+        console.print("[dim]Skipped: No .pre-commit-config.yaml found[/dim]")
+        return False
+
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+    ) as progress:
+        task = progress.add_task("Installing pre-commit hooks...", total=None)
+        try:
+            run_command(["pre-commit", "install"])
+            progress.update(task, completed=True)
+            console.print("[green]✓[/green] Pre-commit hooks installed")
+            return True
+        except subprocess.CalledProcessError:
+            progress.update(task, completed=True)
+            console.print("[red]✗[/red] Failed to install pre-commit hooks")
+            return False
+
+
+def get_venv_paths() -> tuple[Optional[Path], Optional[Path]]:
+    """Get venv python and bin paths if they exist."""
+    project_path = Path.cwd()
+    if sys.platform == "win32":
+        venv_python = project_path / "venv" / "Scripts" / "python.exe"
+        venv_bin = project_path / "venv" / "Scripts"
+    else:
+        venv_python = project_path / "venv" / "bin" / "python"
+        venv_bin = project_path / "venv" / "bin"
+
+    if venv_python.exists():
+        return venv_python, venv_bin
+    return None, None
+
+
+def get_venv_env() -> Optional[dict]:
+    """Get environment with venv paths set.
+
+    Returns environment dict with PATH and VIRTUAL_ENV set for venv,
+    or None if no venv exists.
+    """
+    venv_python, venv_bin = get_venv_paths()
+    if venv_bin:
+        env = os.environ.copy()
+        env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
+        env["VIRTUAL_ENV"] = str(Path.cwd() / "venv")
+        return env
+    return None
+
+
+def get_venv_command(cmd: str) -> list:
+    """Get command path, preferring venv if available."""
+    project_path = Path.cwd()
+
+    # Check for venv
+    if sys.platform == "win32":
+        venv_cmd = project_path / "venv" / "Scripts" / f"{cmd}.exe"
+    else:
+        venv_cmd = project_path / "venv" / "bin" / cmd
+
+    if venv_cmd.exists():
+        return [str(venv_cmd)]
+
+    # Check if command exists in PATH
+    if check_command_exists(cmd):
+        return [cmd]
+
+    # Not found
+    return []
+
+
+def show_venv_hint(command: str = "", extra_hint: str = "") -> None:
+    """Show helpful hint about activating venv."""
+    console.print()
+    console.print("[yellow]The virtual environment is not activated.[/yellow]")
+    console.print()
+    console.print("[bold]To activate:[/bold]")
+    if sys.platform == "win32":
+        console.print("  [cyan]venv\\Scripts\\activate[/cyan]")
+    else:
+        console.print("  [cyan]source venv/bin/activate[/cyan]")
+    if command:
+        console.print()
+        console.print(f"Then run: [cyan]{command}[/cyan]")
+    if extra_hint:
+        console.print()
+        console.print(f"[dim]{extra_hint}[/dim]")
+
+
+def run_migrations(auto_generate: bool = True, show_header: bool = True) -> bool:
+    """
+    Run database migrations.
+    """
+    if show_header:
+        console.print(Panel.fit("[bold cyan]Database Migrations[/bold cyan]", border_style="cyan"))
+
+    # Get alembic command (prefer venv)
+    alembic_cmd = get_venv_command("alembic")
+
+    if not alembic_cmd:
+        console.print("[red]✗[/red] Alembic not found")
+        show_venv_hint("alembic upgrade head", "Or run: fastpy db:migrate after activation")
+        return False
+
+    # Get venv environment to ensure subprocesses use venv Python
+    venv_env = get_venv_env()
+
+    # Load .env variables for database connection
+    env_vars = read_env()
+    if venv_env:
+        venv_env.update(env_vars)
+    else:
+        venv_env = os.environ.copy()
+        venv_env.update(env_vars)
+
+    versions_dir = Path("alembic/versions")
+    has_migrations = versions_dir.exists() and any(versions_dir.glob("*.py"))
+
+    if not has_migrations and auto_generate:
+        console.print("[blue]Generating initial migration...[/blue]")
+        try:
+            subprocess.run(
+                alembic_cmd + ["revision", "--autogenerate", "-m", "Initial migration"],
+                env=venv_env,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            console.print("[green]✓[/green] Initial migration generated")
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]✗[/red] Failed to generate migration")
+            if e.stderr:
+                # Show relevant error info
+                error_lines = e.stderr.strip().split("\n")
+                for line in error_lines[-5:]:  # Last 5 lines
+                    console.print(f"  [dim]{line}[/dim]")
+            return False
+        except FileNotFoundError:
+            console.print("[red]✗[/red] Alembic not found")
+            show_venv_hint("alembic revision --autogenerate -m 'migration'")
+            return False
+
+    console.print("[blue]Running migrations...[/blue]")
+    try:
+        subprocess.run(
+            alembic_cmd + ["upgrade", "head"],
+            env=venv_env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        console.print("[green]✓[/green] Migrations completed")
+        return True
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]✗[/red] Migration failed")
+        console.print()
+
+        # Parse common errors and provide helpful messages
+        stderr = e.stderr or ""
+        if "Can't locate revision" in stderr:
+            console.print("[yellow]Possible cause:[/yellow] Missing migration files")
+            console.print("  Try: [cyan]fastpy db:migrate --fresh[/cyan]")
+        elif "connection refused" in stderr.lower() or "could not connect" in stderr.lower():
+            console.print("[yellow]Possible cause:[/yellow] Database server not running")
+            env = read_env()
+            driver = env.get("DB_DRIVER", "unknown")
+            if driver == "mysql":
+                console.print("  Try: [cyan]mysql.server start[/cyan] or [cyan]brew services start mysql[/cyan]")
+            elif driver == "postgresql":
+                console.print("  Try: [cyan]brew services start postgresql[/cyan]")
+        elif "access denied" in stderr.lower() or "authentication failed" in stderr.lower():
+            console.print("[yellow]Possible cause:[/yellow] Invalid database credentials")
+            console.print("  Check: [cyan].env[/cyan] file for DATABASE_URL")
+        elif "unknown database" in stderr.lower() or "does not exist" in stderr.lower():
+            console.print("[yellow]Possible cause:[/yellow] Database does not exist")
+            console.print("  Try: [cyan]fastpy setup:db[/cyan] to create it")
+        else:
+            console.print("[yellow]Please check:[/yellow]")
+            console.print("  1. Database server is running")
+            console.print("  2. Database credentials in .env are correct")
+            console.print("  3. Database exists")
+            if stderr:
+                console.print()
+                console.print("[dim]Error details:[/dim]")
+                error_lines = stderr.strip().split("\n")
+                for line in error_lines[-5:]:
+                    console.print(f"  [dim]{line}[/dim]")
+
+        return False
+    except FileNotFoundError:
+        console.print("[red]✗[/red] Alembic not found")
+        show_venv_hint("alembic upgrade head")
+        return False
+
+
+def full_setup(
+    skip_db: bool = False,
+    skip_migrations: bool = False,
+    skip_admin: bool = False,
+    skip_hooks: bool = False,
+):
+    """
+    Run complete project setup.
+    """
+    if not is_fastpy_project():
+        console.print("[red]Error:[/red] This doesn't appear to be a Fastpy project.")
+        console.print("[dim]Run this command from a Fastpy project directory.[/dim]")
+        raise typer.Exit(1)
+
+    console.print(
+        Panel.fit(
+            "[bold green]🚀 Fastpy Project Setup[/bold green]\n"
+            "[dim]Interactive setup wizard[/dim]",
+            border_style="green",
+        )
+    )
+
+    step = 1
+
+    # Step 1: Environment setup
+    console.print(f"\n[bold]Step {step}: Environment[/bold]")
+    setup_env(show_header=False)
+    step += 1
+
+    # Step 2: Database configuration
+    if not skip_db:
+        console.print(f"\n[bold]Step {step}: Database[/bold]")
+        setup_db(show_header=False)
+        step += 1
+
+    # Step 3: Secret key
+    console.print(f"\n[bold]Step {step}: Security[/bold]")
+    setup_secret(show_header=False)
+    step += 1
+
+    # Step 4: Migrations
+    if not skip_migrations:
+        console.print(f"\n[bold]Step {step}: Migrations[/bold]")
+        if Confirm.ask("Run database migrations?", default=True):
+            if run_migrations(show_header=False) and not skip_admin:
+                step += 1
+                # Step 5: Admin user (only if migrations succeeded)
+                console.print(f"\n[bold]Step {step}: Admin User[/bold]")
+                if Confirm.ask("Create super admin user?", default=True):
+                    # Run make:admin command directly (with --no-header to avoid duplicate panel)
+                    from fastpy_cli.main import proxy_to_project_cli
+                    proxy_to_project_cli(["make:admin", "--no-header"])
+        step += 1
+
+    # Step 6: Pre-commit hooks
+    if not skip_hooks:
+        console.print(f"\n[bold]Step {step}: Code Quality[/bold]")
+        if Confirm.ask("Install pre-commit hooks?", default=True):
+            setup_hooks(show_header=False)
+
+
+# Export for use in main CLI
+__all__ = [
+    "setup_env",
+    "setup_db",
+    "setup_secret",
+    "setup_hooks",
+    "run_migrations",
+    "full_setup",
+    "is_fastpy_project",
+    "read_env",
+    "get_venv_env",
+    "get_venv_paths",
+    "DatabaseConfig",
+]
