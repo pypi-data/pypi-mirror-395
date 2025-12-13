@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Agent - Home</title>
+    <style>
+        /* Fluent Icons as SVG backgrounds */
+        .fluent-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .fluent-icon[data-fluent-icon="copilot-24-regular"] {
+            background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Microsoft_Copilot_Icon.svg/280px-Microsoft_Copilot_Icon.svg.png');
+            background-size: 24px 24px;
+        }
+        
+        .fluent-icon[data-fluent-icon="text-field-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M4 4h16v2H4V4zm0 14h10v2H4v-2zm0-7h16v2H4v-2z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="edit-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="sparkle-24-regular"] {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23000000" d="M9.813 2.938a.75.75 0 0 1 1.374 0l1.063 2.25 2.25 1.063a.75.75 0 0 1 0 1.374l-2.25 1.063-1.063 2.25a.75.75 0 0 1-1.374 0L8.75 8.688 6.5 7.625a.75.75 0 0 1 0-1.374l2.25-1.063L9.813 2.938Zm8.937 6.437a.5.5 0 0 1 .916 0l.585 1.25 1.25.585a.5.5 0 0 1 0 .916l-1.25.585-.585 1.25a.5.5 0 0 1-.916 0l-.585-1.25-1.25-.585a.5.5 0 0 1 0-.916l1.25-.585.585-1.25Zm-11.5 7a.5.5 0 0 1 .916 0l.585 1.25 1.25.585a.5.5 0 0 1 0 .916l-1.25.585-.585 1.25a.5.5 0 0 1-.916 0l-.585-1.25-1.25-.585a.5.5 0 0 1 0-.916l1.25-.585.585-1.25Z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="chevron-down-12-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path fill="%23272320" d="M2.15 4.15a.5.5 0 0 1 .7 0L6 7.29l3.15-3.14a.5.5 0 0 1 .7.7l-3.5 3.5a.5.5 0 0 1-.7 0l-3.5-3.5a.5.5 0 0 1 0-.7z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="eye-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="mic-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>');
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F8F4F1;
+            color: #322D29;
+            line-height: 1.529;
+            min-height: 100vh;
+            font-size: 17px;
+            font-weight: 410;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Main container */
+        .main-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 0;
+            width: 728px;
+            height: 1024px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 48px;
+            padding: 0 16px;
+            overflow-y: auto;
+        }
+        
+        /* Greeting section */
+        .greeting-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-self: stretch;
+            padding: 0;
+        }
+        
+        .greeting-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-self: stretch;
+            padding: 6px 18px;
+        }
+        
+        .greeting-text {
+            font-weight: 480;
+            font-size: 38px;
+            line-height: 1.053em;
+            letter-spacing: -0.02em;
+            color: #272320;
+            text-align: left;
+            width: 500px;
+            margin: 0;
+        }
+        
+        .fluent-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .fluent-icon[data-fluent-icon="copilot-24-regular"] {
+            background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Microsoft_Copilot_Icon.svg/280px-Microsoft_Copilot_Icon.svg.png');
+            background-size: 24px 24px;
+        }
+        
+        .fluent-icon[data-fluent-icon="eye-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>');
+        }
+        
+        .fluent-icon[data-fluent-icon="mic-24-regular"] {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23272320" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>');
+        }
+
+        /* Desktop Composer Component */
+        .composer-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-self: stretch;
+            padding: 0 0 20px;
+        }
+
+        .desktop-composer {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .outer-container {
+            width: calc(100% - 32px);
+            max-width: 728px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 6px;
+            background: rgba(250, 244, 239, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 32px;
+            box-shadow: 
+                0px 16px 48px 0px rgba(244, 190, 146, 0.18),
+                0px 16px 24px 0px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(60px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gradient-outer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 114px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 32px 32px 0 0;
+            pointer-events: none;
+        }
+        
+        .inner-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 26px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 8px;
+            border-radius: 32px;
+        }
+        
+        .text-input {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0px 10px 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .copilot-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 6px;
+        }
+        
+        .copilot-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .mode-button {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 6px;
+            background: rgba(0, 0, 0, 0);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            height: 36px;
+        }
+        
+        .button-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 2px;
+        }
+        
+        .text-padding {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0px 4px;
+        }
+        
+        .button-text {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 410;
+            font-size: 14px;
+            line-height: 1.43em;
+            color: #272320;
+            text-align: center;
+        }
+        
+        .chevron-padding {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2px;
+        }
+        
+        .chevron {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4.5px 2px 3px;
+        }
+        
+        .chevron-icon {
+            width: 8px;
+            height: 4.5px;
+            background: #272320;
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+        }
+        
+        .vision-button,
+        .mic-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0);
+            border-radius: 16px;
+            cursor: pointer;
+        }
+        
+        .vision-icon,
+        .mic-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .placeholder-text {
+            font-family: 'Ginto', 'ABC Ginto Normal Unlicensed Trial', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 410;
+            font-size: 17px;
+            line-height: 1.53em;
+            color: #635C57;
+            opacity: 0.9;
+            flex: 1;
+        }
+        
+        /* Header Controls */
+        .header-controls {
+            position: absolute;
+            top: 12px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .icon-button {
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: none;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .icon-button:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .icon-button .fluent-icon {
+            font-size: 24px;
+            color: #272320;
+        }
+
+        .split-button {
+            display: flex;
+            background: transparent;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .split-main {
+            border-radius: 16px 12px 12px 16px;
+        }
+
+        .split-dropdown {
+            width: 28px;
+            border-radius: 12px 16px 16px 12px;
+        }
+
+        .split-dropdown .fluent-icon {
+            font-size: 12px;
+        }
+
+        /* Avatar */
+        .avatar {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: url('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face') center/cover;
+            border: 2px solid rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Chips section */
+        .chips-section {
+            display: flex;
+            align-items: center;
+            align-self: stretch;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 0 24px;
+        }
+        
+        .chip {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .chip:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+        
+        .chip-text {
+            font-weight: 410;
+            font-size: 14px;
+            line-height: 1.429em;
+            color: #635C57;
+            padding: 0 4px;
+            white-space: nowrap;
+        }
+        
+        /* Chips section */
+        .chips-section {
+            display: flex;
+            align-items: center;
+            align-self: stretch;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 0 16px;
+        }
+        
+        .chip {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .chip:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+        
+        .chip-text {
+            font-weight: 410;
+            font-size: 14px;
+            line-height: 1.429em;
+            color: #635C57;
+            padding: 0 4px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Controls -->
+    <div class="header-controls">
+        <button class="icon-button">
+            <i class="fluent-icon" data-fluent-icon="text-field-24-regular"></i>
+        </button>
+        <div class="split-button">
+            <button class="icon-button split-main">
+                <i class="fluent-icon" data-fluent-icon="edit-24-regular"></i>
+            </button>
+            <button class="icon-button split-dropdown">
+                <i class="fluent-icon" data-fluent-icon="chevron-down-12-regular"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="avatar"></div>
+
+    <!-- Main content -->
+    <div class="main-container">
+        <!-- Greeting section -->
+        <div class="greeting-section">
+            <div class="greeting-container">
+                <h1 class="greeting-text">Hey, what's on your mind today?</h1>
+            </div>
+        </div>
+
+        <!-- Desktop Composer Component -->
+        <div class="composer-section">
+            <div class="desktop-composer">
+                <div class="outer-container">
+                    <div class="gradient-outer"></div>
+                    <div class="inner-container">
+                        <div class="input-section">
+                            <div class="text-input">
+                                <span class="placeholder-text">What can I help you with?</span>
+                            </div>
+                        </div>
+                        <div class="controls">
+                            <div class="control-group">
+                                <div class="copilot-logo">
+                                    <div class="copilot-icon">
+                                        <i class="fluent-icon" data-fluent-icon="copilot-24-regular"></i>
+                                    </div>
+                                </div>
+                                <div class="mode-button">
+                                    <div class="button">
+                                        <div class="button-content">
+                                            <div class="text-padding">
+                                                <div class="button-text">Copilot</div>
+                                            </div>
+                                            <div class="chevron-padding">
+                                                <div class="chevron">
+                                                    <div class="chevron-icon"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group">
+                                <div class="vision-button">
+                                    <i class="fluent-icon vision-icon" data-fluent-icon="eye-24-regular"></i>
+                                </div>
+                                <div class="mic-button">
+                                    <i class="fluent-icon mic-icon" data-fluent-icon="mic-24-regular"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chips section -->
+        <div class="chips-section">
+            <div class="chip">
+                <span class="chip-text">Write a first draft</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Get advice</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Learn something new</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Create an image</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Make a plan</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Brainstorm</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Practice a language</span>
+            </div>
+            <div class="chip">
+                <span class="chip-text">Take a quiz</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
