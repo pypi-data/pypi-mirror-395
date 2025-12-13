@@ -1,0 +1,335 @@
+<div align="center">
+  <h1><b>Buchi CLI</b></h1>
+  <p><b>The Safety-First Autonomous AI Coding Agent.</b></p>
+</div>
+
+<div align="center">
+  <img src="./assets/buchi-char.png" alt="Buchi CLI Logo" width="300">
+</div>
+
+**Buchi** is a command-line agent that acts as your autonomous pair programmer. It plans tasks, writes code, and manages files using an agentic workflow (LangGraph).
+
+Unlike "autocomplete" tools, Buchi can handle complex instructions like "Refactor the login logic and add tests." Because this requires high-level reasoning, **Buchi is designed to ensure safety** even when the AI makes mistakes.
+
+---
+## 🛠️ Prerequisites
+
+**Buchi** relies on [Ollama](https://ollama.com/) to run local AI models. You must have Ollama installed and running on your system before using this tool.
+
+### 1. Install Ollama
+Download the installer for your operating system from the [official website](https://ollama.com/), or use the commands below:
+
+* **macOS**: [Download](https://ollama.com/download/mac) and install.
+* **Windows**: [Download](https://ollama.com/download/windows) and run the installer.
+* **Linux**: Run the following command:
+    ```bash
+    curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+    ```
+
+### 2. Verify Installation
+Open your terminal and check that Ollama is accessible:
+```bash
+ollama --version
+```
+If the command is not found, you may need to restart your terminal.
+
+### 3. Start the Server
+Ensure the Ollama server is running in the background.
+- Mac/Windows: Launch the Ollama application.
+- Linux: It should run automatically, or start it with `ollama serve`.
+
+### 4. Pull a Model
+Buchi needs a model to work. Pull the default model (or your preferred one) before running your first task:
+```bash
+# Example: Pulling a coding-optimized model
+ollama pull qwen3-coder:480b-cloud
+```
+
+## ⬇️ Setting up
+
+### Create a folder 
+```bash
+mkdir <project_name>
+```
+
+Navigate to folder
+```bash
+cd <project_name>
+```
+To open in VSCode
+```bash
+code .
+```
+
+### Create a virtual environment and activate
+Windows:
+```bash
+python -m venv .venv
+```
+* **Activate (Command Prompt):**
+```bash
+.venv/Scripts/Activate
+```
+
+* **Activate (Powershell):**
+```bash
+.venv/Scripts/Activate.ps1
+```
+**Note:** On Windows, you may need to adjust PowerShell’s execution policy if activation fails:
+```bash
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+* **Deactivate:**
+```bash
+deactivate
+```
+
+MacOS/Linux:
+```bash
+python3 -m venv .venv
+```
+**Note:** On Linux/macOS, make sure you’re using `python3` since python may point to Python 2.
+
+* **Activate (bash/zsh):**
+```bash
+source .venv/bin/activate
+```
+
+* **Activate (fish shell):**
+```bash
+source .venv/bin/activate.fish
+```
+
+* **Deactivate:**
+```bash
+deactivate
+```
+
+## ☑️ Installation
+**pip:**
+
+Windows:
+```bash
+pip install buchi-cli 
+```
+MacOS/Linux:
+```bash
+python3 -m pip install buchi-cli
+```
+
+**uv (Recommended):**
+```bash
+uv add buchi-cli
+```
+
+
+
+
+## Main Commands
+
+### `buchi run` - Execute AI Coding Tasks
+
+```bash
+# Basic usage
+buchi run "Create a login endpoint"
+
+# Specify model
+buchi run "Add tests" --model qwen3-coder:480b-cloud
+
+# Set working directory
+buchi run "Refactor code" --dir ./my-project
+
+# Verbose mode (show detailed logs)
+buchi run "Create API" --verbose
+
+# Control max iterations (prevent runaway loops)
+buchi run "Build project" --max-iterations 75
+```
+
+### Options:
+`-m, --model` - Ollama model to use (default: qwen3-coder:480b-cloud)
+
+`-d, --dir` - Working directory (default: current directory)
+
+`-v, --verbose` - Show detailed execution logs
+
+`--max-iterations` - Maximum agent iterations (default: 50)
+
+## History Management
+
+### `buchi history` - View Conversation History
+
+```bash
+# Show last 10 messages (default)
+buchi history
+
+# Show last 5 messages
+buchi history -n 5
+
+# Show all messages
+buchi history --full
+
+# For specific project
+buchi history --dir ./my-project
+```
+
+### `buchi clear` - Clear Conversation History
+
+```bash
+# Clear history for current project
+buchi clear
+
+# Clear for specific project
+buchi clear --dir ./my-project
+```
+
+### `buchi limit` - Manage Message Context Limit
+
+```bash
+# View current limit
+buchi limit
+
+# Set limit to 30 messages
+buchi limit 30
+
+# Set unlimited
+buchi limit 0
+
+# For specific project
+buchi limit 50 --dir ./my-project
+```
+
+### `buchi info` - Project Statistics
+
+```bash
+# Show conversation statistics
+buchi info
+
+# For specific project
+buchi info --dir ./my-project
+```
+
+### Shows:
+- Total Messages
+
+- Message Limit
+
+- First/Last Interaction Dates
+
+- Storage Location
+
+## Safety & Recovery
+
+### `buchi undo` - Undo File Operations
+
+```bash
+# Undo the last operation (default)
+buchi undo
+
+# Undo the last 3 operations
+buchi undo -n 3
+
+# For specific project
+buchi undo --dir ./my-project
+```
+Restores files to their state before the agent modified them.
+
+### `buchi backups` - View Backup Statistics
+
+```bash
+# Show storage stats and last 10 backups
+buchi backups
+
+# Show last 20 backups
+buchi backups -n 20
+
+# For specific project
+buchi backups --dir ./my-project
+```
+Displays total storage used by backups and lists recent modifications.
+
+### `buchi backup-clean` - Clean Old Backups
+
+```bash
+# Delete backups older than 30 days (default)
+buchi backup-clean
+
+# Delete backups older than 7 days
+buchi backup-clean --days 7
+
+# Delete ALL backups (dangerous)
+buchi backup-clean --all
+
+# Skip confirmation prompt
+buchi backup-clean --all --force
+```
+Clean up old backups to free up disk space.
+
+## Logging Commands
+
+### `buchi logs` - View Log Files
+
+```bash
+# Show last 20 debug logs (default)
+buchi logs
+
+# Show last 50 audit logs
+buchi logs --type audit -n 50
+
+# Show error logs
+buchi logs --type error
+
+# Follow logs in real-time (tail -f style)
+buchi logs --follow
+
+# For specific project
+buchi logs --dir ./my-project
+```
+### Log types:
+- `debug` - Detailed execution traces
+- `audit` - File operations and security events
+- `error` - Errors and exceptions only
+
+### `buchi log-stats` - Log Statistics
+
+```bash
+# Show log file statistics
+buchi log-stats
+
+# For specific project
+buchi log-stats --dir ./my-project
+```
+### Log types:
+- Total log files and size
+- Size by log type (debug/audit/error)
+- Log directory location
+
+### `buchi log-clean` - Clean Old Logs
+
+```bash
+# Delete logs older than 30 days (default)
+buchi log-clean
+
+# Delete logs older than 7 days
+buchi log-clean --days 7
+
+# Delete ALL logs
+buchi log-clean --all
+
+# For specific project
+buchi log-clean --dir ./my-project
+```
+
+## Utility Commands
+
+### `buchi models` - List Available Models
+
+```bash
+# List all Ollama models
+buchi models
+```
+
+
+
+
