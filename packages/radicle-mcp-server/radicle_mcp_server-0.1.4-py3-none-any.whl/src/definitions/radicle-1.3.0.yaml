@@ -1,0 +1,735 @@
+metadata:
+  version: 1.3.0
+  release_date: '2025-08-16'
+  code_name: Lily
+  breaking_changes: false
+  migration_required: false
+  minimum_python_version: '3.8'
+commands:
+  auth:
+    help: Manage identities and profiles
+    subcommands: {}
+    options:
+      stdin:
+        type: flag
+        description: Read passphrase from stdin
+        required: false
+    examples:
+    - rad auth
+    - rad auth --stdin
+  block:
+    help: Block peers from network
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: did
+      type: string
+      description: Peer DID to block
+      required: true
+    examples:
+    - rad block did:key:z6Mk...
+  checkout:
+    help: Checkout a working copy
+    subcommands: {}
+    options:
+      path:
+        type: string
+        description: Path to checkout
+        required: false
+    examples:
+    - rad checkout rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+    - rad checkout --path ./my-project
+  clone:
+    help: Clone a repository
+    subcommands: {}
+    options:
+      seed:
+        type: string
+        description: Seed node to clone from
+        required: false
+      path:
+        type: string
+        description: Clone destination path
+        required: false
+    examples:
+    - rad clone rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+    - rad clone --seed <seed> rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  config:
+    help: Manage configuration
+    subcommands:
+      get:
+        help: Get configuration value
+        options: {}
+        positional_args:
+        - name: key
+          type: string
+          description: Configuration key
+          required: true
+        examples:
+        - rad config get node.alias
+      set:
+        help: Set configuration value
+        options: {}
+        positional_args:
+        - name: key
+          type: string
+          description: Configuration key
+          required: true
+        - name: value
+          type: string
+          description: Configuration value
+          required: true
+        examples:
+        - rad config set node.alias 'my-node'
+    options: {}
+    examples:
+    - rad config --help
+    - rad config get node.alias
+  fork:
+    help: Fork a repository
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: rid
+      type: string
+      description: Repository ID to fork
+      required: true
+    examples:
+    - rad fork rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  help:
+    help: Show help information
+    subcommands: {}
+    options: {}
+    examples:
+    - rad help
+    - rad help issue
+  id:
+    help: Manage identity
+    subcommands:
+      show:
+        help: Show current identity
+        options: {}
+        examples:
+        - rad id show
+      update:
+        help: Update identity document
+        options:
+          edit:
+            type: flag
+            description: Edit identity document in editor
+            required: false
+            added_in: 1.1.0
+        examples:
+        - rad id update
+        - rad id update --edit
+    options: {}
+    examples:
+    - rad id
+  init:
+    help: Initialize a repository
+    subcommands: {}
+    options:
+      name:
+        type: string
+        description: Project name
+        required: false
+      description:
+        type: string
+        description: Project description
+        required: false
+      default_branch:
+        type: string
+        description: Default branch name
+        required: false
+    examples:
+    - rad init
+    - rad init --name 'my-project' --description 'My project'
+  inbox:
+    help: Manage notifications inbox
+    subcommands:
+      show:
+        help: Show inbox contents
+        options: {}
+        examples:
+        - rad inbox show
+      clear:
+        help: Clear inbox
+        options: {}
+        examples:
+        - rad inbox clear
+    options: {}
+    examples:
+    - rad inbox
+  inspect:
+    help: Inspect repository or object
+    subcommands: {}
+    options:
+      repo:
+        type: string
+        description: Repository to inspect
+        required: false
+    examples:
+    - rad inspect
+    - rad inspect --repo rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  issue:
+    help: Manage issues
+    options:
+      repo:
+        type: string
+        description: Repository to operate on
+        required: false
+    subcommands:
+      open:
+        help: Create a new issue
+        options:
+          title:
+            type: string
+            description: Issue title
+            required: true
+          description:
+            type: string
+            description: Issue description
+            required: false
+          label:
+            type: list
+            description: Issue labels
+            required: false
+        examples:
+        - rad issue open --title 'Bug fix' --description 'Fixes the issue'
+      list:
+        help: List issues
+        options:
+          all:
+            type: flag
+            description: Show all issues
+            required: false
+          closed:
+            type: flag
+            description: Show only closed issues
+            required: false
+          open:
+            type: flag
+            description: Show only open issues
+            required: false
+          solved:
+            type: flag
+            description: Show only solved issues
+            required: false
+          json:
+            type: flag
+            description: Output in JSON format
+            required: false
+        examples:
+        - rad issue list
+        - rad issue list --open
+        - rad issue list --closed --json
+      show:
+        help: Show issue details
+        options: {}
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue show 123
+      edit:
+        help: Edit an issue
+        options:
+          title:
+            type: string
+            description: New title
+            required: false
+          description:
+            type: string
+            description: New description
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue edit 123 --title 'New title'
+      comment:
+        help: Comment on an issue
+        options:
+          message:
+            type: string
+            description: Comment message
+            required: true
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue comment 123 --message 'This is a comment'
+      state:
+        help: Change issue state
+        options:
+          closed:
+            type: boolean
+            description: Close the issue
+            required: false
+          open:
+            type: boolean
+            description: Reopen the issue
+            required: false
+          solved:
+            type: boolean
+            description: Mark the issue as solved
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue state 123 --closed
+        - rad issue state 123 --open
+        - rad issue state 123 --solved
+      react:
+        help: Add reaction to issue
+        options:
+          emoji:
+            type: string
+            description: Emoji reaction
+            required: true
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue react 123 --emoji 👍
+      assign:
+        help: Assign issue to user
+        options:
+          add:
+            type: string
+            description: User DID to assign
+            required: false
+          delete:
+            type: string
+            description: User DID to unassign
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue assign 123 --add did:key:z6Mk...
+      label:
+        help: Manage issue labels
+        options:
+          add:
+            type: list
+            description: Labels to add
+            required: false
+          delete:
+            type: list
+            description: Labels to remove
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Issue ID
+          required: true
+        examples:
+        - rad issue label 123 --add bug,urgent
+    examples:
+    - rad issue list
+    - rad issue open --title 'New issue'
+  ls:
+    help: List repositories
+    subcommands: {}
+    options: {}
+    examples:
+    - rad ls
+  node:
+    help: Manage node
+    subcommands:
+      start:
+        help: Start node
+        options: {}
+        examples:
+        - rad node start
+      stop:
+        help: Stop node
+        options: {}
+        examples:
+        - rad node stop
+      restart:
+        help: Restart node
+        options: {}
+        examples:
+        - rad node restart
+      status:
+        help: Show node status
+        options: {}
+        examples:
+        - rad node status
+      connect:
+        help: Connect to peer
+        options: {}
+        positional_args:
+        - name: peer
+          type: string
+          description: Peer address or DID
+          required: true
+        examples:
+        - rad node connect <peer-address>
+      disconnect:
+        help: Disconnect from peer
+        options: {}
+        positional_args:
+        - name: peer
+          type: string
+          description: Peer address or DID
+          required: true
+        examples:
+        - rad node disconnect <peer-address>
+      logs:
+        help: Show node logs
+        options:
+          follow:
+            type: flag
+            description: Follow log output
+            required: false
+        examples:
+        - rad node logs
+        - rad node logs --follow
+    options: {}
+    examples:
+    - rad node status
+    - rad node start
+  patch:
+    help: Manage patches
+    subcommands:
+      open:
+        help: Create a new patch
+        options:
+          title:
+            type: string
+            description: Patch title
+            required: true
+          description:
+            type: string
+            description: Patch description
+            required: false
+          message:
+            type: string
+            description: Patch message
+            required: false
+        examples:
+        - rad patch open --title 'Fix bug'
+      list:
+        help: List patches
+        options:
+          all:
+            type: flag
+            description: Show all patches
+            required: false
+          merged:
+            type: flag
+            description: Show only merged patches
+            required: false
+          open:
+            type: flag
+            description: Show only open patches
+            required: false
+          archived:
+            type: flag
+            description: Show only archived patches
+            required: false
+          draft:
+            type: flag
+            description: Show only draft patches
+            required: false
+          json:
+            type: flag
+            description: Output in JSON format
+            required: false
+        examples:
+        - rad patch list
+        - rad patch list --open
+        - rad patch list --merged --json
+      show:
+        help: Show patch details
+        options: {}
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch show 123
+      checkout:
+        help: Checkout a patch
+        options:
+          remote:
+            type: string
+            description: Remote name
+            required: false
+            default: rad
+            added_in: 1.1.0
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+          added_in: 1.1.0
+        examples:
+        - rad patch checkout 123
+        - rad patch checkout 123 --remote my-remote
+      update:
+        help: Update patch revision
+        options:
+          message:
+            type: string
+            description: Update message
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch update 123 --message 'Updated patch'
+      merge:
+        help: Merge a patch
+        options:
+          message:
+            type: string
+            description: Merge message
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch merge 123
+      delete:
+        help: Delete a patch
+        options: {}
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch delete 123
+      review:
+        help: Review a patch
+        options:
+          verdict:
+            type: string
+            description: Review verdict
+            required: true
+            choices:
+            - accept
+            - reject
+          comment:
+            type: string
+            description: Review comment
+            required: false
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch review 123 --verdict accept
+      set:
+        help: Set patch properties
+        options:
+          remote:
+            type: string
+            description: Remote name
+            required: false
+            default: rad
+            added_in: 1.1.0
+        positional_args:
+        - name: id
+          type: string
+          description: Patch ID
+          required: true
+        examples:
+        - rad patch set 123
+        - rad patch set 123 --remote my-remote
+    options: {}
+    examples:
+    - rad patch list
+    - rad patch open --title 'New patch'
+  path:
+    help: Show repository paths
+    subcommands: {}
+    options: {}
+    examples:
+    - rad path
+  clean:
+    help: Clean repository
+    subcommands: {}
+    options: {}
+    examples:
+    - rad clean
+  self:
+    help: Show self information
+    subcommands: {}
+    options: {}
+    examples:
+    - rad self
+  seed:
+    help: Seed repositories
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: rid
+      type: string
+      description: Repository ID to seed
+      required: true
+    examples:
+    - rad seed rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  follow:
+    help: Follow peers
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: did
+      type: string
+      description: Peer DID to follow
+      required: true
+    examples:
+    - rad follow did:key:z6Mk...
+  unblock:
+    help: Unblock peers
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: did
+      type: string
+      description: Peer DID to unblock
+      required: true
+    examples:
+    - rad unblock did:key:z6Mk...
+  unfollow:
+    help: Unfollow peers
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: did
+      type: string
+      description: Peer DID to unfollow
+      required: true
+    examples:
+    - rad unfollow did:key:z6Mk...
+  unseed:
+    help: Stop seeding repositories
+    subcommands: {}
+    options: {}
+    positional_args:
+    - name: rid
+      type: string
+      description: Repository ID to unseed
+      required: true
+    examples:
+    - rad unseed rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  remote:
+    help: Manage remotes
+    subcommands:
+      add:
+        help: Add a remote
+        options: {}
+        positional_args:
+        - name: name
+          type: string
+          description: Remote name
+          required: true
+        - name: url
+          type: string
+          description: Remote URL
+          required: true
+        examples:
+        - rad remote add origin https://github.com/user/repo.git
+      remove:
+        help: Remove a remote
+        options: {}
+        positional_args:
+        - name: name
+          type: string
+          description: Remote name
+          required: true
+        examples:
+        - rad remote remove origin
+      list:
+        help: List remotes
+        options: {}
+        examples:
+        - rad remote list
+    options: {}
+    examples:
+    - rad remote list
+  stats:
+    help: Show repository statistics
+    subcommands: {}
+    options: {}
+    examples:
+    - rad stats
+  sync:
+    help: Synchronize with network
+    subcommands:
+      status:
+        help: Show sync status
+        options: {}
+        examples:
+        - rad sync status
+    options:
+      repo:
+        type: string
+        description: Repository to sync
+        required: false
+    examples:
+    - rad sync
+    - rad sync --repo rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5
+  cob:
+    help: Manage collaborative objects
+    subcommands:
+      show:
+        help: Show collaborative object
+        options: {}
+        positional_args:
+        - name: id
+          type: string
+          description: Object ID
+          required: true
+        examples:
+        - rad cob show 123
+      log:
+        help: Show collaborative object log
+        options:
+          from:
+            type: string
+            description: Starting commit SHA
+            required: false
+            added_in: 1.3.0
+          to:
+            type: string
+            description: Ending commit SHA
+            required: false
+            added_in: 1.3.0
+        examples:
+        - rad cob log
+        - rad cob log --from abc123 --to def456
+      migrate:
+        help: Migrate COB database
+        added_in: 1.1.0
+        options: {}
+        examples:
+        - rad cob migrate
+    options: {}
+    examples:
+    - rad cob show 123
+    - rad cob log
