@@ -1,0 +1,51 @@
+image: python:3.12
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PYTHON_VERSION: "3.12"
+  GIT_DEPTH: "0" # Ensures full clone with all tags
+
+before_script:
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install --upgrade pip
+
+run-tests:
+  stage: test
+  script:
+    - source venv/bin/activate
+    - pip install pytest
+    - pip install -e .  # install your package in editable mode if needed
+    - cd canopy
+    - pytest
+  only:
+    - main
+
+build-package:
+  stage: build
+  script:
+    - source venv/bin/activate
+    - pip install build
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour  # Keeps artifacts for debugging
+  only:
+    - tags
+
+deploy-to-pypi:
+  stage: deploy
+  needs:
+    - build-package
+  script:
+    - source venv/bin/activate
+    - pip install twine
+    - twine check dist/*
+    - twine upload --non-interactive --username __token__ --password $PYPI_API_TOKEN dist/*
+  only:
+    - tags
