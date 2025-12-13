@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADEMA Web Wizard - Generador de Proyectos Django</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/wizard.css">
+</head>
+<body>
+    <div class="wizard-container">
+        <div class="wizard-card">
+            <!-- Header -->
+            <div class="wizard-header">
+                <h1><i class="fas fa-boxes"></i> ADEMA Web Wizard</h1>
+                <p>Generador de Proyectos Django con Arquitectura Vertical</p>
+            </div>
+            
+            <div class="wizard-body">
+                <!-- Steps Navigation -->
+                <div class="wizard-steps">
+                    <div class="step active" data-step="1">
+                        <span class="step-number">1</span>
+                        <span>Proyecto</span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <span class="step-number">2</span>
+                        <span>Base de Datos</span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <span class="step-number">3</span>
+                        <span>Módulos</span>
+                    </div>
+                    <div class="step" data-step="4">
+                        <span class="step-number">4</span>
+                        <span>Generar</span>
+                    </div>
+                </div>
+                
+                <!-- Step 1: Project Info -->
+                <div class="form-section active" data-step="1">
+                    <h3 class="section-title">
+                        <i class="fas fa-folder-plus text-success"></i>
+                        Información del Proyecto
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Proyecto *</label>
+                        <input type="text" class="form-control" id="projectName" 
+                               placeholder="mi_erp" pattern="[a-z][a-z0-9_]*">
+                        <div class="form-help">
+                            Solo letras minúsculas, números y guiones bajos. Debe empezar con letra.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" id="projectDesc" rows="3"
+                                  placeholder="Sistema de gestión empresarial..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Directorio de Salida</label>
+                        <input type="text" class="form-control" id="outputDir" value=".">
+                        <div class="form-help">
+                            Ruta donde se creará el proyecto. Use "." para el directorio actual.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Database Config -->
+                <div class="form-section" data-step="2">
+                    <h3 class="section-title">
+                        <i class="fas fa-database text-primary"></i>
+                        Configuración de Base de Datos
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Motor de Base de Datos</label>
+                        <select class="form-control" id="dbEngine">
+                            <option value="sqlite">SQLite (Desarrollo)</option>
+                            <option value="postgres">PostgreSQL (Producción)</option>
+                        </select>
+                    </div>
+                    
+                    <div id="postgresFields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Nombre de la BD</label>
+                                    <input type="text" class="form-control" id="dbName" placeholder="mi_erp_db">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Host</label>
+                                    <input type="text" class="form-control" id="dbHost" value="localhost">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label">Puerto</label>
+                                    <input type="number" class="form-control" id="dbPort" value="5432">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label">Usuario</label>
+                                    <input type="text" class="form-control" id="dbUser" placeholder="postgres">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label">Contraseña</label>
+                                    <input type="password" class="form-control" id="dbPassword">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 3: Modules Selection -->
+                <div class="form-section" data-step="3">
+                    <h3 class="section-title">
+                        <i class="fas fa-puzzle-piece text-warning"></i>
+                        Selección de Módulos
+                    </h3>
+                    
+                    <p class="text-muted mb-3">
+                        Selecciona los módulos que deseas incluir en tu proyecto.
+                        Puedes agregar más módulos después.
+                    </p>
+                    
+                    <div class="checkbox-grid" id="modulesContainer">
+                        <!-- Modules will be loaded dynamically -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando módulos...
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h4 class="mb-3">
+                        <i class="fas fa-cube text-info"></i>
+                        Modelos Personalizados
+                    </h4>
+                    
+                    <div class="model-builder">
+                        <div class="model-list" id="modelsList">
+                            <!-- Models will be rendered here -->
+                        </div>
+                        <button class="btn btn-secondary" id="addModelBtn">
+                            <i class="fas fa-plus"></i> Agregar Modelo
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 4: Review & Generate -->
+                <div class="form-section" data-step="4">
+                    <h3 class="section-title">
+                        <i class="fas fa-rocket text-danger"></i>
+                        Revisar y Generar
+                    </h3>
+                    
+                    <div class="mb-4">
+                        <h5>Opciones Adicionales</h5>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="useCelery">
+                            <label class="form-check-label" for="useCelery">
+                                <i class="fas fa-tasks"></i> Incluir Celery (Tareas asíncronas)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="useDocker">
+                            <label class="form-check-label" for="useDocker">
+                                <i class="fab fa-docker"></i> Generar Dockerfile y docker-compose
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="useRestApi">
+                            <label class="form-check-label" for="useRestApi">
+                                <i class="fas fa-code"></i> Incluir Django REST Framework
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="includeAi">
+                            <label class="form-check-label" for="includeAi">
+                                <i class="fas fa-robot"></i> Incluir Soporte para Agentes IA (LangChain)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Al hacer clic en "Generar Proyecto", se creará la estructura completa
+                        del proyecto en el directorio especificado.
+                    </div>
+                    
+                    <div id="resultPanel" style="display: none;"></div>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" data-action="prev" style="display: none;">
+                        <i class="fas fa-arrow-left"></i> Anterior
+                    </button>
+                    <button class="btn btn-primary" data-action="next">
+                        Siguiente <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn btn-primary btn-lg" id="generateBtn" style="display: none;">
+                        <i class="fas fa-rocket"></i> Generar Proyecto
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-4 text-white-50">
+            <p>
+                <i class="fas fa-code"></i> ADEMA Framework v0.1.0 |
+                <a href="https://github.com/Excel-ente/django-adema" class="text-white">GitHub</a>
+            </p>
+        </div>
+    </div>
+    
+    <script src="/static/js/wizard.js"></script>
+</body>
+</html>
