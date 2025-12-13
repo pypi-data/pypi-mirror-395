@@ -1,0 +1,76 @@
+{% extends 'django_spire/knowledge/page/full_page.html' %}
+
+{% load static %}
+{% load spire_core_tags %}
+
+{% block base_head_additional_css %}
+    <link href="{% static 'django_spire/knowledge/css/editor.css' %}?v={{ DJANGO_SPIRE_VERSION }}" rel="stylesheet">
+{% endblock %}
+
+{% block base_body_additional_top_js %}
+    {{ block.super }}
+
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.0/dist/editorjs.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/paragraph@2.11.7/dist/paragraph.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.8/dist/editorjs-list.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.8/dist/header.umd.min.js"></script>
+{% endblock %}
+
+{% block full_page_sub_navigation %}
+    {% include 'django_spire/knowledge/sub_navigation/widget/collection_entry_sub_navigation_widget.html' with current_collection_id=entry.collection.id current_version_id=current_version.id %}
+{% endblock %}
+
+{% block full_page_info_navigation %}
+    <div class="row">
+        <div class="col-12 mb-3">
+            {% include 'django_spire/element/attribute_element.html' with attribute_title='Author' attribute_value=entry.current_version.author.get_full_name %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 mb-3">
+            {% include 'django_spire/element/attribute_element.html' with attribute_title='Status' %}
+            {% include 'django_spire/knowledge/entry/badge/entry_status_badge.html' with status=entry.current_version.status %}
+        </div>
+    </div>
+
+    {% if entry.current_version.published_datetime %}
+        <div class="row">
+            <div class="col-12 mb-3">
+                {% include 'django_spire/element/attribute_element.html' with attribute_title='Published' attribute_value=entry.current_version.published_datetime %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12 mb-3">
+            {% include 'django_spire/element/attribute_element.html' with attribute_title='Last Edit' attribute_value=entry.current_version.last_edit_datetime %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 mb-3">
+            {% include 'django_spire/element/attribute_element.html' with attribute_title='Tags' %}
+            {% for tag, weight in entry.simplified_and_weighted_tag_dict|safe_dict_items %}
+                {% include 'django_spire/tag/element/tag.html' %}
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block knowledge_full_page_content %}
+    <div class="row justify-content-center ps-3">
+        <div class="col-12">
+            {% include 'django_spire/knowledge/entry/version/container/editor_container.html' %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block base_body_additional_bottom_js %}
+    {{ block.super }}
+
+    <script src="{% static 'django_spire/knowledge/entry/version/js/null_paragraph.js' %}?v={{ DJANGO_SPIRE_VERSION }}"
+            type="application/javascript"></script>
+    <script src="{% static 'django_spire/knowledge/entry/version/js/editor.js' %}?v={{ DJANGO_SPIRE_VERSION }}"
+            type="application/javascript"></script>
+{% endblock %}
