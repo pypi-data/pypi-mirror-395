@@ -1,0 +1,38 @@
+# 姿轨控工具箱
+
+## 使用说明
+
+安装 (使用清华源)
+
+`pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple aocs-lab`
+
+升级到最新版
+
+`pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --upgrade aocs-lab`
+
+使用示例
+
+```py
+import aocs_lab.sun_time as st
+import numpy as np
+
+if __name__ == "__main__":
+    # 太阳矢量与轨道面法线夹角 31 deg
+    beta_angle = np.deg2rad(31)
+    st.sun_time(beta_angle, 6900e3)
+```
+
+## 功能简介
+
+当前功能
+
+1. 重力梯度力矩分析
+2. 阳照区时间分析
+3. 星敏精测数据处理
+4. 飞轮惯滑时间计算
+5. IGRF 磁场计算
+6. influxdb 数据库读取
+7. 星敏和SAR天线精测数据处理
+8. 磁棒和磁强计联测分析
+9. 飞轮安装配置计算
+10. 姿态分析：自定义对日姿态，能源效率分析，机动能力分析，GNSS视场分析，星敏视场分析
