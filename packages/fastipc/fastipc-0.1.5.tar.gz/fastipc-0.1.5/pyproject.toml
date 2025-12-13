@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=78", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastipc"
+version = "0.1.5"
+description = "Linux futex-based primitives (C extension)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE",]
+authors = [{ name = "JihunLee", email = "gkadnflh@gmail.com" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C"
+]
+dependencies = [
+  "numpy>=2",
+  "optree>=0"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-timeout",
+  "pytest-benchmark"
+]
+
+[project.urls]
+homepage = "https://github.com/BlindedShooter/pyfastipc"
+repository = "https://github.com/BlindedShooter/pyfastipc"
+Issues = "https://github.com/BlindedShooter/pyfastipc/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.cibuildwheel]
+# Build CPython wheels for Linux only; PyPy and non-Linux are skipped.
+build = [
+  "cp310-*",
+  "cp311-*",
+  "cp312-*",
+  "cp313-*",
+  "cp314-*",
+]
+skip = ["pp*", "*-aarch64", "*-win32", "*-macosx*"]
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64",]
+# Keep default compiler flags from setup.py; avoid -march=native for wheel portability.
+test-command = [
+  "python - <<'PY'\nfrom fastipc._primitives import Mutex\nm = Mutex(memoryview(bytearray(64)))\nassert m.acquire(); m.release()\nprint('fastipc wheel sanity OK')\nPY",
+]
+# Modern images; adjust if you need older glibc compatibility.
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+musllinux-x86_64-image = "musllinux_1_2"
+musllinux-aarch64-image = "musllinux_1_2"
