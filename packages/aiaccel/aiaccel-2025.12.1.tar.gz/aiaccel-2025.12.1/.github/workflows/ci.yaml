@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop/*"]
+  pull_request:
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_INDEX_URL: https://download.pytorch.org/whl/cpu
+      PIP_EXTRA_INDEX_URL: https://pypi.org/simple
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        python-version: ['3.10']
+        test_target: [config, hpo, torch]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+      - name: Install dependencies
+        run: |
+          pip install -e .[dev,github-actions]
+      - name: Run pytest
+        run: |
+          pytest -v \
+            -n auto \
+            --cov=aiaccel/${{ matrix.test_target }} \
+            --cov-branch \
+            --cov-append \
+            --cov-report=term-missing \
+            tests/${{ matrix.test_target }}
