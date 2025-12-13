@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2022 OpenSynergy Indonesia
+     Copyright 2022 Simetri Sinergi
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+<record id="salary_rule_demo1" model="hr.salary_rule">
+  <field name="name">Basic</field>
+  <field name="code">BASIC</field>
+  <field name="sequence" eval="1" />
+  <field name="category_id" ref="rule_categ_demo1" />
+  <field name="debit_account_id" ref="demo_account2" />
+  <field
+            name="amount_python"
+        >result = emp_inputs.T001 and emp_inputs.T001.amount or 0.0</field>
+  <field name="appear_on_payslip" eval="1" />
+  <field name="input_type_ids" eval="[(6,0,[])]" />
+</record>
+
+<record id="salary_rule_demo2" model="hr.salary_rule">
+  <field name="name">Gross</field>
+  <field name="code">GROSS</field>
+  <field name="sequence" eval="200" />
+  <field name="category_id" ref="rule_categ_demo4" />
+  <field name="amount_python">result = categories.BASIC + categories.ALW</field>
+  <field name="appear_on_payslip" eval="1" />
+</record>
+
+<record id="salary_rule_demo3" model="hr.salary_rule">
+  <field name="name">Net</field>
+  <field name="code">NET</field>
+  <field name="sequence" eval="300" />
+  <field name="category_id" ref="rule_categ_demo5" />
+  <field name="amount_python">result = categories.GROSS + categories.DED</field>
+  <field name="appear_on_payslip" eval="1" />
+  <field name="debit_account_id" ref="demo_account1" />
+  <field name="contribution_id" ref="salary_contribution_demo1" />
+</record>
+
+<record id="salary_rule_demo4" model="hr.salary_rule">
+  <field name="name">Transportation Allowance</field>
+  <field name="code">ALW001</field>
+  <field name="sequence" eval="101" />
+  <field name="category_id" ref="rule_categ_demo2" />
+  <field name="debit_account_id" ref="demo_account3" />
+  <field
+            name="amount_python"
+        >result = emp_inputs.T002 and emp_inputs.T002.amount or 0.0</field>
+  <field name="appear_on_payslip" eval="1" />
+  <field name="input_type_ids" eval="[(6,0,[])]" />
+</record>
+
+<record id="salary_rule_demo5" model="hr.salary_rule">
+  <field name="name">Meal Allowance</field>
+  <field name="code">ALW002</field>
+  <field name="sequence" eval="102" />
+  <field name="category_id" ref="rule_categ_demo2" />
+  <field name="debit_account_id" ref="demo_account3" />
+  <field
+            name="amount_python"
+        >result = emp_inputs.T003 and emp_inputs.T003.amount or 0.0</field>
+  <field name="appear_on_payslip" eval="1" />
+  <field name="input_type_ids" eval="[(6,0,[])]" />
+</record>
+
+<record id="salary_rule_demo6" model="hr.salary_rule">
+  <field name="name">Employee Loan</field>
+  <field name="code">DED001</field>
+  <field name="sequence" eval="201" />
+  <field name="category_id" ref="rule_categ_demo3" />
+  <field name="debit_account_id" ref="demo_account1" />
+  <field name="amount_python">result = inputs.T004 and inputs.T004.amount or 0.0</field>
+  <field name="appear_on_payslip" eval="1" />
+  <field name="input_type_ids" eval="[(6,0,[ref('hr_payslip_input_type_demo4')])]" />
+</record>
+</odoo>
