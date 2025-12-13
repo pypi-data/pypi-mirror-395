@@ -1,0 +1,174 @@
+Metadata-Version: 2.4
+Name: pyutil-cfg
+Version: 0.2.0
+Summary: python util for cfg (configurations)
+Author-email: Chuan-Heng Hsiao <hsiao.chuanheng@gmail.com>
+License: Copyright 2025 Chuan-Heng Hsiao
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy of
+        this software and associated documentation files (the “Software”), to deal in
+        the Software without restriction, including without limitation the rights to use,
+        copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+        Software, and to permit persons to whom the Software is furnished to do so,
+        subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+        EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+        OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+        NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+        WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+        OTHER DEALINGS IN THE SOFTWARE.
+        
+Project-URL: Repository, https://github.com/chhsiao1981/pyutil-cfg
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: tomli==2.2.1; python_version < "3.11"
+Requires-Dist: typing-extensions==4.12.2; python_version < "3.11"
+Dynamic: license-file
+
+# pyutil-cfg
+
+python utilility for configurations.
+
+This package helps parsing `.toml` configurations and `json`-like configurations in `.ini`.
+
+
+# Usage
+
+    import pyutil_cfg as cfg
+
+    logger, config = cfg.init(name, filename)
+
+
+# File Formats
+
+### `.toml`
+For the `.toml` files, the format follows [TOML](https://toml.io/en/) specification.
+
+You can check [`production.tmpl.toml`](https://github.com/chhsiao1981/pyutil-cfg/blob/main/production.tmpl.toml) or [`test/data`](https://github.com/chhsiao1981/pyutil-cfg/tree/main/tests/data) for more details.
+
+### `.ini`
+For the `.ini` files, you can check [`production.tmpl.ini`](https://github.com/chhsiao1981/pyutil-cfg/blob/main/production.tmpl.ini) or [`test/data`](https://github.com/chhsiao1981/pyutil-cfg/tree/main/tests/data) for more details.
+
+Assume that you have the following `development.ini`:
+
+    [demo]
+    VAR_INT = 1
+    VAR_BOOL = true
+    VAR_DICT = {"A": 1, "B": "a"}
+    VAR_LIST = [
+        {"A": 2, "B": "b"},
+        {"A": 3, "B": "c"},
+        {"A": 4, "B": "d"}]
+
+Then with the following code:
+
+    import pyutil_cfg as cfg
+
+    logger, config = cfg.init('demo', 'development.ini')
+
+`logger` is a [logger](https://docs.python.org/3/library/logging.html) with `name = 'demo'`
+
+`config` ia as follow:
+
+    config = {
+        "VAR_INT": 1,
+        "VAR_BOOL": true,
+        "VAR_DICT": {"A": 1, "B": "a"},
+        "VAR_LIST": [
+            {"A": 2, "B": "b"},
+            {"A": 3, "B": "c"},
+            {"A": 4, "B": "d"}
+        ],
+    }
+
+# Advanced Usage
+
+## Separated log configuration filename
+
+    import pyutil_cfg as cfg
+
+
+    logger, config = cfg.init(name, filename, log_name, log_filename)
+
+## With default parameters
+
+    import pyutil_cfg as cfg
+
+    default_params = {'test_params': 'default'}
+
+    logger, config = cfg.init(name, filename, default_params=default_params)
+
+## Additional customized config parameters (specified as dict)
+
+    import pyutil_cfg as cfg
+
+    extra_params = {'test_params': 'test'}
+
+    logger, config = cfg.init(name, filename, extra_params=extra_params)
+
+## Ok if extra parameters are already in the configuration file (default: `True`)
+
+It is usual that we would like to temporarily change the configuration settings through command-line variables.
+
+Because usually we still want to continue the process even if the extra parmeters
+are accidentally in the configuration file.
+Only warning logs if this parameter is set as `False` and some extra parameters are already in configuration file.
+
+    import pyutil_cfg as cfg
+
+    logger, config = cfg.init(name, filename, is_extra_params_in_file_ok=True)
+
+## Skip extra parameters if already in the configuration file. (default: `False`)
+
+Skip extram parameters if they are already in the configuration file.
+
+    import pyutil_cfg as cfg
+
+    logger, config = cfg.init(name, filename, is_skip_extra_params_in_file=True)
+
+## Show configuration before returning. (default: `False`)
+
+Setup the log-level to show the computed configurations before return.
+None as no-show.
+
+Do not show the configuration before return.
+```
+import pyutil_cfg as cfg
+
+logger, config = cfg.init(name, filename)
+```
+
+Show the configruration if the logger is set to `logging.DEBUG`
+```
+import pyutil_cfg as cfg
+
+logger, config = cfg.init(name, filename, show_config=logging.DEBUG)
+```
+
+Show the configuration if the logger is set to `logging.INFO` or `logging.DEBUG`.
+```
+import pyutil_cfg as cfg
+
+logger, config = cfg.init(name, filename, show_config=logging.INFO)
+```
+
+# Misc
+
+* Reason retaining `pyutil_` prefix: `cfg` is an extremely common name. Retaining `pyutil_` to avoid naming conflict.
+* Reason not including .json: not a good file format for config.
+* Reason not including .yaml: not the standard library.
