@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{% static 'soccerpoll/styles.css' %}">
+    <title>Soccer Poll - Question Results</title>
+</head>
+<body>
+    <h1>{{ question.text }}</h1>
+    <ul>
+        {% if question.type.name == "player" %}
+            {% for c in question.playerchoice_set.all %}
+                <li><b>{{ c.choice.name }}:</b> {{ c.votes }} vote{{ c.votes|pluralize }}</li>
+            {% endfor %}
+        {% elif question.type.name == "team" %}
+            {% for c in question.teamchoice_set.all %}
+                <li><b>{{ c.choice.name }}:</b> {{ c.votes }} vote{{ c.votes|pluralize }}</li>
+            {% endfor %}
+        {% else %}
+            {% for c in question.coachchoice_set.all %}
+                <li><b>{{ c.choice.name }}:</b> {{ c.votes }} vote{{ c.votes|pluralize }}</li>
+            {% endfor %}
+        {% endif %}
+    </ul>
+    <a href="{% url 'soccerpoll:detail' question.id %}">Vote again?</a><br>
+    <a href="{% url 'soccerpoll:index' %}">return home</a>
+</body>
+</html>
