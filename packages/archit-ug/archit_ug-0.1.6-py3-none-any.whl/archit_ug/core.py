@@ -1,0 +1,91 @@
+import time
+import os
+from cerebras.cloud.sdk import Cerebras
+from colorama import Fore, init
+
+init(autoreset=True)
+
+def load_key():
+    """
+    Loads API key from:
+    1. Environment variable (CEREBRAS_API_KEY)
+    2. cerebras_key.txt inside the archit_ug package
+    """
+
+    # 1. ENV
+    api_key = os.getenv("CEREBRAS_API_KEY")
+    if api_key:
+        return api_key.strip()
+
+    # 2. LOCAL FILE in the package folder
+    key_path = os.path.join(os.path.dirname(__file__), "cerebras_key.txt")
+
+    if os.path.exists(key_path):
+        with open(key_path, "r") as f:
+            return f.read().strip()
+
+    return None
+
+def start_chat():
+    print(f"{Fore.RED}Author: 2AM mimo!")
+    print("Real Name: A***** R*****")
+    print("Email: fearmimo2012@gmail.com")
+    print("GitHub: Archit-web-29")
+    print("Model: Errol 4 Sonic - 120B Formal")
+    print(f"{Fore.RESET}")
+    time.sleep(3)
+
+    # ===== Load API Key =====
+    api_key = load_key()
+    if not api_key:
+        print(f"{Fore.YELLOW}⚠ No API key found!")
+        api_key = input("Enter your Cerebras API key: ").strip()
+
+    # ===== Create client =====
+    client = Cerebras(api_key=api_key)
+
+    # ===== System prompt =====
+    messages = [
+        {
+            "role": "system",
+            "content": [
+                {"type": "text", "text": "You are Errol 4 Sonic."},
+                {"type": "text", "text": "You are inside the Python Library archit_ug."},
+                {"type": "text", "text": "Your author is 2AM mimo!"},
+            ],
+        }
+    ]
+
+    print("Chat started! (type 'exit' or 'quit' to stop)\n")
+
+    while True:
+        user_input = input("You: ").strip()
+
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+
+        messages.append({
+            "role": "user",
+            "content": [{"type": "text", "text": user_input}],
+        })
+
+        stream = client.chat.completions.create(
+            model="gpt-oss-120b",
+            messages=messages,
+            stream=True,
+            temperature=0.7,
+            top_p=0.8,
+            max_completion_tokens=5000,
+        )
+
+        print("Assistant: ", end="", flush=True)
+        reply = ""
+
+        for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            print(token, end="", flush=True)
+            reply += token
+
+        print()
+        messages.append({"role": "assistant", "content": [{"type": "text", "text": reply}]})
