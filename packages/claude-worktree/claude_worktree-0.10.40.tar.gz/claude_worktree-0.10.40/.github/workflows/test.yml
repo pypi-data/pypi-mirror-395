@@ -1,0 +1,163 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main  # Run on main branch pushes (after PR merge)
+      - develop  # Run on develop branch pushes
+  pull_request:
+    branches:
+      - main  # Run on all PRs to main
+      - develop  # Run on all PRs to develop
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e ".[dev]"
+
+    - name: Run linting with ruff
+      run: |
+        ruff check src/ tests/
+
+    - name: Run type checking with mypy
+      run: |
+        mypy src/claude_worktree
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    env:
+      CW_AI_TOOL: ""  # Disable AI tool launching during tests
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e ".[dev]"
+
+    - name: Run tests with pytest
+      uses: pavelzw/pytest-action@v2
+      with:
+        verbose: true
+        emoji: false
+        job-summary: true
+        custom-arguments: '-v -n auto --cov=claude_worktree --cov-report=xml --cov-report=term'
+        report-title: 'Test Results (${{ matrix.os }} / Python ${{ matrix.python-version }})'
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  shell-tests:
+    name: Shell Tests (${{ matrix.os }} / ${{ matrix.shell }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux shells
+          - os: ubuntu-latest
+            shell: bash
+          - os: ubuntu-latest
+            shell: zsh
+          - os: ubuntu-latest
+            shell: fish
+
+          # macOS shells
+          - os: macos-latest
+            shell: bash
+          - os: macos-latest
+            shell: zsh
+          - os: macos-latest
+            shell: fish
+
+          # Windows shells
+          - os: windows-latest
+            shell: powershell
+          - os: windows-latest
+            shell: pwsh
+
+    env:
+      CW_AI_TOOL: ""  # Disable AI tool launching during tests
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system -e ".[dev]"
+
+    - name: Install shell (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [ "${{ matrix.shell }}" = "zsh" ]; then
+          sudo apt-get update
+          sudo apt-get install -y zsh
+        elif [ "${{ matrix.shell }}" = "fish" ]; then
+          sudo apt-add-repository -y ppa:fish-shell/release-3
+          sudo apt-get update
+          sudo apt-get install -y fish
+        fi
+
+    - name: Install shell (macOS)
+      if: matrix.os == 'macos-latest' && matrix.shell == 'fish'
+      run: |
+        brew install fish
+
+    - name: Install PowerShell (Windows)
+      if: matrix.os == 'windows-latest' && matrix.shell == 'pwsh'
+      shell: pwsh
+      run: |
+        # pwsh is already installed on windows-latest
+
+    - name: Run shell function tests
+      run: |
+        uv run pytest tests/e2e/test_shell_functions.py -v --tb=short
