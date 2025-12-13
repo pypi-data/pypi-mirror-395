@@ -1,0 +1,208 @@
+Metadata-Version: 2.4
+Name: mcp-server-builder
+Version: 0.1.0
+Summary: MCP server for searching MCP protocol and FastMCP documentation
+Project-URL: Homepage, https://github.com/praveenc/mcp-server-builder
+Project-URL: Repository, https://github.com/praveenc/mcp-server-builder
+Project-URL: Documentation, https://github.com/praveenc/mcp-server-builder#readme
+Author-email: Praveen Chamarthi <1090396+praveenc@users.noreply.github.com>
+License: MIT
+License-File: LICENSE
+Keywords: documentation,fastmcp,mcp,model-context-protocol,search
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Documentation
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.13
+Requires-Dist: fastmcp>=2.13.3
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: mcp[cli]<1.23,>=1.21.1
+Requires-Dist: nltk>=3.9.2
+Requires-Dist: pydantic>=2.12.5
+Description-Content-Type: text/markdown
+
+# MCP Server Builder
+
+[![PyPI version](https://img.shields.io/pypi/v/mcp-server-builder.svg)](https://pypi.org/project/mcp-server-builder/)
+[![CI](https://github.com/praveenc/mcp-server-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/praveenc/mcp-server-builder/actions/workflows/ci.yml)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Model Context Protocol (MCP) server for searching MCP protocol and FastMCP documentation.
+
+This MCP server helps you build correct MCP servers by providing searchable access to the official MCP specification and FastMCP framework documentation, always reflecting the current state of the protocol.
+
+## Features
+
+- **BM25 Search** — Advanced full-text search with Porter stemming and n-gram indexing
+- **Stop Word Removal** — 179 common English stop words filtered for better relevance
+- **Domain Term Preservation** — MCP-specific terms (`mcp`, `json`, `rpc`, `stdio`) kept intact
+- **Lazy Loading** — Fast startup with on-demand content fetching
+- **Always Current** — Indexes live documentation from `llms.txt` sources on startup
+
+## Data Sources
+
+The server indexes documentation from these curated `llms.txt` sources:
+
+| Source | Description |
+|--------|-------------|
+| [modelcontextprotocol.io/llms.txt](https://modelcontextprotocol.io/llms.txt) | Official MCP protocol specification |
+| [gofastmcp.com/llms.txt](https://gofastmcp.com/llms.txt) | FastMCP Python framework documentation |
+
+## Prerequisites
+
+1. Install `uv` from [Astral](https://docs.astral.sh/uv/getting-started/installation/)
+2. Install Python 3.13 or newer using `uv python install 3.13`
+
+## Installation
+
+Configure in your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "mcp-server-builder": {
+      "command": "uvx",
+      "args": ["mcp-server-builder@latest"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+**Config file locations:**
+
+- **Claude Desktop (macOS)**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Desktop (Windows)**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Windsurf**: `~/.codeium/windsurf/mcp_config.json`
+- **Kiro**: `.kiro/settings/mcp.json` in your project
+
+### Install from PyPI
+
+```bash
+# Using uv
+uv add mcp-server-builder
+
+# Using pip
+pip install mcp-server-builder
+```
+
+## Basic Usage
+
+Example prompts to try:
+
+- "How do I define tools in FastMCP?"
+- "What is the MCP lifecycle?"
+- "Show me stdio transport configuration"
+- "How to handle tool errors in MCP?"
+- "What are MCP resources and how do I use them?"
+
+## Available Tools
+
+### search_mcp_docs
+
+Search MCP protocol and FastMCP documentation with ranked results and snippets.
+
+```python
+search_mcp_docs(query: str, k: int = 5) -> list[dict]
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | str | required | Search query (e.g., "tool input schema", "stdio transport") |
+| `k` | int | 5 | Maximum number of results to return |
+
+**Returns:** List of results with `url`, `title`, `score`, and `snippet`.
+
+**Example:**
+
+```python
+search_mcp_docs("how to define tools", k=3)
+# Returns top 3 matching documents with snippets
+```
+
+### fetch_mcp_doc
+
+Retrieve full documentation page content by URL.
+
+```python
+fetch_mcp_doc(uri: str) -> dict
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uri` | str | required | Document URL (http/https) |
+
+**Returns:** Dictionary with `url`, `title`, `content` (or `error` on failure).
+
+**Example:**
+
+```python
+fetch_mcp_doc("https://modelcontextprotocol.io/docs/concepts/tools")
+# Returns full page content
+```
+
+## Workflow Example
+
+**Step 1:** Search for relevant documentation
+
+```python
+search_mcp_docs("FastMCP tool decorator", k=5)
+```
+
+**Step 2:** Fetch full content of the most relevant result
+
+```python
+fetch_mcp_doc("https://gofastmcp.com/tutorials/tools")
+```
+
+## Architecture
+
+```text
+llms.txt URLs (MCP + FastMCP)
+    ↓ startup
+BM25 index with stemmed tokens + n-grams (titles only, fast)
+    ↓ search request
+Stem query → match unigrams/bigrams/trigrams → BM25 rank
+    ↓ top-k
+Lazy content hydration → snippet extraction
+    ↓ response
+{ url, title, score, snippet }
+```
+
+## Development
+
+```bash
+# Clone and install
+git clone https://github.com/praveenc/mcp-server-builder.git
+cd mcp-server-builder
+uv sync --dev
+source .venv/bin/activate
+
+# Run tests
+uv run pytest
+
+# Run with MCP Inspector
+npx @anthropic-ai/mcp-inspector uv run mcp-server-builder
+
+# Linting and type checking
+uv run ruff check src tests
+uv run pyright
+```
+
+## License
+
+MIT - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
+
+## Support
+
+For issues and questions, use the [GitHub issue tracker](https://github.com/praveenc/mcp-server-builder/issues)
