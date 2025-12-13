@@ -1,0 +1,16 @@
+apiVersion: 1.0.0
+kind: ServiceAccount
+data:
+  name: calm
+  {%- if vaults | length == 0 %}
+      {{ cli_fail("This template needs single vault to be specified. Please use '--vault <vault-identifier>' to pass the vault.") }}
+  {% elif vaults | length == 1 %}
+  vaults:
+    - {{ vaults[0] }}
+  {%- else %}
+      {{ cli_fail("This template doesn't allow multiple vaults.") }}
+  {% endif %}
+  scopes:
+    - name: cards:write
+    - name: network-tokens:write
+    - name: merchants:write

@@ -1,0 +1,710 @@
+---
+"$schema": https://json-schema.org/draft/2020-12/schema
+"$id": https://vgs.io/docs/product.schema.json
+title: Organization
+description: All VGS resources in one handy place
+type: object
+properties:
+  apiVersion:
+    type: string
+    enum:
+      - vgs.io/v1beta
+  kind:
+    type: string
+    enum:
+      - Organization
+  spec:
+    type: object
+    "$ref": "#/definitions/Organization"
+  metadata:
+    type: object
+definitions:
+  Organization:
+    type: object
+    properties:
+      attributes:
+        type: object
+        properties:
+          active:
+            type: boolean
+          name:
+            type: string
+      id:
+        type: string
+        example: ACmn5cbTDnpW8aTqioTSXar7
+      links:
+        type: object
+      relationships:
+        type: object
+        properties:
+          environments:
+            type: object
+          profile:
+            type: object
+          users:
+            type: object
+          vaults:
+            type: object
+      type:
+        type: string
+        enum: [organizations]
+    required: [id]
+---
+"$schema": https://json-schema.org/draft/2020-12/schema
+"$id": https://vgs.io/docs/product.schema.json
+title: MFT Route
+description: All VGS resources in one handy place
+type: object
+properties:
+  apiVersion:
+    type: string
+    enum:
+      - mft.vgs.io/v1beta
+  kind:
+    type: string
+    enum:
+      - MftRoute
+  spec:
+    type: object
+    "$ref": "#/definitions/MftRoute"
+  metadata:
+    type: object
+    properties:
+      name:
+        type: string
+    required: [name]
+  # required: [apiVersion, kind, spec, metadata]
+definitions:
+  MftRoute:
+    type: object
+    properties:
+      source:
+        type: object
+        properties:
+          s3Bucket:
+            type: object
+            properties:
+              url:
+                type: string
+                example: s3://my-existing-s3-bucket/path/to/source/
+                description: An S3 url pointing to the incoming bucket
+                pattern: ^s3://
+              region:
+                type: string
+                example: us-east-1
+                description: The region of the bucket
+                enum: [us-east-1, us-west-2]
+            required: [url, region]
+          SFTPServer:
+            type: object
+            properties:
+              host:
+                type: string
+                example: ftp.example.com
+                description: The qualified hostname of the upstream SFTP server
+              port:
+                type: integer
+                example: 22
+                description: The port of the upstream host to connect to
+              credentials:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    example: username
+                    description: The key name of the SFTP username stored in the tenant secret
+                  password:
+                    type: string
+                    example: sftp_ingress_password
+                    description: The key name of the SFTP password stored in the tenant secret
+                  key:
+                    type: string
+                    example: sftp_key
+                    description: The key name of the SFTP SSH key stored in the tenant secret
+                oneOf:
+                - required: [username, password]
+                - required: [username, key]
+            required: [host, port, credentials]
+          schedule:
+            type: string
+            example: "*/5 * * * *"
+            description: The schedule upon which to performing syncing of files from the source, and monitoring for synced files. See https://airflow.apache.org/docs/apache-airflow/1.10.1/scheduler.html#dag-runs for examples
+          prefix:
+            type: string
+            example: "/from_HC3/sandbox_MFT/Chartway"
+            description: The path of the upstream we should look in for copying files. Note that this is treated as root, the prefix is not preserved.
+          prepend:
+            type: string
+            example: "/from_Fiserv/"
+            description: A path to prepend to incoming files, preserving the current path. /data/example.csv -> /from_Fiserv/data/example.csv
+          include:
+            type: array
+            example:
+              - "*parquet"
+              - "/csv/*/*.csv"
+            description: An array of unix wildcard paths, or plain values, which must appear in the path of the file. Only files matching this path will be copied.
+            items:
+              type: string
+          exclude:
+            type: array
+            example:
+              - "*.parquet"
+              - "/csv/*/*.csv"
+              - sfdc
+            description: An array of unix wildcard paths, or plain values, which cannot appear in the path of the file. Files matching this path will NOT be copied.
+            items:
+              type: string
+          retries:
+            type: integer
+            example: 1
+            description: The number of times to automatically retry processing a file from this source.
+            maximum: 10
+            minimum: 0
+            default: 0
+          log_level:
+            type: string
+            example: ERROR
+            description: Level of logging for the syncing job to display. One of IGNORE, ERROR, WARN, INFO, DEBUG in order of verbosity.
+            enum: [IGNORE, ERROR, WARN, INFO, DEBUG]
+            default: ERROR
+          extra_kwargs:
+            type: array
+            example:
+              - "--ignore-existing"
+              - "--max-age 1w"
+              - "--verbose"
+            description: Extra KWARGS to pass to RClone, see https://rclone.org/commands/rclone/
+        additionalProperties: false
+      destination:
+        type: object
+        properties:
+          s3Bucket:
+            type: object
+            properties:
+              url:
+                type: string
+                example: s3://my-existing-s3-bucket/path/to/destination/
+                description: An S3 url pointing to the outgoing bucket
+            required: [url]
+        minProperties: 1
+        additionalProperties: false
+      filters:
+        type: array
+        items:
+          type: object
+          properties:
+            when:
+              type: string
+              description: |
+                A statement that define when data should be operated on as it passes through a route.
+
+                Filters are evaluated in linear order and once the first filter has matched a message for the route futher filter evaluation is halted for this particular message.
+
+                Filters are implemented as python lambdas that take a single parameter called `file_name`. If the lambda returns a truthy value (True or non-null string or number above zero) then it will be considered to have matched.
+
+                You can emulate this behavior locally with code like this
+
+                ```python
+                result = lambda file_name: file_name.endswith(".zip")
+                ```
+              example: file_name.endswith(".zip")
+            then:
+              type: array
+              description: |
+                A series of transformations of, or actions on, a stream of information that is executed when the criteria on the filter evaluates to true.
+
+                Combined into a series called a Pipeline. In computing, a pipeline is a set of data processing elements connected in series, where the output of one element is the input of the next one.
+
+                A list of operations is executed in linear order from first to last.
+
+                If an operation encounters an error during execution processing is halted.
+              items:
+                type: [object, string]
+                pattern: DeliverFile
+                minProperties: 1
+                maxProperties: 1
+                properties:
+                  DecompressFile:
+                    type: object
+                    properties:
+                      process_files_matching:
+                        type: string
+                        example: "*.csv"
+                        default: "*"
+                        description: |
+                          A glob style pattern to match files to process.
+
+                          Files are re-processed from the beginning of the route and will match whichever filter has matching criteria according to the original file name.
+                      folder:
+                        type: string
+                        example: "folder_name"
+                        default: ""
+                        description: |
+                          The folder where each output file will reside.
+
+                          Every file that is produced from the decompress step will be placed in this folder.
+                      algo:
+                        type: string
+                        enum: [zip, gzip, tar]
+                        example: zip
+                        default: zip
+                        description: |
+                          The type of compression to use.
+
+                          The specified algorithm will be used to decompress the input archives.
+                  CompressFile:
+                    type: object
+                    properties:
+                      algo:
+                        type: string
+                        enum: [zip, gzip, tar]
+                        example: zip
+                        default: zip
+                        description: |
+                          The type of compression to use.
+
+                          The specified algorithm will be used to compress the input files.
+                  DecryptFile:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        example: tok_asdf_1231243
+                        description: |
+                          The vault token that corresponds to the encryption key.
+
+                          This token will be used to retrieve the encryption key from vault during runtime.
+                      algo:
+                        type: string
+                        enum: [3des, aes256, rsa512]
+                        example: 3des
+                        description: |
+                          The type of encryption to use.
+
+                          The specified encryption algorithm will be used to decrypt the input files.
+                      iv:
+                        type: string
+                        example: tok_asdf_1231243
+                        description: |
+                          The vault token that corresponds to the initialization vector.
+
+                          This token will be used to retrieve the initialization vector from vault during runtime.
+
+                          Must be included when the algo property is aes256.
+                    required: [key, algo]
+                  EncryptFile:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        example: tok_asdf_1231243
+                        description: |
+                          The vault token that corresponds to the encryption key.
+
+                          This token will be used to retrieve the encryption key from vault during runtime.
+                      algo:
+                        type: string
+                        enum: [3des, aes256, rsa512]
+                        example: 3des
+                        description: |
+                          The type of encryption to use.
+
+                          The specified encryption algorithm will be used to encrypt the input files.
+                    required: [key, algo]
+                  TransformFileContents:
+                    type: object
+                    description: |
+                      A scripting operation that will execute against a file and allow transforming the contents of the file stream.
+
+                      #### Python
+                      Python scripts must implement the following interface:
+
+                      ```python
+                      import typing
+
+                      def transform(input_stream: typing.IO, ctx: dict) -> typing.Generator[bytes, None, None]:
+                        line_count = 0
+
+                        for line in input_stream:
+                          yield line[::-1]  # example - reverse file contents
+                          line_count += 1
+
+                        # this value will be made available in subsequent processing e.g. during ValidateFileContents
+                        ctx['line_count'] = line_count
+                      ```
+
+                      All standard python 3.8 libraries are available as well as
+
+                      ... requirements go here
+
+                      Any values injected into the `ctx` dict will be made available to subsequent operations. Values prefixed with "vgs." are not user-writable.
+
+                      The transformed file must be written to `path_to_output_file`.
+
+                    properties:
+                      src:
+                        type: string
+                        example: |
+
+                          ```python
+                            import typing
+                            def transform(input_stream: typing.IO, ctx: dict) -> typing.Generator[bytes, None, None]:
+                              line_count = 0
+                              for line in input_stream:
+                                yield line[::-1]  # example - reverse file contents
+                                line_count += 1
+                              # this value will be made available in subsequent processing e.g. during ValidateFileContents
+                              ctx['line_count'] = line_count
+                          ```
+                        description: |
+                          Inline code used to transform the input files.
+                      lang:
+                        type: string
+                        enum: [python3]
+                        example: python3
+                        description: |
+                          The language that the transformation script is written in.
+                    required: [src, lang]
+                  ProcessFileContents:
+                    type: object
+                    description: |
+                      A larky language based transform method that allows parallel processing chunks of the source file.
+
+                      ```larky
+                      def transform(input: str, ctx: dict) -> str:
+                        # your larky code goes here for a chunk of the file
+                        return input[::-1]  # example - reverse chunk
+                      ```
+                    properties:
+                      chunk_size:
+                        type: integer
+                        default: 1024
+                        example: 1024
+                        description: |
+                          The size (in kilobytes) of chunks to process..
+
+                          The input files will be broken up into chunks of the specified size, then each chunk will be processed. If the file cannot be divided evenly in to the specified size, the last chunk will be smaller.
+                      exclude_header:
+                        type: boolean
+                        default: false
+                        example: false
+                        description: |
+                          Specifies whether or not the file header should be processed.
+
+                          If the value is true, then the file header will not be processed.
+                      exclude_footer:
+                        type: boolean
+                        default: false
+                        example: false
+                        description: |
+                          Specifies whether or not the file footer should be processed.
+
+                          If the value is true, then the file footer will not be processed.
+                      src:
+                        type: string
+                        example: process.star
+                        description: |
+                          Inline code used to process the input files.
+                      lang:
+                        type: string
+                        enum: [larky, python3]
+                        example: larky
+                        description: |
+                          The language that the process script is written in.
+                    required: [src, lang]
+                  ValidateFileContents:
+                    type: object
+                    description: |
+                      A scripting operation that will execute against a file. The script must implement the following interface:
+
+                      #### Python
+                      ```python
+                      import typing
+
+                      def validate(input_stream: typing.IO, ctx: dict) -> [bool, str]:
+                        # validation logic goes here
+                        ctx['line_count'] = len(input_stream)
+                        return ctx['line_count'] > 1
+                      ```
+
+                      All standard python 3.8 libraries are available as well as
+
+                      ... requirements go here
+
+                      Any values injected into the `ctx` dict will be made available to subsequent operations. Values prefixed with "vgs." are not user-writable.
+
+                      The validation script can return a boolean (True representing validation success), an error message, or throw an exception indicating failure.
+                    properties:
+                      src:
+                        type: string
+                        example: |
+
+                          ```python
+                          def validate(input_stream: typing.IO, ctx: dict) -> [bool, str]:
+                            # validation logic goes here
+                            ctx['line_count'] = len(input_stream)
+                            return ctx['line_count'] > 1
+                          ```
+                        description: |
+                          Inline code used to validate the input files.
+                      lang:
+                        type: string
+                        enum: [larky, python3]
+                        example: python3
+                        description: |
+                          The language that the validation script is written in.
+                    required: [src, lang]
+          required: [when, then]
+      tests:
+        type: array
+        items:
+          type: object
+          description: |
+            Parameters to be used in synthetic pipeline runs. The pipeline will be triggered on the specified schedule using the provided input file.
+          properties:
+            schedule:
+              type: string
+              default: 0 0 * * *
+            input:
+              type: string
+              example: s3://my-existing-s3-bucket/path/to/source/input.csv
+          required: [input]
+    required: [source, destination, filters]
+---
+"$schema": https://json-schema.org/draft/2020-12/schema
+"$id": https://vgs.io/mft-sla.schema.json
+type: object
+properties:
+  apiVersion:
+    type: string
+    const: mft.vgs.io/v1beta
+  kind:
+    type: string
+    const: MftSla
+  metadata:
+    type: object
+    properties:
+      name:
+        type: string
+        minLength: 1
+      version:
+        type: string
+    required:
+    - name
+    - version
+  spec:
+    type: object
+    properties:
+      routeId:
+        type: string
+        description: The route from MFT (This is where the file is coming from and going to)
+      filterId:
+        type: string
+        description: The filter which is processing this file (Each route will have a filter per file)
+      validatedBy:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Name of the person who approved this SLA. Not enforced right now
+          validatedAt:
+            type: string
+            format: date-time
+        required:
+        - name
+        - validatedAt
+      sourceSLA:
+        type: object
+        description: |
+          The downstream SLA specifies when a file must arrive at VGS.
+
+          This time is not within VGS control but is used to communicate to customers and VGS staff if a file arrived on time. This is used to help identify violations by the party making the file available to VGS for processing so that it’s possible to identify third party violations that may cause VGS to dleiver files to customers later than expected.
+
+          Customers should expect files to arrive at their destination server before or at the source SLA time plus the absolute SLA time (or in the case of the relative SLA in the amount of time processing takes).
+        properties:
+          expectedFileArrivalCron:
+            type: string
+        required:
+        - expectedFileArrivalCron
+      absoluteSLA:
+        type: object
+        description: |
+          An absolute SLA provides absolute, fixed numbers for SLA data. This is specified in terms of a duration and, since handling time is dependent on size and complexity of the file, is also complemented with a maximum size of file and/or a maximum number of records within a file.
+
+          If the file being processed exceeds the size or number of records then a warning is thrown during processing and the file is no longer eligible to be scored against by the SLA.
+        properties:
+          handingDuration:
+            type: string
+            format: duration
+          maximumSizeBytes:
+            type: integer
+            minValue: 1
+          maximumSizeRecords:
+            type: integer
+            minValue: 1
+        required:
+        - handingDuration
+        - maximumSizeBytes
+        - maximumSizeRecords
+      relativeSLA:
+        type: object
+        description: |
+          When an absolute SLA is not useful (for instance when a file may grow over time in an unbounded manner) then customers can specify a relative SLA. A relative SLA is specified in terms of bytes handled per minute and/or records processed per minute.
+        properties:
+          bytesPerMinute:
+            type: integer
+            minValue: 1
+          recordsPerMinute:
+            type: integer
+            minValue: 1
+        required:
+        - bytesPerMinute
+        - recordsPerMinute
+    oneOf:
+      - required:
+        - routeId
+        - filterId
+        - validatedBy
+        - sourceSLA
+        - absoluteSLA
+      - required:
+        - routeId
+        - filterId
+        - validatedBy
+        - sourceSLA
+        - relativeSLA
+required:
+- apiVersion
+- kind
+- metadata
+- spec
+---
+"$schema": https://json-schema.org/draft/2020-12/schema
+"$id": https://vgs.io/docs/product.schema.json
+title: HTTP Route
+description: All VGS resources in one handy place
+type: object
+properties:
+  apiVersion:
+    type: string
+    enum:
+      - vault.vgs.io/v1
+  kind:
+    type: string
+    enum:
+      - HttpRoute
+  spec:
+    type: object
+    "$ref": "#/definitions/HttpRoute"
+  metadata:
+    type: object
+    properties:
+      name:
+        type: string
+    required: [name]
+  # required: [apiVersion, kind, spec, metadata]
+definitions:
+  HttpRoute:
+    type: object
+    properties:
+      id:
+        type: string
+      type:
+        type: string
+        enum: [rule_chain]
+      attributes:
+        type: object
+    required: [id, type, attributes]
+    additionalProperties: true
+---
+"$schema": https://json-schema.org/draft/2020-12/schema
+"$id": https://vgs.io/docs/product.schema.json
+title: MFT Cluster
+description: All VGS resources in one handy place
+type: object
+properties:
+  apiVersion:
+    type: string
+    enum:
+      - mft.vgs.io/v1beta
+  kind:
+    type: string
+    enum:
+      - MftCluster
+  spec:
+    type: object
+    "$ref": "#/definitions/MftCluster"
+  metadata:
+    type: object
+    properties:
+      name:
+        type: string
+    required: [name]
+definitions:
+  MftCluster:
+    type: object
+    properties:
+      size:
+        type: string
+        description: Size of the MFT cluster
+        enum: [small, medium, large, xlarge, 2xlarge]
+        default: small
+      vaultId:
+        type: string
+        description: Vault Identifier
+        pattern: ^tnt.*$
+      environment:
+        type: string
+        enum: [dev/vault/sandbox, prod/vault/sandbox, prod/vault/live]
+        default: dev/vault/sandbox
+      kmsKeys:
+        type: array
+        description: Additional KMS keys that should be accessible to encrypt and decrypt for the MFT runtime
+        default: []
+        items:
+          type: string
+          pattern: "^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+$"
+      s3Buckets:
+        type: array
+        default: []
+        description: Additional S3 buckets that should be CRUD accessible by the MFT platform. This is a list of objects containing the bucket ARN and associated path prefixes that should only be accessible. S3 prefixes should not begin with a `/`."
+        items:
+          type: object
+          properties:
+            # TODO: the naming is off because we pass this directly to tf and this is how tf names it.
+            bucket_arn:
+              type: string
+              description: "The ARN of the bucket."
+              example: "arn:aws:s3:::example-bucket"
+              pattern: "^arn:aws:s3:::[a-zA-Z0-9.-]{3,63}$"
+            prefixes:
+              type: array
+              items:
+                type: string
+                pattern: "^[^/].*$"
+              description: "List of prefixes within the bucket."
+      iamRoles:
+        type: array
+        description: Additional IAM roles that the MWAA role will be able to assume during processing
+        default: []
+        items:
+          type: string
+          pattern: "^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_-]{1,64}$"
+      computePlatform:
+        type: string
+        enum: ["kubernetes", "native"]
+        default: "kubernetes"
+      mwaaSchedulerCount:
+        type: integer
+        default: 2
+        minimum: 1
+      mwaaMinWorkerCount:
+        type: integer
+        default: 1
+        minimum: 1
+      mwaaMaxWorkerCount:
+        type: integer
+        minimum: 1
+        maximum: 25
+        default: 10
+    required: [vaultId]

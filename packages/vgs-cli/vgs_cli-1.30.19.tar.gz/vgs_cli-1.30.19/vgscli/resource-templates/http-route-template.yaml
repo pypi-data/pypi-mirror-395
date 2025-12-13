@@ -1,0 +1,61 @@
+apiVersion: vault.vgs.io/v1
+kind: HttpRoute
+metadata:
+  name: your-name-here
+  labels:
+    vgs.io/vaultId: your-vault-id-here
+spec:
+  # TODO: Change this ID
+  id: &routeId 7478d3b7-beef-cafe-0000-000000000000
+  type: rule_chain
+  attributes:
+    id: *routeId
+    host_endpoint: httpbin.org
+    destination_override_endpoint: '*'
+    ordinal: 0
+    port: 0
+    protocol: http
+    source_endpoint: '*'
+    tags:
+      # TODO: add a good name
+      name: Display name of route here
+      # TODO: add version here
+      vgs.io/version: 0.1.0
+    # filters
+    entries:
+      # first filter - document here what it does
+      - classifiers: {}
+        config:
+          condition: OR
+          rules:
+            - expression:
+                field: PathInfo
+                operator: matches
+                type: string
+                values:
+                  - /post
+        id: 955834e8-beef-cafe-0000-000000000000
+        id_selector: null
+        operation: ENRICH
+        operations:
+          - name: github.com/verygoodsecurity/common/compute/larky/http/Process
+            parameters:
+              script: |
+                load('@stdlib//json', 'json')
+                load("@stdlib//builtins", "builtins")
+
+                load("@vgs//vault", "vault")
+
+                def process(input, ctx):
+                    # TODO: write your larky code here.
+
+                    return input
+        phase: REQUEST
+        public_token_generator: UUID
+        targets:
+          - body
+        token_manager: PERSISTENT
+        transformer: JSON_PATH
+        transformer_config:
+          - $.whatever_this_field_is_unused
+        transformer_config_map: null

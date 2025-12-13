@@ -1,0 +1,17 @@
+apiVersion: 1.0.0
+kind: ServiceAccount
+data:
+  name: vgs-cli
+  {%- if vaults | length == 0 %}
+      {{- cli_warn("Service Account won't have access to any vaults inside organization. If you need it to access vault(s) please use --vault <vault-identifier>.") or "" }}
+  {%- else %}
+  vaults:
+    {%- for vault_id in vaults %}
+    - {{ vault_id }}
+    {%- endfor %}
+  {%- endif %}
+  scopes:
+    - name: access-logs:read
+    - name: organizations:read
+    - name: routes:write
+    - name: vaults:write

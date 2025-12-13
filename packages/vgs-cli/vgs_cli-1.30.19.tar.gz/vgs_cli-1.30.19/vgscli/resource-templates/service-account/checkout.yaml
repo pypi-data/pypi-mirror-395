@@ -1,0 +1,21 @@
+apiVersion: 1.0.0
+kind: ServiceAccount
+data:
+  name: {{ name }}
+  {%- if vaults | length == 0 %}
+      {{ cli_fail("This template needs single vault to be specified. Please use '--vault <vault-identifier>' to pass the vault.") }}
+  {% elif vaults | length == 1 %}
+  vaults:
+    - {{ vaults[0] }}
+  {%- else %}
+      {{ cli_fail("This template doesn't allow multiple vaults.") }}
+  {% endif %}
+  scopes:
+    - name: financial-instruments:write
+      optional: true
+    - name: transfers:write
+      optional: true
+    - name: orders:write
+      optional: true
+
+  accessTokenLifespan: 28800

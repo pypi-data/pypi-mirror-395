@@ -1,0 +1,25 @@
+apiVersion: 1.0.0
+kind: ServiceAccount
+data:
+  {%- if vaults | length == 0 %}
+      {{ cli_fail("This template needs single vault to be specified. Please use '--vault <vault-identifier>' to pass the vault.") }}
+  {%- elif vaults | length == 1 %}
+  name: payments-{{ vaults[0] }}
+  vaults:
+    - {{ vaults[0] }}
+  {%- else %}
+      {{ cli_fail("This template doesn't allow multiple vaults.") }}
+  {% endif %}
+  scopes:
+    - name: financial-instruments:admin
+    - name: gateways:admin
+    - name: rules:admin
+    - name: transfers:admin
+    - name: orders:admin
+    - name: threeds:admin
+    - name: sub-accounts:admin
+    - name: cards:write
+    - name: network-tokens:write
+    - name: merchants:write
+
+  accessTokenLifespan: 28800
