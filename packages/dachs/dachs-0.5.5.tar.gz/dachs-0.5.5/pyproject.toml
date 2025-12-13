@@ -1,0 +1,105 @@
+[project]
+name = "dachs"
+description = "Database for Automation and Consistent Holistic Synthesis"
+dynamic = ["version", "readme"]
+license = "GPL-3.0-or-later"
+classifiers = [
+  # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
+  "Development Status :: 4 - Beta",
+  "Operating System :: Unix",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Framework :: Jupyter :: JupyterLab",
+  "Topic :: Utilities",
+  "Topic :: Scientific/Engineering",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "pint",
+    "mcsas3",
+    "graphviz",
+    "chempy",
+    "nexusformat",
+    "dash",
+    "openpyxl"
+]
+
+[[project.authors]]
+name = "Brian R. Pauw"
+email = "brian.pauw@bam.de"
+
+[[project.authors]]
+name = "Glen J. Smales"
+email = "glen.smales@tugraz.at"
+
+[[project.authors]]
+name = "Ingo Breßler"
+email = "ingo.bressler@bam.de"
+
+[project.urls]
+homepage = "https://BAMresearch.github.io/DACHS"
+documentation = "https://BAMresearch.github.io/DACHS"
+repository = "https://github.com/BAMresearch/DACHS"
+changelog = "https://BAMresearch.github.io/DACHS/changelog.html"
+
+[build-system]
+requires = [
+    "setuptools>=40.6",
+    "wheel",
+]
+# check-manifest checks that, https://github.com/mgedmin/check-manifest/commit/c9df78
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dachs*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "dachs.__version__"}
+readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
+
+[tool.coverage.report]
+path = "coverage-report"  # see coverage.yml github action
+
+# on version numbers: https://peps.python.org/pep-0440/
+# and bottom of https://softwareengineering.stackexchange.com/a/151558
+[tool.semantic_release]
+allow_zero_version = true
+version_variables = [                        # version location
+    "src/dachs/__init__.py:__version__",
+    "docs/conf.py:version",
+]
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["build", "chore", "ci", "docs", "feat", "enh", "fix", "perf", "style", "refactor", "test"]
+minor_tags = ["feat", "enh"]
+patch_tags = ["fix", "perf"]
+[tool.semantic_release.changelog]
+exclude_commit_patterns = ["chore", ".*\\bGHA\\b.*", ".*\\b[gG][hH] actions?\\b.*"]
+[tool.semantic_release.publish]
+upload_to_vcs_release = false
+
+[tool.black]
+line-length = 115
+preview = true
+
+[tool.isort]
+profile = "black"
+line_length = 115
+group_by_package = true
+known_first_party = "dachs"
+ensure_newline_before_comments = true
+extend_skip = ["ci/templates", ".ipynb_checkpoints"]
+
+[tool.docformatter]
+recursive = true
+wrap-summaries = 100
+wrap-descriptions = 100
