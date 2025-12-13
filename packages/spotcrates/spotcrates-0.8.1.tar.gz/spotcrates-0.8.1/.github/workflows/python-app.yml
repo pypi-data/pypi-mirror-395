@@ -1,0 +1,196 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # For local testing with act, use: act -j tests --matrix os:ubuntu-latest
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        #os: [ ubuntu-latest ]  # Changed: Only ubuntu by default
+        # Uncomment for full CI on GitHub:
+        os: [ macos-latest, windows-latest, ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          uv sync
+      - name: Test and coverage with pytest
+        run: |
+          uv run coverage run -m pytest
+          uv run coverage report -m
+        env:
+          COVERAGE_FILE: .coverage
+      - name: Prepare coverage file for upload
+        if: always() && github.actor != 'nektos/act'
+        shell: bash
+        run: |
+          # Ensure the file exists and is readable
+          if [ -f ".coverage" ]; then
+            echo "Coverage file found"
+            ls -lh .coverage
+            # Create a directory and copy the file there
+            mkdir -p coverage_artifacts
+            cp -v .coverage coverage_artifacts/.coverage
+            echo "Copy command exit code: $?"
+            echo "Contents of coverage_artifacts:"
+            ls -lha coverage_artifacts/
+            echo "File count in coverage_artifacts:"
+            find coverage_artifacts -type f | wc -l
+          else
+            echo "ERROR: .coverage file not found"
+            exit 1
+          fi
+      - name: Upload coverage data
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always() && github.actor != 'nektos/act'
+        with:
+          # Create a unique name for each artifact using matrix variables
+          name: covdata-${{ matrix.os }}-${{ matrix.python-version }}
+          path: coverage_artifacts
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
+
+  coverage:
+    name: Coverage
+    permissions:
+      contents: read
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          uv sync
+      - name: Download all coverage data
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          pattern: covdata-*
+          path: artifacts
+      - name: List workspace contents for debugging
+        run: |
+          echo "=== Workspace contents ==="
+          ls -la
+          echo "=== Checking for artifacts directory ==="
+          if [ -d "artifacts" ]; then
+            echo "Artifacts directory exists"
+            find artifacts -name '.coverage' -ls
+          else
+            echo "No artifacts directory found - no artifacts were downloaded"
+          fi
+      - name: Combine and calculate total coverage
+        run: |
+          echo "Combining coverage data from all matrix jobs..."
+          
+          # Check if artifacts directory exists and has content
+          if [ ! -d "artifacts" ] || [ -z "$(ls -A artifacts 2>/dev/null)" ]; then
+            echo "ERROR: No artifacts were downloaded. This likely means:"
+            echo "  1. The test jobs failed before uploading coverage"
+            echo "  2. The artifact names don't match the pattern 'covdata-*'"
+            echo "  3. The artifacts expired or were deleted"
+            echo ""
+            echo "Please check the 'tests' job logs to ensure coverage data was generated."
+            exit 1
+          fi
+          
+          # Find all .coverage files
+          coverage_files=$(find artifacts -name '.coverage' -type f)
+          file_count=$(echo "$coverage_files" | grep -c '.coverage' || echo "0")
+          
+          if [ "$file_count" -eq 0 ]; then
+            echo "ERROR: Found artifacts but no .coverage files in them"
+            echo "Artifacts contents:"
+            ls -laR artifacts/
+            exit 1
+          fi
+          
+          echo "Found $file_count coverage file(s)"
+          
+          # Create a coverage configuration for path mapping
+          cat > .coveragerc << EOF
+          [paths]
+          source =
+              spotcrates/
+              */spotcrates/spotcrates/
+              */work/spotcrates/spotcrates/spotcrates/
+          
+          tests =
+              tests/
+              */spotcrates/spotcrates/tests/
+              */work/spotcrates/spotcrates/tests/
+          EOF
+          
+          echo "=== Coverage configuration ==="
+          cat .coveragerc
+          
+          # Rename .coverage files so coverage.py can find them
+          counter=1
+          find artifacts -name '.coverage' -type f | while read -r file; do
+            cp "$file" ".coverage.$counter"
+            echo "Copied $file to .coverage.$counter"
+            counter=$((counter + 1))
+          done
+          
+          # List the renamed files
+          echo "=== Renamed coverage files ==="
+          ls -la .coverage.* 2>/dev/null || echo "No renamed coverage files found"
+          
+          # Combine all .coverage.* files with path mapping
+          echo "=== Combining coverage files ==="
+          uv run coverage combine --keep
+
+          # Generate the JSON report
+          uv run coverage json -o combined_coverage.json
+
+          # Display the report
+          uv run coverage report
+
+          # Extract the total percentage from the combined JSON
+          export TOTAL=$(uv run python -c "import json;print(json.load(open('combined_coverage.json'))['totals']['percent_covered_display'])")
+
+          echo "total=$TOTAL" >> $GITHUB_ENV
+          echo "### Total coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
+      - name: Make badge
+        uses: schneegans/dynamic-badges-action@e9a478b16159b4d31420099ba146cdc50f134483 # v1.7.0
+        with:
+          # GIST_TOKEN is a GitHub personal access token with scope "gist".
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: 3c8214e2bd942821496440b93acd3582
+          filename: covbadge.json
+          label: Coverage
+          message: ${{ env.total }}%
+          minColorRange: 50
+          maxColorRange: 90
+          valColorRange: ${{ env.total }}

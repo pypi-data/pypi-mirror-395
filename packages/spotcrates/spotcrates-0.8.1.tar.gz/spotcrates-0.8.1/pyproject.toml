@@ -1,0 +1,53 @@
+[project]
+name = "spotcrates"
+version = "0.8.1"
+description = ""
+authors = [{name = "Chris Mayes", email = "cmayes@cmay.es"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jinja2>=3.1.2",
+    "spotipy>=2.22.1",
+    "appdirs>=1.4.4",
+    "pygtrie>=2.5.0",
+    "types-appdirs>=1.4.3.5",
+    "durations-nlp>=1.0.1",
+    "tomli-w>=1.0.0",
+    "tomli>=2.0.1",
+    "setuptools>=80.8.0",
+    "cython>=3.0.4",
+]
+
+[project.scripts]
+spotcrates = "spotcrates.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "coverage[toml]>=7.11.0",
+    "ruff>=0.8.0",
+    "mypy>=1.18.2",
+    "pytest-cov>=7.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.coverage.run]
+omit = [".*", "*/site-packages/*"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.ruff]
+line-length = 127
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["C", "E", "F", "W", "B"]
+ignore = ["E501"]  # Only ignore line length if you want lines longer than your line-length setting
+mccabe = {max-complexity = 15}
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
