@@ -1,0 +1,52 @@
+# SKK
+
+本项目封装了一些Python开发中常用的功能，帮助你更高效地开发应用。
+
+## 项目链接
+
+- [贡献者列表](https://github.com/canbiaoxu/skk/graphs/contributors)
+- [GitHub](https://github.com/canbiaoxu/skk)
+- [PyPI](https://pypi.org/project/skk)
+
+## 安装
+
+```bash
+pip install skk
+```
+
+## 功能分类
+
+### 数据库
+
+* [mysql -- 访问MySQL数据库](https://github.com/canbiaoxu/skk/tree/main/skk/mysql)
+* [mongo -- 访问MongoDB数据库](https://github.com/canbiaoxu/skk/tree/main/skk/mongo)
+* [postgre -- 访问PostgreSQL数据库](https://github.com/canbiaoxu/skk/tree/main/skk/postgre)
+* [objdb -- 访问ObjDB数据库](https://github.com/canbiaoxu/skk/tree/main/skk/objdb)
+
+### AI
+
+* [ollama -- 在 windows 平台上部署 deepseek 本地版，并用 python 调用](https://github.com/canbiaoxu/skk/tree/main/skk/ollama)
+* [openai -- 访问ChatGPT](https://github.com/canbiaoxu/skk/tree/main/skk/openai)
+
+### GUI
+
+* [miumapp -- 开发跨平台 GUI 应用](https://github.com/canbiaoxu/skk/tree/main/skk/miumapp)
+
+### 其他
+
+* [base95 -- Base95编码](https://github.com/canbiaoxu/skk/tree/main/skk/base95)
+
+# 邀请贡献
+
+欢迎有志之士一起完善这个软件包。贡献步骤：
+
+1. Fork仓库。
+2. 新增或修订内容。
+3. 提交Commit并推送到你的仓库。
+4. 发起PR说明修改内容。
+
+# 交流
+
+添加我的微信，并备注“进群”，拉你进微信交流群：
+
+<img src="http://canbiaoxu.github.io/skk/wechat_qr_code.jpg" alt="二维码" style="width: 15rem;" />
