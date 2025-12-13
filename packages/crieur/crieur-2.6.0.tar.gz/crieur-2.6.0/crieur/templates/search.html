@@ -1,0 +1,366 @@
+{% extends "main.html" %}
+
+{% block content %}
+  <form action="https://duckduckgo.com/" method="get" id="form-search">
+    <input type="hidden" name="sites" value="{{ settings.base_url }}">
+    <label for="input-search">Termes de votre recherche :</label>
+    <fieldset role="group">
+      <input id="input-search" type="search" name="q" aria-describedby="indexation-infos" required>
+      <input type="submit" value="Chercher">
+    </fieldset>
+    <p id="indexation-infos" class="centered" role="status"><mark>Les résultats sont affichés immédiatement ci-dessous ↓</mark></p>
+  </form>
+  <div id="search-results"></div>
+
+  <template id="search-result">
+    <div class="aside">
+      <hgroup>
+        <h2><a href="${numero_url}">${ numero_title_f }</a></h2>
+        <p class="muted"><small>${ numero_date }</small></p>
+      </hgroup>
+      <div class="article-body">
+        <h3><a href="${ url }">${ title_f }</a> <nobr class="muted"><small>(${ date })</small></nobr></h3>
+        <div class="article-abstract">${ content }</div>
+        <div class="article-nav">
+          <a href="${ url }" role="button" class="secondary">Lire l’article</a>
+        </div>
+      </div>
+    </div>
+  </template>
+{% endblock content %}
+
+{% block extra_body %}
+  {# djlint:off #}
+  <script id="search-index" type="application/json">{{ search_index }}</script>
+  {# djlint:on #}
+  <!-- French stopwords from https://github.com/stopwords-iso/stopwords-fr -->
+  <script id="search-stop-words" type="application/json">
+    [
+      "a", "abord", "absolument", "afin", "ah", "ai", "aie", "aient", "aies",
+      "ailleurs", "ainsi", "ait", "allaient", "allo", "allons", "allô",
+      "alors", "anterieur", "anterieure", "anterieures", "apres", "après",
+      "as", "assez", "attendu", "au", "aucun", "aucune", "aucuns", "aujourd",
+      "aujourd'hui", "aupres", "auquel", "aura", "aurai", "auraient", "aurais",
+      "aurait", "auras", "aurez", "auriez", "aurions", "aurons", "auront",
+      "aussi", "autant", "autre", "autrefois", "autrement", "autres", "autrui",
+      "aux", "auxquelles", "auxquels", "avaient", "avais", "avait", "avant",
+      "avec", "avez", "aviez", "avions", "avoir", "avons", "ayant", "ayez",
+      "ayons", "b", "bah", "bas", "basee", "bat", "beau", "beaucoup", "bien",
+      "bigre", "bon", "boum", "bravo", "brrr", "c", "car", "ce", "ceci",
+      "cela", "celle", "celle-ci", "celle-là", "celles", "celles-ci",
+      "celles-là", "celui", "celui-ci", "celui-là", "celà", "cent",
+      "cependant", "certain", "certaine", "certaines", "certains", "certes",
+      "ces", "cet", "cette", "ceux", "ceux-ci", "ceux-là", "chacun", "chacune",
+      "chaque", "cher", "chers", "chez", "chiche", "chut", "chère", "chères",
+      "ci", "cinq", "cinquantaine", "cinquante", "cinquantième", "cinquième",
+      "clac", "clic", "combien", "comme", "comment", "comparable",
+      "comparables", "compris", "concernant", "contre", "couic", "crac", "d",
+      "da", "dans", "de", "debout", "dedans", "dehors", "deja", "delà",
+      "depuis", "dernier", "derniere", "derriere", "derrière", "des",
+      "desormais", "desquelles", "desquels", "dessous", "dessus", "deux",
+      "deuxième", "deuxièmement", "devant", "devers", "devra", "devrait",
+      "different", "differentes", "differents", "différent", "différente",
+      "différentes", "différents", "dire", "directe", "directement", "dit",
+      "dite", "dits", "divers", "diverse", "diverses", "dix", "dix-huit",
+      "dix-neuf", "dix-sept", "dixième", "doit", "doivent", "donc", "dont",
+      "dos", "douze", "douzième", "dring", "droite", "du", "duquel", "durant",
+      "dès", "début", "désormais", "e", "effet", "egale", "egalement",
+      "egales", "eh", "elle", "elle-même", "elles", "elles-mêmes", "en",
+      "encore", "enfin", "entre", "envers", "environ", "es", "essai", "est",
+      "et", "etant", "etc", "etre", "eu", "eue", "eues", "euh", "eurent",
+      "eus", "eusse", "eussent", "eusses", "eussiez", "eussions", "eut", "eux",
+      "eux-mêmes", "exactement", "excepté", "extenso", "exterieur", "eûmes",
+      "eût", "eûtes", "f", "fais", "faisaient", "faisant", "fait", "faites",
+      "façon", "feront", "fi", "flac", "floc", "fois", "font", "force",
+      "furent", "fus", "fusse", "fussent", "fusses", "fussiez", "fussions",
+      "fut", "fûmes", "fût", "fûtes", "g", "gens", "h", "ha", "haut", "hein",
+      "hem", "hep", "hi", "ho", "holà", "hop", "hormis", "hors", "hou", "houp",
+      "hue", "hui", "huit", "huitième", "hum", "hurrah", "hé", "hélas", "i",
+      "ici", "il", "ils", "importe", "j", "je", "jusqu", "jusque", "juste",
+      "k", "l", "la", "laisser", "laquelle", "las", "le", "lequel", "les",
+      "lesquelles", "lesquels", "leur", "leurs", "longtemps", "lors",
+      "lorsque", "lui", "lui-meme", "lui-même", "là", "lès", "m", "ma",
+      "maint", "maintenant", "mais", "malgre", "malgré", "maximale", "me",
+      "meme", "memes", "merci", "mes", "mien", "mienne", "miennes", "miens",
+      "mille", "mince", "mine", "minimale", "moi", "moi-meme", "moi-même",
+      "moindres", "moins", "mon", "mot", "moyennant", "multiple", "multiples",
+      "même", "mêmes", "n", "na", "naturel", "naturelle", "naturelles", "ne",
+      "neanmoins", "necessaire", "necessairement", "neuf", "neuvième", "ni",
+      "nombreuses", "nombreux", "nommés", "non", "nos", "notamment", "notre",
+      "nous", "nous-mêmes", "nouveau", "nouveaux", "nul", "néanmoins", "nôtre",
+      "nôtres", "o", "oh", "ohé", "ollé", "olé", "on", "ont", "onze",
+      "onzième", "ore", "ou", "ouf", "ouias", "oust", "ouste", "outre",
+      "ouvert", "ouverte", "ouverts", "o|", "où", "p", "paf", "pan", "par",
+      "parce", "parfois", "parle", "parlent", "parler", "parmi", "parole",
+      "parseme", "partant", "particulier", "particulière", "particulièrement",
+      "pas", "passé", "pendant", "pense", "permet", "personne", "personnes",
+      "peu", "peut", "peuvent", "peux", "pff", "pfft", "pfut", "pif", "pire",
+      "pièce", "plein", "plouf", "plupart", "plus", "plusieurs", "plutôt",
+      "possessif", "possessifs", "possible", "possibles", "pouah", "pour",
+      "pourquoi", "pourrais", "pourrait", "pouvait", "prealable",
+      "precisement", "premier", "première", "premièrement", "pres", "probable",
+      "probante", "procedant", "proche", "près", "psitt", "pu", "puis",
+      "puisque", "pur", "pure", "q", "qu", "quand", "quant", "quant-à-soi",
+      "quanta", "quarante", "quatorze", "quatre", "quatre-vingt", "quatrième",
+      "quatrièmement", "que", "quel", "quelconque", "quelle", "quelles",
+      "quelqu'un", "quelque", "quelques", "quels", "qui", "quiconque",
+      "quinze", "quoi", "quoique", "r", "rare", "rarement", "rares",
+      "relative", "relativement", "remarquable", "rend", "rendre", "restant",
+      "reste", "restent", "restrictif", "retour", "revoici", "revoilà", "rien",
+      "s", "sa", "sacrebleu", "sait", "sans", "sapristi", "sauf", "se", "sein",
+      "seize", "selon", "semblable", "semblaient", "semble", "semblent",
+      "sent", "sept", "septième", "sera", "serai", "seraient", "serais",
+      "serait", "seras", "serez", "seriez", "serions", "serons", "seront",
+      "ses", "seul", "seule", "seulement", "si", "sien", "sienne", "siennes",
+      "siens", "sinon", "six", "sixième", "soi", "soi-même", "soient", "sois",
+      "soit", "soixante", "sommes", "son", "sont", "sous", "souvent", "soyez",
+      "soyons", "specifique", "specifiques", "speculatif", "stop",
+      "strictement", "subtiles", "suffisant", "suffisante", "suffit", "suis",
+      "suit", "suivant", "suivante", "suivantes", "suivants", "suivre",
+      "sujet", "superpose", "sur", "surtout", "t", "ta", "tac", "tandis",
+      "tant", "tardive", "te", "tel", "telle", "tellement", "telles", "tels",
+      "tenant", "tend", "tenir", "tente", "tes", "tic", "tien", "tienne",
+      "tiennes", "tiens", "toc", "toi", "toi-même", "ton", "touchant",
+      "toujours", "tous", "tout", "toute", "toutefois", "toutes", "treize",
+      "trente", "tres", "trois", "troisième", "troisièmement", "trop", "très",
+      "tsoin", "tsouin", "tu", "té", "u", "un", "une", "unes", "uniformement",
+      "unique", "uniques", "uns", "v", "va", "vais", "valeur", "vas", "vers",
+      "via", "vif", "vifs", "vingt", "vivat", "vive", "vives", "vlan", "voici",
+      "voie", "voient", "voilà", "voire", "vont", "vos", "votre", "vous",
+      "vous-mêmes", "vu", "vé", "vôtre", "vôtres", "w", "x", "y", "z", "zut",
+      "à", "â", "ça", "ès", "étaient", "étais", "était", "étant", "état",
+      "étiez", "étions", "été", "étée", "étées", "étés", "êtes", "être", "ô"
+    ]
+  </script>
+  <script type="text/javascript">
+    /* See:
+     * https://gomakethings.com/how-to-create-a-search-page-for-a-static-website-with-vanilla-js/
+     * https://gomakethings.com/how-to-update-the-url-of-a-page-without-causing-a-reload-using-vanilla-javascript/
+     */
+    ;
+    (function() {
+      // Retrieving the search index and stopwords from JSON.
+      // See https://v8.dev/blog/cost-of-javascript-2019#json
+      let searchIndex = JSON.parse(
+        document.getElementById('search-index').textContent
+      )
+      let stopWords = JSON.parse(
+        document.getElementById('search-stop-words').textContent
+      )
+
+      // Get the DOM elements
+      let form = document.querySelector('#form-search')
+      let input = document.querySelector('#input-search')
+      let resultList = document.querySelector('#search-results')
+      let searchStatus = document.querySelector('[role="status"] mark')
+      let searchResultTemplate = document.querySelector('#search-result')
+
+      // Make sure required content exists
+      if (
+        !form ||
+        !input ||
+        !resultList ||
+        !searchStatus ||
+        !searchIndex ||
+        !stopWords ||
+        !searchResultTemplate
+      )
+        return
+
+      // Create a submit handler
+      form.addEventListener('submit', function(event) {
+        event.preventDefault()
+        search(input.value)
+      })
+
+      // Create a typeahead handler
+      form.addEventListener('keyup', function(event) {
+        search(input.value)
+      })
+
+      // Create a reset handler
+      form.addEventListener('reset', function() {
+        search('')
+        searchStatus.innerHTML = ''
+      })
+
+      // Check for query strings onload
+      onload()
+
+      /**
+       * If there's a query string search term, search it on page load
+       */
+      function onload() {
+        let query = new URLSearchParams(window.location.search).get('q')
+        if (!query) return
+        input.value = query
+        search(query)
+      }
+
+      /**
+       * Search for matches
+       * @param  {String} query The term to search for
+       */
+      function search(query) {
+        // Create a regex for each query
+        let regMap = query
+          .toLowerCase()
+          .split(' ')
+          .filter(function(word) {
+            return word.length && !stopWords.includes(word)
+          })
+          .map(function(word) {
+            return new RegExp(word, 'i')
+          })
+
+        // Get and sort the results
+        let results = searchIndex
+          .reduce(function(results, article, index) {
+            // Setup priority count
+            let priority = 0
+
+            // Assign priority
+            for (let reg of regMap) {
+              if (reg.test(article.numero_title_f)) {
+                priority += 500
+              }
+              if (reg.test(article.title)) {
+                priority += 100
+              }
+              let occurences = article.content.match(reg)
+              if (occurences) {
+                priority += occurences.length
+              }
+            }
+
+            // If any matches, push to results
+            if (priority > 0) {
+              results.push({
+                priority: priority,
+                article: article,
+              })
+            }
+
+            return results
+          }, [])
+          .sort(function(article1, article2) {
+            return article2.priority - article1.priority
+          })
+
+        results = [
+          ...new Map(results.map(item => [item['article']['title'], item])).values()
+        ]
+
+        // Display the results
+        showResults(query, results, regMap)
+
+        // Update the URL
+        updateURL(query)
+      }
+
+      /**
+       * Show the search results in the UI
+       * @param  {Array}  results The results to display
+       * @param  {List}  regMap Regular expressions for the highlights
+       */
+      function showResults(query, results, regMap) {
+        let status = 'Aucune occurence n’a été trouvée.'
+        let searchResults = ''
+        if (results.length) {
+          const plural = results.length > 1 ? 's' : ''
+          status = `${results.length} section${plural} trouvée${plural} !`
+          searchResults = results
+            .map(function(result) {
+              let [url, anchor] = result.article.url.split('#') // Happens for contenus add.
+              // We avoid length > 1, because text fragment will only match the first term.
+              if (!anchor && regMap.length === 1) {
+                anchor = `:~:text=${regMap[0].source}`
+              }
+              anchor = anchor ? `#${anchor}` : ''
+              return interpolate(searchResultTemplate.innerHTML, {
+                url: `${url}?q=${query}${anchor}`,
+                title_f: highlightText(result.article.title, regMap),
+                date: result.article.date,
+                content: highlightText(result.article.content, regMap),
+                numero_title_f: highlightText(result.article.numero_title_f, regMap),
+                numero_url: result.article.numero_url,
+                numero_date: result.article.numero_date,
+              })
+            })
+            .join('')
+        }
+        searchStatus.innerHTML = status
+        resultList.innerHTML = searchResults
+      }
+
+      /**
+       * Get a template from a string
+       * https://stackoverflow.com/a/41015840
+       * https://gomakethings.com/html-templates-with-vanilla-javascript/
+       * @param  {String} str    The string to interpolate
+       * @param  {Object} params The parameters
+       * @return {String}        The interpolated string
+       */
+      function interpolate(str, params) {
+        let names = Object.keys(params)
+        let vals = Object.values(params)
+        return new Function(...names, `return \`${str}\``)(...vals)
+      }
+
+      /**
+       * Highlight the text in the UI
+       * @param  {String}  text The content to highlight
+       * @param  {List}  regMap Regular expressions for the highlights
+       */
+      function highlightText(text, regMap) {
+        // TODO: deal with close matches when multiple words are looked for,
+        // it does not look trivial because you have to memorize positions
+        // then create extracts.
+        // For instance: `microsoft github`
+        const extractBoundariesSize = 100
+        const textLength = text.length
+        let extracts = []
+        for (let reg of regMap) {
+          const index = text.search(reg)
+          if (index === -1) {
+            continue
+          }
+          let extract = text.substring(
+            index - extractBoundariesSize,
+            index + reg.source.length + extractBoundariesSize
+          )
+          // TODISCUSS: we replace with the source but in case there is
+          // an uppercase letter it will disappear from the extract
+          // (is that confusing or closer to what is expected?)
+          extract = extract.replace(reg, `<mark>${reg.source}</mark>`)
+          const prefixEllipsis = index - extractBoundariesSize >= 0 ? '…' : ''
+          const suffixEllipsis =
+            index + extractBoundariesSize <= textLength ? '…' : ''
+          extracts.push(`${prefixEllipsis}${extract}${suffixEllipsis}`)
+        }
+        if (!extracts.length && textLength < 200) {
+          // If there is no match but it's a short title, return it.
+          return text
+        }
+        return extracts.join('')
+      }
+
+      /**
+       * Update the URL with a query string for the search string
+       * @param  {String} query The search query
+       */
+      function updateURL(query) {
+        // Create the properties
+        let state = history.state
+        let title = document.title
+        let url = window.location.origin + window.location.pathname
+        if (query) {
+          url += '?q=' + encodeURI(query)
+        }
+
+        // Update the URL
+        history.pushState(state, title, url)
+      }
+    })()
+  </script>
+{% endblock extra_body %}

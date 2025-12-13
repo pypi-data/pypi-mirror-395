@@ -1,0 +1,21 @@
+{% extends "main.html" %}
+
+{% block content %}
+  {% for slug, author in authors.items() %}
+    <div class="aside">
+      <hgroup>
+        <h2><a href="{{ base_url }}{{ author.url }}">{{ author }}</a></h2>
+        <p><small>{{ author.articles|length }} article{{ author.articles|length|pluralize }}</small></p>
+      </hgroup>
+      <ul>
+        {% for article in author.articles %}
+          <li>
+            <a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a>
+            dans <em>{{ article.numero.title_f }}</em>
+            <nobr><span class="muted"><small>({{ article.date.strftime('%d %B %Y') }})</small></span></nobr>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% endblock content %}

@@ -1,0 +1,358 @@
+<!DOCTYPE html><!-- This is a valid HTML5 document. -->
+<!-- Screen readers, SEO, extensions and so on. -->
+<html lang="fr">
+  <!-- Has to be within the first 1024 bytes, hence before the <title>
+  See: https://www.w3.org/TR/2012/CR-html5-20121217/document-metadata.html#charset -->
+  <meta charset="utf-8" />
+  <meta name="generator" content="Crieur {{ crieur_version }}">
+  <!-- Why no `X-UA-Compatible` meta: https://stackoverflow.com/a/6771584 -->
+  <!-- The viewport meta is quite crowded and we are responsible for that.
+  See: https://codepen.io/tigt/post/meta-viewport-for-2015 -->
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Prevent access via referrers, only the domain will be available. -->
+  <meta content="origin-when-cross-origin" name="referrer" />
+  <!-- Required to make a valid HTML5 document. -->
+  <title>{% block page_title %}{{ title }}{% endblock page_title %}</title>
+  <!-- Lightest blank gif, avoids an extra query to the server. -->
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+  {% block imported_css %}
+    <link rel="stylesheet"
+          href="{{ base_url }}statics/pico.css" />
+  {% endblock imported_css %}
+  {% block fonts_css %}
+    <link rel="stylesheet"
+          href="{{ base_url }}statics/font_titrage.css" />
+    <link rel="stylesheet"
+          href="{{ base_url }}statics/font_labeur.css" />
+  {% endblock fonts_css %}
+  <link rel="alternate" type="application/atom+xml"
+        title="Feed" href="{{ base_url }}feed.xml">
+  <style type="text/css">
+    {% block extra_css %}
+      :root {
+        --pico-font-family: "noto_sansregular";
+        --pico-spacing: 0.25rem;
+      }
+      em, i {
+        font-family: "noto_sansitalic";
+        font-style: normal;
+      }
+      strong, b {
+        font-family: "noto_sansbold";
+        font-weight: normal;
+      }
+      h1, h3, h4, h5, h6 {
+        font-family: "adobe_caslon_probold_italic";
+        font-weight: normal;
+        font-style: normal;
+      }
+      h2 {
+        font-family: "adobe_caslon_prosemibold";
+        font-weight: normal;
+        font-style: normal;
+      }
+      h3 em, h3 i,
+      h4 em, h4 i,
+      h5 em, h5 i,
+      h6 em, h6 i,
+      nav {
+        font-family: "adobe_caslon_proregular";
+        font-weight: normal;
+        font-style: normal;
+      }
+      header:has(h1) {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: calc(var(--pico-block-spacing-vertical) * 4) auto calc(var(--pico-block-spacing-vertical) * 2) auto;
+        max-width: 40rem;
+      }
+      @media (min-width: 768px) {
+        header:has(h1) {
+          margin: calc(var(--pico-block-spacing-vertical) * 10) auto calc(var(--pico-block-spacing-vertical) * 2) auto;
+        }
+      }
+      header:has(h1):before,
+      header:has(h1):after {
+          content: '';
+          flex: 1;
+          height: var(--pico-border-width);
+          background-color: var(--pico-muted-border-color);
+          margin: 0 var(--pico-block-spacing-horizontal);
+      }
+      h1 {
+        margin: 0;
+      }
+      h1 a {
+        color: var(--pico-contrast);
+        text-decoration: none;
+      }
+      h1 a:hover {
+        text-decoration: underline;
+      }
+      dt {
+          font-weight: bold;
+      }
+      nav li a[aria-current] {
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+      }
+      nav.header,
+      nav.footer {
+        text-align: center;
+        border-bottom-style: double;
+        border-bottom-color: var(--pico-muted-border-color);
+        max-width: 48rem;
+        margin: 0 auto calc(var(--pico-block-spacing-vertical) * 6) auto;
+        justify-content: center;
+      }
+      nav.footer {
+        margin: calc(var(--pico-block-spacing-vertical) * 6) auto calc(var(--pico-block-spacing-vertical) * 4) auto;
+        border-bottom: none;
+        border-top-style: double;
+        border-top-color: var(--pico-muted-border-color);
+        padding-top: var(--pico-block-spacing-vertical);
+      }
+
+      nav ul {
+        flex-direction: column;
+      }
+      nav ul li[aria-hidden="true"] {
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        nav ol:last-of-type,
+        nav ul:last-of-type{
+          margin-right: 0;
+        }
+        nav ol:first-of-type,
+        nav ul:first-of-type{
+          margin-left: 0
+        }
+      }
+      @media (min-width: 768px) {
+        nav ul {
+          flex-direction: row;
+        }
+        nav ul li[aria-hidden="true"] {
+          display: initial;
+        }
+      }
+
+      nav li {
+        padding: 0 var(--pico-nav-element-spacing-horizontal);
+      }
+      footer nav ul {
+        margin: 0 auto !important;
+        text-align: center;
+      }
+      .centered {
+        text-align: center;
+      }
+      .muted {
+        color: var(--pico-muted-color) !important;
+      }
+      .border-muted {
+        color: var(--pico-muted-border-color);
+      }
+
+      .aside {
+        display: flex;
+        flex-direction: column;
+        margin-top: calc(var(--pico-block-spacing-vertical) * 10);
+        padding-bottom: calc(var(--pico-block-spacing-vertical) * 5);
+      }
+      .aside:not(:last-child) {
+        border-bottom-style: double;
+        border-bottom-color: var(--pico-muted-border-color);
+      }
+      .aside h2,
+      .aside hgroup {
+        padding-right: calc(var(--pico-block-spacing-horizontal) * 4);
+      }
+      .aside hgroup {
+        text-align: right;
+      }
+      .aside h2 a,
+      .aside h3 a {
+        color: var(--pico-contrast);
+      }
+      .aside ul {
+        border-left: var(--pico-border-width) solid var(--pico-muted-border-color);
+      }
+      @media (min-width: 768px) {
+        .aside {
+          flex-direction: row;
+        }
+        .aside h2,
+        .aside hgroup {
+          width: 15rem;
+          flex-shrink: 0;
+        }
+      }
+      @media (min-width: 992px) {
+        .aside h2,
+        .aside hgroup {
+          width: 20rem;
+        }
+      }
+
+      :root {
+        /* Grid adjustments, see
+        https://css-tricks.com/an-auto-filling-css-grid-with-max-columns/
+        */
+        /**
+         * User input values.
+         */
+        --grid-layout-gap: 10px;
+        --grid-column-count: 1;
+        --grid-item--min-width: 100px;
+
+        /**
+         * Calculated values.
+         */
+        --gap-count: calc(var(--grid-column-count) - 1);
+        --total-gap-width: calc(var(--gap-count) * var(--grid-layout-gap));
+        --grid-item--max-width: calc((100% - var(--total-gap-width)) / var(--grid-column-count));
+      }
+
+      @media (min-width: 576px) {
+        :root {
+          --grid-column-count: 1;
+        }
+      }
+
+      @media (min-width: 768px) {
+        :root {
+          --grid-column-count: 2;
+        }
+      }
+
+      .content {
+        width: 100%;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fill, minmax(max(var(--grid-item--min-width), var(--grid-item--max-width)), 1fr));
+        grid-gap: var(--grid-layout-gap);
+      }
+
+      .grid article header {
+        text-align: center;
+      }
+
+      .grid h2, .grid h3 {
+        margin-bottom: 0;
+        margin-top: var(--pico-typography-spacing-vertical);
+      }
+      .grid ul.by-2 {
+        columns: 2;
+      }
+      .grid hgroup {
+        margin-bottom: 0;
+      }
+
+      .article-content {
+        min-height: 15rem;
+        padding: var(--pico-nav-element-spacing-vertical) var(--pico-nav-element-spacing-horizontal);
+      }
+      .article-body {
+        border-left: var(--pico-border-width) solid var(--pico-muted-border-color);
+        padding-left: calc(var(--pico-nav-element-spacing-horizontal) * 2);
+        flex-grow: 1;
+      }
+      .article-body h2 {
+        width: initial;
+      }
+      .article-body figure {
+        margin: calc(var(--pico-nav-element-spacing-vertical) * 2) calc(var(--pico-nav-element-spacing-horizontal) * 2);
+        text-align: center;
+      }
+      .article-body img {
+        padding: 2px;
+        border-top: var(--pico-border-width) solid var(--pico-muted-border-color);
+        border-left: var(--pico-border-width) solid var(--pico-muted-border-color);
+        border-right: var(--pico-border-width) solid var(--pico-muted-border-color);
+      }
+      .article-body figcaption {
+        font-size: calc(var(--pico-font-size) * 0.6);
+        border-top-color: var(--pico-muted-border-color);
+        border-top-style: double;
+      }
+      .article-body pre {
+        max-width: 35rem;
+        overflow-x: scroll;
+      }
+
+      .article-nav {
+        text-align: right;
+      }
+      .article-nav [role="button"] {
+        padding: calc(var(--pico-form-element-spacing-vertical) / 2) var(--pico-form-element-spacing-horizontal);
+        margin: 0 0 calc(var(--pico-form-element-spacing-vertical) * 2) 0;
+      }
+
+      .article-abstract {
+        padding: calc(var(--pico-spacing) * 4);
+        border-color: var(--pico-muted-border-color);
+        border-style: double;
+        background-color: var(--pico-code-background-color);
+        margin-bottom: calc(var(--pico-form-element-spacing-vertical) * 2);
+      }
+
+      blockquote {
+        padding: calc(var(--pico-spacing) * 4);
+        border-left-style: double;
+      }
+    {% endblock extra_css %}
+  </style>
+  {% block extra_head %}
+  {% endblock extra_head %}
+
+  <body>
+    <main class="container">
+      {% block main_header %}
+        <header>
+          <h1><a href="{{ base_url }}" title="Retour à l’accueil">{{ title }}</a></h1>
+        </header>
+      {% endblock main_header %}
+      {% block menu %}
+        <nav class="header">
+          <ul>
+            <li><a href="{{ base_url }}numero/" {% if is_numeros %}aria-current="page"{% endif %}>Par numéro</a></li>
+            <li class="muted" aria-hidden="true"> ⁙ </li>
+            <li><a href="{{ base_url }}blog/" {% if is_blog %}aria-current="page"{% endif %}>Par date</a></li>
+            {% if keywords %}
+              <li class="muted" aria-hidden="true"> ⁙ </li>
+              <li><a href="{{ base_url }}mot-clef/" {% if is_keywords %}aria-current="page"{% endif %}>Par mot-clé</a></li>
+            {% endif %}
+            {% if authors %}
+              <li class="muted" aria-hidden="true"> ⁙ </li>
+              <li><a href="{{ base_url }}auteur/" {% if is_authors %}aria-current="page"{% endif %}>Par auteur·ice</a></li>
+            {% endif %}
+            {% if not settings.without_search %}
+              <li class="muted" aria-hidden="true"> ⁙ </li>
+              <li><a href="{{ base_url }}recherche/" {% if is_search %}aria-current="page"{% endif %}>Recherche</a></li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endblock menu %}
+      <div class="content">
+        {% block content %}
+        {% endblock content %}
+      </div>
+      {% block footer %}
+        <nav class="footer">
+          <ul>
+            <li>Initiative du <a href="https://www.ecrituresnumeriques.ca/fr">Laboratoire de recherche sur les écritures numériques</a></li>
+            <li class="muted" aria-hidden="true"> ⁙ </li>
+            <li>Site généré par le <a href="https://gitlab.huma-num.fr/ecrinum/crieur">Crieur</a></li>
+          </ul>
+        </nav>
+      {% endblock footer %}
+    </main>
+    {% block extra_body %}
+    {% endblock extra_body %}
+  </body>
+</html>
