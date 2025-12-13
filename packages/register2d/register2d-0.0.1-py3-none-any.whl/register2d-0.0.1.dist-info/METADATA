@@ -1,0 +1,60 @@
+Metadata-Version: 2.4
+Name: register2d
+Version: 0.0.1
+Summary: A 2d black-white binary image registration algorithm.
+Author-email: GGN_2015 <neko@jlulug.org>
+License: MIT License
+        
+        Copyright (c) 2025 GGN_2015
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: cupy
+Requires-Dist: numpy
+Requires-Dist: tqdm
+Requires-Dist: cupy_fft_match
+Requires-Dist: pillow
+Dynamic: license-file
+
+# register2d
+Given a black-and-white binary image A and another smaller black-and-white binary image B, perform translation and rotation on B, and find the position in A that is closest to the transformed B. A and B should be saved in grey PNG image (mode='L').
+
+## Installation
+```bash
+pip install register2d
+```
+
+## Usage
+```python
+import register2d
+image_a_path = "<Image A Path>"
+image_b_path = "<Image B Path>"
+
+# calculate registration
+posY, posX, score, rot_deg = register2d.find_match_pos_and_rotate(image_a_path, image_b_path)
+
+# show the position of image B in image A
+register2d.get_red_mask_image(image_a_path, image_b_path, posY, posX, rot_deg).show()
+
+# show the position of image B in a white image same size as A
+register2d.get_rotated_and_moved_image(image_a_path, image_b_path, posY, posX, rot_deg).show()
+```
