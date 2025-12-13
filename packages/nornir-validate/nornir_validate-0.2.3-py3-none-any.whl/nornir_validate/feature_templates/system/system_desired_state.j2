@@ -1,0 +1,98 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set image_cmd = "show version" %}
+{% set mgmt_acl_cmd = "show ip access-lists" %}
+{% set module_cmd = "show module" %}
+{% set sla_cmd = "show endpoint-tracker" %}
+{% set sla1_cmd = "show endpoint-tracker tracker-group" %}
+{% elif 'nxos' in os_type |string %}
+{% set image_cmd = "show version" %}
+{% set mgmt_acl_cmd = "show access-lists" %}
+{% set module_cmd = "show module" %}
+{% elif 'asa' in os_type |string %}
+{% set image_cmd = "show version" %}
+{% set mgmt_acl_cmd = "show run" %}
+{% elif 'wlc' in os_type |string %}
+{% set image_cmd = "show sysinfo" %}
+{% elif 'panos' in os_type |string %}
+{% set image_cmd = "show system info" %}
+{% set sla_cmd = "show high-availability path-monitoring" %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### IMAGE: {cmd: code_number}} ### #}
+{% if sub_feat == 'image' and image_cmd is defined %}
+    image: 
+      {{ image_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        {{ input_vars }}
+{% endif %}
+
+{# ### MGMT ACL: {cmd: {acl_name: {seq_num: {protocol: ip/tcp/udp, src: src_ip, dst: dst_ip, dst_port: port}}} ### #}
+{% elif 'mgmt_acl' in sub_feat and mgmt_acl_cmd is defined %}
+    mgmt_acl:
+{% if generate_val_file %}
+{% if sub_feat.mgmt_acl.__class__.__name__ == 'list' %}
+{% for each_acl in sub_feat.mgmt_acl %}
+      {{ mgmt_acl_cmd }} {{ each_acl }}: VALIDATE
+{% endfor %}
+{% else %}
+      {{ mgmt_acl_cmd }}: VALIDATE
+{% endif %}
+{% elif desired_state %}
+{% for acl_name, ace_info in input_vars.items() %}
+      {{ mgmt_acl_cmd }} {{ acl_name }}:
+        {{ acl_name }}:
+          _mode: strict
+{% set seq = namespace(cnt=10) %}
+{% for each_ace in ace_info.ace %}
+{% if each_ace.keys() | list | first != 'remark' %}
+          {{ seq.cnt }}:
+            action: {{ each_ace.keys() | list | first }}
+            protocol: ip
+            src: {{ each_ace.values() | list | first }}
+            dst: any
+{% set seq.cnt = seq.cnt + 10 %}
+{% endif %}{% endfor %}{% endfor %}{% endif %}
+{# ### MODULE: {module_num: {model: xxx, status, ok}} ### #}
+{% elif sub_feat == 'module' and module_cmd is defined %}
+    module:
+      {{ module_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+{% for each_mod, mod_info in input_vars.items() %}
+        {{ each_mod }}:
+          model: {{ mod_info.model }}
+          status: {{ mod_info.status | default('ok') }}
+{% endfor %}{% endif %}
+{# ### SLA: {cmd: {grp_name: {dst: {rtt: x, State: Up}}}} ### #}
+{% elif sub_feat == 'sla' and sla_cmd is defined %}
+    sla:
+{% if 'ios' in os_type |string %}
+      {{ sla1_cmd }}: SUB_FEATURE_COMBINED_CMD
+{% endif %}
+      {{ sla_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+{% for grp, dst in input_vars.items() %}
+        {{ grp }}:
+{% for name, values in dst.items() %}
+          {{ name }}:
+            rtt: {{ values.rtt | round | int }}
+            state: Up
+{% endfor %}{% endfor %}{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}

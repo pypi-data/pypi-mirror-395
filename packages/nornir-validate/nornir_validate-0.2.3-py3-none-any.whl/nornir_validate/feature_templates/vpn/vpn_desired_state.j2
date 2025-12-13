@@ -1,0 +1,66 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set vpn_sts_cmd = "show crypto session detail" %}
+{% set sts_count_cmd = "show crypto session brief | count UA" %}
+{% set ac_count_cmd = "empty" %}
+{% elif 'nxos' in os_type |string %}
+{% elif 'asa' in os_type |string %}
+{% set vpn_sts_cmd = "show vpn-sessiondb detail l2l" %}
+{% set vpn_ac_cmd = "show vpn-session anyconnect" %}
+{% set sts_count_cmd = "show vpn-session l2l | count Connection" %}
+{% set ac_count_cmd = "show vpn-session" %}
+{% elif 'wlc' in os_type |string %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### STS_PEER: {cmd: {peer_ip: UP-ACTIVE, peer_ip: UP-ACTIVE}} ### #}
+{% if sub_feat == 'sts_peer' and vpn_sts_cmd is defined %}
+    sts_peer:
+      {{ vpn_sts_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+          _mode: strict
+{% for each_peer in input_vars %}
+          {{ each_peer }}: UP-ACTIVE
+{% endfor %}{% endif %}
+{# ### AC_USER: {cmd: {user: tunnel_group: x, group_policy:y }} ### #}
+{% elif sub_feat == 'ac_user' and vpn_ac_cmd is defined %}
+    ac_user:
+      {{ vpn_ac_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+{% for each_user, user_info in input_vars.items() %}
+        {{ each_user }}:
+          tunnel_group: {{ user_info.tunnel_group }}
+          group_policy: {{ user_info.group_policy }}
+{% endfor %}{% endif %}
+{# ### VPN_COUNT: {cmd: {sts: x, ac:y }} ### #}
+{% elif sub_feat == 'vpn_count' and (vpn_sts_cmd is defined or vpn_ac_cmd is defined) %}
+    vpn_count:
+{% if vpn_sts_cmd is defined %}
+      {{ sts_count_cmd }}: 
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        sts: {{ input_vars.sts }}
+{% endif %}{% endif %}
+{% if vpn_ac_cmd is defined %}
+      {{ ac_count_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        ac: {{ input_vars.ac }}
+{% endif %}{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}
