@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "woolly"
+description = "Check if package dependencies are available in Fedora. Supports Rust, Python, and more."
+readme = "README.md"
+authors = [
+    { name = "Rodolfo Olivieri", email = "rodolfo.olivieri3@gmail.com"}
+]
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "cyclopts>=4.3.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.10.0",
+    "rich>=14.2.0",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.optional-dependencies]
+template = [
+    "jinja2>=3.1.0",
+]
+
+[project.url]
+"Source code" = "https://github.com/r0x0d/woolly"
+"Bug Tracker" = "https://github.com/r0x0d/woolly/issues"
+
+[project.scripts]
+woolly = "woolly.__main__:main"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["woolly"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.407",
+    "ruff>=0.14.7",
+]
+
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.14.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "unit: Unit tests with mocking",
+    "functional: Functional tests without mocking (may require network)",
+    "slow: Slow tests that make real API calls",
+]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["woolly"]
+branch = true
+omit = [
+    "woolly/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
