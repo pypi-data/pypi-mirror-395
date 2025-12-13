@@ -1,0 +1,268 @@
+import dataclasses
+import inspect
+import uuid
+from dataclasses import dataclass
+from types import UnionType
+from typing import (
+    Any,
+    cast,
+    get_args,
+    get_origin,
+    Optional,
+    Type,
+    TypeVar,
+    get_type_hints,
+    Literal,
+    Iterable,
+    Callable,
+    Union,
+)
+
+import orjson
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
+from django.http import HttpRequest, HttpResponse, QueryDict
+
+from hyperpony.utils import _get_request_from_args, is_none_compatible
+from hyperpony.views import EmbeddedRequest
+
+
+class InjectParamsMixin:
+    def __process_hyperpony_params(self) -> dict[str, "QueryParam"]:
+        cls = self.__class__
+        if hasattr(cls, "__hyperpony_params"):
+            return getattr(cls, "__hyperpony_params")
+
+        ths = get_type_hints(cls)
+        params: dict[str, QueryParam] = {}
+        for member_name, ip in inspect.getmembers(cls):
+            if isinstance(ip, QueryParam):
+                # ip.ignore_view_stack = True  # CBVs do not rely on the view stack
+                ip.name = member_name
+                ip.target_type = ths.get(
+                    member_name, type(ip.default) if ip.default is not None else str
+                )
+                ip.check()
+                params[member_name] = ip
+                delattr(cls, member_name)
+
+        setattr(cls, "__hyperpony_params", params)
+        return params
+
+    def setup(self, request, *args, **kwargs):
+        hyperpony_params = self.__process_hyperpony_params()
+        for k, v in hyperpony_params.items():
+            # do not process QueryParam if view instance overrides field
+            if hasattr(self, k) and not isinstance(getattr(self, k), QueryParam):
+                continue
+
+            try:
+                value = v.get_value([request], kwargs)
+            except KeyError:
+                raise Exception(
+                    f"No value found for non-optional parameter '{self.__class__.__name__}.{v.query_param_name}'"
+                )
+            setattr(self, k, value)
+
+        return super().setup(request, *args, **kwargs)  # type: ignore
+
+
+@dataclass
+class InjectedParam:
+    name: str = dataclasses.field(init=False)
+    target_type: type = dataclasses.field(init=False)
+
+    def check(self):
+        pass
+
+    def get_value(self, args: Any, kwargs: dict[str, Any]) -> Any:
+        pass
+
+    def replace_response(self, request: HttpRequest, value: Any) -> Optional[HttpResponse]:
+        pass
+
+
+################################################################################
+### request params to args
+################################################################################
+
+
+@dataclasses.dataclass
+class QueryParam(InjectedParam):
+    query_param_name: Optional[str] = dataclasses.field(default=None)
+    default: Any = dataclasses.field(default=None)
+    # ignore_view_stack: bool = dataclasses.field(default=False)
+    origins: Iterable[
+        Literal["GET", "POST", "PUT", "DELETE", "PATCH", "PATH", "KWARGS", "__all__"]
+    ] = dataclasses.field(default=("GET",))
+    parse_content_type_form_urlencoded: bool = dataclasses.field(default=True)
+    parse_content_type_json: bool = dataclasses.field(default=True)
+    model_loader: Callable[[HttpRequest, Any], Any] | None = dataclasses.field(default=None)
+
+    def __post_init__(self):
+        if "__all__" in self.origins:
+            self.origins = ("GET", "POST", "PUT", "DELETE", "PATCH", "PATH", "KWARGS")
+
+    def check(self):
+        if self.query_param_name is None:
+            self.query_param_name = self.name
+
+    def _create_lookup_dict(self, request: HttpRequest, **kwargs):
+        source = QueryDict(mutable=True)
+        getqd = cast(QueryDict, request.GET)
+        postqd = cast(QueryDict, request.POST)
+
+        if request.method in self.origins:
+            source.update({name: postqd.getlist(name) for name in postqd})
+
+            ct = request.content_type
+            if (
+                ct == "application/x-www-form-urlencoded"
+                and self.parse_content_type_form_urlencoded
+            ):
+                formqd = QueryDict(request.body, encoding=request.encoding)
+                source.update({name: formqd.getlist(name) for name in formqd})
+            elif ct == "application/json" and self.parse_content_type_json:
+                data = orjson.loads(request.body)
+                source.update({k: [v] for k, v in data.items()})
+
+        # Order matters! GET overrides POST
+        if "GET" in self.origins:
+            source.update({name: getqd.getlist(name) for name in getqd})
+
+        if "PATH" in self.origins and request.resolver_match:
+            for key, value in request.resolver_match.kwargs.items():
+                if key not in source:
+                    # noinspection PyTypeChecker
+                    source[key] = [value]
+
+        if "KWARGS" in self.origins:
+            # noinspection PyTypeChecker
+            source.update({k: [v] for k, v in kwargs.items()})
+
+        if isinstance(request, EmbeddedRequest):
+            source.update({k: [v] for k, v in request.hyperpony_params_bypass_values.items()})
+
+        return source
+
+    def get_value(self, args: Any, kwargs: dict[str, Any]):
+        request = _get_request_from_args(args)
+        lookup_dict = self._create_lookup_dict(request, **kwargs)
+
+        # if self.ignore_view_stack or is_view_stack_at_root(request):
+        values = lookup_dict.get(self.query_param_name, None)
+        # else:
+        #     values = None
+
+        is_optional = is_none_compatible(self.target_type)
+        if values is None:
+            if is_optional:
+                return None
+            if self.default is not _REQUIRED:
+                values = [self.default]
+            else:
+                raise KeyError()
+
+        return _convert_value_to_type(request, self, values, self.target_type, is_optional)
+
+
+T = TypeVar("T")
+
+_REQUIRED = object()
+
+
+def param(
+    default: T = cast(Any, _REQUIRED),
+    *,
+    name: str | None = None,
+    origins: Iterable[
+        Literal["GET", "POST", "PUT", "DELETE", "PATCH", "PATH", "KWARGS", "__all__"]
+    ] = ("__all__",),
+    parse_content_type_form_urlencoded=True,
+    parse_content_type_json=True,
+    # ignore_view_stack=False,
+    model_loader: Callable[[HttpRequest, Any], Any] | None = None,
+) -> T:
+    return cast(
+        T,
+        QueryParam(
+            query_param_name=name,
+            default=default,
+            # ignore_view_stack=ignore_view_stack,
+            origins=origins,
+            parse_content_type_form_urlencoded=parse_content_type_form_urlencoded,
+            parse_content_type_json=parse_content_type_json,
+            model_loader=model_loader,
+        ),
+    )
+
+
+def check_and_return_model_type(target_type: Any) -> Type[models.Model] | None:
+    if get_origin(target_type) is Union or isinstance(target_type, UnionType):
+        # union type
+        for t in get_args(target_type):
+            if issubclass(t, models.Model):
+                return cast(Type[models.Model], t)
+    elif issubclass(target_type, models.Model):
+        # no union type
+        return cast(Type[models.Model], target_type)
+
+    return None
+
+
+class ObjectDoesNotExistWithPk(ObjectDoesNotExist):
+    pk: Any
+
+    def __init__(self, pk: Any):
+        super().__init__(f"Object with pk {pk} does not exist")
+        self.pk = pk
+
+
+def _convert_value_to_type(
+    request: HttpRequest, qp: QueryParam, values: list[Any], target_type: type, is_optional: bool
+):
+    # List type
+    if get_origin(target_type) is list:
+        list_type = get_args(target_type)[0]
+        return [_convert_value_to_type(request, qp, [v], list_type, is_optional) for v in values]
+
+    if target_type is list:
+        return [_convert_value_to_type(request, qp, [v], str, is_optional) for v in values]
+
+    # Scalar types
+    value = values[0]
+
+    try:
+        if value is None:
+            pass  # trigger ValueError
+        elif model_type := check_and_return_model_type(target_type):
+            if isinstance(value, model_type):
+                return value
+            try:
+                if qp.model_loader is not None:
+                    return qp.model_loader(request, value)
+                return model_type.objects.get(pk=value)
+            except model_type.DoesNotExist as e:
+                if is_optional:
+                    return None
+                if issubclass(ObjectDoesNotExistWithPk, target_type):
+                    raise ObjectDoesNotExistWithPk(value)
+                raise e
+        elif isinstance(value, target_type):
+            return value  # nothing to do
+        elif issubclass(str, target_type):
+            return str(value)
+        elif issubclass(int, target_type):
+            return int(value)
+        elif issubclass(float, target_type):
+            return float(value)
+        elif issubclass(bool, target_type):
+            return False if value in (False, "", "false", "False") else True
+        elif issubclass(uuid.UUID, target_type):
+            return uuid.UUID(value)
+    except Exception as error:
+        if isinstance(error, target_type):
+            return error
+        raise error
+
+    raise ValueError(f"Unsupported type: {target_type} for value: {value}")
