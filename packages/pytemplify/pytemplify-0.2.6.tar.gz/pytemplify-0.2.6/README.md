@@ -1,0 +1,743 @@
+# pytemplify
+
+Data-driven code generation that safely regenerates files while preserving manual edits.
+
+This README has been rewritten to be shorter, easier to scan, and to include two diagrams:
+
+- Architecture: how components interact
+- Data flow: from data -> templates -> generated files (with manual sections preserved)
+
+Goals for this README
+
+- concise install & quick-start
+- minimal examples (CLI + Python API)
+- two diagrams (Mermaid) to illustrate structure and flow
+- a short "contract" and common edge-cases
+
+## Quick facts (contract)
+
+- Inputs: JSON/YAML data + Jinja2 templates + optional helpers/config
+- Outputs: Generated files in an output directory; existing manual sections are preserved
+- Error modes: invalid template syntax, bad iterate expressions, missing data keys
+- Success: files written with preserved manual sections and deterministic filtering
+
+## Install
+
+```bash
+pip install pytemplify
+```
+
+Optional tooling to install separately:
+- Formatters: `pip install black`, `npm install -g prettier`, system `clang-format`
+- Validation extras: install whatever your validators require (e.g., GTest)
+
+## Quick Start (CLI)
+
+1) data (services.json)
+
+```json
+{ "services": [ { "name": "user", "port": 8080 }, { "name": "order", "port": 8081 } ] }
+```
+
+2) template (`templates/_foreach_service_{{ service.name }}_config.py.j2`)
+
+```jinja2
+# {{ service.name | upper() }} config
+SERVICE_NAME = "{{ service.name }}"
+SERVICE_PORT = {{ service.port }}
+
+# MANUAL SECTION START: extras
+# add custom code here (preserved on regen)
+# MANUAL SECTION END
+```
+
+3) config (`config.yaml`)
+
+```yaml
+templates:
+  - name: "Services"
+    folder: "templates"
+    output: "generated"
+    iterate: "service in services"
+```
+
+4) run
+
+```bash
+yagen -c config.yaml -d services.json -o ./generated
+```
+
+Result: one file per service under `generated/` with manual sections preserved.
+
+## Minimal Python example
+
+```python
+from pytemplify.renderer import TemplateRenderer
+
+data = {"project": "example", "services": [{"name": "a"}]}
+renderer = TemplateRenderer(data)
+renderer.generate("templates", "generated")
+```
+
+## Diagrams
+
+Architecture (components)
+
+```mermaid
+flowchart LR
+  A[Input Data: JSON or YAML] --> B[Parser & DataHelpers]
+  B --> C[TemplateRenderer - Jinja2, Helpers, Filters]
+  C --> D[FileGenerator]
+  D --> E["Output Files<br/>(manual sections preserved)"]
+  subgraph CLI
+    Y[Yagen]
+  end
+  Y --> C
+```
+
+Data flow for one template iteration
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Data
+  participant Renderer
+  participant FS as FileSystem
+
+  User->>Data: provide services.json
+  User->>Renderer: provide templates/ config
+  Renderer->>Data: parse JSON/YAML
+  Data->>Renderer: return parsed data
+  Renderer->>FS: read template files
+  FS->>Renderer: return template content
+  Renderer->>Renderer: render templates with data
+  Renderer->>FS: write generated files
+  FS->>User: files written successfully
+```
+
+## Features
+
+- **Template-based Code Generation**: Use Jinja2 templates to generate files from data
+- **Data Helpers**: Extend data with custom helper classes for complex transformations
+- **Manual Section Preservation**: Keep user-edited sections intact between regenerations
+- **Manual Section Backup/Restore**: Dedicated utility for backing up and restoring manual sections
+- **Flexible Configuration**: YAML-based configuration with schema validation
+- **Configuration File Validation**: Load and validate YAML/TOML/JSON config files with JSON Schema
+- **Code Formatting**: Optional automatic formatting of generated files
+- **Validation Framework**: Built-in validators (GTest, JSON Schema, File Structure) for generated code
+
+### Code Formatting
+
+pytemplify supports optional code formatting for generated files. Install the formatter binaries you plan to use (Black/Prettier/clang-format are not bundled).
+
+#### Configuration
+
+Add a `format` section to your `templates.yaml` configuration:
+
+```yaml
+format:
+  enabled: true  # Enable/disable formatting globally
+
+  defaults:
+    preserve_manual_sections: true  # Keep manual sections intact during formatting
+    ignore_patterns: ["*.min.*", "*.generated.*"]  # Files to skip formatting
+
+  formatters:
+    # Python files
+    ".py":
+      type: "black"
+      enabled: true
+      options:
+        line_length: 88
+        string_normalization: true
+
+    # JavaScript/TypeScript files
+    ".js|.ts|.jsx|.tsx":
+      type: "prettier"
+      options:
+        printWidth: 80
+        semi: true
+
+    # C/C++ files (builtin formatter - recommended)
+    ".c|.cpp|.h|.hpp":
+      type: "cpp_format"
+      options:
+        style: "Google"
+        indent_width: 2
+
+    # Alternative: command-line clang-format
+    # ".c|.cpp|.h|.hpp":
+    #   type: "command"
+    #   command: "clang-format ${input} > ${output}"
+    #   options:
+    #     timeout: 30
+```
+
+#### Supported Formatters
+
+- **Black**: Python code formatter (`pip install black`)
+- **Prettier**: JavaScript, TypeScript, JSON, CSS, HTML, Markdown formatter (`npm install -g prettier`)
+- **cpp_format**: C/C++ formatter using clang-format (requires `clang-format` on PATH)
+- **clang-format**: C/C++ formatter (requires system installation)
+- **Custom Command**: Any command-line formatter using `${input}` and `${output}` placeholders
+
+#### Manual Section Preservation
+
+When `preserve_manual_sections` is enabled (default), manual sections in templates are preserved during formatting. The formatter temporarily removes manual sections, formats the code, and then restores the original manual sections.
+
+#### Installation
+
+Install the formatters you need:
+
+```bash
+pip install black            # Python
+npm install -g prettier      # JS/TS/JSON/CSS/HTML/Markdown
+# Install clang-format from your package manager for C/C++
+```
+
+### Configuration File Validation
+
+pytemplify supports loading and validating external configuration files (YAML, TOML, JSON) with JSON Schema validation. This is useful for complex projects that separate deployment settings, build configuration, and other data from the main template configuration.
+
+#### Configuration
+
+Add `extra_data` to your `config.yaml`:
+
+```yaml
+globals:
+  version: "1.0.0"
+  project: "MicroservicesApp"
+
+extra_data:
+  # YAML file with schema validation
+  - key: "deployment"
+    path: "configs/deployment.yaml"
+    schema: "schemas/deployment-schema.json"
+    format: "yaml"  # optional: auto-detected from extension
+    description: "Deployment environment configuration"
+
+  # TOML file (auto-detected)
+  - key: "build"
+    path: "configs/build.toml"
+    description: "Build and packaging settings"
+
+  # JSON file with schema validation
+  - key: "database"
+    path: "configs/database.json"
+    schema: "schemas/database-schema.json"
+    description: "Database connection configuration"
+```
+
+#### Features
+
+- **Multiple Format Support**: JSON, YAML (.yaml/.yml), TOML
+- **JSON Schema Validation**: Validate config files against JSON Schema (Draft-07)
+- **Cross-Platform Paths**: Works on Windows and Linux with automatic path resolution
+- **Clickable Error URIs**: Error messages include `file://` URIs that are clickable in VSCode, PyCharm, and modern terminals
+- **Environment Variables**: Supports `${VAR}` (Unix) and `%VAR%` (Windows) in paths
+- **Optional Files**: Use `required: false` for optional configuration files
+
+#### Error Messages
+
+When schema validation fails, you get detailed, actionable errors:
+
+```
+TemplateConfigError: Schema validation failed for extra data key 'deployment':
+  - Extra data key 'deployment': at 'environments.0.replicas': -1 is less than the minimum of 1
+    ↳ file:///home/user/project/configs/deployment.yaml:5
+```
+
+Click the `file://` link to jump directly to the error location in your IDE!
+
+#### Example
+
+See [examples/with_schema_validation/](examples/with_schema_validation/) for a complete working example.
+
+## Python API
+
+### Basic Usage
+
+```python
+from pytemplify.renderer import TemplateRenderer
+
+# Your data (dict, JSON, or custom object)
+data = {
+    "project_name": "MyApp",
+    "services": [
+        {"name": "auth", "port": 8080},
+        {"name": "api", "port": 8081}
+    ]
+}
+
+# Create renderer with data
+renderer = TemplateRenderer(data)
+
+# Render a string template
+template = "Project: {{ project_name }}"
+result = renderer.render_string(template)
+print(result)  # "Project: MyApp"
+
+# Render a file template
+renderer.render_file("template.txt.j2", "output.txt")
+
+# Generate entire directory structure
+renderer.generate("templates/", "output/")
+```
+
+### Custom Filters
+
+```python
+def reverse_string(text):
+    return text[::-1]
+
+custom_filters = {"reverse": reverse_string}
+renderer = TemplateRenderer(data, filters=custom_filters)
+
+template = "{{ 'hello' | reverse }}"  # "olleh"
+
+# Disable auto-registration of built-in filters if needed
+renderer = TemplateRenderer(data, auto_register_filters=False)
+```
+
+### Environment Configuration
+
+Configure Jinja2 environment options for template rendering:
+
+```python
+data = {"items": ["a", "b", "c"]}
+renderer = TemplateRenderer(data)
+
+# Configure multiple environment options at once
+renderer.set_env_options(
+    trim_blocks=True,      # Remove first newline after template tag
+    lstrip_blocks=True,    # Strip leading spaces/tabs before block tags
+    autoescape=False       # Disable automatic HTML escaping
+)
+
+# Template with better whitespace control
+template = """
+{% for item in items %}
+  - {{ item }}
+{% endfor %}
+"""
+
+result = renderer.render_string(template)
+# Output with clean formatting (no extra blank lines)
+```
+
+Common environment options:
+
+- `trim_blocks`: Remove first newline after template tag
+- `lstrip_blocks`: Strip leading spaces/tabs from start of line to block
+- `autoescape`: Enable automatic escaping of variables
+- `keep_trailing_newline`: Keep trailing newline at end of template
+
+### Manual Sections
+
+Manual sections allow you to preserve user-modified content between template regenerations:
+
+```python
+template = """
+# Configuration
+project_name = {{ project_name }}
+
+# Custom settings
+MANUAL SECTION START: custom_settings
+# Add your custom settings here
+debug = True
+MANUAL SECTION END
+"""
+
+# Previously rendered content with user modifications
+previous = """
+# Configuration
+project_name = OldProject
+
+# Custom settings
+MANUAL SECTION START: custom_settings
+# User added these settings
+debug = True
+verbose = True
+log_level = DEBUG
+MANUAL SECTION END
+"""
+
+# The manual section will be preserved in the new render
+result = renderer.render_string(template, previous)
+```
+
+### Manual Section Backup/Restore Utility
+
+For template development workflows, pytemplify includes a dedicated utility for backing up and restoring manual sections:
+
+```bash
+# Backup manual sections from generated files
+manual-sections backup ./generated/ --recursive --output backup.json
+
+# Preview what would be restored
+manual-sections restore backup.json ./target/ --preview
+
+# Restore with section mapping (useful when template structure changes)
+manual-sections restore backup.json ./target/ --section-map "old_section:new_section"
+
+# Generate human-readable reports
+manual-sections report backup.json --output report.md
+
+# View specific sections
+manual-sections view backup.json --file "utils.py" --section "helpers"
+```
+
+This utility is essential when:
+
+- Refactoring templates and need to migrate manual sections
+- Working with multiple template versions
+- Sharing manual sections between team members
+- Creating backups before major template changes
+
+### Content Injection
+
+You can inject content into specific parts of existing files:
+
+```python
+template = """
+<!-- injection-pattern: imports -->
+pattern: (?P<injection>import .*)
+<!-- injection-string-start -->
+import os
+import sys
+import json
+<!-- injection-string-end -->
+"""
+
+existing_file = """
+import os
+import sys
+# Other code here
+"""
+
+# Will inject the new import statements
+result = renderer.inject_string(template, existing_file)
+```
+
+### Template Directory Generation
+
+Generate an entire directory structure from templates:
+
+```python
+# Will process all .j2 files in templates/ and generate the corresponding
+# structure in output/ with rendered content
+renderer.generate(Path("templates"), Path("output"))
+```
+
+For more details, see the API documentation in the code.
+
+## YAML-based Generation (yagen)
+
+The YAML-based generator (`yagen`) is the **recommended approach** for most use cases. It provides a declarative, powerful way to generate code from data without writing custom Python parsers.
+
+### Why Choose yagen?
+
+✨ **No Code Required**: Define everything in YAML config + Jinja2 templates
+🔄 **Data Helpers**: Extend your data with computed properties
+🎯 **Advanced Iteration**: Filter, nest, and iterate with expressive syntax
+🎨 **Flexible Output**: Multiple template sets, conditional generation
+📦 **Production Ready**: Schema validation, error handling, CLI interface
+
+### Core Features
+
+- **Multiple Iteration Patterns**: Simple, conditional, nested, and array iterations
+- **Template Filtering**: Include/exclude patterns with glob and regex support (CLI and config-level)
+- **Data Helpers Integration**: Add computed properties to your data
+- **Manual Section Preservation**: Regenerate safely without losing custom code
+- **Advanced Configuration**: YAML-based template sets with flexible output control
+- **Schema Validation**: Built-in validation for template configurations
+- **Template Organization**: Automatic file filtering based on iteration context
+
+### Basic Usage
+
+1. Create a YAML configuration file (`templates.yaml`):
+
+```yaml
+globals:
+  version: "1.0.0"
+  project: "MyProject"
+
+templates:
+  - name: "Service Files"
+    folder: "service_templates"
+    output: "services"
+    iterate: "service in dd.services"
+    enabled: true
+```
+
+2. Create your JSON data file (`data.json`):
+
+```json
+{
+  "services": [
+    {"name": "user-service", "port": 8080},
+    {"name": "auth-service", "port": 8081}
+  ]
+}
+```
+
+3. Run the generator:
+
+```shell
+yagen --config templates.yaml --data data.json
+```
+
+### Advanced Iteration Patterns
+
+#### Simple Iteration
+
+```yaml
+iterate: "service in dd.services"
+```
+
+#### Conditional Iteration
+
+```yaml
+iterate: "endpoint in dd.endpoints if endpoint.enabled"
+```
+
+#### Nested Iteration
+
+```yaml
+iterate: "module in dd.modules >> component in module.components"
+```
+
+#### Array Iteration (Multiple patterns)
+
+```yaml
+iterate:
+  - "service in dd.services if service.public"
+  - "module in dd.modules if module.documented"
+```
+
+### Template Filtering
+
+Control which templates are processed using command-line filters:
+
+```shell
+# Include only service-related templates
+yagen --config templates.yaml --data data.json --output ./output \
+      --include "Service*"
+
+# Exclude test templates
+yagen --config templates.yaml --data data.json --output ./output \
+      --exclude "*Test*"
+
+# Use regex patterns
+yagen --config templates.yaml --data data.json --output ./output \
+      --include "regex:^(Service|API).*"
+```
+
+### Template Organization
+
+Use `_foreach_` prefixes to organize templates by iteration context:
+
+```
+templates/
+├── _foreach_service_main.py.j2     # Only processed during service iteration
+├── _foreach_module_init.py.j2      # Only processed during module iteration
+└── static_config.py.j2             # Always processed
+```
+
+### Complete Examples
+
+See the [examples/](examples/) directory for comprehensive examples including:
+
+- Static template generation
+- Service and API file generation
+- Nested module/component structures
+- Documentation generation
+- Test file generation with filtering
+
+## Data Helpers Integration
+
+Yagen supports **data_helpers** for enhanced template capabilities. Data helpers add computed properties and methods to your JSON data without modifying the original structure.
+
+### Quick Start with Data Helpers
+
+```bash
+# Using CLI arguments
+yagen --config templates.yaml --data data.json \
+      --helpers "my_helpers.CompanyHelpers" \
+      --helper-path "./helpers/"
+
+# Using YAML configuration
+yagen --config templates_with_helpers.yaml --data data.json
+```
+
+### YAML Configuration with Data Helpers
+
+```yaml
+# templates.yaml
+globals:
+  version: "1.0.0"
+  project: "MyProject"
+
+# Load additional data from external JSON files or inline dictionaries
+extra_data:
+  - path: "infrastructure.json"
+    key: "infra"
+  - path: "secrets.json"
+    key: "secrets"
+    required: false  # Optional file
+
+  # Inline dictionary data
+  - value:
+      database:
+        host: "localhost"
+        port: 5432
+        name: "myapp"
+      redis:
+        host: "localhost"
+        port: 6379
+    key: "config"
+    description: "Application configuration settings"
+
+  - value:
+      api_version: "v2"
+      features:
+        auth: true
+        caching: false
+    key: "constants"
+    description: "API version and feature flags"
+
+# Enhanced with data_helpers
+data_helpers:
+  helpers:
+    - "my_helpers.CompanyHelpers"
+    - "my_helpers.EmployeeHelpers"
+  discovery_paths:
+    - "./helpers/"
+
+templates:
+  - name: "Company Report"
+    folder: "company_templates"
+    output: "reports"
+    # Templates can now use helper properties and extra data
+```
+
+### Creating Data Helpers
+
+```python
+# helpers/company_helpers.py
+from pytemplify.data_helpers import DataHelper
+
+class CompanyHelpers(DataHelper):
+    @staticmethod
+    def matches(data: dict) -> bool:
+        return "company_name" in data and "departments" in data
+
+    @property
+    def total_employees(self) -> int:
+        """Calculate total employees across all departments."""
+        return sum(len(dept._data.get("employees", []))
+                  for dept in self._data.departments)
+
+    @property
+    def company_summary(self) -> str:
+        return f"{self._data.company_name}: {self.total_employees} employees"
+```
+
+### Enhanced Templates
+
+```jinja2
+<!-- company_templates/overview.md.j2 -->
+# {{ dd.company_name }} Overview
+
+**Total Employees:** {{ dd.total_employees }}
+**Summary:** {{ dd.company_summary }}
+
+## Infrastructure
+**Database Host:** {{ infra.database.host }}
+**Redis Port:** {{ infra.redis.port }}
+
+## Configuration
+**DB Host:** {{ config.database.host }}
+**DB Port:** {{ config.database.port }}
+**API Version:** {{ constants.api_version }}
+
+## Departments
+{% for dept in dd.departments %}
+- **{{ dept.department_name }}**: {{ dept.employee_count }} employees
+  - Manager: {{ dept.manager_name }}
+  {% if dept.is_large_department %}
+  - 🏢 Large Department
+  {% endif %}
+{% endfor %}
+```
+
+### Helper Loading Methods
+
+1. **CLI Arguments** (highest precedence)
+2. **YAML Configuration**
+3. **Auto-discovery** from specified paths
+
+```bash
+# Multiple specification methods
+yagen --config templates.yaml --data data.json \
+      --helpers "company.helpers.CompanyHelpers" \
+      --helpers "shared.utilities" \
+      --helper-path "./custom_helpers/"
+```
+
+For complete documentation and examples:
+
+- [`examples/DATA_HELPERS_GUIDE.md`](examples/DATA_HELPERS_GUIDE.md) - Comprehensive guide
+- [`examples/helpers/company_helpers.py`](examples/helpers/company_helpers.py) - Example helpers
+- [`examples/templates_with_helpers.yaml`](examples/templates_with_helpers.yaml) - Configuration example
+- [`examples/data_with_helpers.json`](examples/data_with_helpers.json) - Sample data
+
+### Command Reference
+
+```shell
+yagen --help                         # Show all options
+yagen -c templates.yaml -d data.json -o output    # Basic generation
+yagen --config templates.yaml --data data.json --output output --verbose  # Verbose output
+
+# With data helpers
+yagen -c templates.yaml -d data.json --helpers "my.helpers" --helper-path "./helpers/"
+```
+
+## Documentation
+
+**📚 Complete documentation available in [docs/](docs/) directory** (10+ comprehensive guides)
+
+### Getting Started
+
+- **[Getting Started](docs/getting-started.md)** - Installation, quick start, and core concepts
+- **[Examples](examples/README.md)** - 5+ working examples (basic, advanced, with helpers, etc.)
+
+### Core Features
+
+- **[YAGEN Guide](docs/yagen-guide.md)** - YAML-based generator (recommended approach)
+- **[Template Guide](docs/template-guide.md)** - Complete Jinja2 template writing guide
+- **[Filters Reference](docs/filters-reference.md)** - All 70+ built-in filters documented
+- **[Data Helpers Guide](docs/data-helpers.md)** - Add computed properties to data
+- **[Formatting Guide](docs/formatting.md)** - Automatic code formatting (Black, Prettier, etc.)
+
+### API Reference
+
+- **[API Reference](docs/api-reference.md)** - Complete Python API documentation
+
+### For Contributors
+
+- **[Documentation Hub](docs/README.md)** - Navigate all documentation
+
+## TIPs
+
+Activate uv virtual environment:
+
+```shell
+source .venv/bin/activate
+```
+
+Deactivate uv virtual environment:
+
+```shell
+deactivate
+```
