@@ -1,0 +1,128 @@
+Metadata-Version: 2.4
+Name: komitto
+Version: 0.1.2
+Summary: A CLI tool that generates semantic Japanese commit message prompts for LLMs from Git diff information.
+Author: mxcake
+License: MIT License
+        
+        Copyright (c) 2025 MXCAKE
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/mxcake3893/komitto
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyperclip
+Requires-Dist: platformdirs
+Requires-Dist: tomli
+Dynamic: license-file
+
+# komitto(コミット)
+
+`git diff`の情報から、セマンティックなコミットメッセージプロンプトを生成するためのCLIツールです。生成されたプロンプトは自動的にクリップボードにコピーされ、LLMに貼り付けることで、コミットメッセージを作成できます。
+
+## 主な機能
+
+- ステージングされた変更（`git diff --staged`）を解析
+- 変更内容をLLMが理解しやすいXML形式に変換
+- コミットメッセージ生成用のシステムプロンプトと結合
+- 生成された最終的なプロンプトをクリップボードにコピー
+- 変更に関する追加のコンテキスト（補足情報）をコマンドライン引数で付与する機能
+
+## インストール
+
+```bash
+pip install komitto
+```
+
+もし開発用にインストールする場合は、以下のコマンドを使用してください。
+
+```bash
+pip install -e .
+```
+
+## 使い方
+
+1.  リポジトリで変更を行い、`git add`でファイルをステージングします。
+
+    ```bash
+    git add <変更したファイル>
+    ```
+
+2.  `komitto`コマンドを実行します。
+
+    ```bash
+    komitto
+    ```
+
+3.  `✅ プロンプトをクリップボードにコピーしました！` と表示されたら、お使いのLLMのインターフェースにプロンプトを貼り付けてください。
+
+### 追加コンテキストを渡す
+
+変更の意図や特記事項など、プロンプトに含めたい補足情報がある場合は、引数として渡すことができます。
+
+```bash
+komitto "この変更は緊急のバグ修正です"
+```
+
+## 設定ファイルによるカスタマイズ
+
+以下のコマンドを実行することで、カレントディレクトリに設定ファイルの雛形（`komitto.toml`）を生成できます。
+
+```bash
+komitto init
+```
+
+プロンプトの内容は、TOML形式の設定ファイルを作成することでカスタマイズ可能です。
+以下の順序で設定ファイルを探索し、見つかった設定がデフォルト設定を上書きします（後勝ち）。
+
+1.  **OSごとのユーザー設定ディレクトリ**（グローバル設定）
+    *   **Windows**: `%APPDATA%\komitto\config.toml`
+        *   例: `C:\Users\<User>\AppData\Roaming\komitto\config.toml`
+    *   **macOS**: `~/Library/Application Support/komitto/config.toml`
+    *   **Linux**: `~/.config/komitto/config.toml`
+2.  **カレントディレクトリ**（プロジェクト固有設定）
+    *   `./komitto.toml`
+
+### 設定ファイル (`komitto.toml` / `config.toml`) の記述例
+
+```toml
+[prompt]
+# システムプロンプトの上書き
+# """ で囲むことで改行を含めたテキストを記述できます
+system = """
+あなたは関西弁の陽気なエンジニアです。
+コミットメッセージもノリよく生成してください。
+
+形式:
+<Type>: <Emoji> <Title>
+...
+"""
+```
+
+## 仕組み
+
+1.  `git diff --staged` を実行し、ステージングされたファイルの差分を取得します。
+2.  差分情報を、ファイルパス、関数/クラス名、変更の種類（追加、修正、削除）などを含む構造化されたXML形式に変換します。
+3.  あらかじめ定義されたシステムプロンプト、ユーザーが指定した追加コンテキスト、XML形式の差分情報を結合して、最終的なプロンプTプを生成します。
+4.  生成されたプロンプトをクリップボードにコピーします。
