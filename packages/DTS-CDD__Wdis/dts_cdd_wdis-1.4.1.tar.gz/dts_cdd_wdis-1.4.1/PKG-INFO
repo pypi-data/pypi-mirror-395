@@ -1,0 +1,81 @@
+Metadata-Version: 2.3
+Name: DTS-CDD__Wdis
+Version: 1.4.1
+Summary: Static Features Extraction Engine
+Author: Luca Fabri
+Author-email: luca.fabri1999@gmail.com
+Requires-Python: >=3.10,<4.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: capstone (>=5.0.1,<5.1.0)
+Requires-Dist: info-gain (==1.0.1)
+Requires-Dist: ipython (>=8.36.0,<8.37.0)
+Requires-Dist: matplotlib (==3.10.3)
+Requires-Dist: nltk (>=3.8.1,<3.9.0)
+Requires-Dist: notebook (==7.2.2)
+Requires-Dist: numpy (==2.2.6)
+Requires-Dist: p_tqdm (==1.4.2)
+Requires-Dist: pandas (==2.2.3)
+Requires-Dist: pefile (>=2024.8.0,<2024.9.0)
+Requires-Dist: pyarrow (>=20.0.0,<21.0.0)
+Requires-Dist: ruff (>=0.11.6,<0.12.0)
+Requires-Dist: scikit-learn (==1.5.0)
+Requires-Dist: scipy (>=1.15.0,<1.16.0)
+Requires-Dist: seaborn (==0.13.2)
+Requires-Dist: setuptools (>=70.0.0,<70.1.0)
+Requires-Dist: tqdm (>=4.67.0,<4.68.0)
+Description-Content-Type: text/markdown
+
+# MPH Static Features Extraction
+
+This project allows the user to extract MalwPackHeat-like static features from Windows PE files, following the phases described in *When Static Analysis Fail*. 
+
+## Prerequisites
+
+- *Setup* the PE malware directory such that they have the following structure:
+
+    ```plaintext
+        <YOUR_PE_MALWARE_DIR>/
+        ├── <FAMILY_0>/
+        │   ├── SHA_0_0
+        │   ├── SHA_0_1
+        │   ├── ...
+        │   └──
+        ├── <FAMILY_1>/
+        │   ├── SHA_1_0
+        │   ├── ...
+        │   └──
+        ├── ...
+        └── 
+    ```
+    where `FAMILY_0,  FAMILY_1, ...` are the directories named with the malware family and `SHA_0_0,  SHA_0_1, ...` are the PE files named with their SHA256.
+
+- *Run* pre-feature selection train/test split, for example by using `train-test-splits` repository
+- *Make sure* to have a running and active version of [Docker](https://docs.docker.com/engine/install/).
+
+## Usage
+
+- *Configure* the Docker Compose file by providing the following information:
+  - `MALWARE_DIR_PATH`: directory of YOUR_PE_MALWARE_DIR
+  - `SPLITTED_DATASET_PATH`: pre-feature selection train/test split directory
+  - `FINAL_DATASET_DIR`: directory where to store the vectorized dataset given as output
+  - `N_PROCESSES`: number of processors to use
+- *Start* the extraction process:
+  ```bash
+  docker compose up -d
+  ```
+
+## Resource Considerations
+
+This project does not enforce strict hardware requirements. However, users should be aware that PE feature extraction can be highly memory-intensive, especially when working with large datasets.
+
+As a practical reference, processing a PE dataset (`MALWARE_DIR_PATH`) of approximately **177 GB** required a machine with **512 GB of RAM** to ensure stable performance and avoid memory pressure. Smaller datasets will generally require less, but hardware should be planned accordingly.
+
+
+## Authors
+
+- Luca Fabri
+
