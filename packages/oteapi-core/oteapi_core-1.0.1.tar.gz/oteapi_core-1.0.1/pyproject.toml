@@ -1,0 +1,172 @@
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "oteapi-core"
+authors = [
+    {name = "SINTEF", email = "Team4.0@SINTEF.no"},
+]
+description = "Open Translation Environment (OTE) API."
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+]
+keywords = ["OTE", "OTEAPI"]
+requires-python = "~=3.10"
+dynamic = ["version"]
+
+dependencies = [
+    # Core dependencies
+    "diskcache>=5.6.3,<6",
+    "pydantic~=2.12",
+    "pydantic-settings~=2.12",
+
+    # Strategy dependencies
+    "celery>=5.6.0,<6",
+    "openpyxl>=3.1.5,<4",
+    "paramiko<4",
+    "Pillow>=10.4.0,<13",
+    "psycopg[binary]>=3.2.6,<4",
+    "pysftp~=0.2.9",
+    "requests>=2.32.3,<3",
+]
+
+[project.optional-dependencies]
+docs = [
+    "mike~=2.1",
+    "mkdocs~=1.6",
+    "mkdocs-autorefs~=1.4",
+    "mkdocs-awesome-pages-plugin~=2.10",
+    "mkdocs-material~=9.7",
+    "mkdocstrings[python]~=1.0",
+]
+testing = [
+    "ase~=3.26",
+    "numpy>=1.26,<3",
+    "pytest~=9.0",
+    "pytest-celery[redis]~=1.2",
+    "pytest-cov~=7.0",
+    "redis~=7.0",
+    "requests-mock~=1.12",
+]
+dev = [
+    "oteapi-core[docs,testing]",
+    "pre-commit~=4.5",
+]
+
+[project.urls]
+Home = "https://github.com/EMMC-ASBL/oteapi-core"
+Documentation = "https://EMMC-ASBL.github.io/oteapi-core"
+Source = "https://github.com/EMMC-ASBL/oteapi-core"
+"Issue Tracker" = "https://github.com/EMMC-ASBL/oteapi-core/issues"
+Changelog = "https://github.com/EMMC-ASBL/oteapi-core/blob/master/CHANGELOG.md"
+Package = "https://pypi.org/project/oteapi-core"
+
+# Entry points, i.e., strategy registration
+[project.entry-points."oteapi.download"]
+"oteapi.file" = "oteapi.strategies.download.file:FileStrategy"
+"oteapi.http" = "oteapi.strategies.download.https:HTTPSStrategy"
+"oteapi.https" = "oteapi.strategies.download.https:HTTPSStrategy"
+"oteapi.ftp" = "oteapi.strategies.download.sftp:SFTPStrategy"
+"oteapi.sftp" = "oteapi.strategies.download.sftp:SFTPStrategy"
+
+[project.entry-points."oteapi.filter"]
+"oteapi.filter/crop" = "oteapi.strategies.filter.crop_filter:CropImageFilter"
+"oteapi.filter/sql" = "oteapi.strategies.filter.sql_query_filter:SQLQueryFilter"
+
+[project.entry-points."oteapi.mapping"]
+"oteapi.triples" = "oteapi.strategies.mapping.mapping:MappingStrategy"
+
+[project.entry-points."oteapi.parse"]
+"oteapi.parser/csv" = "oteapi.strategies.parse.text_csv:CSVParseStrategy"
+"oteapi.parser/excel_xlsx" = "oteapi.strategies.parse.excel_xlsx:XLSXParseStrategy"
+"oteapi.parser/image" = "oteapi.strategies.parse.image:ImageDataParseStrategy"
+"oteapi.parser/json" = "oteapi.strategies.parse.application_json:JSONDataParseStrategy"
+"oteapi.parser/postgres" = "oteapi.strategies.parse.postgres:PostgresParserStrategy"
+"oteapi.parser/sqlite3" = "oteapi.strategies.parse.application_vnd_sqlite:SqliteParseStrategy"
+
+[project.entry-points."oteapi.transformation"]
+"oteapi.celery/remote" = "oteapi.strategies.transformation.celery_remote:CeleryRemoteStrategy"
+
+[project.entry-points."oteapi.resource"]
+"oteapi.resource/url" = "oteapi.strategies.resource.resource_url:ResourceURLStrategy"
+
+[tool.flit.module]
+name = "oteapi"
+
+[tool.flit.sdist]
+exclude = [
+    ".github/",
+    "tests/",
+    ".gitignore",
+    ".pre-commit-config.yaml",
+    ".codecov.yml",
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+scripts_are_modules = true
+warn_unused_configs = true
+hide_error_codes = false
+allow_redefinition = true
+check_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+addopts = "-rs --cov-report=term-missing:skip-covered --no-cov-on-fail"
+filterwarnings = [
+    # Treat all warnings as errors
+    "error",
+
+    # Ignore UserWarning from pysftp concerning known_hosts
+    # This is usually only a problem in testing environments,
+    # but we don't want to fail the tests locally if a known_hosts file is missing
+    "ignore:.*Failed to load HostKeys.*:UserWarning",
+]
+
+[tool.ruff.lint]
+extend-select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "B",  # flake8-bugbear
+  "BLE",  # flake8-blind-except
+  "I",  # isort
+  "ARG",  # flake8-unused-arguments
+  "C4",  # flake8-comprehensions
+  "ICN",  # flake8-import-conventions
+  "G",  # flake8-logging-format
+  "PGH",  # pygrep-hooks
+  "PIE",  # flake8-pie
+  "PL",  # pylint
+  "PT",  # flake8-pytest-style
+  "PTH",  # flake8-use-pathlib
+  "RET",  # flake8-return
+  "RUF",  # Ruff-specific
+  "SIM",  # flake8-simplify
+  "T20",  # flake8-print
+  "YTT",  # flake8-2020
+  "EXE",  # flake8-executable
+  "PYI",  # flake8-pyi
+]
+ignore = [
+  "PLC",  # Convention related pylint codes
+  "PLR",  # Refactor related pylint codes
+]
+isort.required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "B018",  # Useless attribute access
+    "B015",  # Pointless comparison
+    "BLE",  # flake8-blind-except
+    "T201",  # flake8-print
+]

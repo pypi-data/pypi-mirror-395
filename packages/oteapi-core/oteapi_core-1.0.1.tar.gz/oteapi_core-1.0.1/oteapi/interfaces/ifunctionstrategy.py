@@ -1,0 +1,37 @@
+"""Function Strategy Interface"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:  # pragma: no cover
+    from oteapi.models import AttrDict, FunctionConfig
+
+
+@dataclass  # type: ignore[misc]
+class IFunctionStrategy(Protocol):
+    """Function Strategy Interface."""
+
+    function_config: FunctionConfig
+
+    def get(self) -> AttrDict:
+        """Execute the strategy.
+
+        Returns:
+            An update model of key/value-pairs to be stored in the
+            session-specific context from services.
+
+        """
+
+    def initialize(self) -> AttrDict:
+        """Initialize data class.
+
+        This method will be called through the `/initialize` endpoint of the OTEAPI
+        Services.
+
+        Returns:
+            An update model of key/value-pairs to be stored in the
+            session-specific context from services.
+
+        """
