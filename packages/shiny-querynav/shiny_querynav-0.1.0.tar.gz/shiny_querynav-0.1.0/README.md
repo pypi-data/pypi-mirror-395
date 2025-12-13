@@ -1,0 +1,266 @@
+# shiny-querynav
+
+A Py Shiny extension that synchronizes navigation components with URL search parameters, enabling shareable and bookmarkable navigation states.
+
+## Features
+
+- **Bidirectional sync**: Navigation selections automatically sync with URL search parameters
+- **Shareable URLs**: Users can share links with specific navigation states (e.g., `?tab=profile`)
+- **Bookmarkable**: Navigation states persist in browser bookmarks
+- **Clean history**: Uses `replaceState()` for seamless URL updates without cluttering browser history
+- **Simple API**: Just two functions - `dependency()` and `sync()`
+
+## Installation
+
+```bash
+pip install shiny-querynav
+```
+
+Or with uv:
+
+```bash
+uv add shiny-querynav
+```
+
+## Quick Start
+
+```python
+from shiny import App, ui
+from shiny_querynav import querynav
+
+app_ui = ui.page_fluid(
+    ui.navset_bar(
+        querynav.dependency(),  # Required: registers the JS handler
+        ui.nav_panel("Home", "Welcome!", value="home"),
+        ui.nav_panel("Profile", "User profile", value="profile"),
+        ui.nav_panel("Settings", "App settings", value="settings"),
+        id="main_nav",
+        title="My App"
+    )
+)
+
+def server(input, output, session):
+    # Sync navigation with URL parameter "tab"
+    querynav.sync("main_nav", param_name="tab")
+
+app = App(app_ui, server)
+```
+
+Now your app URLs will update automatically:
+- Clicking "Home" → `?tab=home`
+- Clicking "Profile" → `?tab=profile`
+- Clicking "Settings" → `?tab=settings`
+
+And visiting `/?tab=profile` will automatically select the Profile panel!
+
+## How It Works
+
+### 1. Include the dependency
+
+Add `querynav.dependency()` to your UI (typically within your navigation component):
+
+```python
+ui.navset_bar(
+    querynav.dependency(),  # Add this
+    # ... your nav panels
+)
+```
+
+### 2. Sync your navigation
+
+In your server function, call `sync()` with your navigation ID:
+
+```python
+def server(input, output, session):
+    querynav.sync("main_nav", param_name="tab")
+```
+
+That's it! The extension handles the rest automatically.
+
+## API Reference
+
+### `querynav.dependency()`
+
+Creates the HTML dependency required for shiny-querynav to work.
+
+**Returns:** `HTMLDependency`
+
+**Usage:** Include this in your UI, typically within a navigation component.
+
+```python
+ui.navset_bar(
+    querynav.dependency(),
+    # ... panels
+)
+```
+
+### `querynav.sync(nav_id, *, param_name=None, home_value=None)`
+
+Synchronizes a navigation component with URL search parameters.
+
+**Parameters:**
+- `nav_id` (str): The ID of the navigation component (matches the `id` parameter in `ui.navset_bar()`, `ui.navset_tab()`, etc.)
+- `param_name` (str, optional): The URL search parameter name. Defaults to `nav_id` if not provided.
+- `home_value` (str, optional): The navigation value representing the "home" or default page. When this panel is selected, the search parameter is removed from the URL for a cleaner appearance (e.g., `/` instead of `/?tab=home`).
+
+**Returns:** `None`
+
+**Usage:** Call this from within your server function.
+
+```python
+def server(input, output, session):
+    # Use default param name (same as nav_id)
+    querynav.sync("main_nav")  # URL: ?main_nav=value
+
+    # Or specify a custom param name
+    querynav.sync("main_nav", param_name="tab")  # URL: ?tab=value
+
+    # Keep home page URL clean (no query parameter)
+    querynav.sync("main_nav", param_name="tab", home_value="home")
+    # URL: / for home, ?tab=about for other pages
+```
+
+## Examples
+
+### Basic Example
+
+```python
+from shiny import App, ui
+from shiny_querynav import querynav
+
+app_ui = ui.page_fluid(
+    ui.navset_bar(
+        querynav.dependency(),
+        ui.nav_panel("Panel A", "Content A", value="a"),
+        ui.nav_panel("Panel B", "Content B", value="b"),
+        id="page"
+    )
+)
+
+def server(input, output, session):
+    querynav.sync("page", param_name="p")
+
+app = App(app_ui, server)
+```
+
+### Clean Home Page URLs
+
+Keep your home page URL clean by removing the search parameter for the default panel:
+
+```python
+from shiny import App, ui
+from shiny_querynav import querynav
+
+app_ui = ui.page_fluid(
+    ui.navset_bar(
+        querynav.dependency(),
+        ui.nav_panel("Home", "Welcome!", value="home"),
+        ui.nav_panel("About", "About us", value="about"),
+        ui.nav_panel("Contact", "Get in touch", value="contact"),
+        id="nav",
+        title="My Site"
+    )
+)
+
+def server(input, output, session):
+    # Home page will have clean URL: /
+    # Other pages will show: ?page=about or ?page=contact
+    querynav.sync("nav", param_name="page", home_value="home")
+
+app = App(app_ui, server)
+```
+
+**Result:**
+- Home page: `/` (clean, no query parameter)
+- About page: `/?page=about`
+- Contact page: `/?page=contact`
+- Visiting `/` automatically selects "Home" panel
+
+### Multiple Navigation Components
+
+You can sync multiple navigation components with different parameters:
+
+```python
+app_ui = ui.page_fluid(
+    ui.navset_bar(
+        querynav.dependency(),
+        ui.nav_panel("Home", value="home"),
+        ui.nav_panel("Dashboard", value="dash"),
+        id="main_nav",
+        title="App"
+    ),
+    ui.navset_tab(
+        ui.nav_panel("Overview", value="overview"),
+        ui.nav_panel("Details", value="details"),
+        id="sub_nav"
+    )
+)
+
+def server(input, output, session):
+    querynav.sync("main_nav", param_name="page")
+    querynav.sync("sub_nav", param_name="view")
+
+# URL might look like: ?page=dash&view=details
+```
+
+### With Different Navigation Types
+
+Works with all Shiny navigation components:
+
+```python
+# With navset_tab
+ui.navset_tab(
+    querynav.dependency(),
+    ui.nav_panel("Tab 1", value="t1"),
+    ui.nav_panel("Tab 2", value="t2"),
+    id="tabs"
+)
+
+# With navset_pill
+ui.navset_pill(
+    querynav.dependency(),
+    ui.nav_panel("Pill 1", value="p1"),
+    ui.nav_panel("Pill 2", value="p2"),
+    id="pills"
+)
+
+# With navset_card_tab
+ui.navset_card_tab(
+    querynav.dependency(),
+    ui.nav_panel("Card 1", value="c1"),
+    ui.nav_panel("Card 2", value="c2"),
+    id="cards"
+)
+```
+
+## How It Works (Technical Details)
+
+The extension uses Shiny's reactive system and custom message handlers:
+
+1. **Navigation → URL**: When a user clicks a navigation panel:
+   - A reactive effect detects the change
+   - The server sends a custom message to the JavaScript handler
+   - JavaScript updates the URL using the `URL` and `URLSearchParams` APIs
+   - The URL is updated with `window.history.replaceState()` (no page reload)
+
+2. **URL → Navigation**: When the page loads or the URL changes:
+   - A reactive effect monitors `session.clientdata.url_search()`
+   - If matching search parameters are found, `ui.update_navset()` is called
+   - The navigation component updates to reflect the URL state
+
+## Requirements
+
+- Python 3.12+
+- Shiny 1.5.0+
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+Kenji Sato (mail@kenjisato.jp)
