@@ -1,0 +1,192 @@
+# Lightweight Operational Progress Kit (LOPK) v2.0
+
+[![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI Version](https://img.shields.io/pypi/v/lopk.svg)](https://pypi.org/project/lopk/)
+
+一个轻量级的操作进度工具包，提供丰富的进度条和终端操作功能。
+
+## ✨ 新特性 (v2.0)
+
+- 🎨 **彩色进度条** - 支持多种颜色主题
+- 🔄 **旋转指示器** - 异步任务状态指示
+- ⏱️ **倒计时器** - 精确的倒计时功能
+- 📊 **多进度条管理** - 同时管理多个进度条
+- 🖥️ **终端工具函数** - 清屏、光标控制等
+- 🌐 **跨平台支持** - Windows、Linux、macOS
+- 📦 **PyPI发布就绪** - 完整的打包配置
+
+## 安装
+
+```bash
+pip install lopk
+```
+
+## 快速开始
+
+### 基本进度条
+
+```python
+from LOPK11 import ProgressBar
+
+# 创建进度条
+bar = ProgressBar(100, "下载", color="cyan", show_time=True)
+
+# 更新进度
+for i in range(101):
+    bar.update(i)
+    time.sleep(0.1)
+```
+
+### 旋转指示器
+
+```python
+from LOPK11 import Spinner
+
+# 使用上下文管理器
+with Spinner("正在处理数据"):
+    # 执行耗时操作
+    time.sleep(3)
+print("处理完成!")
+```
+
+### 倒计时器
+
+```python
+from LOPK11 import CountdownTimer
+
+# 5秒倒计时
+with CountdownTimer(5, "准备开始"):
+    pass
+print("开始!")
+```
+
+### 多进度条
+
+```python
+from LOPK11 import MultiProgressBar
+
+# 创建多进度条管理器
+multi_bar = MultiProgressBar(3)
+
+# 添加多个进度条
+bar1 = multi_bar.add_bar(100, "任务1", color="green")
+bar2 = multi_bar.add_bar(50, "任务2", color="blue")
+bar3 = multi_bar.add_bar(200, "任务3", color="red")
+
+# 同时更新多个进度条
+for i in range(101):
+    multi_bar.update(bar1, i)
+    multi_bar.update(bar2, min(i*2, 50))
+    multi_bar.update(bar3, min(i*2, 200))
+    time.sleep(0.05)
+```
+
+## API 参考
+
+### ProgressBar 类
+
+```python
+ProgressBar(total, prefix='', suffix='', length=50, fill='█', 
+            print_end="\r", color='green', show_time=True)
+```
+
+- `total`: 总进度值
+- `prefix`: 进度条前缀文本
+- `suffix`: 进度条后缀文本  
+- `length`: 进度条长度（字符数）
+- `fill`: 进度条填充字符
+- `color`: 颜色主题 (green, blue, red, yellow, cyan, magenta)
+- `show_time`: 是否显示耗时
+
+**方法:**
+- `update(progress=None, suffix=None)`: 更新进度
+- `reset()`: 重置进度条
+- `finish()`: 强制完成
+
+### Spinner 类
+
+```python
+Spinner(message="处理中...", delay=0.1)
+```
+
+**方法:**
+- `start()`: 开始旋转
+- `stop()`: 停止旋转
+
+### CountdownTimer 类
+
+```python
+CountdownTimer(seconds, message="倒计时")
+```
+
+**方法:**
+- `start()`: 开始倒计时
+
+### 工具函数
+
+- `AK()`: 等待用户按下回车
+- `cls()`: 清屏（跨平台）
+- `clear_line()`: 清除当前行
+- `get_terminal_size()`: 获取终端尺寸
+- `colored_text(text, color)`: 彩色文本输出
+
+## 命令行工具
+
+安装后可以使用命令行演示：
+
+```bash
+lopk-demo
+```
+
+## 开发
+
+### 安装开发版本
+
+```bash
+git clone https://github.com/your-username/lopk.git
+cd lopk
+pip install -e .[dev]
+```
+
+### 运行测试
+
+```bash
+pytest
+```
+
+### 代码格式化
+
+```bash
+black .
+flake8
+```
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 许可证
+
+MIT License - 详见 [LICENSE](LICENSE) 文件
+
+## 更新日志
+
+### v2.0.0 (2024-01-01)
+- ✨ 新增彩色进度条功能
+- 🔄 添加旋转指示器
+- ⏱️ 新增倒计时器
+- 📊 支持多进度条管理
+- 📦 完整的PyPI发布配置
+- 📚 完善的文档和示例
+
+### v1.0.0 (2023-12-01)
+- 🎯 基础进度条功能
+- 🖥️ 基本终端操作函数
+- 📝 初始版本发布
+
+---
+
+**作者**: I-love-china  
+**邮箱**: your-email@example.com  
+**项目地址**: https://github.com/your-username/lopk
