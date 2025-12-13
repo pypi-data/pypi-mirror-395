@@ -1,0 +1,196 @@
+Metadata-Version: 2.4
+Name: camera-ui-common
+Version: 1.0.0
+Summary: camera.ui python utilities
+Author-email: seydx <dev@seydx.com>
+Maintainer-email: seydx <dev@seydx.com>
+Project-URL: Homepage, https://github.com/seydx/camera.ui
+Project-URL: Documentation, https://github.com/seydx/camera.ui
+Project-URL: Repository, https://github.com/seydx/camera.ui
+Project-URL: Bug Tracker, https://github.com/seydx/camera.ui/issues
+Project-URL: Changelog, https://github.com/seydx/camera.ui/blob/master/CHANGELOG.md
+Keywords: camera.ui,python,utilities
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: typing_extensions>=4.12.2
+Requires-Dist: reactivex>=4.0.4
+Requires-Dist: camera-ui-sdk>=1.0.0
+Dynamic: license-file
+
+# camera-ui-python-common
+
+Shared utilities for Python-based camera.ui plugins including logging, reactive programming, and common helpers.
+
+## Installation
+
+```bash
+pip install camera-ui-python-common
+```
+
+## Core Features
+
+- **Logging** - Colored, structured logging
+- **Reactive Programming** - Observable properties
+- **Signal Handling** - Graceful shutdown
+- **Object Utilities** - Deep object manipulation
+- **Async Helpers** - Task and thread management
+
+## Logging
+
+```python
+from camera_ui_python_common import LoggerService
+
+logger = LoggerService({
+    "prefix": "MyPlugin",
+    "debug_enabled": True
+})
+
+logger.log("Plugin started")
+logger.error("Something went wrong")
+logger.success("Operation completed")
+logger.debug("Debug information")
+```
+
+## Reactive Programming
+
+```python
+from camera_ui_python_common import ReactiveProperty
+
+# Create reactive state
+state = ReactiveProperty({"count": 0, "active": True})
+
+# Subscribe to changes
+state.observable.subscribe(lambda value: print(f"State: {value}"))
+
+# Update state
+state.next({"count": 1, "active": True})
+```
+
+## Signal Handling
+
+```python
+from camera_ui_python_common import SignalHandler
+
+async def cleanup():
+    print("Cleaning up...")
+
+signal_handler = SignalHandler({
+    "display_name": "MyPlugin",
+    "logger": logger,
+    "close_function": cleanup
+})
+
+signal_handler.setup_handlers()
+```
+
+## Object Path Operations
+
+```python
+from camera_ui_python_common import ObjectPath
+
+data = {"camera": {"settings": {"resolution": "1080p"}}}
+
+# Get nested values
+resolution = ObjectPath.get(data, "camera.settings.resolution")
+
+# Set nested values  
+ObjectPath.set(data, "camera.settings.bitrate", 5000)
+
+# Check if path exists
+has_setting = ObjectPath.has(data, "camera.settings.fps")
+```
+
+## Async Utilities
+
+### Task Management
+```python
+from camera_ui_python_common import TaskSet
+
+tasks = TaskSet("MyTasks")
+tasks.add(my_async_function())
+await tasks
+```
+
+### Thread Operations
+```python
+from camera_ui_python_common import to_thread
+
+# Run blocking operation in thread
+result = await to_thread(blocking_function)
+```
+
+### Sync/Async Bridge
+```python
+from camera_ui_python_common import make_sync
+
+# Convert async function to sync
+sync_version = make_sync(async_function)
+result = sync_version(args)
+```
+
+## RTSP Utilities
+
+```python
+from camera_ui_python_common import build_target_url
+
+url = build_target_url("rtsp://camera.local/stream", {
+    "video": True,
+    "audio": ["pcma", "opus"],
+    "timeout": 30
+})
+```
+
+## Complete Example
+
+```python
+import asyncio
+from camera_ui_python_common import LoggerService, ReactiveProperty, SignalHandler
+
+class MyPlugin:
+    def __init__(self):
+        self.logger = LoggerService({"prefix": "MyPlugin"})
+        self.state = ReactiveProperty({"active": False})
+        
+        self.signal_handler = SignalHandler({
+            "display_name": "MyPlugin",
+            "logger": self.logger,
+            "close_function": self.cleanup
+        })
+    
+    async def start(self):
+        self.logger.log("Starting plugin...")
+        self.signal_handler.setup_handlers()
+        
+        # Update state
+        self.state.next({"active": True})
+        
+        # Keep running
+        await asyncio.Future()
+    
+    async def cleanup(self):
+        self.logger.log("Stopping plugin...")
+
+# Usage
+plugin = MyPlugin()
+asyncio.run(plugin.start())
+```
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+
+## License
+
+MIT
+
+---
+
+*Part of the camera.ui ecosystem - A comprehensive camera management solution.*
