@@ -1,0 +1,142 @@
+# better-notion-mcp
+
+A powerful Model Context Protocol (MCP) server that connects your AI agents (Claude, Cursor, etc.) directly to your Notion workspace.
+
+
+
+## Introduction
+
+**better-notion-mcp** turns your Notion workspace into a semantic long-term memory and functional toolset for AI. Instead of just reading pages, it allows your agent to:
+- **Remember facts** in a local database for instant recall.
+- **Search & Query** your entire knowledge base.
+- **Create & Edit** pages with rich content (markdown, tables, mermaid, code).
+- **Notify** you via Telegram when important updates happen.
+
+## Features
+
+- 🔌 **Standard MCP Support**: Seamless integration with Claude Desktop, Cursor, and any MCP-compatible client.
+- 🧱 **Rich Block Support**: Create and edit paragraphs, headings, code blocks, tables, and lists.
+- 🧠 **Dual Memory**: Combines Notion's structured storage with a fast, local SQLite "agent memory" for facts.
+- 🔔 **Real-time Alerts**: Optional Telegram integration for push notifications from your agent.
+- 🌍 **Cross-Platform**: Configurable for Mac, Windows, and Linux.
+
+## Configuration
+
+### 1. Prerequisites
+- **Notion Token**: [My Integrations](https://www.notion.so/my-integrations) -> New Integration -> Copy Secret.
+- **Page ID**: Copy ID from the URL of your root page -> Connect page to your integration.
+
+### 2. Add to Claude Desktop / Cursor
+Add the following to your `claude_desktop_config.json` (Claude) or `mcp.json` (VS Code/Cursor).
+
+**Using `uvx` (Fastest, no install needed)**
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "command": "uvx",
+      "args": ["better-notion-mcp"],
+      "env": {
+        "NOTION_API_KEY": "secret_...",
+        "NOTION_PAGE_ID": "page_id_...",
+        "TELEGRAM_BOT_TOKEN": "bot_token_...",
+        "TELEGRAM_CHAT_ID": "chat_id_...",
+        "AGENT_MEMORY_PATH": "/path/to/db"
+      }
+    }
+  }
+}
+```
+
+**Using `pipx` (Alternative)**
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "command": "pipx",
+      "args": ["run", "better-notion-mcp"],
+      "env": {
+        "NOTION_API_KEY": "..."
+      }
+    }
+  }
+}
+```
+
+> **Note**: You can also `pip install better-notion-mcp` globally if you prefer, then just use `better-notion-mcp` as the command.
+
+## Tools
+
+The server exposes the following tools to your AI agent:
+
+<details>
+<summary>📚 <strong>Page Management</strong></summary>
+
+- **`create_page(title, content)`**
+    - Creates a new sub-page under your configured root page.
+    - *Args*: `title` (str), `content` (str, optional)
+
+- **`list_sub_pages(parent_id)`**
+    - Lists all sub-pages for a given page ID (or root).
+    - *Args*: `parent_id` (str, optional)
+
+- **`read_page_content(page_id)`**
+    - extraction of page content as simplified Markdown.
+    - *Args*: `page_id` (str)
+
+</details>
+
+<details>
+<summary>✍️ <strong>Content Editing</strong></summary>
+
+- **`update_page(page_id, title, content, type, language)`**
+    - Appends new blocks to a page.
+    - *Args*:
+        - `type`: 'paragraph', 'bulleted_list_item', 'code', 'table'
+        - `language`: for code blocks (e.g. 'python', 'mermaid')
+
+- **`log_to_notion(title, content)`**
+    - Quick-create wrapper to append daily logs/notes to the root page.
+
+</details>
+
+<details>
+<summary>🧠 <strong>Memory & Search</strong></summary>
+
+- **`remember_fact(fact)`**
+    - Stores a snippet in the local vector-like SQL store.
+
+- **`search_memory(query)`**
+    - Semantic-like search over stored facts.
+
+- **`get_recent_memories(limit)`**
+    - Retrieves the latest N stored facts.
+
+</details>
+
+<details>
+<summary>🔔 <strong>Utilities</strong></summary>
+
+- **`send_alert(message)`**
+    - Sends a push notification to your configured Telegram chat.
+
+</details>
+
+<details>
+<summary><strong>Development</strong></summary>
+
+To contribute or run locally:
+
+1.  **Clone**: `git clone https://github.com/shubhamomar/better-notion-mcp.git`
+2.  **Dev Install**: `uv pip install -e .` (or `pip install -e .`)
+3.  **Run**:
+    ```bash
+    export NOTION_API_KEY=...
+    better-notion-mcp
+    ```
+
+</details>
+
+## License
+
+This project is licensed under the MIT License.
