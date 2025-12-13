@@ -1,0 +1,248 @@
+Metadata-Version: 2.4
+Name: edhelper
+Version: 0.3.0
+Summary: EDH deck builder & analyzer with CLI, shell, and web editor
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Keywords: mtg,magic,commander,edh,deck,builder
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: <3.13,>=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click<9.0.0,>=8.1.7
+Requires-Dist: httpx<1.0.0,>=0.27.0
+Requires-Dist: requests<3.0.0,>=2.31.0
+Requires-Dist: python-dotenv<2.0.0,>=1.0.1
+Requires-Dist: keyring<26.0.0,>=24.3.0
+Requires-Dist: tabulate<1.0.0,>=0.9.0
+Provides-Extra: shell
+Requires-Dist: lark<2.0.0,>=1.1.9; extra == "shell"
+Requires-Dist: prompt-toolkit<4.0.0,>=3.0.43; extra == "shell"
+Requires-Dist: pygments<3.0.0,>=2.17.0; extra == "shell"
+Provides-Extra: editor
+Requires-Dist: fastapi<0.111.0,>=0.110.0; extra == "editor"
+Requires-Dist: uvicorn<1.0.0,>=0.29.0; extra == "editor"
+Requires-Dist: python-multipart<1.0.0,>=0.0.9; extra == "editor"
+Provides-Extra: all
+Requires-Dist: lark<2.0.0,>=1.1.9; extra == "all"
+Requires-Dist: prompt-toolkit<4.0.0,>=3.0.43; extra == "all"
+Requires-Dist: pygments<3.0.0,>=2.17.0; extra == "all"
+Requires-Dist: fastapi<0.111.0,>=0.110.0; extra == "all"
+Requires-Dist: uvicorn<1.0.0,>=0.29.0; extra == "all"
+Requires-Dist: python-multipart<1.0.0,>=0.0.9; extra == "all"
+Dynamic: license-file
+
+# **edhelper**
+
+A command-line deck builder, analyzer, and management tool for *Magic: The Gathering* — focused on the Commander (EDH) format.
+
+`edhelper` allows you to create, modify, validate, analyze, import, export, and manage Commander decks entirely from the terminal, shell, or web editor.
+
+---
+
+## **📦 Installation**
+
+### Full Installation
+
+```bash
+pip install edhelper
+```
+
+or with **pipx**:
+
+```bash
+pipx install edhelper
+```
+
+### Modular Installation
+
+You can install only the components you need:
+
+```bash
+# Only shell (interactive REPL)
+pip install edhelper[shell]
+
+# Only GUI editor
+pip install edhelper[editor]
+
+# Full installation (CLI + Shell + Editor)
+pip install edhelper[all]
+```
+
+---
+
+## **🚀 Quick Start**
+
+### Using the CLI
+
+```bash
+# Create or open a deck
+edhelper deck create MyDeck
+
+# Add cards to a deck
+edhelper deck add MyDeck "Lightning Bolt" 1
+
+# List all decks
+edhelper deck list
+
+# Search for cards
+edhelper card search "lightning"
+
+# Get top commanders
+edhelper card top-commanders
+```
+
+### Using the Shell (Interactive REPL)
+
+```bash
+# Start interactive shell
+edhelper shell
+
+# In the shell:
+[ 1 ] > select MyDeck
+[ 2 ] : [ MyDeck ] > add "Lightning Bolt" 1
+[ 3 ] : [ MyDeck ] > list
+```
+
+### Using the Web Editor
+
+```bash
+# Start the web editor
+edhelper start-editor
+
+# Opens browser at http://0.0.0.0:3839
+```
+
+---
+
+## **📖 Features**
+
+### Deck Management
+- Create, delete, rename, and copy decks
+- Import decks from `.txt` files
+- Export decks to `.txt`, `.csv`, or `.json`
+- Set and manage commanders
+
+### Card Operations
+- Search cards by name or partial match
+- Get top 100 commanders
+- Get meta cards for commanders from EDHREC
+- View card details and statistics
+
+### Interactive Shell
+- Full-featured REPL with autocomplete
+- Context-aware commands (root vs deck mode)
+- Command history and suggestions
+
+### Web Editor
+- Modern web interface for deck building
+- RESTful API backend
+- Real-time updates
+
+---
+
+## **📚 Documentation**
+
+For detailed documentation on each component:
+
+- **[CLI Commands](cli/README.md)** - Complete CLI command reference
+- **[Shell Guide](shell/README.md)** - Interactive shell usage
+- **[Editor Guide](editor/README.md)** - Web editor documentation
+
+---
+
+## **🔧 Configuration**
+
+### Authentication
+
+Before using the tool, you need to authenticate:
+
+```bash
+edhelper --get-key
+```
+
+This will prompt you for your API key and client ID.
+
+### Version and Info
+
+```bash
+# Show version
+edhelper --version
+
+# Show metadata
+edhelper --info
+```
+
+---
+
+## **🧰 Examples**
+
+### Create a deck with commander
+
+```bash
+edhelper deck create Atraxa "Atraxa, Praetors' Voice"
+```
+
+### Import deck from file
+
+```bash
+edhelper deck import-txt decklist.txt MyDeck
+```
+
+### Get meta cards for a commander
+
+```bash
+edhelper deck meta "Atraxa, Praetors' Voice" "Top Cards"
+```
+
+### Export deck
+
+```bash
+edhelper export txt MyDeck /path/to/export/
+```
+
+### Search and add cards
+
+```bash
+# Search for cards
+edhelper card search "lightning"
+
+# Add to deck
+edhelper deck add MyDeck "Lightning Bolt" 1
+```
+
+---
+
+## **🏗️ Architecture**
+
+The project is organized into modular components:
+
+- **`cli/`** - CLI commands (can be installed separately)
+- **`shell/`** - Interactive REPL shell
+- **`editor/`** - Web editor (frontend + backend)
+- **`domain/`** - Business logic and services
+- **`commom/`** - Shared utilities and commands
+- **`external/`** - External API integrations
+
+---
+
+## **📝 License**
+
+[Add your license here]
+
+---
+
+## **🤝 Contributing**
+
+[Add contributing guidelines here]
+
+---
+
+## **📧 Support**
+
+[Add support information here]
+
