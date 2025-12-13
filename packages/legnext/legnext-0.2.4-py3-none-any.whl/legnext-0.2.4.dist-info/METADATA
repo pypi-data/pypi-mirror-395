@@ -1,0 +1,614 @@
+Metadata-Version: 2.4
+Name: legnext
+Version: 0.2.4
+Summary: Python SDK for Legnext AI API - Professional image and video generation using Midjourney models
+Project-URL: Homepage, https://legnext.ai
+Project-URL: Documentation, https://legnext.ai/docs
+Author-email: tobias-hui <huikai@tritonix.cn>
+License: Apache-2.0
+License-File: LICENSE
+Keywords: ai,api-client,image-generation,legnext,midjourney,video-generation
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: typing-extensions>=4.5.0
+Provides-Extra: dev
+Requires-Dist: black>=24.0.0; extra == 'dev'
+Requires-Dist: isort>=5.13.0; extra == 'dev'
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.12.0; extra == 'dev'
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Legnext Python SDK
+
+Official Python client library for the Legnext Midjourney API - Professional image and video generation.
+
+## Installation
+
+```bash
+pip install legnext
+```
+
+## Quick Start
+
+```python
+from legnext import Client
+
+# Initialize client
+client = Client(api_key="your-api-key")
+
+# Generate an image
+response = client.midjourney.diffusion(
+    text="a beautiful sunset over mountains"
+)
+
+# Wait for completion
+result = client.tasks.wait_for_completion(response.job_id)
+print(result.output.image_urls)
+```
+
+## API Methods
+
+### Image Generation
+
+#### `diffusion(text, callback=None)`
+
+Create a new text-to-image generation task.
+
+```python
+response = client.midjourney.diffusion(
+    text="a serene mountain landscape at sunset",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `text` (str): Text prompt for image generation (1-8192 characters)
+- `callback` (str, optional): Webhook URL for completion notification
+
+**Returns:** `TaskResponse` with job_id and status
+
+---
+
+#### `variation(job_id, image_no, type, remix_prompt=None, callback=None)`
+
+Create variations of a generated image.
+
+```python
+response = client.midjourney.variation(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    type=1,                        # 0=Subtle, 1=Strong
+    remix_prompt="add more clouds", # Optional
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image generation task
+- `image_no` (int): Image number to vary (0-3)
+- `type` (int): Variation intensity (0=Subtle, 1=Strong)
+- `remix_prompt` (str, optional): Additional prompt for guided variation
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `upscale(job_id, image_no, type, callback=None)`
+
+Upscale a generated image.
+
+```python
+response = client.midjourney.upscale(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    type=1,                        # 0=Subtle, 1=Creative
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image generation task
+- `image_no` (int): Image number to upscale (0-3)
+- `type` (int): Upscaling type (0=Subtle, 1=Creative)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `reroll(job_id, callback=None)`
+
+Re-generate with the same prompt to get new variations.
+
+```python
+response = client.midjourney.reroll(
+    job_id="original-job-id",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the task to reroll
+- `callback` (str, optional): Webhook URL
+
+---
+
+### Image Composition
+
+#### `blend(img_urls, aspect_ratio, callback=None)`
+
+Blend 2-5 images together.
+
+```python
+response = client.midjourney.blend(
+    img_urls=[
+        "https://example.com/image1.png",
+        "https://example.com/image2.png"
+    ],
+    aspect_ratio="1:1",  # Required: "2:3", "1:1", or "3:2"
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `img_urls` (list[str]): 2-5 image URLs to blend
+- `aspect_ratio` (str): Aspect ratio - "2:3", "1:1", or "3:2"
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `describe(img_url, callback=None)`
+
+Generate text descriptions from an image.
+
+```python
+response = client.midjourney.describe(
+    img_url="https://example.com/image.png",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `img_url` (str): URL of image to describe
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `shorten(prompt, callback=None)`
+
+Optimize and shorten a prompt.
+
+```python
+response = client.midjourney.shorten(
+    prompt="a very detailed and long prompt text that needs optimization",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `prompt` (str): Prompt to shorten (1-8192 characters)
+- `callback` (str, optional): Webhook URL
+
+---
+
+### Image Extension
+
+#### `pan(job_id, image_no, direction, scale, remix_prompt=None, callback=None)`
+
+Extend an image in a specific direction.
+
+```python
+response = client.midjourney.pan(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    direction=0,                   # 0=UP, 1=DOWN, 2=LEFT, 3=RIGHT
+    scale=1.5,                     # Extension scale (1.1-3.0)
+    remix_prompt="add mountains",  # Optional
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image
+- `image_no` (int): Image number to extend (0-3)
+- `direction` (int): Direction to extend (0=UP, 1=DOWN, 2=LEFT, 3=RIGHT)
+- `scale` (float): Extension scale ratio (1.1-3.0)
+- `remix_prompt` (str, optional): Text prompt for the extended area
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `outpaint(job_id, image_no, scale, remix_prompt=None, callback=None)`
+
+Expand an image in all directions.
+
+```python
+response = client.midjourney.outpaint(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    scale=1.3,                     # Extension scale (1.1-2.0)
+    remix_prompt="add forest background",  # Optional
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image
+- `image_no` (int): Image number to extend (0-3)
+- `scale` (float): Extension scale ratio (1.1-2.0)
+- `remix_prompt` (str, optional): Text prompt for the extended areas
+- `callback` (str, optional): Webhook URL
+
+---
+
+### Image Editing
+
+#### `inpaint(job_id, image_no, mask, remix_prompt=None, callback=None)`
+
+Edit specific regions of an image using a mask.
+
+```python
+with open("mask.png", "rb") as f:
+    mask_data = f.read()
+
+response = client.midjourney.inpaint(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    mask=mask_data,                # PNG mask file
+    remix_prompt="add a rainbow in the sky",  # Optional
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image
+- `image_no` (int): Image number to edit (0-3)
+- `mask` (bytes): Mask image (PNG) indicating regions to modify
+- `remix_prompt` (str, optional): Text prompt for the edited region (1-8192 characters)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `remix(job_id, image_no, remix_prompt, mode=None, callback=None)`
+
+Transform an image with a new prompt.
+
+```python
+response = client.midjourney.remix(
+    job_id="original-job-id",
+    image_no=0,                    # Image index (0-3)
+    remix_prompt="turn into a watercolor painting",
+    mode=0,                        # Optional: 0=Low, 1=High
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image
+- `image_no` (int): Image number to remix (0-3)
+- `remix_prompt` (str): New prompt for remix (1-8192 characters)
+- `mode` (int, optional): Remix mode (0=Low, 1=High)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `edit(job_id, image_no, canvas, img_pos, remix_prompt, mask=None, callback=None)`
+
+Edit specific areas of an image with canvas positioning.
+
+```python
+from legnext.types import Canvas, CanvasImg, Mask, Polygon
+
+response = client.midjourney.edit(
+    job_id="original-job-id",
+    image_no=0,
+    canvas=Canvas(width=1024, height=1024),
+    img_pos=CanvasImg(width=512, height=512, x=256, y=256),
+    remix_prompt="change the sky to sunset colors",
+    mask=Mask(areas=[
+        Polygon(width=1024, height=1024, points=[100, 100, 500, 100, 500, 500, 100, 500])
+    ]),
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original image
+- `image_no` (int): Image number to edit (0-3)
+- `canvas` (Canvas): Target canvas dimensions
+- `img_pos` (CanvasImg): Image position and size on canvas
+- `remix_prompt` (str): Edit instructions (1-8192 characters)
+- `mask` (Mask, optional): Areas to repaint (polygon areas or mask URL)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `upload_paint(img_url, canvas, img_pos, remix_prompt, mask, callback=None)`
+
+Advanced painting on uploaded images with canvas positioning.
+
+```python
+from legnext.types import Canvas, CanvasImg, Mask
+
+response = client.midjourney.upload_paint(
+    img_url="https://example.com/image.png",
+    canvas=Canvas(width=1024, height=1024),
+    img_pos=CanvasImg(width=768, height=768, x=128, y=128),
+    remix_prompt="add magical effects",
+    mask=Mask(url="https://example.com/mask.png"),
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `img_url` (str): URL of the image to edit
+- `canvas` (Canvas): Target canvas dimensions
+- `img_pos` (CanvasImg): Image position and size on canvas
+- `remix_prompt` (str): Painting instructions (1-8192 characters)
+- `mask` (Mask): Areas to edit (required - polygon areas or mask URL)
+- `callback` (str, optional): Webhook URL
+
+---
+
+### Image Enhancement
+
+#### `retexture(img_url, remix_prompt, callback=None)`
+
+Change textures and surfaces of an image.
+
+```python
+response = client.midjourney.retexture(
+    img_url="https://example.com/image.png",
+    remix_prompt="metallic and shiny surfaces",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `img_url` (str): URL of the image to retexture
+- `remix_prompt` (str): Texture description (1-8192 characters)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `remove_background(img_url, callback=None)`
+
+Remove the background from an image.
+
+```python
+response = client.midjourney.remove_background(
+    img_url="https://example.com/image.png",
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `img_url` (str): URL of the image to process
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `enhance(job_id, image_no, callback=None)`
+
+Enhance image quality (draft to high-res).
+
+```python
+response = client.midjourney.enhance(
+    job_id="draft-job-id",
+    image_no=0,                    # Image index (0-3)
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the draft mode image
+- `image_no` (int): Image number to enhance (0-3)
+- `callback` (str, optional): Webhook URL
+
+---
+
+### Video Generation
+
+#### `video_diffusion(prompt, video_type=None, callback=None)`
+
+Generate a video from text prompt with image URL.
+
+```python
+# Generate video with image URL in prompt
+response = client.midjourney.video_diffusion(
+    prompt="https://example.com/image.png a flowing river through mountains",
+    video_type=1,                  # Optional: 0=480p, 1=720p
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `prompt` (str): Video generation prompt. Format: "[image_url] your prompt text" (1-8192 characters)
+- `video_type` (int, optional): Video quality type (0: 480p, 1: 720p)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `extend_video(job_id, video_no, prompt=None, callback=None)`
+
+Extend an existing video.
+
+```python
+response = client.midjourney.extend_video(
+    job_id="original-video-job-id",
+    video_no=0,                             # Video index (0 or 1)
+    prompt="continue with dramatic lighting",  # Optional
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original video task
+- `video_no` (int): Video number to extend (0 or 1)
+- `prompt` (str, optional): Text prompt to guide the extension (1-8192 characters)
+- `callback` (str, optional): Webhook URL
+
+---
+
+#### `video_upscale(job_id, video_no, callback=None)`
+
+Upscale a video to higher resolution.
+
+```python
+response = client.midjourney.video_upscale(
+    job_id="original-video-job-id",
+    video_no=0,                    # Video index (0 or 1)
+    callback="https://your-domain.com/webhook"  # Optional
+)
+```
+
+**Parameters:**
+- `job_id` (str): ID of the original video task
+- `video_no` (int): Video number to upscale (0 or 1)
+- `callback` (str, optional): Webhook URL
+
+---
+
+## Task Management
+
+### `tasks.get(job_id)`
+
+Get the current status of a task.
+
+```python
+task = client.tasks.get(job_id="job-123")
+print(f"Status: {task.status}")
+if task.status == "completed":
+    print(f"Images: {task.output.image_urls}")
+```
+
+---
+
+### `tasks.wait_for_completion(job_id, timeout=300, poll_interval=3, on_progress=None)`
+
+Wait for a task to complete with automatic polling.
+
+```python
+def show_progress(task):
+    print(f"Status: {task.status}")
+
+result = client.tasks.wait_for_completion(
+    job_id="job-123",
+    timeout=600,                   # Max wait time in seconds
+    poll_interval=5,               # Check every 5 seconds
+    on_progress=show_progress      # Optional callback
+)
+
+print(f"Completed! Images: {result.output.image_urls}")
+```
+
+**Parameters:**
+- `job_id` (str): The job ID to wait for
+- `timeout` (float, optional): Maximum time to wait in seconds (default: 300)
+- `poll_interval` (float, optional): Time between status checks in seconds (default: 3)
+- `on_progress` (callable, optional): Callback function called on each status check
+
+---
+
+## Async Support
+
+All methods are available in async form using `AsyncClient`:
+
+```python
+import asyncio
+from legnext import AsyncClient
+
+async def main():
+    async with AsyncClient(api_key="your-api-key") as client:
+        # Generate image
+        response = await client.midjourney.diffusion(
+            text="a futuristic cityscape"
+        )
+
+        # Wait for completion
+        result = await client.tasks.wait_for_completion(response.job_id)
+        print(result.output.image_urls)
+
+asyncio.run(main())
+```
+
+### Batch Processing
+
+```python
+async def generate_multiple():
+    async with AsyncClient(api_key="your-api-key") as client:
+        # Start multiple tasks
+        tasks = [
+            client.midjourney.diffusion(text=f"image prompt {i}")
+            for i in range(5)
+        ]
+        responses = await asyncio.gather(*tasks)
+
+        # Wait for all completions
+        results = await asyncio.gather(*[
+            client.tasks.wait_for_completion(r.job_id)
+            for r in responses
+        ])
+
+        return results
+```
+
+---
+
+## Error Handling
+
+```python
+from legnext import Client, LegnextAPIError, RateLimitError, ValidationError
+
+client = Client(api_key="your-api-key")
+
+try:
+    response = client.midjourney.diffusion(text="a beautiful landscape")
+except ValidationError as e:
+    print(f"Invalid parameters: {e.message}")
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e.message}")
+except LegnextAPIError as e:
+    print(f"API error: {e.message} (status: {e.status_code})")
+```
+
+**Exception Types:**
+- `ValidationError` (400): Invalid request parameters
+- `AuthenticationError` (401): Invalid API key
+- `NotFoundError` (404): Resource not found
+- `RateLimitError` (429): Rate limit exceeded
+- `ServerError` (5xx): Server errors
+- `LegnextAPIError`: Base exception for all API errors
+
+---
+
+## Requirements
+
+- Python 3.10+
+- httpx >= 0.27.0
+- pydantic >= 2.0.0
+
+---
+
+## Support
+
+For questions or issues, please contact:
+- Email: support@legnext.ai
+- Website: https://legnext.ai
+
+---
+
+## License
+
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
