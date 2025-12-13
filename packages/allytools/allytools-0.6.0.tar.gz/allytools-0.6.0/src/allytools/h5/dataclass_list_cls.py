@@ -1,0 +1,1 @@
+DATACLASS_LIST_CLS = "dataclass_cls"
