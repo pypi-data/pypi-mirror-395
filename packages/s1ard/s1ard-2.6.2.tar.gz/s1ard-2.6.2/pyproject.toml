@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+
+[project]
+name = "s1ard"
+description = "A prototype processor for Sentinel-1 Analysis Ready Data (ARD) backscatter products"
+requires-python = ">=3.10"
+license = { file = "LICENSE.txt" }
+maintainers = [
+    { name = "John Truckenbrodt", email = "john.truckenbrodt@dlr.de" }
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3"
+]
+dynamic = ["version", "readme", "dependencies"]
+
+[project.urls]
+repository = "https://github.com/SAR-ARD/s1ard"
+documentation = "https://s1ard.readthedocs.io/en/latest/"
+
+[project.optional-dependencies]
+test = ["pytest", "requests"]
+docs = ["sphinx", "sphinxcontrib-bibtex", "nbsphinx", "sphinx_rtd_theme", "sphinx-toolbox", "ipython"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["s1ard"]
+
+[tool.setuptools.package-data]
+"s1ard" = ["resources/*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools_scm]
+
+[project.scripts]
+s1rb = "s1ard.cli:cli"
+
+[project.entry-points."s1ard.processors"]
+snap = "s1ard.processors.snap:SnapProcessor"
