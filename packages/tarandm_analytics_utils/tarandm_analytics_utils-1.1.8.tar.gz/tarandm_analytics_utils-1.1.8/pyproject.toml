@@ -1,0 +1,75 @@
+[project]
+name = "tarandm_analytics_utils"
+description = "Package provides support for analytics methods and models in TaranDM."
+authors = [
+    {name = "Matej Scerba", email = "mscerba@taran.ai"}
+]
+dynamic = ["version", "readme", "dependencies"]
+requires-python = ">=3.9,<3.14"
+
+[tool.poetry]
+version = "1.1.8"
+readme = "README.md"
+packages = [
+    { include = "tarandm_analytics_utils" }
+]
+include = [
+    { path = "tarandm_analytics_utils/**/*.so", format = "wheel" },
+    { path = "tarandm_analytics_utils/**/*.pyd", format = "wheel" },
+    { path = "tarandm_analytics_utils/**/*.pyi", format = "wheel" },
+]
+# if not already excluded via .gitignore
+exclude = [
+    "**/*.c",
+    "**/*.py",
+]
+
+[[tool.poetry.source]]
+name = "tarandm_utils"
+url = "https://gitlab.tarandm.com/api/v4/projects/29/packages/pypi/simple"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "tarandm_libraries"
+url = "https://gitlab.tarandm.com/api/v4/groups/271/-/packages/pypi/simple"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+pep8 = {version = "*", source = "PyPI"}
+requests = {version = "*", source = "PyPI"}
+structlog = {version = "*", source = "PyPI"}
+pydantic = {version = "*", source = "PyPI"}
+ruamel-yaml = {version = "*", source = "PyPI"}
+strawberry-graphql = {version = "*", source = "PyPI"}
+
+
+[tool.poetry.group.dev.dependencies]
+tarandm-cheetah = {version = "*", source = "tarandm_libraries"} # Explicitly declared as a dependency since utils requires it, but utils can't detect that it's provided by our registry instead of PyPI.
+tarandm-utils = {version = ">=2.2.0", source = "tarandm_utils", python = ">=3.13,<3.14"}
+bandit = {version = "*", source = "PyPI"}
+flake8 = {version = "*", source = "PyPI"}
+mypy = {version = "*", source = "PyPI"}
+black = {version = "*", source = "PyPI"}
+pytest = {version = "*", source = "PyPI"}
+pytest-asyncio = {version = "*", source = "PyPI"}
+
+[build-system]
+requires = ["poetry-core", "cython", "setuptools"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build]
+script = "build-cython.py"
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+follow_imports = "silent"
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+no_implicit_reexport = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+implicit_reexport = true
