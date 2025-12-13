@@ -1,0 +1,179 @@
+import importlib
+import os
+import sys
+from pathlib import Path
+
+import streamlit as st
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:  # pragma: no cover
+    sys.path.insert(0, str(ROOT))
+
+
+try:
+    scrape_nzsmars_module = importlib.import_module("scrapers.scrape_nzsmars")
+    scrape_medsafe_sb = scrape_nzsmars_module.scrape_medsafe_sb
+except Exception as e:  # pragma: no cover
+    st.set_page_config(page_title="NZ MEDSAFE Search", layout="wide")
+    st.error(f"Failed to import the NZ MEDSAFE scraper: {e}")
+    st.stop()
+
+
+st.set_page_config(
+    page_title="Data access page for NZ MEDSAFE",
+    layout="wide",
+    page_icon="SurVigilance/ui/assets/survigilance_sticker.ico",
+)
+
+
+st.session_state.setdefault("data_root", "data")
+st.session_state.setdefault("num_retries", 5)
+nz_dir = os.path.join(
+    os.path.expanduser(st.session_state.get("data_root", "data")), "nzsmars"
+)
+
+nz_dir_display = os.path.abspath(nz_dir)
+
+
+st.session_state.setdefault("selected_database", "NZ MEDSAFE")
+st.session_state.setdefault("nz_drug", "Atorvastatin")
+st.session_state.setdefault("nz_type", "Medicine")  # Medicine or Vaccine
+st.session_state.setdefault("nz_log_messages", [])
+
+
+heading = f"Search Page for {st.session_state['selected_database']} Database"
+st.markdown(f"<h1 style='text-align: center;'>{heading}</h1>", unsafe_allow_html=True)
+st.info(
+    f"""
+    How the NZ MEDSAFE data collection works:
+    - Opens the NZ Medsafe database (https://www.medsafe.govt.nz/SMARS/Default) and searches for provided medicine/vaccine by selecting appropriate radio button.
+    - Parses the Preferred Terms (PTs) and counts for the given drug/vaccine.
+    - Saves a CSV to `{nz_dir_display}/<term>_nzsmars_adrs.csv`.
+    """
+)
+
+st.divider()
+
+st.subheader("Retries")
+st.number_input(
+    "Number of retries",
+    help="Number of retries for the scrapers. Defaults to 5.",
+    key="num_retries",
+    min_value=0,
+    step=1,
+)
+
+st.subheader("Input")
+with st.form("search_form", clear_on_submit=False):
+    st.text_input(
+        "Please input a medicine/vaccine for which you want the data",
+        key="nz_drug",
+    )
+    st.radio(
+        "Type",
+        options=["Medicine", "Vaccine"],
+        key="nz_type",
+        horizontal=True,
+    )
+    submitted = st.form_submit_button("Search")
+
+st.divider()
+
+
+progress = st.empty()  # Progress bar area
+log_box = st.empty()  # Streaming logs and/or info
+error_box = st.empty()  # For any errors encountered
+status_box = st.empty()  # Overall status messages
+table_box = st.empty()  # place where data is displayed
+
+
+_progress_state = {"value": 0.0}
+
+
+def streamlit_callback(event: dict) -> None:  # pragma: no cover
+    """
+    Simple callback used by the scraper to update the UI.
+
+    It handles progress updates, logs, and errors in a user-friendly way.
+    """
+    etype = event.get("type")
+    if etype == "progress":
+        delta = float(event.get("delta", 0.0))
+        _progress_state["value"] = min(100.0, _progress_state["value"] + delta)
+        progress.progress(int(_progress_state["value"]))
+    elif etype == "log":
+        msg = event.get("message", "")
+        st.session_state.nz_log_messages.append(("log", msg))
+    elif etype == "error":
+        msg = event.get("message", "Unknown error")
+        st.session_state.nz_log_messages.append(("error", msg))
+
+    if etype in ("log", "error"):
+        with log_box.container():
+            for mtype, m in st.session_state.nz_log_messages:
+                if mtype == "log":
+                    st.info(m)
+                else:
+                    st.error(m)
+
+    elif etype == "done":
+        status_box.success("Data Fetching Complete!")
+
+
+if submitted:
+    term = st.session_state["nz_drug"].strip()
+    kind = st.session_state["nz_type"].strip().lower()  # medicine or vaccine
+    if kind not in {"medicine", "vaccine"}:
+        kind = "medicine"
+
+    st.session_state.nz_log_messages = []
+    _progress_state["value"] = 0.0
+    progress.progress(0)
+    log_box.empty()
+    error_box.empty()
+    status_box.empty()
+    table_box.empty()
+
+    if not term:
+        error_box.error("Please enter a search term.")
+    else:
+        msg = f"Starting data collection for: {term} ({kind})"
+        st.session_state.nz_log_messages.append(("log", msg))
+        with log_box.container():
+            st.info(msg)
+        try:
+            results = scrape_medsafe_sb(
+                searching_for=kind,
+                drug_vaccine=term,
+                output_dir=nz_dir,
+                callback=streamlit_callback,
+                headless=True,
+                num_retries=st.session_state.get("num_retries", 5),
+            )
+            if results is not None and not results.empty:
+                table_box.dataframe(results, width="stretch")
+            else:  # pragma: no cover
+                table_box.info("No results returned.")
+        except Exception:  # pragma: no cover
+            status_box.error("Data collection aborted.")
+
+
+# limited support in streamlit testing to switch pages in a multipage app, causes issues
+if st.button("Go Back to Homepage", width="stretch"):  # pragma: no cover
+    st.switch_page("_app.py")
+
+st.markdown(
+    r"""
+    <style>
+        .reportview-container {
+            margin-top: -2em;
+        }
+        #MainMenu {visibility: hidden;}
+        .stDeployButton {display: none;}
+        .stAppDeployButton {visibility: hidden;}
+        footer {visibility: hidden;}
+        #stDecoration {display: none;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
