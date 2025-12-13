@@ -1,0 +1,669 @@
+{% macro render_status_icon(status) %}
+    {% if status|lower == "passed" %}
+        ✓
+    {% elif status|lower == "failed" %}
+        ✗
+    {% elif status|lower == "broken" %}
+        ⚠
+    {% elif status|lower == "skipped" %}
+        →
+    {% else %}
+        ø
+    {% endif %}
+{% endmacro %}
+
+
+
+
+{% macro render_search_filter(report) %}
+<div class="search-filter">
+    <div>
+        <img src="./static/icon.svg" alt="main-icon" class="main-icon" id="themeToggle" title="Click to switch theme"/>
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search Tests...">
+        </div>
+    </div>
+
+    <select id="statusFilter" class="hidden">
+        <option value="all">All Statuses</option>
+        <option value="PASSED">Passed</option>
+        <option value="FAILED">Failed</option>
+        <option value="BROKEN">Broken</option>
+        <option value="SKIPPED">Skipped</option>
+    </select>
+
+    <select id="moduleFilter">
+        <option value="all">All Modules</option>
+        {% for module_path in report.modules.keys() | sort %}
+        <option value="{{ module_path }}">{{ module_path }}</option>
+        {% endfor %}
+    </select>
+
+    <div class="filter-buttons">
+        <button type="button" class="filter-btn active hidden" data-filter="all">All</button>
+        <button type="button" class="filter-btn passed" data-filter="passed">✓ Passed</button>
+        <button type="button" class="filter-btn failed" data-filter="failed">✗ Failed</button>
+        <button type="button" class="filter-btn broken" data-filter="broken">⚠ Broken</button>
+        <button type="button" class="filter-btn skipped" data-filter="skipped">→ Skipped</button>
+        <button type="button" class="reset-btn" id="reset-filters">Reset Filters</button>
+    </div>
+
+    <div class="sort-buttons">
+        <button type="button" class="sort-btn active" data-sort="starttime_asc">Start Time ↑</button>
+        <button type="button" class="sort-btn" data-sort="starttime_desc">Start Time ↓</button>
+        <button type="button" class="sort-btn" data-sort="name_asc">Name ↑</button>
+        <button type="button" class="sort-btn" data-sort="name_desc">Name ↓</button>
+        <button type="button" class="sort-btn" data-sort="duration_asc">Duration ↑</button>
+        <button type="button" class="sort-btn" data-sort="duration_desc">Duration ↓</button>
+        <button type="button" class="sort-btn" data-sort="status_asc">Status ↑</button>
+        <button type="button" class="sort-btn" data-sort="status_desc">Status ↓</button>
+        <button type="button" class="sort-btn" data-sort="exec_asc">Retries ↑</button>
+        <button type="button" class="sort-btn" data-sort="exec_desc">Retries ↓</button>
+        <button type="button" class="reset-btn" id="reset-sorting">Reset Sorting</button>
+    </div>
+
+    <button type="button" class="reset-btn" id="reset-expanded">Collapse / Expand All</button>
+</div>
+{% endmacro %}
+
+
+
+{% macro render_report_header(report) %}
+<div class="card">
+    <div class="header expanded" onclick="toggleBlock(this)">
+        <h3><i class="fas fa-chart-line"></i> {{ report.proj_name }}</h3>
+        <i class="fas fa-chevron-down toggle-icon"></i>
+    </div>
+    <div class="content active">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span>Environment</span><strong>{{ report.env | upper }}</strong>
+            </div>
+            <div class="meta-item">
+                <span>Base URL</span><strong>{{ report.base_url }}</strong>
+            </div>
+            <div class="meta-item">
+                <span>Duration</span><strong>{{ report.duration }}</strong>
+            </div>
+            <div class="meta-item">
+                <span>Start Time</span><strong>{{ report.start_time }}</strong>
+            </div>
+            <div class="meta-item">
+                <span>End Time</span><strong>{{ report.end_time }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro render_summary(report) %}
+{% set passed = report.run_results.PASSED %}
+{% set failed = report.run_results.FAILED %}
+{% set broken = report.run_results.BROKEN %}
+{% set skipped = report.run_results.SKIPPED %}
+{% set total = passed + failed + broken + skipped %}
+<div class="card">
+    <div class="header expanded" onclick="toggleBlock(this)">
+        <h3><i class="fas fa-chart-pie"></i> Results Summary</h3>
+        <i class="fas fa-chevron-down toggle-icon"></i>
+    </div>
+    <div class="content active">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="number">{{ total }}</div>
+                <div class="label">Total</div>
+                <div class="percentage">100%</div>
+            </div>
+            {% for label, count, status, icon in
+                [('Passed', passed, 'passed', '✓'), ('Failed', failed, 'failed', '✗'), ('Broken', broken, 'broken', '⚠'), ('Skipped', skipped, 'skipped', '→')] %}
+            <div class="summary-card {{ status }}">
+                <div class="number">{{ count }}</div>
+                <div class="label">{{ icon }}</div>
+                <div class="label">{{ label }}</div>
+                <div class="percentage">{{ (count / total * 100 if total > 0 else 0) | round(1) }}%</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_notes(report) %}
+<div class="card">
+    <div class="header expanded" onclick="toggleBlock(this)">
+        <h3><i class="fas fa-book-open"></i> Notes</h3>
+        <i class="fas fa-chevron-down toggle-icon"></i>
+    </div>
+    <div class="content active">
+        {% if report.notes %}
+            {% set notes = report.notes.notes or [] %}
+            {% for note in notes %}
+                <div class="note">
+                ● {{ note | escape }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_module(module_name, module_data, steps) %}
+<div id="module_{{ module_name|replace('\\','_') }}" class="card module" data-module="{{ module_name }}">
+    <div class="header" onclick="toggleBlock(this)">
+        <h3><i class="fas fa-file-code"></i>
+            {{ module_name }}
+            {% for status in ['PASSED', 'FAILED', 'BROKEN', 'SKIPPED'] %}
+                {% if module_data.results[status] %}
+                <span class="badge {{ status.lower() }}">{{ module_data.results[status] }} {{ render_status_icon(status.lower()) }}</span>
+                {% endif %}
+            {% endfor %}
+            <i class="fas fa-chevron-down toggle-icon"></i>
+        </h3>
+    </div>
+
+    <div class="content tests-list">
+        {% for test_name, test_runs in module_data.tests.items() %}
+            {{ render_test(test_name, test_runs, steps) }}
+        {% endfor %}
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_status_summary(test_runs) %}
+    {% set ns = namespace(passed=0, failed=0, broken=0, skipped=0) %}
+    {% for run in test_runs %}
+        {% if run.status == 'PASSED' %}
+            {% set ns.passed = ns.passed + 1 %}
+        {% elif run.status == 'FAILED' %}
+            {% set ns.failed = ns.failed + 1 %}
+        {% elif run.status == 'BROKEN' %}
+            {% set ns.broken = ns.broken + 1 %}
+        {% elif run.status == 'SKIPPED' %}
+            {% set ns.skipped = ns.skipped + 1 %}
+        {% endif %}
+    {% endfor %}
+
+    {% if ns.passed %}
+    <div class="test-results">
+        <span class="badge passed">{{ ns.passed }} {{ render_status_icon('PASSED') }}</span>
+    </div>
+    {% endif %}
+
+    {% if ns.failed %}
+    <div class="test-results">
+        <span class="badge failed">{{ ns.failed }} {{ render_status_icon('FAILED') }}</span>
+    </div>
+    {% endif %}
+
+    {% if ns.broken %}
+    <div class="test-results">
+        <span class="badge broken">{{ ns.broken }} {{ render_status_icon('BROKEN') }}</span>
+    </div>
+    {% endif %}
+
+    {% if ns.skipped %}
+    <div class="test-results">
+        <span class="badge skipped">{{ ns.skipped }} {{ render_status_icon('SKIPPED') }}</span>
+    </div>
+    {% endif %}
+{% endmacro %}
+
+
+
+
+{% macro render_test(test_name, test_runs, steps) %}
+    {% if test_runs | length == 1 %}
+        {{ render_test_block(test_runs[0], steps) }}
+    {% else %}
+        {% set ns = namespace(min_start=none, max_dur=0, max_exec=0, has_failed=False, has_broken=False, has_skipped=False, has_passed=False) %}
+        {% for run in test_runs %}
+            {% set ns.min_start = run.start_time if ns.min_start is none else (run.start_time if run.start_time < ns.min_start else ns.min_start) %}
+            {% set dur = (run.duration or 0) %}
+            {% set ns.max_dur = dur if dur > ns.max_dur else ns.max_dur %}
+            {% set exec = run.execution_count %}
+            {% set ns.max_exec = exec if exec > ns.max_exec else ns.max_exec %}
+            {% if run.status == 'FAILED' %}{% set ns.has_failed = True %}{% endif %}
+            {% if run.status == 'BROKEN' %}{% set ns.has_broken = True %}{% endif %}
+            {% if run.status == 'SKIPPED' %}{% set ns.has_skipped = True %}{% endif %}
+            {% if run.status == 'PASSED' %}{% set ns.has_passed = True %}{% endif %}
+        {% endfor %}
+
+        {% if ns.has_failed %}
+            {% set agg_status = 'FAILED' %}
+        {% elif ns.has_broken %}
+            {% set agg_status = 'BROKEN' %}
+        {% elif ns.has_skipped %}
+            {% set agg_status = 'SKIPPED' %}
+        {% else %}
+            {% set agg_status = 'PASSED' %}
+        {% endif %}
+
+        <div class="test test-multi" data-test="{{ test_name }}" data-status="{{ agg_status }}"
+            data-start-time="{{ ns.min_start }}" data-duration="{{ ns.max_dur }}" data-exec="{{ ns.max_exec }}">
+            <div class="test-header-multi">
+                <div class="test-info">
+                    <span class="test-name">{{ test_name }}</span>
+                    <div class="test-results">
+                        {{ render_status_summary(test_runs) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-content-multi expanded active">
+                {% for run in test_runs %}
+                    {{ render_test_block(run, steps, is_sub=True) }}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+
+
+
+{% macro render_test_block(test_run, steps, is_sub=False) %}
+{% set sub_class = "test-sub" if is_sub else "" %}
+{% set test_id = "test_" ~ (test_run.name|replace(" ", "_")) %}
+<div id="{{ test_id }}" class="test {{ sub_class }} {{ test_run.status.lower() }}"
+    data-test="{{ test_run.name }}" data-status="{{ test_run.status }}"
+    data-start-time="{{ test_run.start_time }}" data-duration="{{ test_run.duration or 0 }}" data-exec="{{ test_run.execution_count }}">
+    <div class="test-header" onclick="toggleTestAndHash(this)">
+        {{ render_test_header(test_run) }}
+    </div>
+    <div class="test-content">
+        {{ render_test_tabs(test_run, steps) }}
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_test_header(test_run) %}
+<div class="test-info">
+    <div class="test-results">
+        {% if test_run.execution_count > 1 %}
+        <span class="badge {{ test_run.status.lower() }}">
+            <i class="fa-solid fa-arrow-rotate-left"></i> {{ test_run.execution_count - 1 }}
+        </span>
+        {% else %}
+        <span class="badge {{ test_run.status.lower() }}">
+            {{ render_status_icon(test_run.status) }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="test-name-block">
+        <span class="test-name">{{ test_run.name }}</span>
+    </div>
+
+    <div class="test-results">
+        <span class="test-duration">{{ test_run.duration or 0 }}s</span>
+        <span><i class="fas fa-chevron-down toggle-icon"></i></span>
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_test_tabs(test, steps) %}
+<div class="tabs">
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab(this, 'overview')">Overview</button>
+
+        {% set step_data = None %}
+        {% if test.steps %}
+            {% set step_data = steps.get(test.steps[-1]) %}
+        {% endif %}
+
+        {% if step_data %}
+            {% if step_data.get('setup') %}
+                <button class="tab-btn" onclick="switchTab(this, 'setup')">Setup</button>
+            {% endif %}
+            {% if step_data.get('call') %}
+                <button class="tab-btn" onclick="switchTab(this, 'call')">Steps</button>
+            {% endif %}
+            {% if step_data.get('teardown') %}
+                <button class="tab-btn" onclick="switchTab(this, 'teardown')">Teardown</button>
+            {% endif %}
+        {% endif %}
+
+        {% if test.attachments %}
+            <button class="tab-btn" onclick="switchTab(this, 'attachments')">Attachments</button>
+        {% endif %}
+        {% if test.error %}
+            <button class="tab-btn error" onclick="switchTab(this, 'error')">Error</button>
+        {% endif %}
+    </div>
+
+    <div class="tab-content active" data-tab="overview">
+        {% if test.description %}{{ render_description(test.description) }}{% endif %}
+        {% if test.info %}{{ render_info(test.info) }}{% endif %}
+        {% if test.known_bugs %}{{ render_known_bugs(test.known_bugs) }}{% endif %}
+    </div>
+
+    {% if test.steps %}
+        {% if test.steps | length > 1 %}
+            {% set last_step_data = steps.get(test.steps[-1]) %}
+            {% if last_step_data %}
+                {% for stage, _ in last_step_data.items() %}
+                    <div class="tab-content" data-tab="{{ stage }}">
+                        <div class="steps steps-grid">
+                        {% for attempt_id in test.steps %}
+                            {% set step_data = steps.get(attempt_id).get(stage) %}
+                            {% if step_data %}
+                                {% set attempt_index = loop.index %}
+                                <div class="attempt-block">
+                                    <span class="attempt-index"><i class="fa-solid fa-arrow-rotate-left"></i> {{ attempt_index - 1 }}</span>
+                                    <div class="attempt-steps">
+                                    {% for step in step_data %}
+                                        {{ render_step(step) }}
+                                    {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% else %}
+            {% set step_data = steps.get(test.steps[0]) %}
+            {% if step_data %}
+                {% for stage, stage_steps in step_data.items() %}
+                    <div class="tab-content" data-tab="{{ stage }}">
+                        <div class="steps">
+                            {% for step in stage_steps %}
+                                {{ render_step(step) }}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <div class="no-steps tab-content" data-tab="call">No step details available</div>
+    {% endif %}
+
+    {% if test.attachments %}
+    <div class="tab-content" data-tab="attachments">
+        {{ render_attachments(test.attachments) }}
+    </div>
+    {% endif %}
+
+    {% if test.error %}
+    <div class="tab-content" data-tab="error">
+        {{ render_error(test.error, test.stacktrace, test.attachments) }}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_description(description) %}
+<div class="section">
+    <h4><i class="fas fa-align-left"></i> Description</h4>
+    <div class="description">{{ description }}</div>
+</div>
+{% endmacro %}
+
+
+
+{% macro render_info(info) %}
+<div class="section">
+    <h4><i class="fas fa-info-circle"></i> Information</h4>
+    <div class="info-grid">
+        {% for key, value in info.items() %}
+        <div class="info-item">
+            <div class="info-key">{{ key }}</div>
+            <div class="info-value">{{ render_info_value(value, False) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endmacro %}
+
+
+
+{% macro render_info_value(value, is_sub=False) %}
+{% if value is mapping %}
+    {% for sub_key, sub_value in value.items() %}
+        {% if is_sub %}
+            <div class="info-indent">
+        {% else %}
+            <div>
+        {% endif %}
+            🞂 <span>
+                <strong>{{ sub_key | escape }}:</strong>
+                {{ render_info_value(sub_value, True) }}
+            </span>
+        </div>
+    {% endfor %}
+
+{% elif value is sequence and value is not string %}
+    {% for sub_value in value %}
+        {% if sub_value is mapping %}
+            {{ render_info_value(sub_value, is_sub) }}
+        {% else %}
+            {% if is_sub %}
+                <div class="info-indent">
+            {% else %}
+                <div>
+            {% endif %}
+                ● {{ render_info_value(sub_value, True) }}
+            </div>
+        {% endif %}
+    {% endfor %}
+
+{% else %}
+    {% if value is string %}
+        {% if '<a ' in value %}
+            {{ value | safe }}
+        {% else %}
+            {{ value | escape }}
+        {% endif %}
+    {% else %}
+        {{ value | escape }}
+    {% endif %}
+{% endif %}
+{% endmacro %}
+
+
+
+
+{% macro render_known_bugs(known_bugs) %}
+<div class="section">
+    <h4><i class="fas fa-bug"></i> Known Bugs</h4>
+    <div class="bug-grid">
+    {% for bug in known_bugs %}
+        <div class="bug-item">
+            {% if bug.url %}
+            <a href="{{ bug.url }}" target="_blank" title="{{ bug.url }}">View Bug Report</a>
+            {% endif %}
+            {% if bug.description %}
+            <div class="bug-desc">{{ bug.description }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_step(step) %}
+{% set has_addons = step.expected or step.info or step.error or step.attachments or step.known_bugs %}
+{% if step.id.startswith('print_') %}
+    <div class="step print level-0">
+        <span class="step-title">{{ step.title | escape }}</span>
+    </div>
+{% else %}
+    <div class="step {{ step.status }} level-0">
+        {% if has_addons or step.steps %}
+            <div class="step-header" onclick="toggleStep(this)">
+        {% else %}
+            <div class="step-header-no-addons">
+        {% endif %}
+            <div class="step-info">
+                <span class="step-title">{{ step.title | escape }}</span>
+                <div class="step-badge">
+                    <span>{{ step.duration or 0 }}s</span>
+                    {% if has_addons or step.steps %}
+
+                        {% if has_addons %}
+                            <span>
+                            {% if step.error %}<i class="fas fa-exclamation-triangle error-icon"></i>{% endif %}
+                            {% if step.attachments %}<i class="fas fa-paperclip attach-icon"></i>{% endif %}
+                            {% if step.info %}<i class="fas fa-info-circle"></i>{% endif %}
+                            {% if step.known_bugs %}<i class="fas fa-bug bug-icon"></i>{% endif %}
+                            {% if step.expected %}<i class="fas fa-check-double"></i>{% endif %}
+                            </span>
+                        {% endif %}
+
+                        {% if step.steps %}
+                            {% set count_steps = namespace(count=0, prints=0) %}
+                            {% for s in step.steps %}
+                                {% if s.id.startswith('step_') %}
+                                    {% set count_steps.count = count_steps.count + 1 %}
+                                {% else %}
+                                    {% set count_steps.prints = count_steps.prints + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if count_steps.count > 0 %}
+                                <span>{{ count_steps.count }} sub-step{{ 's' if count_steps.count > 1 else '' }}</span>
+                            {% endif %}
+                            {% if count_steps.prints > 0 %}
+                                <span>{{ count_steps.prints }} print{{ 's' if count_steps.prints > 1 else '' }}</span>
+                            {% endif %}
+                        {% endif %}
+                        <span class="step-toggle"><i class="fas fa-chevron-down toggle-icon"></i></span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="step-body">
+            {% if has_addons %}
+            <div class="step-content">
+                {% if step.expected %}
+                    <div class="section">
+                        <h4><i class="fas fa-check-double"></i> Expected</h4>
+                        <div class="info-item">{{ step.expected }}</div>
+                    </div>
+                {% endif %}
+
+                {% if step.error %}
+                    {{ render_error(step.error.exc, step.error.tb) }}
+                {% endif %}
+
+                {% if step.info %}
+                    {{ render_info(step.info) }}
+                {% endif %}
+
+                {% if step.attachments %}
+                    {{ render_attachments(step.attachments) }}
+                {% endif %}
+
+                {% if step.known_bugs %}
+                    {{ render_known_bugs(step.known_bugs) }}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if step.steps %}
+            <div class="step-children">
+                {% for child_step in step.steps %}
+                    {{ render_step(child_step) }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+{% endmacro %}
+
+
+
+
+{% macro render_attachments(attachments) %}
+<div class="attachments">
+    {% for attachment in attachments %}
+    {% set name = attachment.name %}
+    {% set type = attachment.type_ or '' %}
+    {% set lower_name = name.lower() %}
+    <div class="attachment" onclick="openAttachment('{{ name }}', '{{ type }}')">
+        {% if type.startswith('image/') or lower_name.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+            <img src="attachments/{{ name }}" alt="{{ name }}">
+        {% elif type == 'application/pdf' or lower_name.endswith('.pdf') %}
+            <i class="fas fa-file-pdf"></i>
+        {% elif 'spreadsheet' in type or lower_name.endswith(('.xls', '.xlsx', '.ods')) %}
+            <i class="fas fa-file-excel"></i>
+        {% elif type.startswith('text/') or lower_name.endswith(('.txt', '.log', '.json', '.md', '.py', '.yml', '.yaml')) %}
+            <i class="fas fa-file-alt"></i>
+        {% elif lower_name.endswith(('.zip', '.tar', '.gz', '.rar')) %}
+            <i class="fas fa-file-archive"></i>
+        {% else %}
+            <i class="fas fa-file"></i>
+        {% endif %}
+        <span>{{ name }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+
+
+
+{% macro render_error(exc, stacktrace, attachments=None) %}
+{% if attachments %}
+    {% set ns = namespace(items=[]) %}
+    {% for attachment in attachments %}
+        {% if attachment.name.startswith('err_') %}
+            {% set _ = ns.items.append(attachment) %}
+        {% endif %}
+    {% endfor %}
+
+    {% if ns.items %}
+    <div class="attachments">
+        {% for attachment in ns.items %}
+        <div class="attachment" onclick="openAttachment('{{ attachment.name }}', '{{ attachment.type_ }}')">
+            <img src="./attachments/{{ attachment.name }}" alt="{{ attachment.name }}">
+            <span>{{ attachment.name }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endif %}
+
+<div class="error-section">
+    <div class="error-message">{{ exc | escape }}</div>
+    {% if stacktrace %}
+    <div class="card">
+        <div class="header" onclick="toggleBlock(this)">
+            <h4>
+                Stacktrace
+                <i class="fas fa-chevron-down toggle-icon"></i>
+            </h4>
+        </div>
+        <div class="content">
+            <pre class="stacktrace">{{ stacktrace | escape }}</pre>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
