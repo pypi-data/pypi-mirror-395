@@ -1,0 +1,114 @@
+"""
+Vizu Environment-based Auto-Initialization
+
+Simplified to use pure OpenTelemetry with OTLP export.
+No custom span processors or framework-specific code.
+
+Environment Variables:
+    VIZU_ENABLED: Set to "1", "true", "yes" to enable
+    VIZU_OTLP_ENDPOINT: OTLP gRPC endpoint (default: localhost:4317)
+    VIZU_TENANT_ID: Tenant ID (default: 1)
+    VIZU_PROJECT_ID: Project ID (default: 0)
+    VIZU_SERVICE_NAME: Service name (default: "python-app")
+
+Usage:
+    export VIZU_ENABLED=true
+    export VIZU_PROJECT_ID=19358
+    python your_script.py  # Automatically instrumented!
+"""
+
+import os
+import logging
+import atexit
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_bool(value: str) -> bool:
+    """Parse boolean from environment variable."""
+    return value.lower() in ("1", "true", "yes", "on", "enabled")
+
+
+def init_from_env(force: bool = False) -> bool:
+    """Initialize Vizu from environment variables.
+    
+    Args:
+        force: Force initialization even if already initialized
+        
+    Returns:
+        True if instrumentation was enabled, False otherwise
+    """
+    # Check if already initialized
+    if hasattr(init_from_env, "_initialized") and not force:
+        return init_from_env._initialized
+    
+    # Check if enabled
+    enabled = os.getenv("VIZU_ENABLED", "").strip()
+    if not enabled or not _parse_bool(enabled):
+        logger.debug("Vizu disabled (VIZU_ENABLED not set)")
+        init_from_env._initialized = False
+        return False
+    
+    # Get configuration
+    otlp_endpoint = os.getenv("VIZU_OTLP_ENDPOINT", "localhost:4317")
+    tenant_id = int(os.getenv("VIZU_TENANT_ID", "1"))
+    project_id = int(os.getenv("VIZU_PROJECT_ID", "0"))
+    service_name = os.getenv("VIZU_SERVICE_NAME", "python-app")
+    log_level = os.getenv("VIZU_LOG_LEVEL", "INFO").upper()
+    
+    # Set logging level
+    logging.basicConfig(
+        level=getattr(logging, log_level, logging.INFO),
+        format='%(asctime)s [%(name)s] %(levelname)s: %(message)s'
+    )
+    
+    try:
+        from vizu.auto_instrument import auto_instrument
+        
+        logger.info(f"🚀 Initializing Vizu")
+        logger.info(f"   OTLP Endpoint: {otlp_endpoint}")
+        logger.info(f"   Tenant: {tenant_id}, Project: {project_id}")
+        logger.info(f"   Service: {service_name}")
+        
+        auto_instrument(
+            service_name=service_name,
+            otlp_endpoint=otlp_endpoint,
+            tenant_id=tenant_id,
+            project_id=project_id,
+        )
+        
+        # Register atexit handler to flush spans on program exit
+        def _flush_on_exit():
+            try:
+                from opentelemetry import trace
+                from opentelemetry.sdk.trace import TracerProvider
+                provider = trace.get_tracer_provider()
+                if isinstance(provider, TracerProvider):
+                    logger.debug("Flushing spans on exit...")
+                    provider.force_flush(timeout_millis=5000)
+                    logger.debug("Spans flushed successfully")
+            except Exception as e:
+                logger.debug(f"Failed to flush spans on exit: {e}")
+        
+        atexit.register(_flush_on_exit)
+        
+        logger.info("✅ Vizu auto-instrumentation enabled")
+        init_from_env._initialized = True
+        return True
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import: {e}")
+        init_from_env._initialized = False
+        return False
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize: {e}")
+        init_from_env._initialized = False
+        return False
+
+
+# Auto-initialize on module import
+_AUTO_INIT = os.getenv("VIZU_AUTO_INIT", "1")
+if _parse_bool(_AUTO_INIT):
+    init_from_env()
+else:
+    logger.debug("Vizu auto-init on import disabled (VIZU_AUTO_INIT=0)")
