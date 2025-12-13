@@ -1,0 +1,258 @@
+# Fotocasa1 MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Fotocasa1 API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-fotocasa1`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Fotocasa1 API。
+
+- **PyPI 包名**: `bach-fotocasa1`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-fotocasa1
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-fotocasa1 bach_fotocasa1
+
+# 或指定版本
+uvx --from bach-fotocasa1@latest bach_fotocasa1
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-fotocasa1
+
+# 运行（命令名使用下划线）
+bach_fotocasa1
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-fotocasa1": {
+      "command": "uvx",
+      "args": ["--from", "bach-fotocasa1", "bach_fotocasa1"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-fotocasa1": {
+      "command": "uvx",
+      "args": ["--from", "bach-fotocasa1", "bach_fotocasa1"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `property_details`
+
+Get property details. Requires the property ID.
+
+**端点**: `GET /propertydetails`
+
+
+**参数**:
+
+- `id` (string) *必需*: Property Id. 'Id' tag from properties listing. It should have this format: '1_123456789'. NOT to be confused with the 'propertyId', which doesn't include the first number. The first number indicates the operation. 1 is for sale, 3 is for rent.
+
+
+
+---
+
+
+### `list_properties`
+
+List Properties. Requires locationId, lat and lon which can be obtained through autocomplete endpoint. Pick the property type value to extract Homes, Premises, Garages, Offices, Box Rooms, Lands or Buildings.
+
+**端点**: `GET /listproperties`
+
+
+**参数**:
+
+- `locationId` (string) *必需*: Also known as combinedLocationIds. Get this value from suggested locations (autocomplete endpoint). All Spain ID: 724,0,0,0,0,0,0,0,0
+
+- `propertyType` (string) *必需*: Property Type to search. Default value is Homes.
+
+- `operation` (string) *必需*: Example value: 
+
+- `pageNumber` (number) *必需*: Example value: 1
+
+- `latitude` (string) *必需*: Example value: 40.4096
+
+- `longitude` (string) *必需*: Example value: -3.68624
+
+- `sorting` (string) *必需*: Pick between: Fotocasa Rating: scoring (default) Latest: publicationDate Cheapest: price Most expensive:
+
+- `onlyCount` (string): Example value: 
+
+- `isNewConstruction` (string): Example value: 
+
+- `minPrice` (number): Example value: 
+
+- `maxPrice` (number): Example value: 
+
+- `minRooms` (number): Minimum number of rooms. Pick between: 1, 2, 3 or 4. Anything above will be ignored.
+
+- `minBathrooms` (number): Minimum number of bathrooms. Pick between: 1, 2 and 3. Anything above will be ignored.
+
+- `allFlats` (string): Example value: 
+
+- `intermediateFloors` (string): Example value: 
+
+- `apartment` (string): Example value: 
+
+- `penthouse` (string): Example value: 
+
+- `duplexApartment` (string): Example value: 
+
+- `loftType` (string): Example value: 
+
+- `groundFloor` (string): Example value: 
+
+- `studioType` (string): Example value: 
+
+- `allHouses` (string): Example value: 
+
+- `houseOrChalet` (string): Example value: 
+
+- `ruralProperty` (string): Example value: 
+
+- `semiDetached` (string): Example value: 
+
+
+
+---
+
+
+### `get_suggestions`
+
+Get location suggestions (autocomplete)
+
+**端点**: `GET /getsuggestions`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: madrid
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
