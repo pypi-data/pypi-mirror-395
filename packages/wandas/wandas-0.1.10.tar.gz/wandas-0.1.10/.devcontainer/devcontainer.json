@@ -1,0 +1,58 @@
+{
+    "name": "Python 3",
+    "build": {
+        "context": "..",
+        "dockerfile": "Dockerfile",
+        "args": {
+            "UV_VERSION": "latest",
+            "DEBIAN_VERSION": "bookworm"
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+                "python.terminal.activateEnvironment": true
+            },
+            "extensions": [
+                "DavidAnson.vscode-markdownlint",
+                "njpwerner.autodocstring",
+                "ms-python.python",
+                "usernamehw.errorlens",
+                "ms-python.vscode-pylance",
+                "spmeesseman.vscode-taskexplorer",
+                "charliermarsh.ruff",
+                "ms-toolsai.jupyter",
+                "eamodio.gitlens",
+                "donjayamanne.githistory",
+                "Gruntfuggly.todo-tree",
+                "github.vscode-github-actions",
+                "mhutchie.git-graph",
+                "ms-python.mypy-type-checker",
+                "exiasr.hadolint",
+                "ms-azuretools.vscode-docker",
+                "bierner.markdown-mermaid"
+            ]
+        }
+    },
+    "containerEnv": {
+        "PYTHONUNBUFFERED": "True",
+        "UV_LINK_MODE": "copy",
+        "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv"
+    },
+    "mounts": [
+        // For Linux/macOS
+        "source=${env:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+        // For Windows (uncomment if needed)
+        // "source=${env:USERPROFILE}\\.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+    ],
+    // The GitHub CLI Copilot extension installation (`gh extension install github/gh-copilot`) was removed from postCreateCommand.
+    // If Copilot CLI is needed for development, please add it back. Otherwise, this is intentional.
+    // ローカル開発では全グループをインストール (test, docs, dev)
+    "postCreateCommand": "uv sync --frozen --all-groups",
+    "postStartCommand": "uv run pre-commit install",
+    "remoteUser": "vscode"
+}
