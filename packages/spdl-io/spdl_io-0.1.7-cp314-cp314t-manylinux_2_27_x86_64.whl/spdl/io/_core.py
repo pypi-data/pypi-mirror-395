@@ -1,0 +1,1475 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+# pyre-strict
+
+__all__ = [
+    # DEMUXING
+    "Demuxer",
+    "demux_audio",
+    "demux_video",
+    "demux_image",
+    # BIT STREAM FILTERING
+    "BSF",
+    "apply_bsf",
+    # DECODING
+    "Decoder",
+    "decode_packets",
+    "decode_packets_nvdec",
+    "decode_image_nvjpeg",
+    "NvDecDecoder",
+    "nvdec_decoder",
+    # FRAME CONVERSION
+    "convert_array",
+    "convert_frames",
+    # DATA TRANSFER
+    "transfer_buffer",
+    "transfer_buffer_cpu",
+    # COLOR CONVERSION
+    "nv12_to_rgb",
+    "nv12_to_bgr",
+    # ENCODING
+    "Muxer",
+    "encode_image",
+    "create_reference_audio_frame",
+    "create_reference_video_frame",
+]
+
+import logging
+import threading
+from collections.abc import Iterator, Sequence
+from decimal import Decimal
+from fractions import Fraction
+from pathlib import Path
+from typing import Any, Generic, overload, TYPE_CHECKING, TypeVar
+
+try:
+    from spdl._internal import log_api_usage_once
+except ImportError:
+
+    def log_api_usage_once(_: str) -> None:
+        pass
+
+
+from . import _preprocessing
+from .lib import _libspdl, _libspdl_cuda
+
+# We import NumPy only when type-checking.
+# The functions of this module do not need NumPy itself to run.
+# This is for experimenting with FT (no-GIL) Python.
+# Once NumPy supports FT Python, we can import normally.
+if TYPE_CHECKING:
+    import numpy as np
+    import torch
+    from numpy.typing import NDArray
+
+    UintArray = NDArray[np.uint8]
+    Tensor = torch.Tensor
+
+    AudioCodec = _libspdl.AudioCodec
+    AudioDecoder = _libspdl.AudioDecoder
+    AudioEncodeConfig = _libspdl.AudioEncodeConfig
+    AudioEncoder = _libspdl.AudioEncoder
+    AudioFrames = _libspdl.AudioFrames
+    AudioPackets = _libspdl.AudioPackets
+    CPUBuffer = _libspdl.CPUBuffer
+    CPUStorage = _libspdl.CPUStorage
+    DecodeConfig = _libspdl.DecodeConfig
+    DemuxConfig = _libspdl.DemuxConfig
+    ImageCodec = _libspdl.ImageCodec
+    ImageDecoder = _libspdl.ImageDecoder
+    ImageFrames = _libspdl.ImageFrames
+    ImagePackets = _libspdl.ImagePackets
+    _MultiStreamingVideoDemuxer = _libspdl.MultiStreamingVideoDemuxer
+    VideoCodec = _libspdl.VideoCodec
+    VideoDecoder = _libspdl.VideoDecoder
+    VideoEncodeConfig = _libspdl.VideoEncodeConfig
+    VideoEncoder = _libspdl.VideoEncoder
+    VideoFrames = _libspdl.VideoFrames
+    VideoPackets = _libspdl.VideoPackets
+
+    CUDABuffer = _libspdl_cuda.CUDABuffer
+    CUDAConfig = _libspdl_cuda.CUDAConfig
+    NvDecDecoder = _libspdl_cuda.NvDecDecoder
+
+    SourceType = str | Path | bytes | UintArray | Tensor
+
+
+_LG: logging.Logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+_FILTER_DESC_DEFAULT = "__PLACEHOLDER__"
+
+# Type alias for timestamp values that can be float or fraction (as tuple or Fraction)
+TimeValue = float | Decimal | str | Fraction
+TimeWindow = tuple[TimeValue, TimeValue]
+
+
+def _convert_time_window(window: TimeWindow) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Convert a time window to AVRational pairs.
+
+    Args:
+        window: Time window with start and end values
+
+    Returns:
+        A tuple of two (numerator, denominator) pairs
+    """
+
+    def _(val: float | Decimal | str | Fraction) -> tuple[int, int]:
+        frac = Fraction(val)  # pyre-ignore[6]
+        return (frac.numerator, frac.denominator)
+
+    start, end = window
+    return (_(start), _(end))
+
+
+################################################################################
+# Demuxing
+################################################################################
+
+
+class Demuxer:
+    """Demuxer can demux audio, video and image from the source.
+
+    Args:
+        src: Source identifier.
+            If `str` type, it is interpreted as a source location,
+            such as local file path or URL. If `bytes` type,
+            then they are interpreted as in-memory data.
+            If array type (objects implement buffer protocol,
+            such as NumPy NDArray and PyTorch Tensor), then they must be
+            1 dimensional uint8 array, which contains the raw bytes of the
+            source.
+
+        demux_config (DemuxConfig): Custom I/O config.
+    """
+
+    def __init__(
+        self,
+        src: "SourceType",
+        *,
+        demux_config: "DemuxConfig | None" = None,
+        **kwargs: Any,
+    ) -> None:
+        if isinstance(src, Path):
+            src = str(src)
+        self._demuxer: _libspdl.Demuxer = _libspdl._demuxer(
+            src, demux_config=demux_config, **kwargs
+        )
+
+    def demux_audio(
+        self, window: TimeWindow | None = None, *, bsf: str | None = None
+    ) -> "AudioPackets":
+        """Demux audio from the source.
+
+        Args:
+            window:
+                A time window specifying start and end times.
+                If omitted, the entire audio is demuxed.
+            bsf: Bit-stream filter expression
+
+        Returns:
+            Demuxed audio packets.
+        """
+        log_api_usage_once("spdl.io.Demuxer.demux_audio")
+
+        window_ = _convert_time_window(window) if window is not None else None
+        return self._demuxer.demux_audio(window=window_, bsf=bsf)
+
+    def demux_video(
+        self, window: TimeWindow | None = None, *, bsf: str | None = None
+    ) -> "VideoPackets":
+        """Demux video from the source.
+
+        Args:
+            window:
+                A time window specifying start and end times.
+                If omitted, the entire video is demuxed.
+
+        Returns:
+            Demuxed video packets.
+        """
+        log_api_usage_once("spdl.io.Demuxer.demux_video")
+
+        window_ = _convert_time_window(window) if window is not None else None
+        return self._demuxer.demux_video(window=window_, bsf=bsf)
+
+    def demux_image(self, *, bsf: str | None = None) -> "ImagePackets":
+        """Demux image from the source.
+
+        Returns:
+            Demuxed image packets.
+        """
+        log_api_usage_once("spdl.io.Demuxer.demux_image")
+
+        return self._demuxer.demux_image(bsf=bsf)
+
+    @overload
+    def streaming_demux(
+        self,
+        indices: None = None,
+        *,
+        duration: float = -1,
+        num_packets: int = -1,
+    ) -> "Iterator[VideoPackets | AudioPackets | ImagePackets]": ...
+
+    @overload
+    def streaming_demux(
+        self,
+        indices: int,
+        *,
+        duration: float = -1,
+        num_packets: int = -1,
+    ) -> "Iterator[VideoPackets | AudioPackets | ImagePackets]": ...
+
+    @overload
+    def streaming_demux(
+        self,
+        indices: Sequence[int] | set[int],
+        *,
+        duration: float = -1,
+        num_packets: int = -1,
+    ) -> "Iterator[dict[int, VideoPackets | AudioPackets | ImagePackets]]": ...
+
+    def streaming_demux(
+        self,
+        indices: Sequence[int] | set[int] | int | None = None,
+        *,
+        duration: float = -1,
+        num_packets: int = -1,
+    ) -> "Iterator[dict[int, AudioPackets | VideoPackets | ImagePackets] | AudioPackets | VideoPackets | ImagePackets]":
+        """Stream demux packets from the source.
+
+        .. admonition:: Example - Streaming decoding audio
+
+           .. code-block::
+
+              src = "foo.mp4"
+              with spdl.io.Demuxer(src) as demuxer:
+                  index = demuxer.audio_stream_index
+                  audio_decoder = spdl.io.Decoder(demuxer.audio_codec)
+                  packet_stream = demuxer.streaming_demux([index], duration=3)
+                  for packets in packet_stream:
+                      if index in packets:
+                          frames = decoder.decode(packets[index])
+                          buffer = spd.io.convert_frames(frames)
+
+        """
+        log_api_usage_once("spdl.io.Demuxer.streaming_demux")
+
+        if duration <= 0 and num_packets <= 0:
+            raise ValueError("Either `duration` or `num_packets` must be specified.")
+        if duration > 0 and num_packets > 0:
+            raise ValueError(
+                "Only one of `duration` or `num_packets` can be specified. ",
+                f"Found: {duration=}, {num_packets=}.",
+            )
+
+        if indices is None:
+            idxs = {0}
+        else:
+            idxs = set([indices] if isinstance(indices, int) else indices)
+
+        ite: _MultiStreamingVideoDemuxer = self._demuxer.streaming_demux(
+            idxs, duration=duration, num_packets=num_packets
+        )
+        return _StreamingDemuxer(
+            ite, self, unwrap=(indices is None or isinstance(indices, int))
+        )
+
+    def has_audio(self) -> bool:
+        """Returns true if the source has audio stream."""
+        return self._demuxer.has_audio()
+
+    @property
+    def video_stream_index(self) -> int:
+        """The index of default video stream."""
+        return self._demuxer.video_stream_index
+
+    @property
+    def audio_stream_index(self) -> int:
+        """The index of default audio stream."""
+        return self._demuxer.audio_stream_index
+
+    @property
+    def audio_codec(self) -> "AudioCodec":
+        """The codec metadata of the default audio stream."""
+        return self._demuxer.audio_codec
+
+    @property
+    def video_codec(self) -> "VideoCodec":
+        """The codec metadata of the default video stream."""
+        return self._demuxer.video_codec
+
+    @property
+    def image_codec(self) -> "ImageCodec":
+        """The codec metadata  of the default image stream."""
+        return self._demuxer.image_codec
+
+    def __enter__(self) -> "Demuxer":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, exc_traceback: Any) -> None:
+        self._demuxer._drop()  # pyre-ignore[16]
+
+
+class _StreamingDemuxer:
+    def __init__(
+        self, ite: "_MultiStreamingVideoDemuxer", demuxer: Demuxer, unwrap: bool
+    ) -> None:
+        self._demuxer = demuxer  # For keeping the reference.
+        self._ite = ite
+        self._unwrap = unwrap
+
+    def __iter__(self) -> "_StreamingDemuxer":
+        return self
+
+    def __next__(
+        self,
+    ) -> "dict[int, AudioPackets | VideoPackets | ImagePackets] | AudioPackets | VideoPackets | ImagePackets":
+        if self._ite.done():
+            raise StopIteration
+        item = self._ite.next()
+        if self._unwrap:
+            assert len(item) == 1
+            return next(iter(item.values()))
+        return item
+
+
+def demux_audio(
+    src: "str | bytes | UintArray | Tensor",
+    *,
+    timestamp: TimeWindow | None = None,
+    demux_config: "DemuxConfig | None" = None,
+    bsf: str | None = None,
+    **kwargs: Any,
+) -> "AudioPackets":
+    """Demux audio from the source.
+
+    Args:
+        src: See :py:class:`~spdl.io.Demuxer`.
+        timestamp: See :py:meth:`spdl.io.Demuxer.demux_audio`.
+        demux_config (DemuxConfig): See :py:class:`~spdl.io.Demuxer`.
+
+    Returns:
+        Demuxed audio packets.
+    """
+    with Demuxer(src, demux_config=demux_config, **kwargs) as demuxer:
+        return demuxer.demux_audio(window=timestamp, bsf=bsf)
+
+
+def demux_video(
+    src: "SourceType",
+    *,
+    timestamp: TimeWindow | None = None,
+    demux_config: "DemuxConfig | None" = None,
+    bsf: str | None = None,
+    **kwargs: Any,
+) -> "VideoPackets":
+    """Demux video from the source.
+
+    Args:
+        src: See :py:class:`~spdl.io.Demuxer`.
+        timestamp: See :py:meth:`spdl.io.Demuxer.demux_video`.
+        demux_config (DemuxConfig): See :py:class:`~spdl.io.Demuxer`.
+        bsf: Bit-stream filter expression
+
+    Returns:
+        Demuxed video packets.
+    """
+    with Demuxer(src, demux_config=demux_config, **kwargs) as demuxer:
+        return demuxer.demux_video(window=timestamp, bsf=bsf)
+
+
+def demux_image(
+    src: "str | bytes | UintArray | Tensor",
+    *,
+    demux_config: "DemuxConfig | None" = None,
+    bsf: str | None = None,
+    **kwargs: Any,
+) -> "ImagePackets":
+    """Demux image from the source.
+
+    Args:
+        src: See :py:class:`~spdl.io.Demuxer`.
+        demux_config (DemuxConfig): See :py:class:`~spdl.io.Demuxer`.
+        bsf: Bit-stream filter expression
+
+    Returns:
+        Demuxed image packets.
+    """
+    with Demuxer(src, demux_config=demux_config, **kwargs) as demuxer:
+        return demuxer.demux_image(bsf=bsf)
+
+
+################################################################################
+# Bit stream filtering
+################################################################################
+
+TCodec = TypeVar("TCodec")
+TPackets = TypeVar("TPackets")
+
+
+class BSF(Generic[TCodec, TPackets]):
+    """Apply bitstream filtering on packets object.
+
+    The primal usecase of BFS in SPDL is to convert the H264 video packets to
+    Annex B for video decoding.
+
+    .. seealso::
+
+       - https://ffmpeg.org/ffmpeg-bitstream-filters.html: The list of available
+         bitstream filters and their usage.
+
+       - :py:class:`NvDecDecoder`: NVDEC decoding requires the input video packets
+         to be Annex B.
+
+       - :py:func:`apply_bsf`: Applies bitstream filtering to the packet as one-off
+         operation.
+
+    .. admonition:: Example
+
+       src = "foo.mp4"
+       demuxer = spdl.io.Demuxer(src)
+       # Note: When demuxing in streaming fashion, the packets does not have codec information.
+       # To initialize BSF, the codec must be retrieved from Demuxer class.
+       bsf = spdl.io.BSF(demuxer.video_codec)
+
+       for packets in demuxer.streaming_demux_video(...):
+           packets = bsf.filter(packets)
+
+           ...
+
+        packets = bsf.flush()
+        ...
+
+    Args:
+        codec: The input codec.
+    """
+
+    def __init__(self, codec: TCodec, bsf: str) -> None:
+        self._bsf: Any = _libspdl._make_bsf(codec, bsf)
+
+    def filter(self, packets: TPackets, flush: bool = False) -> TPackets | None:
+        """Apply the filter to the input packets
+
+        Args:
+            packets: The input packets.
+            flush: If ``True``, then notify the filter that this is the end
+                of the stream and let it flush the internally buffered packets.
+
+        Returns:
+            Filtered packet object or ``None`` if the internal filtering mechanism
+            holds the packets and does not return any packet.
+        """
+        return self._bsf.filter(packets, flush=flush)
+
+    def flush(self) -> TPackets | None:
+        return self._bsf.flush()
+
+
+@overload
+def apply_bsf(packets: "AudioPackets", bsf: str) -> "AudioPackets": ...
+@overload
+def apply_bsf(packets: "VideoPackets", bsf: str) -> "VideoPackets": ...
+@overload
+def apply_bsf(packets: "ImagePackets", bsf: str) -> "ImagePackets": ...
+
+
+def apply_bsf(
+    packets: "AudioPackets | VideoPackets | ImagePackets", bsf: str
+) -> "AudioPackets | VideoPackets | ImagePackets":
+    """Apply bit stream filter to packets.
+
+    The primal usecase of BFS in SPDL is to convert the H264 video packets to
+    Annex B for video decoding.
+
+    .. admonition:: Example - One-off demuxing
+
+       src = "foo.mp4"
+       packets = spdl.io.demux_video(src)
+       packets = spdl.io.apply_bsf(packets)
+
+    Args:
+        packets: Packets (audio/video/image) object
+        bsf: A bitstream filter description.
+
+    .. seealso::
+
+       - https://ffmpeg.org/ffmpeg-bitstream-filters.html: The list of available
+         bitstream filters and their usage.
+
+       - :py:class:`NvDecDecoder`: NVDEC decoding requires the input video packets
+         to be Annex B.
+
+       - :py:class:`BSF`: Same operation but for streaming processing.
+    """
+    if packets.codec is None:
+        raise ValueError("The packets object does not have codec.")
+    return BSF(packets.codec, bsf).filter(packets, flush=True)
+
+
+################################################################################
+# Decoding
+################################################################################
+
+
+def _resolve_filter_graph(
+    filter_desc: str,
+    codec: "AudioCodec | VideoCodec | ImageCodec",
+    timestamp: tuple[float, float] | None = None,
+) -> str:
+    match codec:
+        case _libspdl.AudioCodec():
+            fd = (
+                _preprocessing.get_audio_filter_desc(timestamp=timestamp)
+                if filter_desc == _FILTER_DESC_DEFAULT
+                else filter_desc
+            )
+            src = _preprocessing.get_abuffer_desc(codec)
+            sink = "abuffersink"
+        case _libspdl.VideoCodec():
+            fd = (
+                _preprocessing.get_video_filter_desc(timestamp=timestamp)
+                if filter_desc == _FILTER_DESC_DEFAULT
+                else filter_desc
+            )
+            src = _preprocessing.get_buffer_desc(codec)
+            sink = "buffersink"
+        case _libspdl.ImageCodec():
+            fd = (
+                _preprocessing.get_video_filter_desc()
+                if filter_desc == _FILTER_DESC_DEFAULT
+                else filter_desc
+            )
+            src = _preprocessing.get_buffer_desc(codec)
+            sink = "buffersink"
+        case _:
+            raise ValueError(f"Unexpected codec type: {type(codec)}")
+
+    return f"{src},{fd},{sink}"
+
+
+@overload
+def Decoder(
+    codec: "AudioCodec",
+    *,
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+) -> "AudioDecoder": ...
+
+
+@overload
+def Decoder(
+    codec: "VideoCodec",
+    *,
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+) -> "VideoDecoder": ...
+
+
+@overload
+def Decoder(
+    codec: "ImageCodec",
+    *,
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+) -> "ImageDecoder": ...
+
+
+def Decoder(
+    codec: "AudioCodec | VideoCodec | ImageCodec",
+    *,
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+) -> "AudioDecoder | VideoDecoder | ImageDecoder":
+    """Initialize a decoder object that can incrementally decode packets of the same stream.
+
+    .. admonition:: Example
+
+       src = "foo.mp4"
+
+       demuxer = spdl.io.Demuxer(src)
+       decoder = spdl.io.Decoder(demuxer.video_codec)
+       for packets in demuxer.streaming_demux_video(num_frames):
+           frames: VideoFrames | None = decoder.decode(packets)
+           ...
+
+        frames: VideoFrames | None = decoder.flush()
+
+    Args:
+        codec (AudioCodec, VideoCodec or ImageCodec):
+            The codec of the incoming packets.
+        filter_desc (str): *Optional:* See :py:func:`decode_packets`.
+        decode_config (DecodeConfig): *Optional:* See :py:func:`decode_packets`.
+
+    Returns:
+        Decoder instance.
+
+    """
+    log_api_usage_once("spdl.io.Decoder")
+
+    if filter_desc is not None:
+        filter_desc = _resolve_filter_graph(filter_desc, codec)
+
+    return _libspdl._make_decoder(
+        codec, filter_desc=filter_desc, decode_config=decode_config
+    )
+
+
+@overload
+def decode_packets(
+    packets: "AudioPackets",
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+    *,
+    num_frames: int = -1,
+) -> "AudioFrames": ...
+@overload
+def decode_packets(
+    packets: "VideoPackets",
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+    *,
+    num_frames: int = -1,
+) -> "VideoFrames": ...
+@overload
+def decode_packets(
+    packets: "ImagePackets",
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+    *,
+    num_frames: int = -1,
+) -> "ImageFrames": ...
+
+
+def decode_packets(
+    packets: "AudioPackets | VideoPackets | ImagePackets",
+    filter_desc: str | None = _FILTER_DESC_DEFAULT,
+    decode_config: "DecodeConfig | None" = None,
+    *,
+    num_frames: int = -1,
+) -> "AudioFrames | VideoFrames | ImageFrames":
+    """Decode packets.
+
+    Args:
+        packets (AudioPackets, VideoPackets or ImagePackets): Packets object.
+
+        filter_desc (str):
+            *Optional:* Custom filter applied after decoding.
+            To generate a description for common media processing operations,
+            use :py:func:`~spdl.io.get_filter_desc` (if you have a packets object
+            that has the timestamp set),
+            :py:func:`~spdl.io.get_audio_filter_desc`, or
+            :py:func:`~spdl.io.get_video_filter_desc`.
+            If ``None`` is provided, then filtering is disabled.
+
+            .. note::
+
+               When decoding image/video packets, by default color space conversion
+               is applied so that the output pixel format is rgb24.
+               If you want to obtain frames without color conversion, disable filter by
+               providing ``filter_desc=None``, or specify ``pix_fmt=None`` in
+               the filter desc factory function.
+
+        decode_config (DecodeConfig):
+            *Optional:* Custom decode config.
+            See :py:func:`~spdl.io.decode_config`,
+
+    Returns:
+        Frames object.
+
+    Note:
+        The decoder thread configuration can significantly affect video decoding
+        performance. By default, SPDL uses a single thread for decoding. You can
+        customize this via ``decode_config`` using
+        ``decoder_options={"threads": "X"}``, where ``X`` is the number of threads
+        (or ``"0"`` to let FFmpeg choose automatically).
+
+        The optimal configuration depends on your workload's characteristics.
+        For benchmarking different thread configurations, see
+        :doc:`./benchmark_video`.
+    """
+
+    if filter_desc is not None:
+        assert (codec := packets.codec) is not None
+        filter_desc = _resolve_filter_graph(
+            filter_desc, codec, getattr(packets, "timestamp", None)
+        )
+
+    return _libspdl.decode_packets(
+        packets,
+        filter_desc=filter_desc,
+        decode_config=decode_config,
+        num_frames=num_frames,
+    )
+
+
+def decode_packets_nvdec(
+    packets: "VideoPackets",
+    *,
+    device_config: "CUDAConfig",
+    pix_fmt: str = "rgb",
+    crop_left: int = 0,
+    crop_top: int = 0,
+    crop_right: int = 0,
+    crop_bottom: int = 0,
+    scale_width: int = -1,
+    scale_height: int = -1,
+) -> "CUDABuffer":
+    """**[Experimental]** Decode packets with NVDEC.
+
+    .. warning::
+
+       This API is exmperimental. The performance is not probed, and the specification
+       might change.
+
+    .. versionchanged:: 0.0.10
+
+       - The alpha channel was removed, and the supported format values were changed
+         from ``"rgba"`` and ``"bgra"`` to ``"rgb"`` and ``"bgr"``.
+
+       - ``width`` and ``height`` options were renamed to ``scale_width`` and
+         ``scale_height``.
+
+    .. note::
+
+       Unlike FFmpeg-based decoding, NVDEC returns GPU buffer directly.
+
+    .. seealso::
+
+       :py:class:`NvDecDecoder`: The underlying decoder implementation, which supports
+       incremental decoding.
+
+    Args:
+        packets: Packets object.
+
+        device_config: The device to use for decoding. See :py:func:`spdl.io.cuda_config`.
+
+        crop_left, crop_top, crop_right, crop_bottom (int):
+            *Optional:* Crop the given number of pixels from each side.
+
+        scale_width, scale_height (int): *Optional:* Resize the frame. Resizing is done after
+            cropping.
+
+        pix_fmt (str or `None`): *Optional:* Change the format of the pixel.
+            Supported value is ``"rgb"`` and ``"bgr"``. Default: ``"rgb"``.
+
+    Returns:
+        A CUDABuffer object.
+    """
+    log_api_usage_once("spdl.io.decode_packets_nvdec")
+
+    # Note
+    # FFmpeg's implementation applies BSF to all H264/HEVC formats,
+    #
+    # https://github.com/FFmpeg/FFmpeg/blob/5e2b0862eb1d408625232b37b7a2420403cd498f/libavcodec/cuviddec.c#L1185-L1191
+    #
+    # while NVidia SDK samples exclude those with the following substrings in
+    # long_name attribute
+    #
+    #  "QuickTime / MOV", "FLV (Flash Video)", "Matroska / WebM"
+    if (codec := packets.codec) is None:
+        raise ValueError(
+            "The packets must have codec. "
+            "The packets object does not have codec when streaming demuxing. "
+            "The `decode_packets_nvdec` function is for one-off decoding. "
+            "If you want to use NVDEC with streaming demuxing, instantiate "
+            "NvDecDecoder object manually."
+        )
+
+    assert codec is not None  # for type-checker
+    match codec.name:
+        case "h264":
+            packets = apply_bsf(packets, "h264_mp4toannexb")
+        case "hevc":
+            packets = apply_bsf(packets, "hevc_mp4toannexb")
+        case _:
+            pass
+
+    decoder = nvdec_decoder(
+        device_config,
+        packets.codec,
+        crop_left=crop_left,
+        crop_top=crop_top,
+        crop_right=crop_right,
+        crop_bottom=crop_bottom,
+        scale_width=scale_width,
+        scale_height=scale_height,
+    )
+    buffer = decoder.decode(packets)
+    buffer += decoder.flush()
+
+    match pix_fmt:
+        case "rgb":
+            buffer = _libspdl_cuda.nv12_to_planar_rgb(
+                buffer, device_config=device_config
+            )
+        case "bgr":
+            buffer = _libspdl_cuda.nv12_to_planar_bgr(
+                buffer, device_config=device_config
+            )
+
+    return buffer
+
+
+def decode_image_nvjpeg(
+    src: str | bytes | Sequence[bytes],
+    *,
+    device_config: "CUDAConfig | None" = None,
+    scale_width: int = -1,
+    scale_height: int = -1,
+    pix_fmt: str = "rgb",
+    _zero_clear: bool = False,
+) -> "CUDABuffer":
+    """**[Experimental]** Decode image with nvJPEG.
+
+    .. warning::
+
+       This API is exmperimental. The performance is not probed, and the specification
+       might change.
+
+    .. note::
+
+       Unlike FFmpeg-based decoding, nvJPEG returns GPU buffer directly.
+
+    Args:
+        src: File path to a JPEG image or data in bytes.
+        device_config: The CUDA device to use for decoding.
+
+        scale_width, scale_height (int): Resize image.
+        pix_fmt (str): *Optional* Output pixel format.
+            Supported values are ``"RGB"`` or ``"BGR"``.
+
+    Returns:
+        A CUDABuffer object. Shape is ``[C==3, H, W]``.
+    """
+    log_api_usage_once("spdl.io.decode_image_nvjpeg")
+
+    if device_config is None:
+        raise ValueError("device_config must be provided.")
+
+    if isinstance(src, str):
+        with open(src, "rb") as f:
+            data = f.read()
+    else:
+        data = src
+    return _libspdl_cuda.decode_image_nvjpeg(
+        data,
+        device_config=device_config,
+        scale_width=scale_width,
+        scale_height=scale_height,
+        pix_fmt=pix_fmt,
+        _zero_clear=_zero_clear,
+    )
+
+
+_THREAD_LOCAL = threading.local()
+_THREAD_LOCAL._decoder = None  # pyre-ignore[16]
+
+
+def _get_decoder() -> "NvDecDecoder":
+    if _THREAD_LOCAL._decoder is None:  # pyre-ignore[16]
+        _THREAD_LOCAL._decoder = _libspdl_cuda._nvdec_decoder()
+    return _THREAD_LOCAL._decoder
+
+
+def _del_cached_decoder() -> None:
+    if _THREAD_LOCAL._decoder is not None:  # pyre-ignore[16]
+        _THREAD_LOCAL._decoder = None
+
+
+def nvdec_decoder(
+    cuda_config: "CUDAConfig | None" = None,
+    codec: "VideoCodec | None" = None,
+    *,
+    use_cache: bool = True,
+    crop_left: int = 0,
+    crop_top: int = 0,
+    crop_right: int = 0,
+    crop_bottom: int = 0,
+    scale_width: int = -1,
+    scale_height: int = -1,
+) -> "NvDecDecoder":
+    """Instantiate an :py:class:`NvDecDecoder` object.
+
+    Args:
+        cuda_config: The device configuration. Specifies the GPU of which
+            video decoder chip is used, the CUDA memory allocator and
+            CUDA stream used to fetch the result from the decoder engine.
+            If not provided, the decoder will not be initialized.
+
+        codec: The information of the source video.
+            If not provided, the decoder will not be initialized.
+
+        use_cache: If ``True`` (default), the decoder instance cached in thread
+            local storage is used. Otherwise a new decoder instance is created.
+            Note: If crop parameters are provided, the decoder will always be
+            recreated regardless of this flag.
+
+        crop_left, crop_top, crop_right, crop_bottom (int):
+            *Optional:* Crop the given number of pixels from each side.
+
+        scale_width, scale_height (int): *Optional:* Resize the frame.
+            Resizing is applied after cropping.
+
+    .. versionchanged:: 0.1.7
+
+        Calling ``nvdec_decoder()`` without ``cuda_config`` and ``codec`` is
+        deprecated. Pass these parameters directly to initialize the decoder.
+        The old pattern of calling ``decoder.init()`` after ``nvdec_decoder()``
+        will be removed in a future version.
+    """
+    log_api_usage_once("spdl.io.NvDecDecoder")
+
+    # Force recreation if crop is provided, regardless of use_cache
+    crop_params = (crop_left, crop_top, crop_right, crop_bottom)
+    if any(param != 0 for param in crop_params):
+        use_cache = False
+
+    if use_cache:
+        decoder = _get_decoder()
+        decoder._reset()  # pyre-ignore[16]
+    else:
+        _del_cached_decoder()
+        decoder = _get_decoder()
+
+    if cuda_config is not None and codec is not None:
+        decoder.init(
+            cuda_config,
+            codec,
+            crop_left=crop_left,
+            crop_top=crop_top,
+            crop_right=crop_right,
+            crop_bottom=crop_bottom,
+            scale_width=scale_width,
+            scale_height=scale_height,
+        )
+
+    return decoder
+
+
+################################################################################
+# Frame conversion
+################################################################################
+
+
+def convert_frames(
+    frames: "AudioFrames | VideoFrames | ImageFrames | Sequence[AudioFrames] | Sequence[VideoFrames] | Sequence[ImageFrames]",
+    storage: "CPUStorage | None" = None,
+) -> "CPUBuffer":
+    """Convert the decoded frames to buffer.
+
+    Args:
+        frames: Frames objects.
+        storage (spdl.io.CPUStorage): Storage object. See :py:func:`spdl.io.cpu_storage`.
+
+    Returns:
+        A Buffer object.
+            The shape of the buffer object is
+
+            - ``AudioFrames`` -> ``[C, H]`` or ``[N, C]``.
+            - ``VideoFrames`` -> ``[N, C, H, W]`` or ``[N, H, W, C]``.
+            - ``ImageFrames`` -> ``[C, H, W]``.
+            - ``list[AudioFrames]`` -> ``[B, C, H]`` or ``[B, N, C]``.
+            - ``list[VideoFrames]`` -> ``[B, N, C, H, W]`` or ``[B, N, H, W, C]``.
+            - ``list[ImageFrames]`` -> ``[B, C, H, W]``.
+
+            where
+
+            - ``B``: batch
+            - ``C``: channel (color channel or audio channel)
+            - ``N``: frames
+            - ``W``: width
+            - ``H``: height
+    """
+    return _libspdl.convert_frames(frames, storage=storage)  # type: ignore[arg-type]
+
+
+def convert_array(
+    vals: "UintArray", storage: "CPUStorage | None" = None
+) -> "CPUBuffer":
+    """Convert the given array to buffer.
+
+    This function is intended to be used when sending class labels (which is
+    generated from list of integer) to GPU while overlapping the transfer with
+    kernel execution. See :py:func:`spdl.io.cpu_storage` for the detail.
+
+    Args:
+        vals: NumPy array with int64 dtype..
+        storage (spdl.io.CPUStorage): Storage object. See :py:func:`spdl.io.cpu_storage`.
+
+    Returns:
+        A Buffer object.
+    """
+    return _libspdl.convert_array(vals, storage=storage)
+
+
+def create_reference_audio_frame(
+    array: "UintArray", sample_fmt: str, sample_rate: int, pts: int
+) -> "AudioFrames":
+    """Create an AudioFrame object which refers to the given array/tensor.
+
+    This function should be used when the media data processed in Python should
+    be further processed by filter graph, and/or encoded.
+
+    .. note::
+
+       The resulting frame object references the memory region owned by the input
+       array and keeps a reference to the original array to prevent it from being
+       garbage collected. The original data will remain alive as long as the frame
+       object is alive.
+
+    Args:
+        array: 2D array or tensor.
+            The dtype and channel layout must match what is provided to
+            ``sample_fmt``.
+
+        sample_fmt: The format of sample. The valid values and corresponding data type is as follow.
+
+            - ``"u8"``, ``"u8p"`` : 8-bit unsigned integer.
+            - ``"s16"``, ``"s16p"`` : 16-bit signed integer.
+            - ``"s32"``, ``"s32p"`` : 32-bit signed integer.
+            - ``"s64"``, ``"s64p"`` : 64-bit signed integer.
+            - ``"flt"``, ``"fltp"`` : 32-bit floating-point.
+            - ``"dbl"``, ``"dblp"`` : 64-bit floating-point.
+
+            The suffix ``"p"`` means planar format (channel-first), the input array is
+            interpreted as ``(num_channels, num_frames)``.
+            Otherwise it is interpreted as packed format (channel-last), i.e.
+            ``(num_frames, num_channels)``.
+
+        sample_rate: The sample rate of the audio
+
+        pts: The time of the first sample, in the discrete time unit of sample rate.
+            Usually it is the number of samples previously processed.
+
+    Returns:
+       Frames object that references the memory region of the input data.
+    """
+    frame = _libspdl.create_reference_audio_frame(
+        array=array,
+        sample_fmt=sample_fmt,
+        sample_rate=sample_rate,
+        pts=pts,
+    )
+    frame._array_ref = array  # pyre-ignore[16]
+    return frame
+
+
+def create_reference_video_frame(
+    array: "UintArray", pix_fmt: str, frame_rate: tuple[int, int], pts: int
+) -> "VideoFrames":
+    """Create an VideoFrame object which refers to the given array/tensor.
+
+    This function should be used when the media data processed in Python should
+    be further processed by filter graph, and/or encoded.
+
+    .. note::
+
+       The resulting frame object references the memory region owned by the input
+       array and keeps a reference to the original array to prevent it from being
+       garbage collected. The original data will remain alive as long as the frame
+       object is alive.
+
+    Args:
+        array: 3D or 4D array or tensor.
+            The dtype and channel layout must match what is provided to
+            ``sample_fmt``.
+
+        pix_fmt: The image format. The valid values and corresponding shape is as follow.
+
+            - ``"rgb24"``, ``"bgr24"``: Interleaved RGB/BGR in shape of ``(N, H, W, C==3)``.
+            - ``"gray8"``, ``"gray16"``: Grayscale image of 8bit unsigned integer or
+              16 bit signed integer in shape of ``(N, H, W)``.
+            - ``"yuv444p"``: Planar YUV format in shape of ``(N, C==3, H, W)``.
+
+        frame_rate: The frame rate of the video expressed asfraction.
+            ``(numerator, denominator)``.
+
+        pts: The time of the first video frame, in the discrete time unit of frame rate.
+            Usually it is the number of frames previously processed.
+
+    Returns:
+       Frames object that references the memory region of the input data.
+    """
+    frame = _libspdl.create_reference_video_frame(
+        array=array,
+        pix_fmt=pix_fmt,
+        frame_rate=frame_rate,
+        pts=pts,
+    )
+    frame._array_ref = array  # pyre-ignore[16]
+    return frame
+
+
+################################################################################
+# Device data transfer
+################################################################################
+def transfer_buffer(
+    buffer: "CPUBuffer",
+    *,
+    device_config: "CUDAConfig",
+) -> "CUDABuffer":
+    """Move the given CPU buffer to CUDA device.
+
+    Args:
+        buffer: Source data.
+        device_config: Target CUDA device configuration.
+
+    Returns:
+        Buffer data on the target GPU device.
+    """
+    return _libspdl_cuda.transfer_buffer(buffer, device_config=device_config)
+
+
+def transfer_buffer_cpu(buffer: "CUDABuffer") -> "CPUBuffer":
+    """Move the given CUDA buffer to CPU.
+
+    Args:
+        buffer: Source data
+
+    Returns:
+        Buffer data on CPU.
+    """
+    return _libspdl_cuda.transfer_buffer_cpu(buffer)
+
+
+################################################################################
+# Color conversion
+################################################################################
+def nv12_to_rgb(
+    buffers: "list[CUDABuffer]",
+    *,
+    device_config: "CUDAConfig",
+    coeff: int = 1,
+    sync: bool = False,
+) -> "CUDABuffer":
+    """Given CUDA buffers of NV12 images, batch and convert them to (interleaved) RGB.
+
+    The pixel values are converted with the following formula;
+
+    .. code-block::
+
+       ┌ R ┐   ┌     ┐   ┌ Y - 16  ┐
+       │ G │ = │  M  │ * │ U - 128 │
+       └ B ┘   └     ┘   └ V - 128 ┘
+
+    The value of 3x3 matrix ``M`` can be changed with the argument ``coeff``.
+    By default, it uses BT709 conversion.
+
+    Args:
+        buffers: A list of buffers. The size of images must be same.
+            Since it's NV12 format, the expected input size is ``(H + H/2, W)``.
+        device_config: Secifies the target CUDA device, and stream to use.
+        coeff: Select the matrix coefficient used for color conversion.
+            The following values are supported.
+
+            - ``1``: BT709 (default)
+            - ``4``: FCC
+            - ``5``: BT470
+            - ``6``: BT601
+            - ``7``: SMPTE240M
+            - ``8``: YCgCo
+            - ``9``: BT2020
+            - ``10``: BT2020C
+
+            If other values are provided, they are silently mapped to ``1``.
+
+        sync: If True, the function waits for the completion after launching the kernel.
+
+    Returns:
+        A CUDA buffer object with the shape ``(batch, height, width, color=3)``.
+    """
+    ret = _libspdl_cuda.nv12_to_planar_rgb(
+        buffers,
+        device_config=device_config,
+        matrix_coeff=coeff,
+    )
+    if sync:
+        _libspdl_cuda.synchronize_stream(device_config)
+    return ret
+
+
+def nv12_to_bgr(
+    buffers: "list[CUDABuffer]",
+    *,
+    device_config: "CUDAConfig",
+    coeff: int = 1,
+    sync: bool = False,
+) -> "CUDABuffer":
+    """Same as :py:func:`nv12_to_rgb`, but the order of the color channel is BGR."""
+    ret = _libspdl_cuda.nv12_to_planar_bgr(
+        buffers,
+        device_config=device_config,
+        matrix_coeff=coeff,
+    )
+    if sync:
+        _libspdl_cuda.synchronize_stream(device_config)
+
+    return ret
+
+
+################################################################################
+# Encoding
+################################################################################
+class Muxer:
+    """Multiplexer that convines multiple packet streams. e.g. create a video
+
+    Args:
+        dst: The destination such as file path, pipe, URL (such as RTMP, UDP).
+        format: *Optional* Override the output format, or specify the output media device.
+            This argument serves two different use cases.
+
+            1) Override the output format.
+               This is useful when writing raw data or in a format different from the extension.
+
+            2) Specify the output device.
+               This allows to output media streams to hardware devices,
+               such as speaker and video screen.
+
+            .. note::
+
+               This option roughly corresponds to ``-f`` option of ``ffmpeg`` command.
+               Please refer to the ffmpeg documentations for possible values.
+
+               https://ffmpeg.org/ffmpeg-formats.html#Muxers
+
+               For device access, the available values vary based on hardware (AV device) and
+               software configuration (ffmpeg build).
+               Please refer to the ffmpeg documentations for possible values.
+
+               https://ffmpeg.org/ffmpeg-devices.html#Output-Devices
+    """
+
+    def __init__(self, dst: str | Path, /, *, format: str | None = None) -> None:
+        self._muxer: "_libspdl.Muxer" = _libspdl.muxer(str(dst), format=format)
+        self._open = False
+
+    @overload
+    def add_encode_stream(
+        self,
+        config: "AudioEncodeConfig",
+        *,
+        encoder: str | None = None,
+        encoder_config: dict[str, str] | None = None,
+    ) -> "AudioEncoder": ...
+
+    @overload
+    def add_encode_stream(
+        self,
+        config: "VideoEncodeConfig",
+        *,
+        encoder: str | None = None,
+        encoder_config: dict[str, str] | None = None,
+    ) -> "VideoEncoder": ...
+
+    def add_encode_stream(
+        self,
+        config: "AudioEncodeConfig | VideoEncodeConfig",
+        *,
+        encoder: str | None = None,
+        encoder_config: dict[str, str] | None = None,
+    ) -> "AudioEncoder | VideoEncoder":
+        """Add an output stream with encoding.
+
+        Use this method when you want to create a media from tensor/array.
+
+        Args:
+            config: Encoding (codec) configuration.
+                See the corresponding factory functions for the detail.
+                (:py:func:`audio_encode_config` and :py:func:`video_encode_config`)
+            encoder: Specify or override the encoder to use.
+                Use `ffmpeg -encoders` to list the available encoders.
+            encoder_config: Encoder-specific options.
+                Use `ffmpeg -h encoder=<ENCODER>` to list the available options.
+
+        Returns:
+            Encoder object which can be used to encode frames object into packets
+                object.
+        """
+        return self._muxer.add_encode_stream(
+            config=config,  # pyre-ingore[6]
+            encoder=encoder,
+            encoder_config=encoder_config,
+        )
+
+    @overload
+    def add_remux_stream(self, codec: "AudioCodec") -> None: ...
+
+    @overload
+    def add_remux_stream(self, codec: "VideoCodec") -> None: ...
+
+    def add_remux_stream(self, codec: "AudioCodec | VideoCodec") -> None:
+        """Add an output stream without encoding.
+
+        Use this method when you want to pass demuxed packets to output stream
+        without decoding.
+
+        Args:
+            codec: Codec parameters from the source.
+
+        .. admonition:: Example
+
+           demuxer = spdl.io.Demuxer("source_video.mp4")
+
+           muxer = spdl.io.Muxer("stripped_audio.aac")
+           muxer.add_remux_stream(demuxer.audio_codec)
+
+           with muxer.open():
+            for packets in demuxer.streaming_demux(num_packets=5):
+                muxer.write(0, packets)
+        """
+        self._muxer.add_remux_stream(codec)  # pyre-ignore[6]
+
+    def open(self, muxer_config: dict[str, str] | None = None) -> "Muxer":
+        """Open the muxer (output file) for writing.
+
+        Args:
+            Options spefici to devices and muxers.
+
+
+        .. admonition:: Example - Protocol option
+
+           muxer = spdl.io.Muxer("rtmp://localhost:1234/live/app", format="flv")
+           muxer.add_encode_stream(...)
+           # Passing protocol option `listen=1` makes Muxer act as RTMP server.
+           with muxer.open(muxer_config={"listen": "1"}):
+               muxer.write(0, video_packet)
+
+        .. admonition:: Example - Device option
+
+           muxer = spdl.io.Muxer("-", format="sdl")
+           muxer.add_encode_stream(...)
+           # Open SDL video player with fullscreen
+           with muxer.open(muxer_config={"window_fullscreen": "1"}):
+               muxer.write(0, video_packet)
+
+        """
+        self._muxer.open(muxer_config)
+        self._open = True
+        return self
+
+    def write(
+        self, stream_index: int, packets: "AudioPackets | VideoPackets | ImagePackets"
+    ) -> None:
+        """Write packets to muxer.
+
+        Args:
+            stream_index: The stream to write to.
+            packets: Audio/video/image data.
+        """
+        self._muxer.write(stream_index, packets)  # pyre-ignore[6]
+
+    def flush(self) -> None:
+        """Notify the muxer that all the streams are written.
+
+        This is automatically called when using `Muxer` as context manager.
+        """
+        self._muxer.flush()
+
+    def close(self) -> None:
+        """Close the resource.
+
+        This is automatically called when using `Muxer` as context manager.
+        """
+        self._muxer.close()
+
+    def __enter__(self) -> "Muxer":
+        """Context manager to automatically clean up the resources.
+
+        .. admobition::
+
+           muxer = spdl.io.Muxer("foo.mp4")
+
+           # ... configure the output stream
+
+           with muxer.open():
+
+                # ... write data
+        """
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        """Flush the internally buffered packets and close the open resource.
+
+        .. seealso::
+
+           - :py:meth:`~Muxer.__enter__`
+
+        """
+        self.flush()
+        self.close()
+
+
+Array = TypeVar("Array")
+
+
+def encode_image(
+    path: str,
+    data: Array,
+    pix_fmt: str = "rgb24",
+    *,
+    encode_config: "DecodeConfig | None" = None,
+) -> None:
+    """Save the given image array/tensor to file.
+
+    Args:
+        path: The path to which the data are written.
+
+        data (NumPy NDArray, PyTorch Tensor):
+            Image data in array format. The data  must be ``uint8`` type,
+            either on CPU or CUDA device.
+
+            The shape must be one of the following and must match the
+            value of ``pix_fmt``.
+
+            - ``(height, width, channel==3)`` when ``pix_fmt="rgb24"``
+            - ``(height, width)`` when ``pix_fmt=gray8``
+            - ``(channel==3, height, width)`` when ``pix_fmt="yuv444p"``
+
+        pix_fmt: See above.
+
+        encode_config (EncodeConfig): Customize the encoding.
+
+    Example - Save image as PNG with resizing
+
+        >>> import numpy as np
+        >>> import spdl.io
+        >>>
+        >>> data = np.random.randint(255, size=(32, 16, 3), dtype=np.uint8)
+        >>> img = spdl.io.encode_image(
+        ...     "foo.png",
+        ...     data,
+        ...     pix_fmt="rgb24",
+        ...     encode_config=spdl.io.encode_config(
+        ...         width=198,
+        ...         height=96,
+        ...         scale_algo="neighbor",
+        ...     ),
+        ... )
+        >>>
+
+    Example - Save CUDA tensor as image
+
+        >>> import torch
+        >>>
+        >>> data = torch.randint(255, size=(32, 16, 3), dtype=torch.uint8, device="cuda")
+        >>>
+        >>> def encode(data):
+        ...     buffer = spdl.io.transfer_buffer_cpu(data)
+        ...     return spdl.io.encode_image(
+        ...         "foo.png",
+        ...         buffer,
+        ...         pix_fmt="rgb24",
+        ...     )
+        ...
+        >>> encode(data)
+        >>>
+    """
+    return _libspdl.encode_image(
+        path, data, pix_fmt=pix_fmt, encode_config=encode_config
+    )
