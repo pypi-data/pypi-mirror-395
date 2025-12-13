@@ -1,0 +1,82 @@
+ # tigrigna-nlp
+
+**The first and best Tigrigna (ትግርኛ) NLP toolkit in the world**  
+Production-ready • 100% offline • Perfect Ge’ez support
+
+[![PyPI version](https://badge.fury.io/py/tigrigna-nlp.svg)](https://badge.fury.io/py/tigrigna-nlp)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+ 
+ 
+ ### Why this is the BEST Tigrigna tokenizer ever made
+
+| Problem in other tokenizers           | tigrigna-nlp solution                                   |
+|:--------------------------------------|:--------------------------------------------------------|
+| Merges words (ሰላምዓለም)               | Never merges — always separate                        |
+| Breaks Ge’ez punctuation               | Perfect spacing around ፡ ። ፣ ፤ ፥ ፧ ፨                 |
+| Shows `<unk>`, `</s>`, `▁` junk        | 100% clean, human-readable output                    |
+| Requires internet/GPU/server           | 100% offline — 2 MB file only                         |
+| Not trained on real Tigrigna           | Built on Meta’s NLLB-200 (trained on real Tigrigna)   |
+
+ 
+### Features
+
+- tokenize(text) → Clean list of tokens
+
+- normalize(text) → Standardizes variants (ሃ→ሀ, ሠ→ሰ, etc.)
+
+- get_tokenizer() → Raw Hugging Face tokenizer (advanced users)
+
+- Works on Windows, macOS, Linux, Android, Raspberry Pi
+
+- Zero internet required after installation
+
+##### Quick Start 
+pip install tigrigna-nlp
+
+from tigrigna_nlp import tokenize, normalize
+
+text = "እግዚአብሔር ይደልዎም።"
+
+tokens = tokenize(normalize(text))
+
+print(tokens)
+=> ['እግዚአብሔር', 'ይደልዎም', '።']
+ 
+### Use Cases
+- Training Tigrigna BERT / LLaMA / mT5
+- English ↔ Tigrigna machine translation
+- Named Entity Recognition (NER)
+- Speech-to-text preprocessing
+- Sentiment analysis & text classification
+- Tigrigna search engines
+
+### Citation
+@software{tigrigna-nlp-2025,
+  author       = {Haile},
+  title        = {tigrigna-nlp: The First Complete Tigrigna NLP Toolkit},
+  year         = 2025,
+  publisher    = {PyPI},
+  version      = {0.1.0},
+  url          = {https://github.com/haile21/tigrigna-nlp}
+}
+
+### Author
+Haile,
+Senior Software Developer
+- Email: hailishmit@gmail.com
+- GitHub: @haile21
+
+### Join the Movement
+Help us build the future of Tigrigna AI:
+- First Tigrigna BERT
+- First Tigrigna LLaMA
+- Speech recognition & TTS
+- Translation engine
+- NER & POS datasets
+
+GitHub: https://github.com/haile21/tigrigna-nlp
+
+PyPI: https://pypi.org/project/tigrigna-nlp
+
+Hugging Face: https://huggingface.co/tigrigna-nlp
