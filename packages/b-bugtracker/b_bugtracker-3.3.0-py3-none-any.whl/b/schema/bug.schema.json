@@ -1,0 +1,198 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "http://exsystems.net/schemas/bug.schema.json",
+    "title": "Bug report",
+    "description": "This schema specifies the format for YAML feature/bug reports.",
+    "type": "object",
+    "allOf": [
+        {
+            "properties": {
+                "schema": {
+                    "const": 1,
+                    "description": "Defines the version of the bug schema to assist with future migrations"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "open": {
+                    "type": "boolean"
+                },
+                "entered": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "author": {
+                    "type": "string",
+                    "description": "The person who submitted the bug/feature.\n\nFormat is \"Name <email.address@example.com>\".",
+                    "pattern": "^[a-zA-Z0-9._\\-\\s]+<?[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*>$"
+                },
+                "owner": {
+                    "type": "string",
+                    "description": "The person currently responsible for the bug/feature.\n\nFormat is \"Name <email.address@example.com>\".",
+                    "pattern": "^[a-zA-Z0-9._\\-\\s]+<?[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*>$"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Suggestions are \"Feature\" or \"Bug\" which each bring additional fields, however, you can use any other type(s) you may need.",
+                    "examples": [
+                        "Bug",
+                        "Feature",
+                        "Chore"
+                    ]
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": [
+                        "Urgent",
+                        "Important",
+                        "Minor",
+                        "Trivial"
+                    ]
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Path(s) to files/modules/etc. that require modification for this bug/feature."
+                },
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "author": {
+                                "type": "string",
+                                "description": "The name of the commenter.\n\nFormat is \"Name <email.address@example.com>\".",
+                                "pattern": "^[a-zA-Z0-9._\\-\\s]+<?[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*>$"
+                            },
+                            "date": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "author",
+                            "date",
+                            "text"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "title",
+                "open",
+                "entered",
+                "author",
+                "type"
+            ]
+        },
+        {
+            "if": {
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            { "const": "Feature" },
+                            { "const": "Chore" }
+                        ]
+                    }
+                },
+                "required": [ "type" ]
+            },
+            "then": {
+                "description": "Properties common among features and chores",
+                "properties": {
+                    "what": {
+                        "type": "string",
+                        "description": "Explain the request in detail."
+                    },
+                    "why": {
+                        "type": "string",
+                        "description": "Explain why this feature would be a good addition.  What problem would it solve?."
+                    },
+                    "how": {
+                        "type": "string",
+                        "description": "Any details or nuances that you know about?"
+                    }
+                },
+                "required": [
+                    "what"
+                ]
+            }
+        },
+        {
+            "if": {
+                "properties": { "type": { "const": "Bug" } },
+                "required": [ "type" ]
+            },
+            "then": {
+                "description": "Bug specific properties",
+                "properties": {
+                    "details": {
+                        "type": "string",
+                        "description": "Details about the bug/chore."
+                    },
+                    "reproduce": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Steps needed to reproduce the issue."
+                    },
+                    "expected": {
+                        "type": "string",
+                        "description": "What you expected to happen."
+                    },
+                    "actual": {
+                        "type": "string",
+                        "description": "What actually happened."
+                    },
+                    "stacktrace": {
+                        "type": "string",
+                        "description": "Traceback or other relevant information from the error message."
+                    },
+                    "environment": {
+                        "type": "string",
+                        "description": "Anything worth noting about your setup?  Hardware?  OS?  Versions?"
+                    },
+                    "problem": {
+                        "type": "string",
+                        "description": "A summary of the thing that is leading to the actual behavior."
+                    },
+                    "fix": {
+                        "type": "string",
+                        "description": "What needs to change to get to the expected behavior."
+                    }
+                },
+                "required": [
+                    "details",
+                    "reproduce",
+                    "expected",
+                    "actual"
+                ]
+            }
+        },
+        {
+            "if": {
+                "properties": { "type": { "const": "Feature" } },
+                "required": [ "type" ]
+            },
+            "then": {
+                "description": "Properties specific to features",
+                "properties": {
+                    "accepted": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "what",
+                    "why"
+                ]
+            }
+        }
+    ]
+}
