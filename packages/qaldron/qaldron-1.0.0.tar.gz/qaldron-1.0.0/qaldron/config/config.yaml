@@ -1,0 +1,79 @@
+# QALDRON Configuration File
+
+# Layer 1: Quantum Hashing Configuration
+layer1:
+  # Number of qubits in quantum circuit (higher = more secure, slower)
+  n_qubits: 12
+  
+  # Number of circuit layers (higher = better diffusion)
+  layers: 4
+  
+  # Authentication key - CHANGE THIS IN PRODUCTION!
+  # This is the master secret for your QALDRON instance
+  authentication_key: "OrthogonalKey_2025_CHANGE_ME"
+
+# Layer 2: Communication Configuration
+layer2:
+  # Entropy rotation interval in seconds
+  entropy_rotation_interval: 300  # 5 minutes
+  
+  # Message timeout in seconds
+  message_timeout: 60
+  
+  # Maximum message size in bytes
+  max_message_size: 1048576  # 1 MB
+  
+  # Enable encryption by default
+  default_encryption: true
+
+# API Server Configuration
+api:
+  host: "0.0.0.0"
+  port: 8080
+  
+  # Enable HTTPS (requires certificates)
+  enable_https: false
+  
+  # SSL certificate paths (if HTTPS enabled)
+  ssl_cert_path: "/etc/qaldron/certs/cert.pem"
+  ssl_key_path: "/etc/qaldron/certs/key.pem"
+  
+  # CORS settings
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+  
+  # Rate limiting
+  rate_limit_enabled: true
+  rate_limit_requests: 100
+  rate_limit_window: 60  # seconds
+
+# Database Configuration (Layer 3 - for future)
+database:
+  type: "postgresql"  # or "sqlite" for development
+  host: "localhost"
+  port: 5432
+  name: "qaldron"
+  user: "qaldron_user"
+  password: "CHANGE_ME_IN_PRODUCTION"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "json"  # or "text"
+  output: "both"  # console, file, or both
+  file_path: "/var/log/qaldron/qaldron.log"
+
+# Security Settings
+security:
+  # Reject messages older than this (seconds)
+  max_message_age: 300
+  
+  # Enable replay attack protection
+  replay_protection: true
+  
+  # Replay protection cache size
+  replay_cache_size: 10000
+  
+  # Require signature verification
+  require_signatures: true

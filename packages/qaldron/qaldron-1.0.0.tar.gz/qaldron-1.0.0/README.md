@@ -1,0 +1,151 @@
+# QALDRON - Quantum-Assisted Ledger for Distributed Autonomous Networks
+
+**Military-grade security system for autonomous AI agents using quantum-inspired cryptography.**
+
+[![PyPI version](https://badge.fury.io/py/qaldron.svg)](https://badge.fury.io/py/qaldron)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## 🚀 Quick Start
+
+```bash
+# Install from PyPI
+pip install qaldron
+
+# Get your API key
+# Visit: https://qaldron.onrender.com/client
+```
+
+```python
+from qaldron.sdk import AgentClient
+
+# Initialize with your API key
+agent = AgentClient(
+    agent_id="my_trading_bot",
+    api_key="sk-free-YOUR_API_KEY_HERE"  # Get from qaldron.onrender.com
+)
+
+# Send secure messages
+agent.send("other_agent", {
+    "action": "transfer",
+    "amount": 1000,
+    "currency": "USD"
+})
+
+# Receive messages
+messages = agent.receive()
+for msg in messages:
+    print(f"From {msg['sender_id']}: {msg['payload']}")
+```
+
+## ✨ Features
+
+- **🔐 Quantum-Inspired Security:** Military-grade cryptographic hashing
+- **🔑 API Key Authentication:** Centralized control and validation
+- **🔄 Auto-Encryption:** Automatic message encryption/decryption
+- **✍️ Digital Signatures:** Tamper-evident communication
+- **🛡️ Replay Protection:** Time-based entropy stamps prevent replay attacks
+- **📦 Simple API:** Just 3 lines of code to get started
+- **🌐 Production-Ready:** Deployed on Render.com with PostgreSQL
+
+## 📚 Documentation
+
+- **Get API Key:** https://qaldron.onrender.com/client
+- **Admin Portal:** https://qaldron.onrender.com/admin
+- **API Docs:** Coming soon
+- **GitHub:** https://github.com/GENORROW/QALDRON
+
+## 🔑 Getting an API Key
+
+1. Visit [https://qaldron.onrender.com/client](https://qaldron.onrender.com/client)
+2. Sign up with your email
+3. Request an API key (Free tier: 1,000 messages/month)
+4. Wait for admin approval
+5. Use your key in the SDK!
+
+## 💡 Use Cases
+
+- **Autonomous AI Agents:** Secure communication between trading bots, monitoring agents, etc.
+- **Distributed Systems:** Tamper-evident messaging for microservices
+- **Blockchain Integration:** Secure off-chain communication
+- **Multi-Agent Systems:** Coordinated robot swarms, game AI, etc.
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐
+│   Your Agent    │
+│  (Uses SDK)     │
+└────────┬────────┘
+         │ Validates API Key
+         ↓
+┌─────────────────┐
+│ QALDRON Server  │
+│ (Render.com)    │
+│  PostgreSQL DB  │
+└─────────────────┘
+```
+
+## 📦 What's Included
+
+- **Layer 1:** Quantum-inspired hash function (MARK-BLU)
+- **Layer 2:** Encryption, entropy management, secure messaging
+- **SDK:** Simple AgentClient API
+- **Server:** API key validation + management dashboards
+
+## 🔒 Security Features
+
+- **Quantum-Resistant Hashing:** Custom MARK-BLU algorithm
+- **AES-256-GCM Encryption:** Military-grade encryption
+- **HMAC Signatures:** Message authentication
+- **Entropy Rotation:** Time-based security enhancement
+- **API Key Hashing:** Never stores plain keys
+- **PostgreSQL:** Persistent, secure storage
+
+## 🌟 Tiers
+
+| Tier | Monthly Messages | Price |
+|------|------------------|-------|
+| **Free** | 1,000 | $0 |
+| **Startup** | 10,000 | $10 |
+| **Business** | 100,000 | $50 |
+| **Enterprise** | Unlimited | Custom |
+
+## 🛠️ Development
+
+```bash
+# Clone repository
+git clone https://github.com/GENORROW/QALDRON
+cd QALDRON
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest tests/
+
+# Run local server
+cd server
+python app.py
+```
+
+## 📝 License
+
+MIT License - see LICENSE file for details
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or PR.
+
+## 📧 Contact
+
+- **Get Support:** https://qaldron.onrender.com/client
+- **Report Issues:** https://github.com/GENORROW/QALDRON/issues
+
+## ⭐ Star Us!
+
+If you find QALDRON useful, please star the repo on GitHub!
+
+---
+
+**Built with ❤️ by the QALDRON Team**
