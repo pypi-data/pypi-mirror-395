@@ -1,0 +1,73 @@
+Metadata-Version: 2.1
+Name: pyxyz24
+Version: 1.0.27
+Author: Nikolai Krivoshchapov
+Platform: Linux
+Requires-Python: >= 3.9.0
+Summary: PyXYZ – A Python Library for Conformer Ensemble Manipulation
+Project-URL: Gitlab home page, https://gitlab.com/knvvv/pyxyz
+Project-URL: Docs, https://knvvv.gitlab.io/pyxyz
+Description-Content-Type: text/markdown
+
+# PyXYZ - A Python Library for Conformer Ensemble Manipulation
+
+`pyxyz` is a Python library written in C++ using Pybind11. This library provides several operations that can be performed on an ensemble of molecular conformations stored in the XYZ format. Typically, programs for conformational search provide results in the form of XYZ files, which need to be converted to input files for subsequent quantum chemical optimization. Before doing this, one might want to perform the following operations before generating the input files:
+
+- Discard conformations with excessively high energy
+- Remove duplicates
+- Check for the preservation of geometry constraints and discard structures where they are violated
+- Analyze the ensemble and identify weak interactions (hydrogen bonds, etc.) that can form in the molecule. The identified contacts can be included in additional runs of the conformational search with constraints to better explore the possibilities of these interactions.
+
+One of the biggest strengths of the `pyxyz` library is its ability to accurately compute the RMSD by considering all molecular graph automorphisms. This means that the calculation takes into account the equivalence of atoms, allowing for a more precise measurement of geometry similarity. For each identified automorphism, the library utilizes the Kabsch algorithm to compute RMSD. With `pyxyz`, you can trust that your RMSD calculations are taking into account all relevant information for a more accurate result.
+
+The `pyxyz` library allows solving these problems in a few lines of Python code. This library is also useful for analyzing XYZ files obtained from various molecular simulations, such as optimizations, scans, IRC, etc. Here is a basic example of how to use `pyxyz`:
+
+
+```bash
+pip install --upgrade pyxyz24
+```
+
+```python
+from pyxyz import Confpool, KC2H, smallest_rmsd_pair
+
+p = Confpool()
+p.include_from_file("initial_set.xyz")
+print(f"Initial number of conformers = {p.size}")
+
+n_del = 0
+p["Energy"] = lambda m: float(m.descr.strip())
+p.sort("Energy")
+n_del += p.upper_cutoff("Energy", 10.0 * KC2H)
+p.generate_connectivity(0, mult=1.3, ignore_elements=[], sdf_name='connectivity_check.sdf')
+niso = p.generate_isomorphisms()
+print(f"Number of isomorphisms = {niso}")
+
+rmsd_status = p.rmsd_filter(0.2, energy_threshold=1.0 * KC2H, energy_key='Energy', mirror_match=True, print_status=False)
+n_del += rmsd_status['DelCount']
+print(f"{n_del} conformers were filtered in total")
+
+min_rmsd, min_pair = smallest_rmsd_pair(p.get_rmsd_matrix())
+newp = Confpool()
+newp.include_subset(p, min_pair)
+newp.save_xyz("rmsd_test.xyz")
+print(f"The minimal accepted rmsd was {min_rmsd}")
+print(f"Number of conformers after filtering = {p.size}")
+p.save_xyz('full_set.xyz')
+```
+
+The library also provides functionality for analyzing geometric features of the conformations.
+
+
+## Documentation
+
+[![pipeline status](https://gitlab.com/knvvv/pyxyz/badges/master/pipeline.svg)](https://gitlab.com/knvvv/pyxyz/-/commits/master)
+
+Available [here](https://knvvv.gitlab.io/pyxyz)
+
+
+## Links
+
+[Gitlab home page](https://gitlab.com/knvvv/pyxyz)
+
+[PyPi page](https://pypi.org/project/pyxyz24)
+
