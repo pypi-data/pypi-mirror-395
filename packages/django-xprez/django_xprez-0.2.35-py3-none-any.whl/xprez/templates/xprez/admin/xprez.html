@@ -1,0 +1,28 @@
+{% load i18n %}
+{% load xprez_admin %}
+
+<div class="xprez {{ form.xprez_admin.xprez_ui_css_class }} js-xprez">
+    <div class="xprez-top">
+        <span class="xprez-option-btn js-collapse_all">Collapse all</span>
+        <span
+            class="xprez-option-btn js-xprez-clipboard-copy-all xprez-clipboard-copy"
+            data-url="{% url form.xprez_admin.xprez_clipboard_copy_url_name form.xprez_admin.CLIPBOARD_CONTAINER_KEY form.instance.pk %}"
+        >
+            <span class="xprez-inline-success-message">{% include "xprez/admin/icons/checkmark.html" %} Copied</span>
+            <span class="default">Copy all</span>
+        </span>
+    </div>
+    <div class="js-xprez-contents-container">
+        {% for content in form.xprez_contents %}
+            {% xprez_content_render_admin content %}
+        {% endfor %}
+    </div>
+    {% with allowed_contents=form.xprez_get_allowed_contents %}
+        {% if allowed_contents %}
+            <div class="js-xprez-add xprez-add-after">
+                <h2>+ Add new piece of content +</h2>
+                {% include "./includes/add_list.html" with xprez_admin=form.xprez_admin container=form.instance %}
+            </div>
+        {% endif %}
+    {% endwith %}
+</div>
