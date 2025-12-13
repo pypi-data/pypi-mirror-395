@@ -1,0 +1,124 @@
+Metadata-Version: 2.4
+Name: streamlit-chat-input-fileupload
+Version: 0.6.17
+Summary: Streamlit custom component that offers chat input box for messages - with files upload widget
+Author-email: Stellars Henson <konrad.jelen@gmail.com>
+License-Expression: MIT
+Classifier: Programming Language :: Python :: 3
+Requires-Python: ~=3.12.0
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: boto3
+Requires-Dist: python-dotenv
+Requires-Dist: streamlit
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: ipykernel; extra == "dev"
+Requires-Dist: ipython; extra == "dev"
+Requires-Dist: nbdime; extra == "dev"
+Requires-Dist: pip; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: toml; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Dynamic: license-file
+
+# streamlit-chat-input-fileupload
+
+[![GitHub Actions](https://github.com/stellarshenson/streamlit_chat_input_fileupload/actions/workflows/ci.yml/badge.svg)](https://github.com/stellarshenson/streamlit_chat_input_fileupload/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/streamlit-chat-input-fileupload.svg)](https://pypi.org/project/streamlit-chat-input-fileupload/)
+[![Total PyPI downloads](https://static.pepy.tech/badge/streamlit-chat-input-fileupload)](https://pepy.tech/project/streamlit-chat-input-fileupload)
+[![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
+[![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat)](https://www.paypal.com/donate/?hosted_button_id=B4KPBJDLLXTSA)
+
+A Streamlit custom component that extends the standard `st.chat_input` with file upload capability. Drop-in replacement for building chat interfaces that need document and image attachments.
+
+![Attaching a file to the chat input](.resources/screenshot-chat1.png)
+
+![LLM consuming the message with attached file](.resources/screenshot-chat2.png)
+
+## Features
+
+- Combined text input and file upload in a single component
+- Paperclip button for file selection with filename indicator
+- Supports images (PNG, JPG, GIF, WebP) and documents (PDF, CSV, TXT, XLSX, DOCX, MD, HTML)
+- Auto-detects light/dark theme from Streamlit's settings
+- Returns message text and file data (as bytes) in a single dict
+- Built with Streamlit Components v2 API
+
+## Installation
+
+```bash
+pip install streamlit-chat-input-fileupload
+```
+
+## Usage
+
+```python
+import streamlit as st
+from streamlit_chat_input_fileupload import chat_input_with_upload
+
+user_input = chat_input_with_upload(placeholder="Send a message...")
+
+if user_input:
+    st.write(f"Message: {user_input['text']}")
+
+    if user_input["file"]:
+        st.write(f"File: {user_input['file']['name']}")
+        # user_input["file"]["data"] contains raw bytes
+```
+
+## API
+
+### chat_input_with_upload()
+
+```python
+chat_input_with_upload(
+    placeholder="Send a message...",  # Input placeholder text
+    disabled=False,                   # Disable the input
+    key=None,                         # Unique component key
+)
+```
+
+**Returns** `None` or `dict`:
+- `text` (str): Message text
+- `file` (dict or None): `{name, type, size, data}` where `data` is bytes
+
+### Sending Files to User
+
+Use Streamlit's built-in `st.download_button` to send files back to the user:
+
+```python
+import streamlit as st
+
+# Text file
+st.download_button(
+    label="Download Report",
+    data="Report content here",
+    file_name="report.txt",
+    mime="text/plain",
+)
+
+# Binary file (e.g., generated image, PDF)
+st.download_button(
+    label="Download Image",
+    data=image_bytes,
+    file_name="output.png",
+    mime="image/png",
+)
+
+# CSV data
+import pandas as pd
+df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+st.download_button(
+    label="Download CSV",
+    data=df.to_csv(index=False),
+    file_name="data.csv",
+    mime="text/csv",
+)
+```
+
+## License
+
+MIT
