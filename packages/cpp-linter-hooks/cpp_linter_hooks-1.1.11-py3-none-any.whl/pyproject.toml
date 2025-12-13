@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = ">=3.9"
+name = "cpp_linter_hooks"
+description = "Automatically formats and lints C/C++ code using clang-format and clang-tidy"
+readme = "README.md"
+keywords = ["clang", "clang-format", "clang-tidy", "pre-commit", "pre-commit-hooks"]
+license = "MIT"
+authors = [
+    { name = "Xianpeng Shen", email = "xianpeng.shen@gmail.com" },
+]
+classifiers = [
+    # https://pypi.org/pypi?%3Aaction=list_classifiers
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+    "pip>=20.3", # Required to install clang-format and clang-tidy
+    "tomli>=1.1.0; python_version < '3.11'",
+    "setuptools>=45.0.0", # Required for pkg_resources in clang-tidy
+    "clang-format==21.1.7",
+    "clang-tidy==21.1.6",
+]
+dynamic = ["version"]
+
+[project.scripts]
+clang-format-hook = "cpp_linter_hooks.clang_format:main"
+clang-tidy-hook = "cpp_linter_hooks.clang_tidy:main"
+
+[project.urls]
+source =  "https://github.com/cpp-linter/cpp-linter-hooks"
+tracker = "https://github.com/cpp-linter/cpp-linter-hooks/issues"
+
+[dependency-groups]
+dev = [
+    "coverage",
+    "pre-commit",
+    "pytest",
+    "pytest-codspeed",
+]
+
+[tool.setuptools]
+zip-safe = false
+packages = ["cpp_linter_hooks"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+cpp_linter_hooks = ["../pyproject.toml"]
+
+[tool.setuptools_scm]
+# It would be nice to include the commit hash in the version, but that
+# can't be done in a PEP 440-compatible way.
+version_scheme= "no-guess-dev"
+# Test PyPI does not support local versions.
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+
+[tool.mypy]
+show_error_codes = true
+show_column_numbers = true
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "__name__",
+    "FileNotFoundError"
+]
