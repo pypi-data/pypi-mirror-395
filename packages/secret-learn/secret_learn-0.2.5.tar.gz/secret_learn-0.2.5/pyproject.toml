@@ -1,0 +1,127 @@
+[project]
+name = "secret-learn"
+version = "0.2.5"
+description = "Privacy-preserving machine learning with SecretFlow - 573 implementations (191 algorithms × 3 modes: FL/SS/SL) with JAX acceleration"
+readme = "README.md"
+authors = [
+    {name = "Chen Xingqiang", email="joy6677@outlook.com"},
+]
+maintainers = [
+    {name = "Secret-Learn developers", email="joy6677@outlook.com"},
+]
+dependencies = [
+  "numpy>=1.22.0,<3.0",
+  "scipy>=1.8.0",
+  "joblib>=1.2.0",
+  "threadpoolctl>=3.1.0",
+  "jax>=0.4.20",
+  "jaxlib>=0.4.20",
+  "jax-sklearn>=0.1.5",
+  "secretflow>=1.0.0",
+]
+requires-python = ">=3.10,<3.12"
+license = {text = "BSD-3-Clause"}
+classifiers=[
+  "License :: OSI Approved :: BSD License",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Software Development",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Security :: Cryptography",
+  "Development Status :: 5 - Production/Stable",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Operating System :: MacOS",
+]
+
+[project.urls]
+homepage = "https://github.com/chenxingqiang/Secret-Learn"
+source = "https://github.com/chenxingqiang/Secret-Learn"
+download = "https://pypi.org/project/Secret-Learn/#files"
+tracker = "https://github.com/chenxingqiang/Secret-Learn/issues"
+documentation = "https://github.com/chenxingqiang/Secret-Learn#readme"
+"JAX-sklearn" = "https://github.com/chenxingqiang/jax-sklearn"
+"SecretFlow" = "https://github.com/secretflow/secretflow"
+
+[project.optional-dependencies]
+all = [
+    "jax-sklearn>=0.1.5",
+    "secretflow>=1.0.0",
+]
+jax-sklearn = ["jax-sklearn>=0.1.5"]
+secretflow = ["secretflow>=1.0.0"]
+jax-cpu = ["jax[cpu]>=0.4.20"]
+jax-cuda12 = ["jax[cuda12]>=0.4.20"]
+jax-tpu = ["jax[tpu]>=0.4.20"]
+benchmark = [
+    "matplotlib>=3.5.0",
+    "pandas>=1.4.0",
+    "memory_profiler>=0.57.0"
+]
+examples = [
+    "matplotlib>=3.5.0",
+    "scikit-image>=0.19.0",
+    "pandas>=1.4.0",
+    "seaborn>=0.9.0",
+    "pooch>=1.6.0",
+    "plotly>=5.14.0",
+]
+tests = [
+    "pytest>=7.1.2",
+    "pytest-cov>=2.9.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = {find = {where = ["."], include = ["secretlearn*"]}}
+
+[tool.setuptools.package-data]
+secretlearn = ["**/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--disable-pytest-warnings",
+    "--color=yes",
+    "--verbose",
+]
+
+[tool.ruff]
+line-length = 88
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".vscode",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E731",  # do not assign a lambda expression, use a def
+    "E741",  # do not use variables named 'l', 'O', or 'I'
+    "E721",  # use isinstance() for type comparisons
+    "F841",  # local variable assigned but never used
+]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["E402"]  # imports not at top
+"tests/*" = ["E402"]
+"benchmarks/*" = ["E402"]
