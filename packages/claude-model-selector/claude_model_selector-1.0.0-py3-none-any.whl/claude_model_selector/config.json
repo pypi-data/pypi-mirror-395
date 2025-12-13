@@ -1,0 +1,142 @@
+{
+  "version": "1.0",
+  "description": "Configuration for Claude Model Selector",
+
+  "thresholds": {
+    "haiku_max": 30,
+    "sonnet_min": 31,
+    "sonnet_max": 70,
+    "opus_min": 71
+  },
+
+  "default_model": "sonnet",
+  "cost_optimization": true,
+
+  "complexity_adjustments": {
+    "keywords": {
+      "haiku_indicators": {
+        "words": ["simple", "quick", "basic", "straightforward", "easy", "just", "only"],
+        "weight": -20,
+        "description": "Simple task indicators reduce complexity"
+      },
+      "sonnet_indicators": {
+        "words": ["analyze", "review", "implement", "create", "develop", "standard"],
+        "weight": 0,
+        "description": "Standard task indicators (neutral)"
+      },
+      "opus_indicators": {
+        "words": ["plan", "design", "architect", "strategy", "complex", "critical", "comprehensive"],
+        "weight": 30,
+        "description": "Complex task indicators increase complexity"
+      }
+    },
+
+    "patterns": {
+      "planning_tasks": {
+        "regex_patterns": ["\\bplan\\b", "\\bdesign\\b", "\\barchitect", "\\bstrateg", "\\broadmap\\b"],
+        "weight": 40,
+        "description": "Planning and design tasks"
+      },
+      "complex_coding": {
+        "regex_patterns": ["\\bmulti[- ]step\\b", "\\bcomplex\\s+\\w+\\s+system\\b", "\\brefactor\\s+entire\\b"],
+        "weight": 35,
+        "description": "Complex coding tasks"
+      },
+      "research_analysis": {
+        "regex_patterns": ["\\bresearch\\b", "\\binvestigat\\b", "\\bcomprehensive\\b"],
+        "weight": 30,
+        "description": "Research and deep analysis"
+      },
+      "decision_making": {
+        "regex_patterns": ["\\btrade[- ]off\\b", "\\bcompare\\s+\\w+\\s+approach", "\\bevaluate\\s+option"],
+        "weight": 25,
+        "description": "Decision making and evaluation"
+      },
+      "simple_operations": {
+        "regex_patterns": ["\\blist\\s+\\w+\\b", "\\bcount\\s+\\w+\\b", "\\bextract\\s+\\w+\\b"],
+        "weight": -30,
+        "description": "Simple operations and listings"
+      }
+    },
+
+    "length_factors": {
+      "very_short": {
+        "max_words": 10,
+        "adjustment": -10,
+        "description": "Very short tasks are usually simple"
+      },
+      "medium": {
+        "min_words": 50,
+        "max_words": 100,
+        "adjustment": 10,
+        "description": "Medium-length tasks have moderate complexity"
+      },
+      "long": {
+        "min_words": 100,
+        "adjustment": 15,
+        "description": "Long descriptions often indicate complexity"
+      }
+    },
+
+    "context_weight": {
+      "enabled": true,
+      "max_bonus": 15,
+      "words_per_point": 20,
+      "description": "Additional context increases complexity"
+    }
+  },
+
+  "model_preferences": {
+    "prefer_lower_cost": true,
+    "confidence_threshold": 0.7,
+    "upgrade_on_low_confidence": false
+  },
+
+  "examples": {
+    "haiku_tasks": [
+      "List all Python files in the directory",
+      "Count the number of functions in the file",
+      "Extract email addresses from text",
+      "Convert JSON to CSV",
+      "Format code with black",
+      "Check if file exists",
+      "Quick bug fix in function"
+    ],
+    "sonnet_tasks": [
+      "Analyze the code for potential bugs",
+      "Review pull request and suggest improvements",
+      "Implement a new feature for user authentication",
+      "Create tests for the payment module",
+      "Refactor the database layer for better performance",
+      "Generate API documentation",
+      "Build a CLI tool for data processing"
+    ],
+    "opus_tasks": [
+      "Design a scalable microservices architecture",
+      "Plan a comprehensive migration strategy from monolith to microservices",
+      "Research and compare different database solutions for high-traffic application",
+      "Create a detailed technical specification for the new platform",
+      "Evaluate trade-offs between different caching strategies",
+      "Architect a multi-region deployment strategy",
+      "Develop a comprehensive security audit plan"
+    ]
+  },
+
+  "custom_rules": {
+    "force_opus_keywords": ["critical", "production", "security audit", "architecture"],
+    "force_haiku_keywords": ["trivial", "one-liner", "syntax fix"],
+    "project_specific": {
+      "video_processing": {
+        "keywords": ["pipeline", "orchestrator", "clip"],
+        "base_complexity": 60,
+        "description": "Video processing tasks are moderately complex"
+      }
+    }
+  },
+
+  "cost_tracking": {
+    "enabled": true,
+    "warn_threshold_usd": 1.0,
+    "log_file": "logs/model_selector_costs.json"
+  }
+}
