@@ -1,0 +1,107 @@
+Metadata-Version: 2.4
+Name: lazy-locker
+Version: 0.0.7
+Summary: Python SDK for lazy-locker - A secure local secrets manager
+Project-URL: Homepage, https://github.com/WillIsback/lazy-locker
+Project-URL: Documentation, https://github.com/WillIsback/lazy-locker#readme
+Project-URL: Repository, https://github.com/WillIsback/lazy-locker
+Author-email: William Derue <william.derue@gmail.com>
+License-Expression: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+
+# lazy-locker SDK for Python
+
+SDK Python pour [lazy-locker](https://github.com/lazy-locker/lazy-locker) - Gestionnaire de secrets sécurisé.
+
+## Installation
+
+```bash
+pip install lazy-locker
+# ou
+uv add lazy-locker
+```
+
+## Prérequis
+
+L'agent lazy-locker doit être démarré :
+
+```bash
+lazy-locker  # Entrez votre passphrase dans le TUI
+```
+
+L'agent reste actif pendant 8 heures.
+
+## Usage
+
+### Injection automatique
+
+```python
+from lazy_locker import inject_secrets
+import os
+
+# Injecte tous les secrets dans os.environ
+inject_secrets()
+
+# Utilisez vos secrets normalement
+api_key = os.environ["MY_API_KEY"]
+```
+
+### Récupération manuelle
+
+```python
+from lazy_locker import get_secrets, get_secret
+
+# Tous les secrets
+secrets = get_secrets()
+print(secrets)  # {"MY_API_KEY": "xxx", "DB_PASSWORD": "yyy"}
+
+# Un secret spécifique
+api_key = get_secret("MY_API_KEY")
+```
+
+### Vérification de l'agent
+
+```python
+from lazy_locker import is_agent_running, status
+
+if is_agent_running():
+    info = status()
+    print(f"Agent actif, TTL restant: {info['ttl_remaining_secs']}s")
+else:
+    print("Lancez lazy-locker pour démarrer l'agent")
+```
+
+## Comparaison avec python-dotenv
+
+| Feature | python-dotenv | lazy-locker |
+|---------|---------------|-------------|
+| Secrets en clair sur disque | ✅ Oui (.env) | ❌ Non (chiffré) |
+| Versioning sécurisé | ❌ Non | ✅ Oui |
+| Expiration des secrets | ❌ Non | ✅ Oui |
+| Multi-projet | ❌ Non | ✅ Oui |
+
+## Migration depuis python-dotenv
+
+```python
+# Avant
+from dotenv import load_dotenv
+load_dotenv()
+
+# Après
+from lazy_locker import inject_secrets
+inject_secrets()
+
+# Le reste du code reste identique !
+```
