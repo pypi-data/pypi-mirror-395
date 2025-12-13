@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "robotpy-rev-digit"
+dynamic = ["version"]
+description = 'A module for controlling the REV Digit Board from RobotPy.'
+readme = "README.md"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+keywords = []
+authors = [
+  { name = "Chadwick Stryker", email = "chadwick@stryker5.org" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = ["robotpy>=2025.3.2.2"]
+
+[project.urls]
+Documentation = "https://github.com/cwstryker/robotpy-rev-digit#readme"
+Issues = "https://github.com/cwstryker/robotpy-rev-digit/issues"
+Source = "https://github.com/cwstryker/robotpy-rev-digit"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/robotpy_rev_digit/__version__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+]
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "- coverage combine",
+  "coverage report",
+]
+cov = [
+  "test-cov",
+  "cov-report",
+]
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11"]
+
+[tool.hatch.envs.types]
+dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/robotpy_rev_digit tests}"
+
+[tool.coverage.run]
+source_pkgs = ["robotpy_rev_digit", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/robotpy_rev_digit/__about__.py",
+]
+
+[tool.coverage.paths]
+robotpy_rev_digit = ["src/robotpy_rev_digit", "*/robotpy-rev-digit/src/robotpy_rev_digit"]
+tests = ["tests", "*/robotpy-rev-digit/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
