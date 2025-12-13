@@ -1,0 +1,307 @@
+Metadata-Version: 2.4
+Name: surveyor2
+Version: 0.2.0
+Summary: Video quality evaluation toolkit with comprehensive metrics
+Author: Moonmath AI
+License: Apache-2.0
+Keywords: video,quality,evaluation,metrics,vbench,lpips,vmaf
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Image Processing
+Classifier: Topic :: Multimedia :: Video
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: Apache Software License
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy<=1.26.4,>=1.23
+Requires-Dist: pillow>=9
+Requires-Dist: imageio[ffmpeg]>=2.35
+Requires-Dist: tqdm>=4.65
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: torch<2.6,>=2.0
+Requires-Dist: torchvision>=0.15
+Requires-Dist: torchaudio>=2.0
+Requires-Dist: lpips>=0.1.4
+Requires-Dist: open_clip_torch>=2.24.0
+Requires-Dist: opencv-python>=4.8
+Requires-Dist: vbench>=0.1.0
+Requires-Dist: timm>=0.6.0
+Requires-Dist: einops>=0.7.0
+Requires-Dist: boto3
+Requires-Dist: cython>=3.0
+Requires-Dist: easydict
+Requires-Dist: fairscale>=0.4.4
+Requires-Dist: lvis
+Requires-Dist: matplotlib
+Requires-Dist: omegaconf
+Requires-Dist: pycocoevalcap
+Requires-Dist: pyiqa
+Requires-Dist: scikit-image
+Requires-Dist: scikit-learn
+Requires-Dist: tensorboard
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: pytest-cov>=4; extra == "dev"
+Requires-Dist: pyarmor; extra == "dev"
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Provides-Extra: dashboard
+Requires-Dist: flask>=2.0; extra == "dashboard"
+Dynamic: license-file
+
+# Surveyor2
+
+Video quality evaluation toolkit.
+
+[![GitHub](https://img.shields.io/badge/GitHub-surveyor2--docs-blue?logo=github)](https://github.com/moonmath-ai/surveyor2-docs)
+
+Surveyor2 is a comprehensive video quality assessment tool that evaluates your generated videos using metrics including LPIPS, CLIPScore, VBench, and more. Simply point it at your videos and get detailed quality scores, baseline comparisons, and actionable insights. This tool can be used for benchmarking video generation models, tracking quality improvements, and integrating into your CI/CD pipeline with structured JSON reports.
+
+## Demo
+
+https://github.com/user-attachments/assets/8289a7ef-ef78-4a38-ac09-b968fdefbdf3
+
+## Demo
+
+https://github.com/user-attachments/assets/8289a7ef-ef78-4a38-ac09-b968fdefbdf3
+
+---
+
+## Install
+
+Surveyor2 uses a **src layout** with `pyproject.toml`.
+
+### Option A) One-command Conda env
+Creates Python 3.11, CUDA 12.4 PyTorch stack, ffmpeg+libvmaf, and extras.
+```bash
+conda env create -f environment.yml
+conda activate surveyor2
+pip install surveyor2
+
+# VMAF requires a special version of ffmpeg. If you don't need VMAF you can skip this step
+./scripts/install_vmaf.sh
+# Don't forget to update your PATH variable
+```
+
+### Option B) Docker
+Build and run Surveyor2 in a Docker container with all dependencies pre-installed.
+```bash
+# Build the Docker image
+docker build -t surveyor2 .
+
+# Run Surveyor2 (mount your data directories)
+docker run --gpus all -v /path/to/your/videos:/workspace surveyor2 surveyor2 --help
+```
+
+---
+
+## Usage
+
+Surveyor2 uses a subcommand-based CLI. Run `surveyor2 --help` to see all available commands.
+
+> **Python API**: For programmatic usage, see [API.md](API.md) for Python examples and API reference.
+
+### Generate inputs YAML from video folders
+Create an inputs YAML file by matching videos with prompts:
+```bash
+surveyor2 inputs \
+  --reference-videos ./reference_videos \
+  --generated-videos ./generated_videos \
+  --prompts ./prompts.jsonl \
+  --output inputs.yaml
+```
+
+The prompts file should be JSONL format with one JSON object per line:
+```jsonl
+{"id": "video_001", "prompt": "A cat playing with a ball"}
+{"id": "video_002", "prompt": "A dog running in a park"}
+```
+
+### Multiple Reference Videos
+Surveyor2 supports comparing generated videos against multiple reference videos for comprehensive baseline statistics:
+```yaml
+inputs:
+  - id: "multi_ref_example"
+    video: "generated/video.mp4"
+    reference:
+      - "reference/video1.mp4"
+      - "reference/video2.mp4"
+      - "reference/video3.mp4"
+    prompt: "A cat playing with a ball"
+```
+When multiple references are provided, Surveyor2 computes baseline averages and percentage differences automatically.
+
+### Run evaluation
+
+**Using a default configuration:**
+```bash
+surveyor2 profile \
+  --inputs examples/example_inputs_batch.yaml \
+  --report-json out/report.json
+```
+
+**Using a preset:**
+```bash
+surveyor2 profile \
+  --inputs examples/example_inputs_batch.yaml \
+  --preset basic \
+  --report-json out/report.json
+```
+
+Pass `--report-json` to write a JSON report (includes per-item reports and summary). Without it, results are printed to stdout only.
+
+### Export JSON report to different formats
+Export your JSON report to CSV, HTML, or Markdown:
+```bash
+# Export to Markdown
+surveyor2 export markdown out/report.json -o summary.md
+
+# Export to CSV
+surveyor2 export csv out/report.json -o report.csv
+```
+This generates formatted reports with metric summaries, including baseline comparisons if available.
+
+### Launch interactive web dashboard
+View and compare video quality reports in an interactive web interface:
+```bash
+surveyor2 dashboard out/report.json
+```
+
+**View multiple reports from a folder:**
+```bash
+surveyor2 dashboard out/reports/
+```
+
+> **Note**  
+> The dashboard requires Flask. Install it with: `pip install flask`  
+> Or install the dashboard extra: `pip install surveyor2[dashboard]`
+
+## Metrics
+
+### List available metrics
+See what's registered, their settings, and params:
+```bash
+surveyor2 profile --list
+```
+### Traditional (signal-based)
+- **PSNR** (Peak Signal-to-Noise Ratio)
+  - Measures pixel-level difference; high = better.
+  - Weakness: weak correlation with perceived quality.
+- **SSIM** (Structural Similarity)
+  - Compares local patterns of pixel intensities; more perceptual than PSNR.
+
+### Learned (perceptual/semantic)
+- **LPIPS**
+  - Pretrained CNN embeddings; correlates better with human perception.
+- **CLIPScore / CLIP Similarity**
+  - CLIP embeddings for text-video or video-video alignment; checks semantics.
+- **VMAF** (Netflix)
+  - Learned fusion of PSNR, SSIM, perceptual features; requires ffmpeg with libvmaf.
+- **VBench** (10 dimensions)
+  - Comprehensive evaluation benchmark for text-to-video generation models.
+  - Default-enabled dimensions: `subject_consistency`, `background_consistency`, `temporal_flickering`, `motion_smoothness`, `imaging_quality`, `overall_consistency`.
+  - Optional dimensions: `dynamic_degree`, `aesthetic_quality`, `human_action`, `temporal_style`.
+
+### Temporal consistency
+- **t_lpips** (Temporal LPIPS)
+  - LPIPS across consecutive frames; higher = more flicker.
+- **tOF** (Temporal Optical Flow consistency)
+  - Consistency of flow across time; lower = smoother motion.
+
+### Additional Setup
+
+All metric dependencies are included by default when installing via pip.
+
+**VBench setup** (optional, install separately to avoid version conflicts):
+```bash
+pip install vbench --no-deps
+```
+
+**CLIPScore (OpenAI CLIP)** - included in conda environment, or install manually:
+```bash
+pip install git+https://github.com/openai/CLIP.git
+```
+
+**VMAF** requires system ffmpeg with libvmaf. If your ffmpeg lacks libvmaf:
+```bash
+bash install_vmaf.sh
+# then add to ~/.bashrc:
+# export PATH="/opt/ffmpeg/ffmpeg-static:$PATH"
+source ~/.bashrc
+ffmpeg -hide_banner -filters | grep -i vmaf  # should list libvmaf
+```
+
+### Metric presets
+Surveyor2 includes predefined metric configurations for common use cases:
+
+- **basic**: PSNR and SSIM (fast, reference-based metrics)
+- **fast**: Temporal consistency and quality metrics (t_lpips, tOF, vbench_imaging_quality, vbench_temporal_flickering)
+- **vbench**: Default VBench evaluation dimensions (6 enabled by default)
+- **all**: Comprehensive evaluation with all available metrics (PSNR, SSIM, LPIPS, TLPIPS, CLIPScore, TOF, all 10 VBench dimensions, VMAF)
+
+View predefined metric configurations:
+```bash
+surveyor2 presets
+```
+
+Use presets with the `--preset` flag:
+```bash
+surveyor2 profile --inputs inputs.yaml --preset basic --report-json report.json
+```
+
+### Using custom metrics configuration
+
+Instead of using a preset, you can create a custom metrics configuration file to specify exactly which metrics to run and their settings. This gives you full control over the evaluation process.
+
+**Generate a scaffold configuration file:**
+```bash
+surveyor2 scaffold --output metrics.yaml
+```
+
+This creates a template YAML file with all available metrics and their default settings. You can then edit this file to:
+- Remove metrics you don't need
+- Adjust metric settings (device, batch size, model variants, etc.)
+- Configure aggregation weights for the composite score
+
+**Use your custom configuration:**
+```bash
+surveyor2 profile \
+  --inputs inputs.yaml \
+  --metrics metrics.yaml \
+  --report-json report.json
+```
+
+> **Note**  
+> You don't need to keep every metric in the scaffold.  
+> Feel free to remove or comment out metrics you don't want to run.
+
+### Example metrics.yaml (annotated)
+```yaml
+metrics:
+  - name: psnr
+    settings: { max_pixel: 255.0 }
+    params: {}
+  - name: ssim
+    settings: {}
+    params: {}
+  - name: lpips
+    settings: { device: auto, backbone: vgg, batch_size: 8 }
+    params: {}
+  - name: clipscore
+    settings: { device: auto, model: ViT-B/32, backend: auto, batch_size: 16 }
+    params: {}
+  - name: vbench_subject_consistency
+    settings: { device: cuda }
+    params: {}
+
+aggregate:
+  weights: { psnr: 1, ssim: 1, lpips: 2, clipscore: 2, vbench_subject_consistency: 1 }
+```
+
+---
