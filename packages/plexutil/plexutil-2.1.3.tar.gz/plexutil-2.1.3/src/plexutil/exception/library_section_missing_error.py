@@ -1,0 +1,2 @@
+class LibrarySectionMissingError(Exception):
+    pass

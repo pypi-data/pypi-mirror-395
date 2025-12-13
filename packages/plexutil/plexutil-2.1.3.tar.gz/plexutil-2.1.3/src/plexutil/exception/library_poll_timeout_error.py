@@ -1,0 +1,2 @@
+class LibraryPollTimeoutError(Exception):
+    pass
