@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: antioch-py
+Version: 2.2.1
+Summary: The Antioch Python SDK
+Author-email: Antioch Robotics <support@antioch.dev>
+License-Expression: MIT
+Project-URL: Homepage, https://antioch.com
+Keywords: robotics,simulation,middleware,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: <3.13,>=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.0.0
+Requires-Dist: click>=8.3.0
+Requires-Dist: eclipse-zenoh>=1.5.0
+Requires-Dist: google-cloud-artifact-registry>=1.16.1
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: msgpack==1.1.1
+Requires-Dist: msgpack>=1.1.1
+Requires-Dist: numpy==1.26.0
+Requires-Dist: ormsgpack>=1.6.0
+Requires-Dist: pydantic>=2.11.6
+Requires-Dist: pydantic>=2.11.7
+Requires-Dist: python-on-whales>=0.78.0
+Requires-Dist: pyyaml>=6.0.2
+Requires-Dist: requests>=2.32.0
+Requires-Dist: scipy==1.15.3
+Requires-Dist: sortedcontainers-stubs>=2.4.3
+Requires-Dist: sortedcontainers>=2.4.0
+Requires-Dist: tqdm>=4.67.1
+
+# antioch-py
+
+Python SDK for the [Antioch](https://antioch.com) autonomy simulation platform.
+
+## Overview
+
+The antioch-py package provides two components:
+
+### Module SDK (`antioch.module`)
+
+The Module SDK is a framework for building Antioch modules in Python. Modules are containerized components that run alongside your simulation, processing sensor data and producing outputs. Each module runs in its own Docker container and communicates with the simulation through the Antioch runtime. Install the SDK in your module's Dockerfile to read sensors, run inference, and publish results.
+
+```python
+from antioch.module import Execution, Module
+
+def process_radar(execution: Execution) -> None:
+    scan = execution.read_radar("sensor")
+    if scan is not None and len(scan.detections) > 0:
+        execution.output("detections").set(scan)
+
+if __name__ == "__main__":
+    module = Module()
+    module.register("radar_node", process_radar)
+    module.spin()
+```
+
+### Session SDK (`antioch.session`)
+
+The Session SDK is a client library for orchestrating Antioch simulations. Use it from Python scripts or Jupyter notebooks to programmatically build scenes, load assets, spawn robots, control simulation playback, and record data. The Session SDK connects to your Antioch deployment and provides a high-level API for automation and experimentation.
+
+```python
+from antioch.session import Scene, Session, Task, TaskOutcome
+
+session = Session()
+scene = Scene()
+
+# Load environment and robot
+scene.add_asset(path="/World/environment", name="warehouse", version="1.0.0")
+ark = scene.add_ark(name="my_robot", version="0.1.0")
+
+# Run simulation
+task = Task()
+task.start(mcap_path="/tmp/recording.mcap")
+
+scene.play()
+scene.step(1_000_000)  # step 1 second
+scene.pause()
+
+task.finish(outcome=TaskOutcome.SUCCESS)
+```
+
+## Installation
+
+To install in your Python environment:
+
+```bash
+pip install antioch-py
+```
+
+To install in your Python-based Docker image (e.g. for an Antioch module):
+
+```dockerfile
+FROM python:3.12-slim
+
+RUN pip install antioch-py
+
+COPY . /app
+WORKDIR /app
+
+CMD ["python", "module.py"]
+```
+
+## Documentation
+
+Visit [antioch.com](https://antioch.com) for full documentation.
+
+## License
+
+MIT
