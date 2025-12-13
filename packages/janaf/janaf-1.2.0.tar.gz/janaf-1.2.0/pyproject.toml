@@ -1,0 +1,179 @@
+[project]
+dynamic = ["version"]
+name = "janaf"
+description = "Python wrapper for NIST-JANAF Thermochemical Tables"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+  { name = "Takumasa Nakamura", email = "n.takumasa@gmail.com" },
+]
+classifiers = [
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+urls.Repository = "https://github.com/n-takumasa/py-janaf"
+
+dependencies = [
+  "polars>=1.0.0",
+  "importlib_resources>=5.0; python_version < '3.9'",
+]
+
+[project.optional-dependencies]
+xarray = [
+  "xarray>=2023.1.0",
+]
+all = ["janaf[xarray]"]
+
+[dependency-groups]
+optional = [
+  # "janaf[all]",
+  "xarray>=2023.1.0",
+]
+dev = [
+  { include-group = "optional" },
+  "tox>=4.22",
+  "tox-uv",
+  { include-group = "lint" },
+  { include-group = "script" },
+  { include-group = "test" },
+  { include-group = "type" },
+]
+lint = ["ruff"]
+script = ["aiofiles", "aiohttp"]
+test-base = [
+  "pytest>=8",
+  "pytest-cov",
+  "pytest-github-actions-annotate-failures",
+]
+test = [
+  { include-group = "optional" },
+  "matplotlib",
+  "pint-xarray",
+  { include-group = "test-base" },
+]
+test-min = [
+  { include-group = "test-base" },
+]
+type = [
+  "mypy[install-types]",
+  { include-group = "script" },
+  { include-group = "test" },
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/janaf/_version.py"
+build.targets.sdist.exclude = [
+  "/.github",
+  "scripts/",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+log_cli_level = "INFO"
+xfail_strict = true
+addopts = [
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+  "-p", "no:faulthandler",  # TODO: pola-rs/polars#23142
+]
+filterwarnings = ["error"]
+
+[tool.coverage]
+run.source_pkgs = ["janaf", "tests"]
+run.branch = true
+run.parallel = true
+report.exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@overload",
+]
+
+[tool.ruff]
+line-length = 88
+lint.extend-select = [
+  "B",  # flake8-bugbear
+  "I",  # isort
+  "UP",  # pyupgrade
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+files = "src,scripts,example"
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[tool.tox]
+requires = [
+    "tox>=4.21",
+    "tox-uv",
+]
+env_list = [
+    "lint", "type", "min",
+    "3.14", "3.13", "3.12", "3.11", "3.10", "3.9", "3.8",
+]
+
+[tool.tox.gh.python]
+"3.14" = ["3.14"]
+"3.13" = ["3.13", "lint", "type", "min"]
+"3.12" = ["3.12"]
+"3.11" = ["3.11"]
+"3.10" = ["3.10"]
+"3.9" = ["3.9"]
+"3.8" = ["3.8"]
+
+[tool.tox.env_run_base]
+package = "wheel"
+wheel_build_env = ".pkg"
+dependency_groups = ["test"]
+commands = [
+    ["pytest", { replace = "posargs", default = [], extend = true }],
+]
+pass_env = [
+  "GITHUB_ACTIONS",
+]
+
+[tool.tox.env.min]
+dependency_groups = ["test-min"]
+set_env = { ALLOW_MISSING_DEPS = "1" }
+
+[tool.tox.env.lint]
+package = "skip"
+deps = [
+    "ruff",
+]
+commands = [
+    ["ruff", "format", "--check", { replace = "posargs", default = [], extend = true }],
+    ["ruff", "check", "--no-fix", { replace = "posargs", default = [], extend = true }],
+]
+pass_env = [
+    "RUFF_OUTPUT_FORMAT",
+]
+
+[tool.tox.env.type]
+package = "wheel"
+dependency_groups = ["type"]
+commands = [
+    ["mypy", "--install-types", "--non-interactive", { replace = "posargs", default = [], extend = true }],
+]
