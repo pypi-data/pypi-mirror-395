@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block content %}
+    <a href="{{ url_for('login') }}">Log in</a>
+    {% if g.user %}
+        <br>
+        <a href="{{ url_for('refresh') }}">Refresh</a>
+        <br>
+        <a href="{{ url_for('logout') }}">Log out</a>
+        <br>
+        Logged in as <strong>{{ g.user.name }}</strong>
+    {% endif %}
+    {% if g.user %}
+        <hr>
+        <h3>User identities</h3>
+        <ul>
+            {% for identity in g.user.identities %}
+                {% set groups = (identity.provider_impl.supports_get_identity_groups and
+                                 identity.provider_impl.get_identity_groups(identity.identifier)) %}
+                <li>
+                    {{ identity.provider }}: {{ identity.identifier }}
+                    {% if groups %}
+                        [{{ groups|sort(attribute='name')|join(', ', attribute='name') }}]
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <hr>
+    <h3>Search identities (users)</h3>
+    <form>
+        <input type="hidden" name="search" value="identities">
+        <input type="text" name="email" value="{{ request.args.email }}" placeholder="Email">
+        <input type="text" name="name" value="{{ request.args.name }}" placeholder="Name">
+        <input type="checkbox" name="exact" id="exact" value="1" {%- if request.args.exact %} checked{% endif %}>
+        <label for="exact">Exact</label>
+        <input type="submit" value="Search">
+        <br>
+        {% if request.args.search == 'identities' %}
+            <h4>Results</h4>
+            <ul>
+                {% for result in results|sort(attribute='identifier') %}
+                    <li>{{ result }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </form>
+    <hr>
+    <h3>Search groups</h3>
+    <form>
+        <input type="hidden" name="search" value="groups">
+        <input type="text" name="name" value="{{ request.args.name }}" placeholder="Name">
+        <input type="checkbox" name="exact" id="exact" value="1" {%- if request.args.exact %} checked{% endif %}>
+        <label for="exact">Exact</label>
+        <input type="submit" value="Search">
+        <br>
+        {% if request.args.search == 'groups' %}
+            <h4>Results</h4>
+            <ul>
+                {% for result in results|sort(attribute='name') %}
+                    <li><a href="{{ url_for('group', provider=result.provider.name, name=result.name) }}">{{ result }}</a></li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </form>
+{% endblock %}
