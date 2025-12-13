@@ -1,0 +1,647 @@
+# -*- coding: utf-8 -*-
+from .utils import get_init_file, openers, scorefiles_qc
+from collections import defaultdict
+import pandas as pd
+import numpy as np
+import tarfile
+import dill
+import os
+
+
+def export_counts(project, out: str, bad: float = None):
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(file, 'rb') as f:
+            counts_d = dill.load(f)['counts']
+    else:
+        counts_d = project['counts']
+    if bad is None:
+        for bad, counts in counts_d.items():
+            subfolder = os.path.join(out, f'BAD{bad:.2f}')
+            os.makedirs(subfolder, exist_ok=True)
+            df = pd.DataFrame(counts, columns=['ref', 'alt', 'n'])
+            df.to_csv(os.path.join(subfolder, 'counts.tsv'), sep='\t', index=None)
+    else:
+        df = pd.DataFrame(counts_d[bad], columns=['Ref', 'Alt', 'N'])
+        df.to_csv(out, sep='\t', index=None)
+
+def export_scorefiles_qc(project, out: str):
+    covers, biases = scorefiles_qc(project)
+    bads = sorted(project['counts']) + [None]
+    scorefiles = project['scorefiles']
+    for bad in bads:
+        subfolder = os.path.join(out, f'BAD{bad:.2f}') if bad else out
+        os.makedirs(subfolder, exist_ok=True)
+        label = list()
+        cover = list()
+        bias = list()
+        for f in covers:
+            c = covers[f][bad]
+            if c:
+                cover.append(c)
+                bias.append(biases[f][bad])
+                label.append(scorefiles[f])
+        df = pd.DataFrame([label, bias, cover], index=['name', 'bias', 'cover']).T
+        df.to_csv(os.path.join(subfolder, 'scorefiles_qc.tsv'), sep='\t', index=None)
+
+def _export_params(fit, out: str, allele: str, bad: float):
+    df = pd.DataFrame(fit[allele][bad]['params'])
+    if len(df.columns) > 2:
+        df.columns = ['Name', 'Estimate', 'Std']
+    else:
+        df.columns = ['Name', 'Estimate']
+    df.to_csv(out, sep='\t', index=None)
+
+def export_params(project, out: str, bad: float = None, allele: str = None):
+    assert (bad is None) or (allele is not None), 'Both BAD and allele should be supplied.'
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(f'{project}.fit.{compression}', 'rb') as f:
+            fit = dill.load(f)
+    else:
+        fit = project
+    if bad is None:
+        for allele in ('ref', 'alt'):
+            try:
+                for bad in fit[allele]:
+                    subfolder = os.path.join(out, f'BAD{bad:.2f}')
+                    os.makedirs(subfolder, exist_ok=True)
+                    _export_params(fit, os.path.join(subfolder, f'param_{allele}.tsv'), 
+                                   allele, bad)
+            except KeyError:
+                print(f'No allele: {allele}! Perhaps using an experimental model?')
+    else:
+        _export_params(fit, out, allele, bad)
+                
+
+def _export_stats(params, out: str, allele: str, bad: float):
+    d = defaultdict(list)
+    for i, its in params[allele][bad]['stats'].items():
+        d['slice'].append(i)
+        for n, val in its.items():
+            d[n].append(val)
+    df = pd.DataFrame(d)
+    df.to_csv(out, sep='\t', index=None)
+
+def export_stats(project, out: str, bad: float = None, allele: str = None):
+    assert (bad is None) or (allele is not None), 'Both BAD and allele should be supplied.'
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(f'{project}.fit.{compression}', 'rb') as f:
+            params = dill.load(f)
+    else:
+        params = project
+    if bad is None:
+        os.makedirs(out, exist_ok=True)
+        for allele in ('ref', 'alt'):
+            for bad in params[allele]:
+                subfolder = os.path.join(out, f'BAD{bad:.2f}')
+                os.makedirs(subfolder, exist_ok=True)
+                _export_stats(params, os.path.join(subfolder, f'stat_{allele}.tsv'), 
+                               allele, bad)
+    else:
+        _export_stats(params, out, allele, bad)
+
+def get_name(name: str):
+    s = name.split('.')
+    if len(s) == 1:
+        return name
+    for i, c in enumerate(s[::-1]):
+        if c not in ('gz', 'vcf', 'bam', 'tsv', 'csv', 'zip', 'lzma', 'bz2', 'bed'):
+            break
+    if not i:
+        return name
+    return '.'.join(s[:-i])
+
+def shorten_filenames(filenames: list):
+    its = [f.split('/') for f in filenames]
+    i = 0
+    t = None
+    for folders in zip(*its):
+        for t in folders[1:]:
+            if folders[0] != t:
+                break
+        if t != folders[0]:
+            break
+        i += 1
+    return ['/'.join(t[i:]) for t in its]
+    
+
+def export_pvalues(project, out: str):
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(file, 'rb') as snvs, open(f'{project}.test.{compression}', 'rb') as test:
+            snvs = dill.load(snvs)
+            test = dill.load(test)
+    else:
+        snvs, test = project
+    scorefiles = shorten_filenames(snvs['scorefiles'])
+    snvs = snvs['snvs']  
+    res = defaultdict(lambda: defaultdict(list))
+    
+    for (chr, pos, alt), its in snvs.items():
+        name, ref, alt = its[0]
+        end = pos + 1
+        for filename_id, ref_count, alt_count, bad in its[1:]:
+            d = res[scorefiles[filename_id]]
+            d['#chr'].append(chr)
+            d['start'].append(pos)
+            d['end'].append(end)
+            d['bad'].append(bad)
+            d['id'].append(name)
+            d['ref'].append(ref)
+            d['alt'].append(alt)
+            d['ref_count'].append(ref_count)
+            d['alt_count'].append(alt_count)
+            (pval_ref, es_ref) = test['ref'][bad][(ref_count, alt_count)]
+            (pval_alt, es_alt) = test['alt'][bad][(ref_count, alt_count)]
+            d['ref_es'].append(es_ref)
+            d['alt_es'].append(es_alt)
+            d['ref_pval'].append(pval_ref)
+            d['alt_pval'].append(pval_alt)
+            if pval_ref < pval_alt:
+                d['es'].append(es_ref)
+                d['pval'].append(pval_ref)
+            else:
+                d['es'].append(es_alt)
+                d['pval'].append(pval_alt)
+    for file, d in res.items():
+        folder, file = os.path.split(file)
+        if os.name != 'nt' and folder[1:3] in (':/', ':\\'):
+            folder = folder[3:]
+        folder = folder.lstrip('/\\')
+        folder = os.path.join(out, folder)
+        file = get_name(file) + '.pvalue.tsv'
+        file = os.path.join(folder, file)
+        os.makedirs(folder, exist_ok=True)
+        pd.DataFrame(d).to_csv(file, sep='\t', index=None)
+
+def export_combined_pvalues(project, out: str, sample_info=False, subname=None):
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(file, 'rb') as snvs, open(f'{project}.test.{compression}', 'rb') as test, open(f'{project}.comb.{compression}', 'rb') as comb:
+            snvs = dill.load(snvs)
+            test = dill.load(test)
+            comb = dill.load(comb)
+    else:
+        snvs, test, comb = project
+    comb = comb[subname]
+    groups = comb['groups']
+    comb = comb['snvs']
+    scorefiles = shorten_filenames(snvs['scorefiles'])
+    snvs = snvs['snvs']  
+    d = defaultdict(list)
+    
+    for (chr, pos, alt), its in snvs.items():
+        try:
+            (pval_ref, pval_alt), (es_ref, es_alt), (fdr_ref, fdr_alt) = comb[(chr, pos, alt)]
+        except KeyError:
+            continue
+        name, ref, alt = its[0]
+        end = pos + 1
+        ref_counts = list()
+        alt_counts = list()
+        scores_f = list()
+        ref_pvals = list()
+        alt_pvals = list()
+        ref_eses = list()
+        alt_eses = list()
+        bads = list()
+        for filename_id, ref_count, alt_count, bad in its[1:]:
+            if groups and filename_id not in groups:
+                continue
+            scores_f.append(scorefiles[filename_id])
+            ref_counts.append(str(ref_count)); alt_counts.append(str(alt_count))
+            (pval_r, es_r) = test['ref'][bad][(ref_count, alt_count)]
+            (pval_a, es_a) = test['alt'][bad][(ref_count, alt_count)]
+            ref_pvals.append(str(pval_r)); alt_pvals.append(str(pval_a))
+            ref_eses.append(str(es_r)); alt_eses.append(str(es_a))
+            bads.append(bad)
+        mean_bad = sum(bads) / len(bads)
+        bads = ','.join(map(str, bads))
+        max_cover = (np.array(list(map(int, ref_counts))) + np.array(list(map(int, alt_counts)))).max()
+        ref_counts = ','.join(ref_counts);alt_counts = ','.join(alt_counts)
+        ref_pvals = ','.join(ref_pvals); alt_pvals = ','.join(alt_pvals)
+        ref_eses = ','.join(ref_eses); alt_eses = ','.join(alt_eses)
+        n = len(scores_f)
+        scores_f = ','.join(scores_f)
+        d['#chr'].append(chr); d['start'].append(pos); d['end'].append(end); d['mean_bad'].append(mean_bad); d['id'].append(name)
+        d['max_cover'].append(max_cover)
+        d['ref'].append(ref); d['alt'].append(alt); d['n_reps'].append(n);
+        
+        if sample_info:
+            d['bads'].append(bads)
+            d['scorefiles'].append(scores_f)
+            d['ref_counts'].append(ref_counts); d['alt_counts'].append(alt_counts); d['ref_es'].append(ref_eses); d['alt_es'].append(alt_eses)
+            d['ref_pval'].append(ref_pvals); d['alt_pval'].append(alt_pvals); 
+        d['ref_comb_es'].append(es_ref); d['alt_comb_es'].append(es_alt)
+        d['ref_comb_pval'].append(pval_ref); d['alt_comb_pval'].append(pval_alt)
+        d['ref_fdr_comb_pval'].append(fdr_ref); d['alt_fdr_comb_pval'].append(fdr_alt)
+        if pval_ref < pval_alt:
+            min_allele = 'ref'; fdr = fdr_ref; es = es_ref; pval = pval_ref
+        else:
+            min_allele = 'alt'; fdr = fdr_alt; es = es_alt; pval = pval_alt
+        d['pref_allele'].append(min_allele)
+        d['comb_es'].append(es); d['comb_pval'].append(pval); d['fdr_comb_pval'].append(fdr)
+        
+    folder, _ = os.path.split(out)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    pd.DataFrame(d).to_csv(out, sep='\t', index=None)
+
+def export_polycombined_pvalues(output_name: str, projects: list, out: str, sample_info=False, subname=None):
+    folder, name = os.path.split(output_name)
+    search_dir = folder if folder else '.'
+    comb_file = None
+    
+    for file in os.listdir(search_dir):
+        if file.startswith(f'{name}.comb.') and file.endswith(tuple(openers.keys())):
+            comb_file = os.path.join(search_dir, file)
+            break
+            
+    if not comb_file:
+        raise FileNotFoundError(f"Could not find .comb file for {output_name}")
+    
+    compression = comb_file.split('.')[-1]
+    opener = openers[compression]
+    
+    with opener(comb_file, 'rb') as f:
+        comb_full = dill.load(f)
+    
+    if not subname:
+        try:
+            comb = comb_full[subname]
+        except:
+            comb = comb_full['all']
+    else:
+        comb = comb_full[subname]
+    combined_groups = comb['groups'] 
+    comb_snvs = comb['snvs'] # Key: (chr, pos)
+
+
+    proj_snvs = []
+    proj_tests = []
+    proj_scorefiles = []
+    
+    for proj_name in projects:
+        # Load Init
+        init_file = get_init_file(proj_name)
+        if not init_file:
+            raise FileNotFoundError(f"Init file for project {proj_name} not found.")
+        
+
+        proj_comp = init_file.split('.')[-1]
+        proj_opener = openers[proj_comp]
+        
+        with proj_opener(init_file, 'rb') as f:
+            init_data = dill.load(f)
+            proj_snvs.append(init_data['snvs'])
+            
+            s_files = shorten_filenames(init_data['scorefiles'])
+            tagged_files = [f"[{os.path.basename(proj_name)}] {sf}" for sf in s_files]
+            proj_scorefiles.append(tagged_files)
+            del init_data
+
+        # Load Test
+        test_file = f'{proj_name}.test.{proj_comp}'
+        with proj_opener(test_file, 'rb') as f:
+            proj_tests.append(dill.load(f))
+
+
+    d = defaultdict(list)
+    
+    for (chrom, pos), stats in comb_snvs.items():
+        (pval_ref, pval_alt), (es_ref, es_alt), (fdr_ref, fdr_alt) = stats
+        
+
+        snv_ref_counts = []
+        snv_alt_counts = []
+        snv_scores_f = []
+        snv_ref_pvals = []
+        snv_alt_pvals = []
+        snv_ref_eses = []
+        snv_alt_eses = []
+        snv_bads = []
+        
+        snv_name = None
+        snv_ref_char = None
+        snv_alt_char = None
+        
+
+        for i, p_snvs in enumerate(proj_snvs):
+            if (chrom, pos) not in p_snvs:
+                continue
+            
+            its = p_snvs[(chrom, pos)]
+
+            if snv_name is None:
+                snv_name, snv_ref_char, snv_alt_char = its[0]
+            
+            p_groups = combined_groups[i]
+            p_scorefiles = proj_scorefiles[i]
+            p_test = proj_tests[i]
+            
+
+            for filename_id, ref_count, alt_count, bad in its[1:]:
+                if p_groups and filename_id not in p_groups:
+                    continue
+                
+                snv_scores_f.append(p_scorefiles[filename_id])
+                snv_ref_counts.append(str(ref_count))
+                snv_alt_counts.append(str(alt_count))
+                snv_bads.append(bad)
+                
+                try:
+                    (pval_r, es_r) = p_test['ref'][bad][(ref_count, alt_count)]
+                    (pval_a, es_a) = p_test['alt'][bad][(ref_count, alt_count)]
+                except KeyError:
+                    pval_r, es_r, pval_a, es_a = 1.0, 0.0, 1.0, 0.0
+
+                snv_ref_pvals.append(str(pval_r))
+                snv_alt_pvals.append(str(pval_a))
+                snv_ref_eses.append(str(es_r))
+                snv_alt_eses.append(str(es_a))
+
+        if not snv_bads:
+            continue
+
+        end = pos + 1
+        mean_bad = sum(snv_bads) / len(snv_bads)
+        bads_str = ','.join(map(str, snv_bads))
+        
+        max_cover = (np.array(list(map(int, snv_ref_counts))) + np.array(list(map(int, snv_alt_counts)))).max()
+        n_reps = len(snv_scores_f)
+        
+        if pval_ref < pval_alt:
+            min_allele = 'ref'
+            fdr = fdr_ref
+            es = es_ref
+            pval = pval_ref
+        else:
+            min_allele = 'alt'
+            fdr = fdr_alt
+            es = es_alt
+            pval = pval_alt
+
+        # Populate dictionary
+        d['#chr'].append(chrom)
+        d['start'].append(pos)
+        d['end'].append(end)
+        d['mean_bad'].append(mean_bad)
+        d['id'].append(snv_name)
+        d['max_cover'].append(max_cover)
+        d['ref'].append(snv_ref_char)
+        d['alt'].append(snv_alt_char)
+        d['n_reps'].append(n_reps)
+        
+        if sample_info:
+            d['bads'].append(bads_str)
+            d['scorefiles'].append(','.join(snv_scores_f))
+            d['ref_counts'].append(','.join(snv_ref_counts))
+            d['alt_counts'].append(','.join(snv_alt_counts))
+            d['ref_es'].append(','.join(snv_ref_eses))
+            d['alt_es'].append(','.join(snv_alt_eses))
+            d['ref_pval'].append(','.join(snv_ref_pvals))
+            d['alt_pval'].append(','.join(snv_alt_pvals))
+            
+        d['ref_comb_es'].append(es_ref)
+        d['alt_comb_es'].append(es_alt)
+        d['ref_comb_pval'].append(pval_ref)
+        d['alt_comb_pval'].append(pval_alt)
+        d['ref_fdr_comb_pval'].append(fdr_ref)
+        d['alt_fdr_comb_pval'].append(fdr_alt)
+        d['pref_allele'].append(min_allele)
+        d['comb_es'].append(es)
+        d['comb_pval'].append(pval)
+        d['fdr_comb_pval'].append(fdr)
+
+    folder_path, _ = os.path.split(out)
+    if folder_path:
+        os.makedirs(folder_path, exist_ok=True)
+    
+    pd.DataFrame(d).to_csv(out, sep='\t', index=None)
+
+def export_anova(project, out: str, subname=None, sample_info=False, init=None):
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(file, 'rb') as snvs,  open(f'{project}.anova.{compression}', 'rb') as diff:
+            diff = dill.load(diff)[subname]
+        if init is None and sample_info:
+            with open(file, 'rb') as snvs,  open(f'{project}.init.{compression}', 'rb') as init:
+                init = dill.load(init)
+    else:
+        snvs, diff = project
+        diff = diff[subname]
+        if sample_info and init is None:
+            raise Exception("Init data should be passed to the export function!")
+    if sample_info:
+        scorefiles = shorten_filenames(init['scorefiles'])
+    tests = diff['tests']
+    snvs = diff['snvs']
+    chrom = list(); start = list(); end = list(); name = list(); bad = list(); ref = list(); alt = list()
+    files = [list() for _ in snvs]
+    for ind in tests['ind']:
+        for s in snvs:
+            try:
+                t = s[ind]
+                if t:
+                    break
+            except KeyError:
+                continue
+        n, r, a = t[0]
+        chrom.append(ind[0]); start.append(ind[1]); end.append(start[-1] + 1); name.append(n)
+        ref.append(r); alt.append(a)
+        bad.append(t[-1][-1])
+        if sample_info:
+            for i, s in enumerate(snvs):
+                t = s[ind]
+                if t:
+                    f = ','.join([scorefiles[v[0]] for v in t[1:]])
+                else:
+                    f = str()
+                files[i].append(f)
+    diff = tests.drop('ind', axis=1)
+   
+    df = pd.DataFrame({'#chr': chrom, 'start': start, 'end': end, 'mean_bad': bad, 'id': name, 'ref': ref, 'alt': alt })
+    if sample_info:
+        cols = ['scorefiles_' + '_'.join(t.split('_')[1:]) for t in diff.columns if t.startswith('n_')]
+        df_t = pd.DataFrame({c: its for c, its in zip(cols, files)})
+        df = pd.concat([df, df_t], axis=1)
+    diff = pd.concat([df, diff], axis=1)
+    t = diff['ref_pval'] < diff['alt_pval']
+    diff['scoring_model'] = ['ref|alt' if v else 'alt|ref' for v in t]
+    diff['pval'] = None
+    diff.loc[t, 'pval'] = diff.loc[t, 'ref_pval']
+    diff.loc[~t, 'pval'] = diff.loc[~t, 'alt_pval']
+    diff['fdr_pval'] = None
+    diff.loc[t, 'fdr_pval'] = diff.loc[t, 'ref_fdr_pval']
+    diff.loc[~t, 'fdr_pval'] = diff.loc[~t, 'alt_fdr_pval']
+    folder, _ = os.path.split(out)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    diff.to_csv(out, sep='\t', index=None)
+
+def export_difftests(project, out: str,  sample_info=False, subname=None, init=None):
+    if type(project) is str:
+        file = get_init_file(project)
+        compression = file.split('.')[-1]
+        open = openers[compression]
+        with open(file, 'rb') as snvs,  open(f'{project}.difftest.{compression}', 'rb') as diff:
+            diff = dill.load(diff)[subname]
+        if init is None and sample_info:
+            with open(file, 'rb') as snvs,  open(f'{project}.init.{compression}', 'rb') as init:
+                init = dill.load(init)
+    else:
+        snvs, diff = project
+        diff = diff[subname]
+        if sample_info and init is None:
+            raise Exception("Init data should be passed to the export function!")
+    if sample_info:
+        scorefiles = shorten_filenames(init['scorefiles'])
+        files_a = list()
+        files_b = list()
+    tests = diff['tests']
+    snvs_a, snvs_b = diff['snvs']
+    chrom = list(); start = list(); end = list(); name = list(); bad = list(); ref = list(); alt = list()
+    a_ref_counts = list(); b_ref_counts = list()
+    a_alt_counts = list(); b_alt_counts = list()
+    es_count = list()
+    for ind in tests['ind']:
+        t = snvs_a[ind]
+        n, r, a = t[0]
+        chrom.append(ind[0]); start.append(ind[1]); end.append(start[-1] + 1); name.append(n)
+        ref.append(r); alt.append(a)
+        a_ref_count = list(); b_ref_count = list()
+        a_alt_count = list(); b_alt_count = list()
+        bads = list()
+        for _, r, a, b in snvs_a[ind][1:]:
+            a_ref_count.append(str(r))
+            a_alt_count.append(str(a))
+            bads.append(b)
+        t1 = np.array(list(map(int, a_ref_count))); t2 = np.array(list(map(int, a_alt_count)))
+        a_es_ref_alt = np.mean(np.log2(t2) - np.log2(t1))
+        for _, r, a, b in snvs_b[ind][1:]:
+            b_ref_count.append(str(r))
+            b_alt_count.append(str(a))
+            bads.append(b)
+        t1 = np.array(list(map(int, b_ref_count))); t2 = np.array(list(map(int, b_alt_count)))
+        b_es_ref_alt = np.mean(np.log2(t2) - np.log2(t1))
+        es_count.append(b_es_ref_alt - a_es_ref_alt)
+        bad.append(sum(bads) / len(bads))
+        a_ref_counts.append(','.join(a_ref_count))
+        b_ref_counts.append(','.join(b_ref_count))
+        a_alt_counts.append(','.join(a_alt_count))
+        b_alt_counts.append(','.join(b_alt_count))
+        
+        if sample_info:
+            for s, files in ((snvs_a, files_a), (snvs_b, files_b)):
+                r = list()
+                for t in s[ind][1:]:
+                    r.append(scorefiles[t[0]])
+                r = ','.join(r)
+                files.append(r)
+            
+    diff = tests.drop('ind', axis=1)
+    if sample_info:
+        df = pd.DataFrame({'#chr': chrom, 'start': start, 'end': end, 'mean_bad': bad, 'id': name, 'ref': ref, 'alt': alt,
+                           'a_ref_counts': a_ref_counts, 'a_alt_counts': a_alt_counts, 
+                           'b_ref_counts': b_ref_counts, 'b_alt_counts': b_alt_counts, 'scorefiles_a': files_a, 'scorefiles_b': files_b})
+    else:
+        df = pd.DataFrame({'#chr': chrom, 'start': start, 'end': end, 'mean_bad': bad, 'id': name, 'ref': ref, 'alt': alt })
+    diff = pd.concat([df, diff], axis=1)
+    # diff['ref_es_count'] = ref_es_count
+    # diff['alt_es_count'] = alt_es_count
+    p_control = diff['ref_p_control']
+    p_test = diff['ref_p_test']
+    diff['ref_es_p'] = np.log2(p_test) - np.log2(p_control)
+    diff['ref_es_logit'] = np.log2(p_test)  - np.log1p(-p_test) - (np.log2(p_control) - np.log1p(-p_control))
+    p_control = diff['alt_p_control']
+    p_test = diff['alt_p_test']
+    diff['alt_es_p'] = np.log2(p_test) - np.log2(p_control)
+    diff['alt_es_logit'] = np.log2(p_test)  - np.log1p(-p_test) - (np.log2(p_control) - np.log1p(-p_control))
+    t = diff['ref_p_control'] > diff['alt_p_control']
+    diff['preferred_allele_control'] = ['ref' if v else 'alt' for v in t]
+    t = diff['ref_p_test'] > diff['alt_p_test']
+    diff['preferred_allele_test'] = ['ref' if v else 'alt' for v in t]
+    t = diff['ref_pval'] < diff['alt_pval']
+    diff['scoring_model'] = ['ref|alt' if v else 'alt|ref' for v in t]
+    diff['es_count'] = es_count
+    for col in ['es_p', 'es_logit', 'pval', 'fdr_pval']:
+        diff[col] = 0
+        diff.loc[t, col] = diff.loc[t, f'ref_{col}']
+        diff.loc[~t, col] = diff.loc[~t, f'alt_{col}']
+    folder, _ = os.path.split(out)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    diff.to_csv(out, sep='\t', index=None)
+
+
+def export_all(name: str, out: str, sample_info: bool = None):
+    file = get_init_file(name)
+    compression = file.split('.')[-1]
+    open = openers[compression]
+    with open(file, 'rb') as init:
+        init = dill.load(init)
+    export_counts(init, out)
+    export_scorefiles_qc(init, out)
+    try:
+        with open(f'{name}.fit.{compression}', 'rb') as f:
+            fit = dill.load(f)
+            export_params(fit, out)
+            export_stats(fit, out)
+    except FileNotFoundError:
+        pass
+    try:
+        with open(f'{name}.difftest.{compression}', 'rb') as f:
+            difftests = dill.load(f)
+            subfolder = os.path.join(out, 'difftest')
+            t = (init, difftests)
+            for subname in difftests:
+                export_difftests(t, os.path.join(subfolder, f'{subname}.tsv' if subname else 'difftests.tsv'), subname=subname,
+                                 sample_info=sample_info, init=init)
+    except FileNotFoundError:
+        pass     
+    try:
+        with open(f'{name}.anova.{compression}', 'rb') as f:
+            anova = dill.load(f)
+            subfolder = os.path.join(out, 'anova')
+            t = (init, anova)
+            for subname in anova:
+                export_anova(t, os.path.join(subfolder, f'{subname}.tsv' if subname else 'anova.tsv'), subname=subname,
+                             sample_info=sample_info, init=init)
+    except FileNotFoundError:
+        pass   
+            
+    try:
+        with open(f'{name}.test.{compression}', 'rb') as f:
+            raw_pvals = dill.load(f)
+    except FileNotFoundError:
+        return
+    out = os.path.join(out, 'pvalues')
+    export_pvalues((init, raw_pvals), os.path.join(out, 'raw'))
+    try:
+        with open(f'{name}.comb.{compression}', 'rb') as f:
+            pvals = dill.load(f)
+    except FileNotFoundError:
+        return
+    t = (init, raw_pvals, pvals)
+    for subname in pvals:
+        export_combined_pvalues(t, os.path.join(out, f'{subname}.tsv' if subname else 'pvals.tsv'), subname=subname, sample_info=sample_info)
+
+def export_demo(path: str = str()):
+    folder = os.path.join(os.path.split(os.path.realpath(__file__))[0], 'data')
+    filename = os.path.join(folder, 'dnase_k562.tar.gz')
+    with tarfile.open(filename, 'r:gz') as f:
+        f.extractall(os.path.join(path, 'scorefiles'))
