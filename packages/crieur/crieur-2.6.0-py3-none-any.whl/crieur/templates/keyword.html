@@ -1,0 +1,51 @@
+{% extends "main.html" %}
+
+{% block content %}
+  <h2 class="centered"><span class="muted">Mot-clé :</span> {{ keyword.name }}</h2>
+  {% for article in keyword.articles %}
+    <div class="aside">
+      <hgroup>
+        <h3><a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a></h3>
+        <div>
+          <p>{{ article.subtitle_f }}</p>
+          <p class="muted">
+            {% if article.authors %}
+              {% for author in article.authors %}
+                <h4><em><a href="{{ base_url }}{{ author.url }}">{{ author.forname }} {{ author.surname }}</a></em></h4>
+              {% endfor %}
+            {% endif %}
+          </p>
+          <br>
+          <p class="muted">
+            <small>
+              <a href="{{ base_url }}blog/#date-{{ article.date }}">{{ article.date.strftime('%d %B %Y') }}</a>
+              <small class="muted" aria-hidden="true"> ⁙ </small>
+              <a href="{{ base_url }}{{ article.numero.url }}">{{ article.numero.title_f }}</a>
+              {% if article.keywords %}
+                <small class="muted" aria-hidden="true"> ⁙ </small>
+                {% for keyword in article.keywords %}
+                  <a href="{{ base_url }}{{ keyword.url }}">#{{ keyword.name }}</a>{%- if not loop.last -%}, {% endif %}
+                {% endfor %}
+              {% endif %}
+            </small>
+          </p>
+        </div>
+      </hgroup>
+      <div class="article-body">
+        {% if article.abstract_fr %}
+          <div class="article-abstract">{{ article.abstract_fr|markdown }}</div>
+        {% else %}
+          {% if article.abstract_en %}
+            <div class="article-abstract" lang="en">{{ article.abstract_en|markdown }}</div>
+          {% else %}
+            <div class="article-abstract">{{ article.content_html|truncate(500) }}</div>
+          {% endif %}
+        {% endif %}
+
+        <div class="article-nav">
+          <a href="{{ base_url }}{{ article.url }}" role="button" class="secondary">Lire l’article</a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock content %}

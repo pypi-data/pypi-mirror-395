@@ -1,0 +1,75 @@
+{% extends "main.html" %}
+
+{% block extra_css %}
+  {{ super() }}
+  .aside:not(:last-child) {
+    border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+  }
+  .bottom-nav {
+    margin-top: calc(var(--pico-block-spacing-vertical) * 4);
+    font-family: "commeregular";
+  }
+  .bottom-nav ul {
+    flex-basis: 0;
+    flex-grow: 1;
+    text-align: center;
+    border-left: var(--pico-border-width) solid var(--pico-muted-border-color);
+  }
+  .bottom-nav ul:first-of-type {
+    border-left: none;
+    text-align: left;
+  }
+  .bottom-nav ul:last-of-type {
+    text-align: right;
+  }
+  .bottom-nav ul li {
+    width: 100%;
+  }
+{% endblock extra_css %}
+
+{% block content %}
+  <div class="aside">
+    <hgroup>
+      <h2>{{ article.title_f|typography }}</h2>
+      <div>
+        <p>{{ article.subtitle_f|typography }}</p>
+        <p class="muted">{{ article.date.strftime('%d %B %Y') }}</p>
+        {% if article.keywords %}
+          <p class="muted">
+            <small>
+              {% for keyword in article.keywords %}
+                <a href="{{ base_url }}{{ keyword.url }}">#{{ keyword.name }}</a>{%- if not loop.last -%}, {% endif %}
+              {% endfor %}
+            </small>
+          </p>
+        {% endif %}
+      </div>
+    </hgroup>
+    <div class="article-body">
+      {% if article.abstract_fr %}
+        <div class="article-abstract">{{ article.abstract_fr|typography|markdown }}</div>
+      {% else %}
+        {% if article.abstract_en %}
+          <div class="article-abstract" lang="en">{{ article.abstract_en|markdown }}</div>
+        {% endif %}
+      {% endif %}
+
+      {{ article.content_html }}
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <ul>
+      {% if previous_article %}
+        <li><a href="{{ base_url }}{{ previous_article.url }}">← {{ previous_article.title_f }}</a></li>
+      {% endif %}
+    </ul>
+    <ul>
+      <li><a href="#">↑ Haut de page</a></li>
+    </ul>
+    <ul>
+      {% if next_article %}
+        <li><a href="{{ base_url }}{{ next_article.url }}">{{ next_article.title_f }} →</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endblock content %}

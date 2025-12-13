@@ -1,0 +1,23 @@
+{% extends "main.html" %}
+
+{% block content %}
+  {% for date, grouped_articles in articles|groupby("date")|reverse %}
+    <div class="aside">
+      <hgroup>
+        <h2 id="date-{{ date }}">{{ date.strftime('%d %B %Y') }} <a href="#date-{{ date }}" class="muted" title="Lien vers cette partie">⁙</a></h2>
+      </hgroup>
+      <ul>
+        {% for article in grouped_articles %}
+          <li>
+            <a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a>
+            par
+            {% for author in article.authors -%}
+              <em>{{ author.forname }} {{ author.surname }}{%- if not loop.last -%}, {% endif %}</em>
+            {%- endfor %}
+            <nobr><span class="muted"><small>({{ article.numero.title_f }})</small></span></nobr>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% endblock content %}

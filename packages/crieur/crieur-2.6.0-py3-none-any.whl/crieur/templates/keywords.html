@@ -1,0 +1,24 @@
+{% extends "main.html" %}
+
+{% block content %}
+  {% for slug, keyword in keywords.items() %}
+    <div class="aside">
+      <hgroup>
+        <h2><a href="{{ base_url }}{{ keyword.url }}">{{ keyword.name }}</a></h2>
+        <p><small>{{ keyword.articles|length }} article{{ keyword.articles|length|pluralize }}</small></p>
+      </hgroup>
+      <ul>
+        {% for article in keyword.articles %}
+          <li>
+            <a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a>
+            par
+            {% for author in article.authors -%}
+              <em>{{ author.forname }} {{ author.surname }}{%- if not loop.last -%}, {% endif %}</em>
+            {%- endfor %}
+            <nobr><span class="muted"><small>({{ article.date.strftime('%d %B %Y') }})</small></span></nobr>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% endblock content %}

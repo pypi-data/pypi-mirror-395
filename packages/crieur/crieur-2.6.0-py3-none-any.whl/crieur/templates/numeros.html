@@ -1,0 +1,24 @@
+{% extends "main.html" %}
+
+{% block content %}
+  {% for numero in numeros|reverse %}
+    <div class="aside">
+      <hgroup>
+        <h2><a href="{{ base_url }}{{ numero.url }}">{{ numero.title_f }}</a></h2>
+        <p class="muted"><small>{{ numero.date.strftime('%d %B %Y') }}</small></p>
+      </hgroup>
+      <ul>
+        {% for article in numero.articles %}
+          <li>
+            <a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a>
+            par
+            {% for author in article.authors -%}
+              <em>{{ author.forname }} {{ author.surname }}{%- if not loop.last -%}, {% endif %}</em>
+            {%- endfor %}
+            <nobr><span class="muted"><small>({{ article.date.strftime('%d %B %Y') }})</small></span></nobr>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% endblock content %}
