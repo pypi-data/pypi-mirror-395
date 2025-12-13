@@ -1,0 +1,459 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Real Time News Data",
+    "version": "1.0.0",
+    "description": "RapidAPI: letscrape-6bRBa3QguO5/real-time-news-data"
+  },
+  "servers": [
+    {
+      "url": "https://real-time-news-data.p.rapidapi.com"
+    }
+  ],
+  "paths": {
+    "/search": {
+      "get": {
+        "summary": "Search",
+        "description": "Search news articles by query with an option to limit the results to a specific time range.",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Search query for which to get news.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of news articles to return. Default: 500 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "10",
+              "enum": null
+            }
+          },
+          {
+            "name": "time_published",
+            "in": "query",
+            "required": false,
+            "description": "Find news articles published in a specific time range. Default: anytime",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "description": "Domain of the source from which to return news articles. Example: cnn.com",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/full-story-coverage": {
+      "get": {
+        "summary": "Full Story Coverage",
+        "description": "Get the full story coverage, including all sub articles, top news, and posts from X (formerly Twitter).",
+        "operationId": "full_story_coverage",
+        "parameters": [
+          {
+            "name": "story",
+            "in": "query",
+            "required": true,
+            "description": "The Story ID for which to get full coverage. Story IDs are returned for news articles with sub_articles from any of the endpoint returning news articles. In addition, Story IDs can be obtained from a News Story URL as it appears after the stories/ path part (e.g. /stories/CAAqNggKIjBDQklTSGpvSmMzUnZjbmt0TXpZd1NoRUtEd2pzbFA3X0N4RjlDUlpVVnhudXBpZ0FQAQ) after navigating to an article's Full Coverage.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Return articles (i.e. all_articles list) in a specific sort order. Default: RELEVANCE Allowed values: RELEVANCE, DATE",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topic-news-by-section": {
+      "get": {
+        "summary": "Topic News By Section",
+        "description": "Get news article in a specific section of a topic (World,  Sports, Technology, etc) or publication (CNN, BBC, etc).",
+        "operationId": "topic_news_by_section",
+        "parameters": [
+          {
+            "name": "topic",
+            "in": "query",
+            "required": true,
+            "description": "Topic or publication for which to get news headlines. Available topics: WORLD NATIONAL BUSINESS TECHNOLOGY ENTERTAINMENT SPORTS SCIENCE HEALTH In addition, topic / publication IDs are also accepted and can be taken from a News topic URL as it appears after the topics/ or publications/ path part (e.g. Football Topic - /topics/CAAqJQgKIh9DQkFTRVFvSUwyMHZNREoyZURRU0JXVnVMVWRDS0FBUAE)",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": true,
+            "description": "Example value: CAQiSkNCQVNNUW9JTDIwdk1EZGpNWFlTQldWdUxVZENHZ0pKVENJT0NBUWFDZ29JTDIwdk1ETnliSFFxQ2hJSUwyMHZNRE55YkhRb0FBKi4IACoqCAoiJENCQVNGUW9JTDIwdk1EZGpNWFlTQldWdUxVZENHZ0pKVENnQVABUAE",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of news articles to return. Default: 500 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "500",
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topic-headlines": {
+      "get": {
+        "summary": "Topic Headlines",
+        "description": "Get the latest news headlines for a topic (World,  Sports, Technology, etc) or publication (e.g. CNN, BBC, etc).",
+        "operationId": "topic_headlines",
+        "parameters": [
+          {
+            "name": "topic",
+            "in": "query",
+            "required": true,
+            "description": "Topic or publication for which to get news headlines. Available topics: WORLD NATIONAL BUSINESS TECHNOLOGY ENTERTAINMENT SPORTS SCIENCE HEALTH In addition, topic / publication IDs are also accepted and can be taken from a News topic URL as it appears after the topics/ or publications/ path part (e.g. Football Topic - /topics/CAAqJQgKIh9DQkFTRVFvSUwyMHZNREoyZURRU0JXVnVMVWRDS0FBUAE)",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of news articles to return. Default: 500 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "500",
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/top-headlines": {
+      "get": {
+        "summary": "Top Headlines",
+        "description": "Get the latest news headlines/top stories for a country.",
+        "operationId": "top_headlines",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of news articles to return. Default: 500 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "500",
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/language-list": {
+      "get": {
+        "summary": "Language List",
+        "description": "Get valid languages for a country code, to be used with all other APIs.",
+        "operationId": "language_list",
+        "parameters": [
+          {
+            "name": "country",
+            "in": "query",
+            "required": true,
+            "description": "Country code of the country to get languages for. See all available country codes.",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-headlines": {
+      "get": {
+        "summary": "Local Headlines (Geo)",
+        "description": "Get local, geo based headlines",
+        "operationId": "local_headlines_(geo)",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Area, city or country to fetch news for (e.g. London).",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Country code. See all available country codes. Default: US",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "The language to use for the results, specified as a 2-letter language code - see ISO 639-1 alpha-2. Default: en",
+            "schema": {
+              "type": "string",
+              "default": null,
+              "enum": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of news articles to return. Default: 500 Allowed values: 1-500",
+            "schema": {
+              "type": "number",
+              "default": "500",
+              "enum": null
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-RapidAPI-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiAuth": []
+    }
+  ]
+}
