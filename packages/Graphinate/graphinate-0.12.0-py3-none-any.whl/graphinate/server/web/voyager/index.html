@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Graphinate - GraphQL Voyager</title>
+    <style>
+        body {
+          height: 100%;
+          margin: 0;
+          width: 100%;
+          overflow: hidden;
+        }
+        #voyager {
+          height: 100vh;
+        }
+    </style>
+
+    <!--
+      These two files are served from jsdelivr CDN, however you may wish to
+      copy them directly into your environment, or perhaps include them in your
+      favored resource bundler.
+     -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-voyager@2.1.0/dist/voyager.min.css"
+          integrity="sha384-vmH7DGotMxRpiyCozw3vBUhhRegQ+95ffgla9zXAPkysqRrrTbnP6tXtCaaZ0xOh"
+          crossorigin="anonymous"/>
+    <script src="https://cdn.jsdelivr.net/npm/graphql-voyager@2.1.0/dist/voyager.standalone.min.js"
+            integrity="sha384-mk0ZutpNRnjwlDdrlmHl3kTRcjBmge8wx4x0GE26f1xPsXpkxKvR2MV11i+yYlyF"
+            crossorigin="anonymous"
+
+    ></script>
+</head>
+<body>
+<div id="voyager">Loading...</div>
+<script type="module">
+    const { init, voyagerIntrospectionQuery: query } = GraphQLVoyager;
+    const response = await fetch(
+      '/graphql',
+      {
+        method: 'post',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+        credentials: 'omit',
+      },
+    );
+    const introspection = await response.json();
+
+    // Render <Voyager /> into the body.
+    GraphQLVoyager.renderVoyager(document.getElementById('voyager'), {
+      introspection,
+    });
+</script>
+</body>
+</html>
