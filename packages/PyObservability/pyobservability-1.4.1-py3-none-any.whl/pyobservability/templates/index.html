@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>PyObservability — Node Monitor</title>
+    <meta property="og:type" content="CommandRunner">
+    <meta name="keywords" content="Python, Monitor, fastapi, JavaScript, HTML, CSS">
+    <meta name="author" content="Vignesh Rao">
+    <!-- Favicon.ico and Apple Touch Icon -->
+    <link property="og:image" rel="icon" href="https://thevickypedia.github.io/open-source/images/logo/pyninja.ico">
+    <link property="og:image" rel="apple-touch-icon"
+          href="https://thevickypedia.github.io/open-source/images/logo/pyninja.png">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+
+    <link rel="stylesheet" href="/static/styles.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">Node Monitor</div>
+
+    <div class="controls">
+        <label for="node-select">Node:</label>
+        <select id="node-select" aria-label="Select node"></select>
+        <button id="refresh-btn" title="Force refresh">Refresh</button>
+        <button id="logout" title="Logout" onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<main class="container">
+    <section class="meta-row">
+        <div class="meta-card">
+            <div class="meta-title">System</div>
+            <div id="system" class="meta-value pre"></div>
+        </div>
+
+        <div class="meta-card">
+            <div class="meta-title">IP</div>
+            <div id="ip-info" class="meta-value pre"></div>
+        </div>
+
+        <div class="meta-card">
+            <div class="meta-title">GPU / CPU Model</div>
+            <div id="processor" class="meta-value pre"></div>
+        </div>
+
+        <div class="meta-card">
+            <div class="meta-title">CPU Load (1/5/15)</div>
+            <div id="cpuload" class="meta-value pre"></div>
+        </div>
+
+        <div class="meta-card">
+            <div class="meta-title">Disk ( / )</div>
+            <div id="disk" class="meta-value pre"></div>
+        </div>
+
+        <div class="meta-card">
+            <div class="meta-title">Memory</div>
+            <div id="memory" class="meta-value pre"></div>
+        </div>
+    </section>
+
+    <section class="charts-row">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>CPU (Average)</h3>
+                <div class="panel-actions">
+                    <label><input type="checkbox" id="show-cores" checked="true"/> Show per-core</label>
+                </div>
+            </div>
+            <canvas id="cpu-avg-chart" class="chart"></canvas>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header"><h3>Memory (%)</h3></div>
+            <canvas id="mem-chart" class="chart"></canvas>
+        </div>
+
+        <div class="panel hidden" id="unified-panel">
+            <div class="panel-header unified-header">
+                <div class="unified-title-group">
+                    <h3>Aggregated Metrics</h3>
+                    <span class="unified-indicator">Holistic node comparison</span>
+                </div>
+            </div>
+            {# <p class="panel-helper">Select "All nodes" (*) to compare every host.</p> #}
+            <div class="unified-grid">
+                <div class="unified-metric-panel">
+                    <div class="panel-header"><h3>Memory (%)</h3></div>
+                    <canvas id="unified-mem-chart" class="chart"></canvas>
+                </div>
+                <div class="unified-metric-panel">
+                    <div class="panel-header"><h3>CPU Avg (%)</h3></div>
+                    <canvas id="unified-cpu-chart" class="chart"></canvas>
+                </div>
+                <div class="unified-metric-panel">
+                    <div class="panel-header"><h3>Disk (%)</h3></div>
+                    <canvas id="unified-disk-chart" class="chart"></canvas>
+                </div>
+            </div>
+            {# TODO: Make the following tables into multiple div containers #}
+            <div id="unified-legend" class="unified-legend"></div>
+            <div class="unified-tables">
+                <div class="unified-tables-grid">
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>Services</h3></div>
+                        <table class="table" id="unified-services-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>Processes</h3></div>
+                        <table class="table" id="unified-processes-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>Docker Containers</h3></div>
+                        <table class="table" id="unified-docker-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>Disks</h3></div>
+                        <table class="table" id="unified-disks-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>PyUdisk Metrics</h3></div>
+                        <table class="table" id="unified-pyudisk-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="panel unified-table-panel">
+                        <div class="panel-header"><h3>Certificates</h3></div>
+                        <table class="table" id="unified-certificates-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="details-row">
+        <div class="panel wide">
+            <div class="panel-header"><h3>Per-Core (sparklines)</h3></div>
+            <div id="cores-grid" class="cores-grid"></div>
+        </div>
+
+        <div class="panel narrow">
+            <div class="panel-header"><h3>CPU Load History</h3></div>
+            <canvas id="load-chart" class="chart-small"></canvas>
+        </div>
+    </section>
+
+    <section class="tables-row">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Services</h3>
+                <div class="panel-actions">
+                    <label><input type="checkbox" id="get-all-services"/> Get all</label>
+                </div>
+            </div>
+            <div class="panel-body service-controls">
+                <input id="svc-filter" placeholder="filter service name..."/>
+            </div>
+            <table class="table" id="services-table">
+                <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>CPU</th>
+                    <th>Memory</th>
+                    <th>Threads</th>
+                    <th>Open Files</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <section class="tables-row">
+            <div class="panel">
+                <div class="panel-header"><h3>Processes</h3></div>
+                <div class="panel-body service-controls">
+                    <input id="proc-filter" placeholder="filter process name..."/>
+                </div>
+                <table class="table" id="processes-table">
+                    <thead>
+                    <tr>
+                        <th>PID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                        <th>Uptime</th>
+                        <th>Threads</th>
+                        <th>Open Files</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Docker / Containers</h3></div>
+                <div class="panel-body">
+                    <table class="table" id="docker-table">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Disks</h3></div>
+                <div class="panel-body">
+                    <table class="table" id="disks-table">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>PyUdisk</h3></div>
+                <div class="panel-body">
+                    <table class="table" id="pyudisk-table">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Certificates</h3></div>
+                <div class="panel-body">
+                    <table class="table" id="certificates-table">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<footer class="footer">
+    <div><code>PyObservability: v{{ version }}</code><br>
+        <a href="https://github.com/thevickypedia/PyObservability" target="_blank">https://github.com/thevickypedia/PyObservability</a>
+    </div>
+</footer>
+
+<script>
+    // inject server-side targets
+    window.MONITOR_TARGETS = {{ targets | tojson }};
+</script>
+<script>
+    const logoutEndpoint = "{{ logout }}";
+
+    if (!logoutEndpoint.startsWith('/')) {
+        document.getElementById("logout").style.display = "none";
+    }
+
+    function logout() {
+        window.location.href = logoutEndpoint;
+    }
+</script>
+<script src="/static/app.js"></script>
+</body>
+</html>
