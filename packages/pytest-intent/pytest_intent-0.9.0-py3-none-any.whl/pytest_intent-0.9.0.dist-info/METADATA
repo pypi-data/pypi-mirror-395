@@ -1,0 +1,519 @@
+Metadata-Version: 2.4
+Name: pytest-intent
+Version: 0.9.0
+Summary: A pytest plugin for tracking requirement coverage.
+License-Expression: Elastic-2.0
+License-File: LICENSE-COMMERCIAL.md
+Author: celestialorb
+Author-email: chris.m.busby@gmail.com
+Requires-Python: >=3.11,<3.14
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: doorstop (>=3.0.2,<4.0.0)
+Requires-Dist: pytest (>=9.0.0,<10.0.0)
+Requires-Dist: pytest-harvest (>=1.10.5,<2.0.0)
+Requires-Dist: rich-click (>=1.9.4,<2.0.0)
+Description-Content-Type: text/markdown
+
+# pytest-intent
+
+A pytest plugin for intent-based testing that tracks requirement coverage and ensures all requirements have passing tests.
+
+## Description
+
+pytest-intent is a pytest plugin that enables intent-based testing by tracking requirement coverage. It integrates with [Doorstop](https://github.com/jacebrowning/doorstop) to load project requirements and validates that:
+
+- All requirements have tests covering them
+- All tests for requirements are passing
+
+The plugin can be configured to fail, warn, or ignore when requirements are untested, and will fail if requirements have failing tests, helping ensure comprehensive test coverage aligned with your project's requirements.
+
+## Features
+
+- **Requirement Coverage Tracking**: Automatically tracks which requirements are covered by tests
+- **Validation**: Fails test runs if requirements are missing tests or have failing tests
+- **Doorstop Integration**: Seamlessly loads requirements from Doorstop-formatted directories
+- **Reference Autofill**: Automatically populates Doorstop requirements' `references` field with test nodeids
+- **Flexible Configuration**: Configurable requirements path and format
+- **pytest Integration**: Works seamlessly with existing pytest workflows
+
+## Installation
+
+### Requirements
+
+- Python 3.11, 3.12, or 3.13
+- pytest 9.0 or later
+
+### Using Poetry (Recommended)
+
+```bash
+# (we suggest ensuring it is part of a dev/development group)
+poetry add --group=dev pytest-intent
+
+# otherwise
+poetry add pytest-intent
+```
+
+### Using pip
+
+```bash
+pip install pytest-intent
+```
+
+## Usage
+
+### Basic Usage
+
+Mark your tests with the `@pytest.mark.intent` decorator to associate them with requirements:
+
+```python
+import pytest
+
+@pytest.mark.intent(requirement="SRD-001")
+def test_feature_implementation():
+    """Test that verifies SRD-001 requirement."""
+    assert feature_works_correctly()
+
+# Alternative syntax
+@pytest.mark.intent("SRD-002")
+def test_another_feature():
+    """Test that verifies SRD-002 requirement."""
+    assert another_feature_works()
+```
+
+### Running Tests
+
+Run your tests as usual with pytest:
+
+```bash
+pytest
+```
+
+The plugin will automatically:
+1. Load requirements from your requirements directory (default: `requirements/`)
+2. Track which requirements are covered by tests
+3. Validate that all requirements have tests
+4. Validate that all requirement tests are passing
+
+By default, if any requirements are untested or have failing tests, the test run will fail with a detailed error message. The behavior for untested requirements can be configured using `--intent-requirements-untested-behavior`.
+
+### Example Output
+
+When all requirements are covered and passing:
+
+```
+============================= test session starts ==============================
+collected 2 items
+
+tests/test_example.py::test_feature_implementation PASSED
+tests/test_example.py::test_another_feature PASSED
+
+============================== 2 passed in 0.01s ===============================
+```
+
+If requirements are untested or failing:
+
+```
+============================= test session starts ==============================
+collected 2 items
+
+tests/test_example.py::test_feature_implementation PASSED
+tests/test_example.py::test_another_feature FAILED
+
+Requirement coverage validation failed:
+  - Untested requirements (1): SRD-003
+  - Requirements with failing tests (1): SRD-002 (failing tests: tests/test_example.py::test_another_feature)
+
+============================== 1 failed, 1 passed in 0.01s ===============================
+```
+
+## Configuration
+
+### Command-Line Options
+
+The plugin provides several command-line options for configuration:
+
+#### `--intent-enabled`
+
+Enable or disable the intent plugin. The plugin is enabled by default.
+
+```bash
+# Enable explicitly (default)
+pytest --intent-enabled
+pytest --intent-enabled=true
+
+# Disable the plugin
+pytest --intent-enabled=false
+```
+
+#### `--intent-requirements-format`
+
+Specify the format of your requirements. Currently only `doorstop` is supported (default).
+
+```bash
+pytest --intent-requirements-format=doorstop
+```
+
+#### `--intent-requirements-path`
+
+Specify the path to the directory containing your requirements. Defaults to `requirements`.
+
+```bash
+pytest --intent-requirements-path=./my_requirements
+pytest --intent-requirements-path=/absolute/path/to/requirements
+```
+
+#### `--intent-references-autofill-enabled`
+
+Enable or disable automatic filling of Doorstop requirements' `references` field with test nodeids. When enabled, the plugin automatically updates the `references` field in Doorstop requirement files with the test nodeids of tests that cover each requirement. Defaults to `false`.
+
+```bash
+# Enable autofill
+pytest --intent-references-autofill-enabled
+pytest --intent-references-autofill-enabled=true
+
+# Disable autofill (default)
+pytest --intent-references-autofill-enabled=false
+```
+
+#### `--intent-references-outdated-behavior`
+
+Control the behavior when Doorstop requirements' `references` field is outdated (doesn't match the current test coverage). Defaults to `ignore`.
+
+Options:
+- `ignore`: Do nothing (default)
+- `warn`: Log a warning message but continue
+- `fail`: Fail the test run early before tests execute
+
+```bash
+# Fail if references are outdated
+pytest --intent-references-outdated-behavior=fail
+
+# Warn if references are outdated
+pytest --intent-references-outdated-behavior=warn
+
+# Ignore outdated references (default)
+pytest --intent-references-outdated-behavior=ignore
+```
+
+#### `--intent-requirements-untested-behavior`
+
+Control the behavior when requirements are untested (have no tests covering them). Defaults to `fail`.
+
+Options:
+- `fail`: Fail the test run (default)
+- `warn`: Log a warning message but continue
+- `ignore`: Do nothing
+
+```bash
+# Fail if requirements are untested (default)
+pytest --intent-requirements-untested-behavior=fail
+
+# Warn if requirements are untested
+pytest --intent-requirements-untested-behavior=warn
+
+# Ignore untested requirements
+pytest --intent-requirements-untested-behavior=ignore
+```
+
+### Complete Example
+
+```bash
+pytest \
+    --intent-enabled \
+    --intent-requirements-format=doorstop \
+    --intent-requirements-path=requirements
+```
+
+## Reference Autofill
+
+pytest-intent can automatically populate the `references` field in Doorstop requirement files with the test nodeids of tests that cover each requirement. This helps maintain traceability between requirements and their test cases.
+
+### How It Works
+
+When autofill is enabled, the plugin:
+1. Collects all tests marked with `@pytest.mark.intent` during test collection
+2. Groups tests by their associated requirement ID
+3. Updates each requirement's `references` field with the sorted list of test nodeids
+4. Saves the updated requirement files
+
+The test nodeids are stored in alphabetical order for deterministic, consistent results.
+
+### Enabling Autofill
+
+To enable automatic reference filling:
+
+```bash
+pytest --intent-references-autofill-enabled
+```
+
+When autofill is enabled, the plugin will automatically update the `references` field in your Doorstop requirement files before tests run.
+
+### Example
+
+Given a requirement file `requirements/SRD-001.yml`:
+
+```yaml
+active: true
+derived: false
+header: ''
+level: 1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: 'The plugin should be able to register with pytest.'
+```
+
+And tests marked with `@pytest.mark.intent(requirement="SRD-001")`:
+
+```python
+@pytest.mark.intent(requirement="SRD-001")
+def test_plugin_is_registered():
+    ...
+
+@pytest.mark.intent(requirement="SRD-001")
+def test_plugin_configuration():
+    ...
+```
+
+After running with autofill enabled, the requirement file will be updated:
+
+```yaml
+active: true
+derived: false
+header: ''
+level: 1.0
+links: []
+normative: true
+ref: ''
+references:
+  - path: tests/test_plugin.py::test_plugin_configuration
+    type: file
+  - path: tests/test_plugin.py::test_plugin_is_registered
+    type: file
+reviewed: null
+text: 'The plugin should be able to register with pytest.'
+```
+
+### Outdated References Detection
+
+The plugin can detect when requirement `references` fields are outdated (don't match the current test coverage). You can control the behavior with `--intent-references-outdated-behavior`:
+
+- **`ignore`** (default): Do nothing, silently continue
+- **`warn`**: Log a warning message but continue with the test run
+- **`fail`**: Fail the test run immediately before any tests execute
+
+This is useful in CI/CD pipelines to ensure that requirement files are kept up-to-date:
+
+```bash
+# Fail the build if references are outdated
+pytest --intent-references-outdated-behavior=fail
+```
+
+### Best Practices
+
+1. **Enable autofill in development**: Use `--intent-references-autofill-enabled` during development to automatically keep references up-to-date
+2. **Use `fail` in CI/CD**: Set `--intent-references-outdated-behavior=fail` in your CI/CD pipeline to catch outdated references before they're committed
+3. **Commit updated files**: When autofill updates references, commit the changes to version control to maintain traceability
+
+### Complete Autofill Example
+
+```bash
+# Enable autofill and fail if references are outdated
+pytest \
+    --intent-enabled \
+    --intent-references-autofill-enabled \
+    --intent-references-outdated-behavior=fail \
+    --intent-requirements-path=requirements
+```
+
+## Requirements Format
+
+pytest-intent currently supports loading requirements from [Doorstop](https://github.com/jacebrowning/doorstop) format. Doorstop stores requirements as YAML files in a directory structure.
+
+### Doorstop Requirements
+
+Each requirement is stored as a YAML file (e.g., `SRD-001.yml`) in your requirements directory. The plugin automatically loads all requirement IDs from the Doorstop document.
+
+Example requirement file (`requirements/SRD-001.yml`):
+
+```yaml
+active: true
+derived: false
+header: ''
+level: 1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: 'The plugin should be able to register with pytest.'
+```
+
+The requirement ID (e.g., `SRD-001`) is derived from the filename and must match the requirement ID used in your test markers.
+
+### References Field
+
+When using the autofill feature, the `references` field will be automatically populated with test nodeids. Each reference entry contains:
+- `path`: The test nodeid (e.g., `tests/test_file.py::test_function`)
+- `type`: The reference type (always `file` for test references)
+
+Example requirement file with references (`requirements/SRD-001.yml`):
+
+```yaml
+active: true
+derived: false
+header: ''
+level: 1.0
+links: []
+normative: true
+ref: ''
+references:
+  - path: tests/test_plugin.py::test_plugin_configuration
+    type: file
+  - path: tests/test_plugin.py::test_plugin_is_registered
+    type: file
+reviewed: null
+text: 'The plugin should be able to register with pytest.'
+```
+
+The `references` field is optional and will be automatically updated when autofill is enabled.
+
+### Excluding Requirements from Coverage
+
+You can exclude specific requirements from test coverage tracking by adding a custom attribute to the requirement's YAML file. This is useful for:
+
+- **Deprecated requirements**: Requirements that are no longer relevant but kept for historical reference
+- **Future requirements**: Requirements that are planned but not yet implemented
+- **Documentation-only requirements**: Requirements that describe documentation or process rather than code functionality
+
+To exclude a requirement, add the `intent.requirements.devstrek.com/exclude: true` attribute to the requirement's YAML file:
+
+Example requirement file with exclusion (`requirements/SRD-005.yml`):
+
+```yaml
+active: true
+derived: false
+header: ''
+level: 1.4
+links: []
+normative: true
+ref: ''
+reviewed: null
+intent.requirements.devstrek.com/exclude: true
+text: 'The system should be able to exclude requirements from coverage tracking.'
+```
+
+Excluded requirements:
+- Are **not loaded** into the coverage tracking system
+- Will **not appear** in untested requirements validation
+- Will **not appear** in failing requirements validation
+- Are **completely ignored** by the plugin
+
+If you want to include a requirement that was previously excluded, simply:
+- Remove the `intent.requirements.devstrek.com/exclude` attribute, or
+- Set it to `false`: `intent.requirements.devstrek.com/exclude: false`
+
+## Development
+
+### Setting Up Development Environment
+
+#### Using Dev Container (Recommended)
+
+The recommended way to set up the development environment is using a dev container with your IDE (VS Code, Cursor, etc.). This ensures a consistent development environment with all dependencies pre-configured.
+
+1. Open the repository in your IDE
+2. When prompted, select "Reopen in Container" or use the command palette to run "Dev Containers: Reopen in Container"
+3. The dev container will automatically set up the environment with all dependencies
+
+#### Manual Setup
+
+If you prefer to set up the environment manually:
+
+1. Clone the repository:
+```bash
+git clone https://gitlab.com/devstrek/pytest-intent.git
+cd pytest-intent
+```
+
+2. Install dependencies using Poetry:
+```bash
+poetry install --with=dev
+```
+
+3. Install the package in editable mode:
+```bash
+poe install
+```
+
+### Available Tasks
+
+This project uses [poethepoet](https://github.com/nat-n/poethepoet) for task management. Available tasks:
+
+- **`poe test`**: Run the test suite
+- **`poe lint`**: Run linting checks (ruff)
+- **`poe format`**: Format code (ruff format)
+- **`poe build`**: Build the package
+- **`poe install`**: Install the package in editable mode
+
+### Running Tests
+
+Run the test suite:
+
+```bash
+poe test
+```
+
+Or directly with pytest:
+
+```bash
+pytest
+```
+
+### Code Quality
+
+Format code:
+
+```bash
+poe format
+```
+
+Run linting:
+
+```bash
+poe lint
+```
+
+## Acknowledgments
+
+This plugin was inspired by the work done at [Falcon Exodynamics](https://www.falconexodynamics.com/). Their desire for intent-based testing and requirement coverage tracking served as the foundation for this project.
+
+## License
+
+pytest-intent is available under a dual licensing model:
+
+- **Elastic-2.0** for non-commercial use (educational institutions, government agencies, and non-profit organizations)
+- **Commercial License** for for-profit entities
+
+### Non-Commercial Use
+
+Educational institutions, government agencies, and non-profit organizations can use pytest-intent under the Elastic-2.0 license at no cost. This license provides full open-source freedoms:
+
+- View the source code
+- Modify the source code
+- Distribute the software
+- Submit contributions (pull requests, merge requests)
+
+See the [LICENSE](LICENSE) file for the full Elastic-2.0 license text.
+
+### Commercial Use
+
+For-profit entities are required to obtain a commercial license. The commercial license removes copyleft obligations, allowing you to use pytest-intent in proprietary software without the requirement to disclose your source code.
+
+For more information about commercial licensing, including pricing and terms, see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) or contact license@devstrek.com.
+
+### Obtaining a License
+To obtain a license, please go to [the DevsTrek website](https://devstrek.com/products/pytest-intent) and submit a license inquiry form, or directly email license@devstrek.com.
+
