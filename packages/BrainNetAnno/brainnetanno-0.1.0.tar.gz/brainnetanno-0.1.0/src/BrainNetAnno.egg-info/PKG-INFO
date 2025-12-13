@@ -1,0 +1,131 @@
+Metadata-Version: 2.4
+Name: BrainNetAnno
+Version: 0.1.0
+Summary: A toolkit for molecular annotation of brain networks, integrating transcriptome, neurotransmitters, and mitochondria.
+Home-page: https://github.com/Yunheng-Diao/BrainNetAnno
+Author: Yunheng Diao
+Author-email: Yunheng Diao <diaoyunheng@163.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Yunheng-Diao/BrainNetAnno
+Project-URL: Issues, https://github.com/Yunheng-Diao/BrainNetAnno/issues
+Keywords: neuroscience,transcriptome,network,PLS,gene expression
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.23
+Requires-Dist: pandas>=2.0
+Requires-Dist: scipy>=1.10
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: statsmodels>=0.14
+Requires-Dist: matplotlib>=3.7
+
+# BrainNetAnno
+
+A toolkit for molecular annotation of brain networks, integrating transcriptome, neurotransmitters, and mitochondria.
+
+## Features
+- CPU-only implementations (NumPy/SciPy/Scikit-learn/Statsmodels/Matplotlib)
+- Shared utilities in `BrainNetAnno.utils`
+- PLS pipelines: `*_pls_cge.run_*_pls_pipeline`
+- Enrichment analyses: `gene_celltype.run_pipeline`, `gene_layer.run_pipeline`
+
+## Requirements
+- Python >= 3.8
+- Main dependencies (see `pyproject.toml`):
+  - numpy, pandas, scipy, scikit-learn, statsmodels, matplotlib
+
+## Installation
+From source:
+```
+pip install BrainNetAnno
+```
+Or build a wheel and install:
+```
+python -m pip install -U build
+python -m build
+pip install dist/BrainNetAnno-<version>-py3-none-any.whl
+```
+
+## Quickstart (Python API)
+- Transcriptome PLS-CGE pipeline:
+```python
+from BrainNetAnno.transcriptome_pls_cge import run_transcriptome_pls_pipeline
+
+run_transcriptome_pls_pipeline(
+    t_values_file="path/to/fc_deviation.csv",          # square matrix CSV, no header
+    gene_expression_file="path/to/gene_contrib.csv",   # contains 'Region_Pair'
+    output_best_genes_csv="path/to/best_genes.csv",
+    fig_outputfile="path/to/rmse_variance.tif",
+)
+```
+- Cell-type enrichment:
+```python
+from BrainNetAnno.gene_celltype import run_pipeline
+
+res = run_pipeline(
+    celltype_csv="path/to/celltypes_PSP.csv",      # columns: gene, class
+    target_genes_csv="path/to/best_genes_SCZ.csv", # column: Gene Index
+    output_csv="path/to/celltype_enrichment_results.csv",
+)
+print(res.head())
+```
+- Cortical layer enrichment:
+```python
+from BrainNetAnno.gene_layer import run_pipeline
+
+res = run_pipeline(
+    layer_marker_path="path/to/41593_2020_787_MOESM3_ESM.xlsx",  # sheet: Table S4B
+    target_genes_path="path/to/best_genes_all.csv",
+    output_csv="path/to/ALL_gene_layer_analysis_results.csv",
+)
+print(res.head())
+```
+- Neurotransmitter PLS pipeline:
+```python
+from BrainNetAnno.neurotransmitter_pls_cge import run_neurotransmitter_pls_pipeline
+
+best_n, df = run_neurotransmitter_pls_pipeline(
+    fc_matrix_path="path/to/fc_deviation.csv",      # square matrix CSV, no header
+    nt_contrib_csv="path/to/nt_contrib.csv",        # contains 'Region_Pair'
+    output_weights_csv="path/to/nt_weights.csv",
+)
+print(best_n)
+print(df.head())
+```
+- Mitochondrial PLS pipeline:
+```python
+from BrainNetAnno.mitochondrial_pls_cge import run_mitochondrial_pls_pipeline
+
+best_n, df = run_mitochondrial_pls_pipeline(
+    fc_matrix_path="path/to/fc_deviation.csv",      # square matrix CSV, no header
+    nt_contrib_csv="path/to/mito_contrib.csv",      # contains 'Region_Pair'
+    output_weights_csv="path/to/mito_weights.csv",
+)
+print(best_n)
+print(df.head())
+```
+
+## Data Format
+- FC deviation/weights CSV: square numeric matrix without header; only upper-triangle non-zero entries are used.
+- Gene contribution CSV: must include a `Region_Pair` column formatted as `i-j`, where i < j.
+- Cell-type markers CSV: columns `gene` and `class` (gene symbols are uppercased internally).
+- Layer markers Excel: sheet contains columns named `t_stat_LayerX` (e.g., Layer1..Layer6) and a `gene` column.
+
+## Development & Testing
+- Build and install locally:
+```
+python -m pip install -U build
+python -m build
+pip install dist/BrainNetAnno-<version>-py3-none-any.whl
+```
+
+## License
+MIT
