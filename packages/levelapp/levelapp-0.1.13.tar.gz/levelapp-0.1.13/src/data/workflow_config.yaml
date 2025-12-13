@@ -1,0 +1,135 @@
+process:
+  project_name: "test-project"
+  workflow_type: SIMULATOR # Pick one of the following workflows: SIMULATOR, COMPARATOR, ASSESSOR.
+  evaluation_params:
+    attempts: 3  # Add the number of simulation attempts.
+
+evaluation:
+  evaluators: # Select from the following: JUDGE, REFERENCE, RAG.
+    - JUDGE
+    - REFERENCE
+  providers:
+    - openai
+    - groq
+    - gemini
+  metrics_map:
+    prospectFirstName: JARO_WINKLER
+    prospectLastName : TOKEN_SORT_RATIO
+
+reference_data:
+  path: "../data/reference_data_dashq.json"
+  data:
+
+endpoint:
+  name: dashq
+  base_url: https://dashq-gateway-485vb8zi.uc.gateway.dev
+  path: /api/conversations/events
+  method: POST
+  timeout: 120
+  retry_count: 3
+  retry_backoff: 0.5
+  headers:
+    - name: model_id
+      value: meta-llama/Meta-Llama-3.1-8B-Instruct
+      secure: false
+    - name: x-api-key
+      value: AIzaSyDRjlkWaYQXDuRVE47UNEKE8QdXawV_At8
+      secure: false  # change to true later and place the value in .env file
+  request_schema:
+    - field_path: eventType
+      value: newConversation
+      value_type: static
+      required: true
+    - field_path: conversationId
+      value: conversation_id
+      value_type: static
+      required: true
+    - field_path: payload.messageType
+      value: newInquiry
+      value_type: static
+      required: true
+    - field_path: payload.communityId
+      value: 3310
+      value_type: static
+      required: true
+    - field_path: payload.accountId
+      value: 1440
+      value_type: static
+      required: true
+    - field_path: payload.prospectFirstName
+      value: Kanye
+      value_type: static
+      required: true
+    - field_path: payload.prospectLastName
+      value: West
+      value_type: static
+      required: true
+    - field_path: payload.message
+      value: user_message
+      value_type: dynamic
+      required: true
+    - field_path: payload.datetime
+      value: "2025-06-25T11:12:27.245Z"
+      value_type: static
+      required: true
+    - field_path: payload.inboundChannel
+      value: text
+      value_type: static
+      required: true
+    - field_path: payload.outboundChannel
+      value: text
+      value_type: static
+      required: true
+    - field_path: payload.inquirySource
+      value: test.com
+      value_type: static
+      required: true
+  response_mapping:
+    - field_path: eventType
+      extract_as: event_type
+#    - field_path: conversationId
+#      extract_as: conversation_id
+#    - field_path: payload.accountId
+#      extract_as: account_id
+#    - field_path: payload.messageType
+#      extract_as: message_type
+    - field_path: payload.message
+      extract_as: agent_reply
+#    - field_path: payload.datetime
+#      extract_as: datetime
+    - field_path: payload.metadata
+      extract_as: metadata
+#    - field_path: payload.metadata.inquirySource
+#      extract_as: inquiry_source
+#    - field_path: payload.metadata.booking
+#      extract_as: booking
+#    - field_path: payload.metadata.tasks
+#      extract_as: tasks
+#    - field_path: payload.metadata.communityId
+#      extract_as: community_id
+#    - field_path: payload.handoffMetadata
+#      extract_as: handoff_metadata
+#    - field_path: payload.isConversationOver
+#      extract_as: is_conversation_over
+
+repository:
+  type: FIRESTORE # Pick one of the following: FIRESTORE, FILESYSTEM
+  project_id: "(default)"
+  database_name: ""
+
+assessor:
+  profiles:
+    - system_performance
+    - data_quality
+    - ai_alignment
+  metrics:
+    - ACCURACY
+    - LATENCY
+    - ROBUSTNESS
+  aggregation_strategy: WEIGHTED_AVERAGE
+  weights:
+    ACCURACY: 0.5
+    LATENCY: 0.3
+    ROBUSTNESS: 0.2
+  output_format: JSON
+  save_path: "../results/assessor_profiles"

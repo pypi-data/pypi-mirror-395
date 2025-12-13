@@ -1,0 +1,156 @@
+# api_config.yaml
+# REST API Configuration Manager - Example Configuration
+
+endpoints:
+  # Example 1: Simple GET endpoint with authentication
+  - name: github-user
+    base_url: https://api.github.com
+    path: /users/octocat
+    method: GET
+    timeout: 15
+    retry_count: 2
+    retry_backoff: 0.5
+    headers:
+      - name: Accept
+        value: application/vnd.github.v3+json
+        secure: false
+      - name: Authorization
+        value: GITHUB_TOKEN  # Environment variable name
+        secure: true
+    request_schema: []
+    response_mapping:
+      - field_path: login
+        extract_as: username
+      - field_path: id
+        extract_as: user_id
+      - field_path: public_repos
+        extract_as: repo_count
+        default: 0
+
+  # Example 2: POST endpoint with nested payload
+  - name: user-creation-api
+    base_url: https://api.example.com
+    path: /v1/users
+    method: POST
+    timeout: 30
+    retry_count: 3
+    retry_backoff: 1.0
+    headers:
+      - name: Content-Type
+        value: application/json
+        secure: false
+      - name: X-API-Key
+        value: API_SECRET_KEY
+        secure: true
+      - name: X-Request-ID
+        value: unique-request-id-001
+        secure: false
+    request_schema:
+      - field_path: user.email
+        value: test@example.com
+        value_type: static
+        required: true
+      - field_path: user.name
+        value: user_name  # Will be taken from context
+        value_type: dynamic
+        required: true
+      - field_path: user.metadata.source
+        value: api-config-manager
+        value_type: static
+        required: false
+      - field_path: user.metadata.environment
+        value: ENVIRONMENT
+        value_type: env
+        required: false
+    response_mapping:
+      - field_path: data.user.id
+        extract_as: created_user_id
+      - field_path: data.user.status
+        extract_as: user_status
+        default: unknown
+      - field_path: data.created_at
+        extract_as: timestamp
+
+  # Example 3: Complex nested response extraction
+  - name: search-api
+    base_url: https://api.service.com
+    path: /search
+    method: GET
+    timeout: 20
+    retry_count: 2
+    retry_backoff: 1.5
+    headers:
+      - name: Authorization
+        value: Bearer your-token-here
+        secure: false
+    request_schema: []
+    response_mapping:
+      - field_path: results[0].id
+        extract_as: first_result_id
+        default: null
+      - field_path: results[0].title
+        extract_as: first_result_title
+        default: "No results"
+      - field_path: meta.total
+        extract_as: total_results
+        default: 0
+      - field_path: meta.page
+        extract_as: current_page
+        default: 1
+
+  # Example 4: Health check endpoint (minimal config)
+  - name: health-check
+    base_url: https://status.example.com
+    path: /health
+    method: GET
+    timeout: 5
+    retry_count: 1
+    retry_backoff: 0.5
+    headers: []
+    request_schema: []
+    response_mapping:
+      - field_path: status
+        extract_as: service_status
+        default: down
+      - field_path: version
+        extract_as: service_version
+
+  # Example 5: PUT endpoint with authentication
+  - name: update-resource
+    base_url: https://api.platform.io
+    path: /v2/resources/12345
+    method: PUT
+    timeout: 25
+    retry_count: 3
+    retry_backoff: 2.0
+    headers:
+      - name: Content-Type
+        value: application/json
+        secure: false
+      - name: Authorization
+        value: PLATFORM_API_TOKEN
+        secure: true
+      - name: X-Client-Version
+        value: "1.0.0"
+        secure: false
+    request_schema:
+      - field_path: resource.name
+        value: resource_name
+        value_type: dynamic
+        required: true
+      - field_path: resource.attributes.priority
+        value: high
+        value_type: static
+        required: false
+      - field_path: resource.attributes.updated_by
+        value: USER_EMAIL
+        value_type: env
+        required: false
+    response_mapping:
+      - field_path: data.id
+        extract_as: resource_id
+      - field_path: data.updated_at
+        extract_as: last_updated
+      - field_path: data.attributes.status
+        extract_as: resource_status
+        default: pending

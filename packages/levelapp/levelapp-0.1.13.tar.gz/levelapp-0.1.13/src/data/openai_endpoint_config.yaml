@@ -1,0 +1,59 @@
+endpoints:
+  - name: "openai_chat"
+    base_url: "https://api.openai.com"
+    path: "/v1/chat/completions"
+    method: POST
+    timeout: 120
+    retry_count: 3
+    retry_backoff: 1.5
+    headers:
+      - name: Content-Type
+        value: application/json
+        secure: false
+      - name: Authorization
+        value: "Bearer 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"
+        secure: false
+    request_schema:
+      # Model name - could be static or dynamic
+      - field_path: model
+        value: "gpt-4o-mini"
+        value_type: static
+        required: true
+      # Messages array - dynamic from context
+      - field_path: messages
+        value: messages
+        value_type: dynamic
+        required: true
+      # Optional parameters
+      - field_path: max_tokens
+        value: 1024
+        value_type: static
+        required: false
+      - field_path: temperature
+        value: 0.7
+        value_type: static
+        required: false
+      - field_path: stream
+        value: false
+        value_type: static
+        required: false
+    response_mapping:
+      # Extract the assistant's reply
+      - field_path: choices[0].message.content
+        extract_as: agent_reply
+        default: ""
+      # Extract token usage
+      - field_path: usage.prompt_tokens
+        extract_as: input_tokens
+        default: 0
+      - field_path: usage.completion_tokens
+        extract_as: output_tokens
+        default: 0
+      - field_path: usage.total_tokens
+        extract_as: total_tokens
+        default: 0
+      # Extract other useful fields
+      - field_path: id
+        extract_as: request_id
+      - field_path: created
+        extract_as: created_at

@@ -1,0 +1,47 @@
+endpoints:
+  - name: create-message
+    base_url: https://postman-echo.com
+    path: /post
+    method: POST
+    timeout: 15
+    retry_count: 2
+    retry_backoff: 0.5
+
+    headers:
+      - name: Content-Type
+        value: application/json
+        secure: false
+
+    request_schema:
+      # Static field
+      - field_path: message.source
+        value: system
+        value_type: static
+        required: true
+
+      # Dynamic field (from runtime context)
+      - field_path: message.user
+        value: user_name
+        value_type: dynamic
+        required: true
+
+      - field_path: message.text
+        value: message_text
+        value_type: dynamic
+        required: true
+
+      # Env-based field (from OS environment)
+      - field_path: metadata.env
+        value: ENVIRONMENT
+        value_type: env
+        required: false
+
+    response_mapping:
+      - field_path: json.message
+        extract_as: sent_message
+      - field_path: headers.content-type
+        extract_as: content_type
+      - field_path: url
+        extract_as: request_url
+
+
