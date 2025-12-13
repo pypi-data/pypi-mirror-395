@@ -1,0 +1,346 @@
+---
+name: Test Python Versions
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'mkdocs.yml'
+      - 'config.toml.example'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'assets/**'
+      - 'mkdocs.yml'
+      - 'config.toml.example'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: "${{ matrix.os }} / Python ${{ matrix.python-version }}"
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read  # For checking out code
+      pull-requests: write  # For posting coverage comments
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine uv cache directory
+        id: uv-cache-dir
+        run: |
+          echo "dir=$(uv cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache uv packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ steps.uv-cache-dir.outputs.dir }}
+          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-${{ matrix.python-version }}-
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check formatting with ruff
+        run: uv run ruff check miniflux_tui tests
+
+      - name: Type check with pyright
+        run: uv run pyright miniflux_tui tests
+
+      - name: Check code complexity with pyscn
+        run: |
+          # Check for complexity issues (fail if any found)
+          # Use temp file to avoid subshell variable loss
+          uvx pyscn check . 2>&1 | grep "^miniflux" | grep "is too complex" > /tmp/complexity_issues.txt || true
+          COMPLEXITY_ISSUES=$(wc -l < /tmp/complexity_issues.txt)
+          if [ "$COMPLEXITY_ISSUES" -gt 0 ]; then
+            echo "❌ Found $COMPLEXITY_ISSUES code complexity issue(s):"
+            cat /tmp/complexity_issues.txt
+            exit 1
+          fi
+          echo "✅ No code complexity issues found"
+
+      - name: Run tests with coverage
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.os }}-py${{ matrix.python-version }}
+        run: |
+          uv run --with pytest-xdist pytest tests --cov=miniflux_tui --cov-report=xml \
+            --cov-report=term-missing --cov-report=html \
+            -n auto --dist=loadscope
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            .coverage.${{ matrix.os }}-py${{ matrix.python-version }}
+          retention-days: 7
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage.xml
+          format: cobertura
+          flag-name: ${{ matrix.os }}-py${{ matrix.python-version }}
+          parallel: true
+
+      - name: Coverage differential for PRs
+        if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          {
+            echo "## Coverage Differential"
+            echo ""
+            echo "Analyzing coverage changes in this PR..."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Run diff-cover to show coverage of changes
+          uvx diff-cover coverage.xml \
+            --compare-branch="origin/${BASE_REF}" \
+            --fail-under=70 \
+            --markdown-report=diff-coverage.md || true
+          # Add results to step summary
+          if [ -f diff-coverage.md ]; then
+            cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo ""
+            echo "ℹ️ Target: ≥70% coverage on changed lines"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Copy coverage file for comment action
+        if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: cp .coverage.${{ matrix.os }}-py${{ matrix.python-version }} .coverage
+
+      - name: Coverage comment on PR
+        if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: py-cov-action/python-coverage-comment-action@e623398c19eb3853a5572d4a516e10b15b5cefbc # v3.39
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 60
+
+      - name: Check coverage threshold
+        run: |
+          uv run python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          threshold = 60.0
+          coverage = float(ET.parse("coverage.xml").getroot().get("line-rate")) * 100
+
+          if coverage < threshold:
+              sys.exit(f"Coverage {coverage:.2f}% is below threshold {threshold:.0f}%")
+
+          print(f"Coverage {coverage:.2f}% meets threshold {threshold:.0f}%")
+          PY
+
+  test-future:
+    name: Test Python 3.15 (Preview)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine uv cache directory
+        id: uv-cache-dir
+        run: |
+          echo "dir=$(uv cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache uv packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ steps.uv-cache-dir.outputs.dir }}
+          key: uv-${{ runner.os }}-3.15-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-3.15-
+
+      - name: Set up Python 3.15
+        run: uv python install 3.15
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check formatting with ruff
+        run: uv run ruff check miniflux_tui tests
+
+      - name: Type check with pyright
+        run: uv run pyright miniflux_tui tests
+
+      - name: Check code complexity with pyscn
+        run: |
+          # Check for complexity issues (fail if any found)
+          # Use temp file to avoid subshell variable loss
+          uvx pyscn check . 2>&1 | grep "^miniflux" | grep "is too complex" > /tmp/complexity_issues.txt || true
+          COMPLEXITY_ISSUES=$(wc -l < /tmp/complexity_issues.txt)
+          if [ "$COMPLEXITY_ISSUES" -gt 0 ]; then
+            echo "❌ Found $COMPLEXITY_ISSUES code complexity issue(s):"
+            cat /tmp/complexity_issues.txt
+            exit 1
+          fi
+          echo "✅ No code complexity issues found"
+
+      - name: Run tests with coverage
+        run: |
+          uv run pytest tests --cov=miniflux_tui --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Check coverage threshold
+        run: |
+          uv run python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          threshold = 60.0
+          coverage = float(ET.parse("coverage.xml").getroot().get("line-rate")) * 100
+
+          if coverage < threshold:
+              sys.exit(f"Coverage {coverage:.2f}% is below threshold {threshold:.0f}%")
+
+          print(f"Coverage {coverage:.2f}% meets threshold {threshold:.0f}%")
+          PY
+
+  coverage-finish:
+    name: Finish Coveralls
+    needs: [test, test-future]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
+
+  mutation-testing:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run mutation testing
+        id: mutmut
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          # Run mutmut on the main codebase using setup.cfg configuration
+          # Note: Mutation testing can be slow. We run with a timeout to prevent excessive CI time.
+          echo "## Mutation Testing Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "Running mutation testing (limited to 30 minutes)..." >> "$GITHUB_STEP_SUMMARY"
+
+          # Run mutmut with pytest runner and save output
+          set +e
+          uvx mutmut run --runner="pytest -x -q"
+          set -e
+
+          # Generate results
+          if [ -f ".mutmut-cache" ] || [ -d ".mutmut" ]; then
+            uvx mutmut results > mutation-results.txt 2>&1 || true
+          else
+            echo "No mutations were generated. This may indicate issues with mutation testing setup." > mutation-results.txt
+          fi
+
+          # Show summary
+          {
+            echo ""
+            echo "### Summary"
+            cat mutation-results.txt || true
+            echo ""
+            echo "📝 Full report available in artifacts"
+            echo "**Note:** Mutation testing requires setup.cfg configuration"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: mutation-testing-report
+          path: |
+            mutation-results.txt
+            html/
+          retention-days: 30
+
+      - name: Comment mutation score
+        if: always()
+        run: |
+          echo "✨ Mutation testing completed!"
+          echo "📊 Check the uploaded artifacts for detailed results"
+          echo "🎯 Target: >80% mutation score for high-quality tests"
+          echo ""
+          echo "Note: Mutation testing is informational and does not block PR merging."

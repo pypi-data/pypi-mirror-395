@@ -1,0 +1,192 @@
+---
+# This is a basic workflow to help you get started with Actions
+
+name: Code Quality Checks
+
+# Controls when the action will run. Triggers the workflow on push or pull
+# request events but only for the main branch
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A workflow run is made up of one or more jobs that can run sequentially
+# or in parallel
+jobs:
+  # This workflow contains linting jobs
+  megalinter:
+    name: MegaLinter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: MegaLinter
+        id: ml
+        uses: oxsecurity/megalinter/flavors/python@62c799d895af9bcbca5eacfebca29d527f125a57 # v9.1.0
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FILTER_REGEX_EXCLUDE: '(CHANGELOG\.md|CLAUDE\.md|AGENT\.md|WORKFLOW_IMPROVEMENTS\.md)'
+          # Disable linters that overlap with project tools (ruff + pyright) or cause false positives
+          # PYTHON_* linters disabled:
+          #   - BLACK: Use ruff format instead
+          #   - ISORT: Use ruff check instead
+          #   - FLAKE8: Use ruff check instead
+          #   - MYPY: Use pyright instead
+          #   - PYLINT: Use ruff check instead
+          #   - BANDIT: Already handled by dedicated Bandit job
+          #   - PYRIGHT: Use dedicated test.yml job
+          #   - RUFF: Would duplicate our test.yml CI checks
+          # YAML_PRETTIER: Too strict for GitHub Actions/CI formatting
+          # YAML_V8R: Unreliable external dependency (schemastore.org HTTP 503 errors)
+          DISABLE_LINTERS: SPELL_CSPELL,MARKDOWN_MARKDOWNLINT,PYTHON_BANDIT,PYTHON_BLACK,PYTHON_ISORT,PYTHON_FLAKE8,PYTHON_MYPY,PYTHON_PYLINT,PYTHON_PYRIGHT,PYTHON_RUFF,YAML_PRETTIER,YAML_V8R,COPYPASTE_JSCPD,REPOSITORY_CHECKOV,REPOSITORY_GITLEAKS,SPELL_LYCHEE
+
+      - name: Upload MegaLinter artifacts
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: MegaLinter reports
+          path: |
+            megalinter-reports
+            mega-linter.log
+
+  bandit:
+    name: Bandit Security Analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Run Bandit security checks
+        run: uv run bandit -q -r miniflux_tui
+
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install radon and xenon
+        run: |
+          uv pip install radon xenon
+
+      - name: Check cyclomatic complexity
+        run: |
+          echo "## Cyclomatic Complexity Report"
+          uv run radon cc miniflux_tui tests -a -s --total-average
+          echo ""
+          echo "## Maintainability Index"
+          uv run radon mi miniflux_tui tests -s
+
+      - name: Enforce complexity thresholds
+        run: |
+          # Xenon enforces complexity limits
+          # -a: Average complexity threshold (A = excellent)
+          # -m: Modules threshold (B = good)
+          # -b: Blocks threshold (C = acceptable, allows up to CC 20)
+          # We set lenient thresholds initially and can tighten over time
+          uv run xenon --max-average B --max-modules B --max-absolute C miniflux_tui
+
+  gitleaks:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          version="8.16.1"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          tmp_dir="$(mktemp -d)"
+          curl -sSfL "$url" -o "$tmp_dir/gitleaks.tgz"
+          tar -xzf "$tmp_dir/gitleaks.tgz" -C "$tmp_dir" gitleaks
+          sudo install -m 755 "$tmp_dir/gitleaks" /usr/local/bin/gitleaks
+
+      - name: Run gitleaks
+        id: gitleaks
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gitleaks detect --no-git --redact --report-format sarif --report-path gitleaks.sarif
+
+      - name: Upload gitleaks report
+        if: (steps.gitleaks.outcome == 'success' || steps.gitleaks.outcome == 'failure') && github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@4e94bd11f71e507f7f87df81788dff88d1dacbfb
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+      - name: Fail if gitleaks found secrets
+        if: steps.gitleaks.outcome == 'failure'
+        run: exit 1

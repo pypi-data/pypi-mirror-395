@@ -1,0 +1,57 @@
+---
+name: CIFuzz
+
+on:
+  pull_request:
+    paths:
+      - 'miniflux_tui/**'
+      - 'fuzz/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzzing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Python
+        run: uv python install 3.11
+
+      - name: Install Clang toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang llvm
+
+      - name: Build Fuzzers
+        run: uv sync --locked --group fuzz --python 3.11
+
+      - name: Run Fuzzers
+        run: |
+          mkdir -p fuzz/artifacts
+          uv run --python 3.11 python fuzz/fuzz_config.py -max_total_time=60 -rss_limit_mb=2048
+
+      - name: Upload Crash Artifacts
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts
+          if-no-files-found: ignore

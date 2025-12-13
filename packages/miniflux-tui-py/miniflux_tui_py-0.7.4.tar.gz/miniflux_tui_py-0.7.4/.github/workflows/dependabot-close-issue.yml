@@ -1,0 +1,82 @@
+---
+name: Close Dependabot Tracking Issue
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  close-tracking-issue:
+    name: Close Tracking Issue on PR Merge
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.user.type == 'Bot'
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Close tracking issue for merged Dependabot PR
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Search for the tracking issue created for this PR
+            // The issue title should contain the PR title
+            const issueTitle = `[Dependabot] ${pr.title}`;
+
+            console.log(`Searching for issue with title: "${issueTitle}"`);
+
+            // Search for open issues with the dependabot label
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependabot',
+              per_page: 100
+            });
+
+            // Find the issue that matches this PR
+            const trackingIssue = issues.data.find(issue => {
+              // Match by title or by PR link in body
+              return issue.title === issueTitle ||
+                issue.body?.includes(`PR #${pr.number}`);
+            });
+
+            if (trackingIssue) {
+              console.log(`Found tracking issue #${trackingIssue.number}`);
+
+              // Close the issue with a comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: trackingIssue.number,
+                body: `✅ Dependency update merged in PR #${pr.number}\n\nAutomatically closing this tracking issue.`
+              });
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: trackingIssue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+
+              console.log(`Closed issue #${trackingIssue.number} for merged PR #${pr.number}`);
+            } else {
+              console.log(`No tracking issue found for PR #${pr.number}`);
+              console.log(`Expected title: "${issueTitle}"`);
+              console.log(`Found ${issues.data.length} open dependabot issues`);
+            }

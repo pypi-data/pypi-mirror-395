@@ -1,0 +1,57 @@
+---
+version: 2
+updates:
+  # Enable version updates for Python dependencies (via uv)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: "/"
+    # Auto-merge minor and patch updates, leave major for manual review
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # Ignore dependencies that require special build environments
+    ignore:
+      - dependency-name: "atheris"
+        # atheris requires clang/libfuzzer to build from source
+        # It's only used for optional fuzzing (not production)
+        # CIFuzz workflow has proper build tools configured
+    # Group updates by type for easier management
+    groups:
+      development-dependencies:
+        patterns:
+          - "pytest*"
+          - "ruff*"
+          - "pyright*"
+          - "mkdocs*"
+          - "pylint*"
+      production-dependencies:
+        patterns:
+          - "textual*"
+          - "miniflux*"
+          - "html2text*"
+    cooldown:
+      default-days: 7
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7

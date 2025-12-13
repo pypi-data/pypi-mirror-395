@@ -1,0 +1,96 @@
+# git-cliff configuration for miniflux-tui-py
+# Parses conventional commits and generates a beautiful changelog
+
+[changelog]
+# Changelog header
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+
+# Changelog body template
+body = """
+{% if version %}\
+    ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper }}
+    {% for commit in commits %}
+    - {% if commit.breaking %}**[BREAKING]** {% endif %}{{ commit.message }}{% if commit.author.name == "Claude" %} 🤖{% elif commit.author.name == "dependabot[bot]" %} 🤖{% elif commit.author.name == "renovate[bot]" %} 🤖{% elif commit.author.name == "StepSecurity Bot" %} 🤖{% endif %}
+    {%- endfor %}
+{% endfor %}
+
+{% if version %}
+    #### Contributors
+
+    Thank you to everyone who contributed to this release!
+
+    **Humans:** 👤 Peter Reuterås
+
+    **AI & Automation:** 🤖 Claude (AI Assistant){% if commits | filter(attribute="author.name", value="dependabot[bot]") %}, dependabot[bot] (Dependencies){% endif %}{% if commits | filter(attribute="author.name", value="renovate[bot]") %}, renovate[bot] (Dependencies){% endif %}{% if commits | filter(attribute="author.name", value="StepSecurity Bot") %}, StepSecurity Bot (Security){% endif %}
+{% endif %}
+"""
+
+# Footer template with statistics
+footer = """
+{% if version %}
+---
+**Full Changelog**: https://github.com/reuteras/miniflux-tui-py/compare/{{ previous.version }}...{{ version }}
+{% endif %}
+"""
+
+# Remove prefix from commit messages (e.g., "fix: " -> "")
+trim = true
+
+# Commit parsers - maps conventional commit types to changelog groups
+[[git.commit_parsers]]
+message = "^feat"
+group = "Features"
+
+[[git.commit_parsers]]
+message = "^fix"
+group = "Bug Fixes"
+
+[[git.commit_parsers]]
+message = "^doc"
+group = "Documentation"
+
+[[git.commit_parsers]]
+message = "^perf"
+group = "Performance"
+
+[[git.commit_parsers]]
+message = "^refactor"
+group = "Refactoring"
+
+[[git.commit_parsers]]
+message = "^test"
+group = "Testing"
+
+[[git.commit_parsers]]
+message = "^chore"
+group = "Maintenance"
+
+[[git.commit_parsers]]
+message = "^ci"
+group = "CI/CD"
+
+# Skip commits that don't match any parser
+[[git.commit_parsers]]
+message = "^[Mm]erge"
+skip = true
+
+[[git.commit_parsers]]
+message = "^[Rr]evert"
+skip = true
+
+# GitHub-specific commit link format
+[[git.link_parsers]]
+pattern = "#(\\d+)"
+href = "https://github.com/reuteras/miniflux-tui-py/pull/$1"

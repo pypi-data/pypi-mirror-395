@@ -1,0 +1,113 @@
+---
+name: Performance Testing
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'miniflux_tui/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install pytest-benchmark
+        run: uv pip install pytest-benchmark
+
+      - name: Run benchmarks
+        run: |
+          {
+            echo "## Performance Benchmark Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          uv run pytest tests/test_benchmarks.py --benchmark-only \
+            --benchmark-json=benchmark.json \
+            --benchmark-columns=min,max,mean,stddev,rounds,iterations \
+            --benchmark-sort=mean || true
+          {
+            echo ""
+            echo "📊 Benchmark data saved to artifacts"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Download previous benchmark data
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ./cache
+          key: benchmark-${{ runner.os }}-${{ github.base_ref }}
+
+      - name: Compare with previous benchmarks
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          if [ -f ./cache/benchmark.json ]; then
+            {
+              echo "### Performance Comparison"
+              echo ""
+              echo "Comparing current PR benchmarks with base branch..."
+            } >> "$GITHUB_STEP_SUMMARY"
+            uv run pytest-benchmark compare ./cache/benchmark.json benchmark.json \
+              --columns=min,max,mean,stddev || echo "Comparison not available" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No previous benchmark data found for comparison" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Store benchmark result
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: benchmark-results
+          path: benchmark.json
+          retention-days: 30
+
+      - name: Save benchmark data to cache
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        continue-on-error: true
+        run: |
+          mkdir -p ./cache
+          cp benchmark.json ./cache/benchmark.json
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          echo "✅ Performance benchmarks completed successfully!"
+          echo "📈 Results available in the step summary and artifacts"
+          echo ""
+          echo "Benchmark highlights:"
+          if [ -f benchmark.json ]; then
+            echo "- $(jq '.benchmarks | length' benchmark.json) benchmarks executed"
+            echo "- Results saved to artifacts for 30 days"
+          fi

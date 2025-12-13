@@ -1,0 +1,71 @@
+---
+name: Scorecard analysis
+
+on:
+  branch_protection_rule:
+  push:
+    branches: [main]
+    paths:
+      - 'miniflux_tui/**'
+      - 'tests/**'
+      - 'fuzz/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'miniflux_tui/**'
+      - 'tests/**'
+      - 'fuzz/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/**'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Needed to read branch protection rules via GitHub API
+      contents: read
+      # Needed to upload the results to code-scanning dashboard
+      security-events: write
+      # Needed to publish results and get a badge
+      id-token: write
+      # Needed for pull request context
+      pull-requests: read
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Use GITHUB_TOKEN by default for better GitHub API integration
+          # Set SCORECARD_TOKEN secret in repository settings if custom PAT is needed
+          repo_token: ${{ secrets.SCORECARD_TOKEN || secrets.GITHUB_TOKEN }}
+          # Publish results to security tab for visibility
+          publish_results: true
+
+      - name: Upload results to code-scanning
+        uses: github/codeql-action/upload-sarif@4e94bd11f71e507f7f87df81788dff88d1dacbfb
+        with:
+          sarif_file: results.sarif
+          category: scorecard

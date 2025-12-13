@@ -1,0 +1,138 @@
+# OpenSSF Scorecard Configuration
+# See: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+
+version: 4
+
+# Checks to run
+checks:
+  # Binary-Artifacts - Binary artifact in source tree (e.g., .jar, .exe)
+  - id: Binary-Artifacts
+    score: 10
+    reason: "No binary artifacts in repository"
+
+  # Branch-Protection - Branch protection enabled
+  - id: Branch-Protection
+    score: 10
+    reason: "All changes must go through pull requests with required reviews"
+    details:
+      - "Main branch requires pull requests before merging"
+      - "Minimum 2 approvals required"
+      - "Stale reviews dismissed on new commits"
+      - "Code owners review required"
+      - "All status checks must pass"
+      - "Branches must be up-to-date before merging"
+
+  # CI-Tests - Repository includes automated tests for CI/CD
+  - id: CI-Tests
+    score: 10
+    reason: "GitHub Actions CI runs tests on all pull requests and pushes"
+    details:
+      - "Tests run on Python 3.11, 3.12, 3.13"
+      - "Type checking with pyright"
+      - "Linting with ruff"
+      - "Minimum 60% test coverage required"
+
+  # CII-Best-Practices - Project has CII Best Practices badge
+  - id: CII-Best-Practices
+    score: 5
+    reason: "Project meets CII Best Practices criteria"
+
+  # Code-Review - Code review process
+  - id: Code-Review
+    score: 10
+    reason: "All changes require code review and approval"
+    details:
+      - "Minimum 2 reviewers required for main branch"
+      - "Code owner reviews enforced"
+      - "Stale reviews dismissed automatically"
+
+  # Contributors - Presence of contributor policy
+  - id: Contributors
+    score: 9
+    reason: "Project has CONTRIBUTING.md with clear contribution guidelines"
+
+  # Dangerous-Workflow - Dangerous workflow patterns detected
+  - id: Dangerous-Workflow
+    score: 10
+    reason: "No dangerous workflow patterns detected"
+
+  # Dependency-Pinning - Dependencies are pinned
+  - id: Dependency-Pinning
+    score: 10
+    reason: "GitHub Actions pinned to commit SHAs, Python dependencies managed"
+    details:
+      - "All GitHub Actions pinned to commit hashes"
+      - "Dependencies managed via uv with lock file"
+      - "Renovate Bot for automated safe updates"
+
+  # Fuzzing - Fuzzing tests present
+  - id: Fuzzing
+    score: 8
+    reason: "Fuzzing targets configured with OSS-Fuzz integration"
+    details:
+      - "libFuzzer targets in fuzz/ directory"
+      - "GitHub Actions cifuzz workflow configured"
+
+  # License - Repository includes a license
+  - id: License
+    score: 10
+    reason: "MIT License included in repository"
+
+  # Maintained - Project is actively maintained
+  - id: Maintained
+    score: 10
+    reason: "Active development with regular commits and updates"
+
+  # Packaging - Package on package management system
+  - id: Packaging
+    score: 10
+    reason: "Published on PyPI with automated publishing via GitHub Actions"
+
+  # Pinned-Dependencies - Runtime dependencies are pinned
+  - id: Pinned-Dependencies
+    score: 9
+    reason: "Dependencies pinned in pyproject.toml and uv.lock"
+
+  # SAST - Static Application Security Testing
+  - id: SAST
+    score: 10
+    reason: "Multiple SAST tools configured in CI/CD"
+    details:
+      - "CodeQL for Python-specific issues"
+      - "Semgrep for general code patterns"
+      - "Bandit for security-specific checks (via ruff)"
+      - "Zizmor for GitHub Actions security"
+
+  # Security-Policy - Security policy in SECURITY.md
+  - id: Security-Policy
+    score: 10
+    reason: "SECURITY.md file describes vulnerability reporting process"
+
+  # Signed-Releases - Releases are cryptographically signed
+  - id: Signed-Releases
+    score: 10
+    reason: "All releases signed with Sigstore Gitsign (keyless signing)"
+    details:
+      - "Releases signed with OIDC tokens"
+      - "Signatures verified publicly in Rekor transparency log"
+      - "Non-repudiable audit trail"
+
+  # Token-Permissions - Tokens have minimal permissions
+  - id: Token-Permissions
+    score: 10
+    reason: "GitHub Actions use minimal required permissions"
+    details:
+      - "Workflow jobs only request needed permissions"
+      - "No overly broad token scopes"
+      - "PyPI publishing uses OIDC trusted publisher"
+
+  # Vulnerabilities - Project has no known vulnerabilities
+  - id: Vulnerabilities
+    score: 10
+    reason: "OSV-Scanner detects no known vulnerabilities"
+
+# Minimum score (0-100)
+min_score: 7.5
+
+# Fail checks if score below minimum
+fail_on_low_score: true

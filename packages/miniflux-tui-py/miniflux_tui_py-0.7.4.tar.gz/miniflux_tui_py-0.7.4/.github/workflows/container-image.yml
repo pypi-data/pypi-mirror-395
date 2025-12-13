@@ -1,0 +1,153 @@
+---
+name: Container Image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: { }
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/miniflux-tui
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout source
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Compute image tags
+        id: image-tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          tags=""
+
+          # Release tags (v0.5.0, v1.0.0, etc)
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            ref_name="${GITHUB_REF#refs/tags/}"
+            tags="${REGISTRY}/${IMAGE_NAME}:${ref_name}"
+            tags+=$'\n'"${REGISTRY}/${IMAGE_NAME}:latest"
+          fi
+
+          {
+            printf 'tags<<EOF\n'
+            printf '%s\n' "$tags"
+            printf 'EOF\n'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the Container registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          provenance: true
+          sbom: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.image-tags.outputs.tags }}
+
+      - name: Install Syft
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          SYFT_VERSION=v1.36.0
+          SYFT_BASE_URL="https://github.com/anchore/syft/releases/download/${SYFT_VERSION}"
+          SYFT_ARCHIVE="syft_${SYFT_VERSION#v}_linux_amd64.tar.gz"
+          TMP_DIR="$(mktemp -d)"
+          ARCHIVE_PATH="${TMP_DIR}/syft.tar.gz"
+
+          if ! curl -sSfL "${SYFT_BASE_URL}/${SYFT_ARCHIVE}" -o "${ARCHIVE_PATH}"; then
+            ALT_ARCHIVE="syft_Linux_x86_64.tar.gz"
+            curl -sSfL "${SYFT_BASE_URL}/${ALT_ARCHIVE}" -o "${ARCHIVE_PATH}"
+          fi
+
+          sudo tar -xz -f "${ARCHIVE_PATH}" -C /usr/local/bin syft
+          rm -rf "${TMP_DIR}"
+
+      - name: Generate SBOMs for container image
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Unexpected image digest format: ${IMAGE_DIGEST}" >&2
+            exit 1
+          fi
+          mkdir -p sbom
+          IMAGE="${REGISTRY}/${IMAGE_NAME}@${IMAGE_DIGEST}"
+          SAFE_DIGEST="${IMAGE_DIGEST//:/-}"
+          syft "docker:${IMAGE}" -o cyclonedx-json --file "sbom/miniflux-tui-image-${SAFE_DIGEST}.cdx.json"
+          syft "docker:${IMAGE}" -o spdx-json --file "sbom/miniflux-tui-image-${SAFE_DIGEST}.spdx.json"
+
+      - name: Upload SBOM artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: sbom-container
+          path: sbom/
+          retention-days: 7
+
+      - name: Scan container image for vulnerabilities
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: table
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Sign container image
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          cosign sign --yes "${REGISTRY}/${IMAGE_NAME}@${IMAGE_DIGEST}"

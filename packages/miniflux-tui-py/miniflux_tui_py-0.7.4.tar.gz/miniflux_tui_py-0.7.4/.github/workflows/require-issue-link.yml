@@ -1,0 +1,81 @@
+---
+name: Require Linked Issue
+
+# Trigger on pull requests to ensure issue linking
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  check-issue-link:
+    name: Check Issue Link
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Check for issue reference
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Check for issue references in body or title
+          # Allows: Fixes #123, Closes #456, Related to #789, Addresses #000
+          if echo "$PR_BODY $PR_TITLE" | grep -qiE \
+            '(fixes|closes|resolves|addresses|related to) #[0-9]+'; then
+            echo "✅ Issue reference found"
+            exit 0
+          fi
+
+          # Check if any issue mentions this PR number (e.g., tracking issue)
+          encoded_query=$(
+            python -c "import urllib.parse, os; repo=os.environ['REPO']; pr_number=os.environ['PR_NUMBER']; query=f'repo:{repo} type:issue \"#{pr_number}\"'; print(urllib.parse.quote_plus(query))"
+          )
+          issue_count=$(gh api -X GET "search/issues?q=${encoded_query}" --jq '.total_count')
+
+          if [ "${issue_count:-0}" -le 0 ]; then
+            encoded_query=$(
+              python -c "import urllib.parse, os; repo=os.environ['REPO']; pr_number=os.environ['PR_NUMBER']; query=f'repo:{repo} type:issue \"https://github.com/{repo}/pull/{pr_number}\"'; print(urllib.parse.quote_plus(query))"
+            )
+            issue_count=$(gh api -X GET "search/issues?q=${encoded_query}" --jq '.total_count')
+          fi
+
+          if [ "${issue_count:-0}" -gt 0 ]; then
+            echo "✅ Found issue referencing PR #$PR_NUMBER"
+            exit 0
+          fi
+
+          # Check for dependabot (auto-generated)
+          if [ "$GH_ACTOR" == "dependabot[bot]" ]; then
+            echo "✅ Dependabot PR (auto-exempt)"
+            exit 0
+          fi
+
+          # Check for release commits (auto-generated)
+          if echo "$PR_TITLE" | grep -qiE '^(chore|release): (Release|Bump) v[0-9]'; then
+            echo "✅ Release PR (auto-exempt)"
+            exit 0
+          fi
+
+          # No issue reference found
+          echo "❌ No issue reference found"
+          echo ""
+          echo "Please link an issue to this PR by including one of:"
+          echo "  • Fixes #123"
+          echo "  • Closes #123"
+          echo "  • Resolves #123"
+          echo "  • Addresses #123"
+          echo "  • Related to #123"
+          echo ""
+          echo "Or create an issue first if one doesn't exist."
+          exit 1

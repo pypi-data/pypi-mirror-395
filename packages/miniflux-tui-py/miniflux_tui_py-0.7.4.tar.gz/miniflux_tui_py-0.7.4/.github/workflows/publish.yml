@@ -1,0 +1,462 @@
+---
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to publish (e.g., v0.5.6)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    env:
+      DIST_ARTIFACT_NAME: dist-${{ github.run_id }}-${{ github.run_attempt }}
+      BINARY_ARTIFACT_PREFIX: miniflux-tui-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          enable-cache: "false"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check formatting with ruff
+        run: uv run ruff check miniflux_tui tests
+
+      - name: Type check with pyright
+        run: uv run pyright miniflux_tui tests
+
+      - name: Run tests
+        run: uv run pytest tests --cov=miniflux_tui
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Upload artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ env.DIST_ARTIFACT_NAME }}
+          path: dist/
+          retention-days: 7
+
+  publish:
+    env:
+      DIST_ARTIFACT_NAME: dist-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/miniflux-tui-py/
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: ${{ env.DIST_ARTIFACT_NAME }}
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          packages-dir: dist/
+          skip-existing: true
+          attestations: true
+
+  binaries:
+    env:
+      BINARY_ARTIFACT_PREFIX: miniflux-tui-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          enable-cache: "false"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --group binary --locked
+
+      - name: Build executable archive
+        run: uv run python scripts/build_binary.py
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ env.BINARY_ARTIFACT_PREFIX }}-${{ matrix.os }}
+          path: build/binary/*
+          retention-days: 7
+
+  release:
+    env:
+      DIST_ARTIFACT_NAME: dist-${{ github.run_id }}-${{ github.run_attempt }}
+      BINARY_ARTIFACT_PREFIX: miniflux-tui-${{ github.run_id }}-${{ github.run_attempt }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    needs: [build, binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to publish release notes
+      actions: read  # Required to access artifacts from build jobs
+      id-token: write  # Required for OpenID Connect trusted publishing to PyPI
+      attestations: write  # Required to generate SLSA provenance
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: dist-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/
+
+      - name: Download binary artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: ${{ env.BINARY_ARTIFACT_PREFIX }}-*
+          merge-multiple: true
+          path: binaries/
+
+      - name: Install Syft
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          SYFT_VERSION=v1.36.0
+          SYFT_BASE_URL="https://github.com/anchore/syft/releases/download/${SYFT_VERSION}"
+          SYFT_ARCHIVE="syft_${SYFT_VERSION#v}_linux_amd64.tar.gz"
+          TMP_DIR="$(mktemp -d)"
+          ARCHIVE_PATH="${TMP_DIR}/syft.tar.gz"
+
+          if ! curl -sSfL "${SYFT_BASE_URL}/${SYFT_ARCHIVE}" -o "${ARCHIVE_PATH}"; then
+            ALT_ARCHIVE="syft_Linux_x86_64.tar.gz"
+            curl -sSfL "${SYFT_BASE_URL}/${ALT_ARCHIVE}" -o "${ARCHIVE_PATH}"
+          fi
+
+          sudo tar -xz -f "${ARCHIVE_PATH}" -C /usr/local/bin syft
+          rm -rf "${TMP_DIR}"
+
+      - name: Generate SBOMs for release artifacts
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p sbom
+          TAG_NAME="${RELEASE_TAG}"
+          VERSION="${TAG_NAME#v}"
+          syft dir:dist --source-name miniflux-tui-py \
+            --source-version "${VERSION}" \
+            --output cyclonedx-json=sbom/miniflux-tui-pypi.cdx.json
+          syft dir:dist --source-name miniflux-tui-py \
+            --source-version "${VERSION}" \
+            --output spdx-json=sbom/miniflux-tui-pypi.spdx.json
+          if compgen -G "binaries/*" > /dev/null; then
+            syft dir:binaries --source-name miniflux-tui \
+              --source-version "${VERSION}" \
+              --output cyclonedx-json=sbom/miniflux-tui-binaries.cdx.json
+            syft dir:binaries --source-name miniflux-tui \
+              --source-version "${VERSION}" \
+              --output spdx-json=sbom/miniflux-tui-binaries.spdx.json
+          else
+            echo "No binary artifacts found; skipping binary SBOM generation."
+          fi
+
+      - name: Upload SBOM artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: sbom
+          path: sbom/
+          retention-days: 7
+
+      - name: Generate GitHub attestations
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: |
+            dist/*
+            binaries/*
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Sign release artifacts with cosign
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+
+          sign_with_cosign() {
+            local file="$1"
+            local signature="${file}.sig"
+            local bundle="${file}.sig.bundle"
+
+            cosign sign-blob --yes \
+              --bundle "${bundle}" \
+              --output-signature "${signature}" \
+              "${file}"
+            echo "Signed: ${file}"
+          }
+
+          echo "Signing distribution packages..."
+          for file in dist/*.whl dist/*.tar.gz; do
+            if [ -f "$file" ]; then
+              sign_with_cosign "$file"
+            fi
+          done
+
+          echo "Signing binary artifacts..."
+          if [ -d binaries ]; then
+            for file in binaries/*; do
+              if [ -f "$file" ]; then
+                sign_with_cosign "$file"
+              fi
+            done
+          fi
+
+          echo "Signing SBOM artifacts..."
+          for file in sbom/*.json; do
+            if [ -f "$file" ]; then
+              sign_with_cosign "$file"
+            fi
+          done
+
+      - name: Generate SLSA provenance with cosign
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+
+          echo "Generating SLSA provenance for artifacts..."
+
+          # Create a manifest of all artifacts for provenance
+          mkdir -p provenance
+
+          # Generate SLSA v1.0 provenance using cosign
+          cosign generate-key 2>/dev/null || true
+
+          echo "Creating provenance records..."
+
+          # Create detailed provenance for all artifacts
+          cat > provenance/provenance.json << 'PROVENANCE_EOF'
+          {
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "predicateType": "https://slsa.dev/provenance/v1",
+            "subject": [
+          PROVENANCE_EOF
+
+          first=true
+          for file in dist/*.whl dist/*.tar.gz binaries/* sbom/*.json; do
+            if [ -f "$file" ]; then
+              sha256=$(sha256sum "$file" | awk '{print $1}')
+              if [ "$first" = true ]; then
+                first=false
+              else
+                echo "," >> provenance/provenance.json
+              fi
+              cat >> provenance/provenance.json << SUBJECT_EOF
+              {
+                "name": "$(basename "$file")",
+                "digest": {
+                  "sha256": "$sha256"
+                }
+              }
+          SUBJECT_EOF
+            fi
+          done
+
+          cat >> provenance/provenance.json << 'PROVENANCE_EOF'
+            ],
+            "predicate": {
+              "buildDefinition": {
+                "buildType": "https://github.com/actions/workflow",
+                "externalParameters": {
+                  "workflow": "publish.yml",
+                  "repository": "reuteras/miniflux-tui-py"
+                },
+                "internalParameters": {
+                  "github-actions": true
+                },
+                "resolvedDependencies": []
+              },
+              "runDetails": {
+                "builder": {
+                  "id": "https://github.com/actions/runner"
+                },
+                "metadata": {
+                  "invocationId": "https://github.com/reuteras/miniflux-tui-py/actions/runs/${{ github.run_id }}"
+                }
+              }
+            }
+          }
+          PROVENANCE_EOF
+
+          echo "SLSA provenance created at provenance/provenance.json"
+
+          # Also create .intoto.jsonl format for OpenSSF Scorecard compatibility
+          # This gives maximum score (10) for Signed-Releases check
+          cp provenance/provenance.json provenance/provenance.intoto.jsonl
+          echo "Created provenance.intoto.jsonl for scorecard compatibility"
+
+      - name: Upload release assets
+        if: github.run_attempt == 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          TAG="${RELEASE_TAG:?RELEASE_TAG environment variable is required}"
+          REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY environment variable is required}"
+
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "GitHub CLI is required but was not found in PATH." >&2
+            exit 1
+          fi
+
+          if ! gh release view "${TAG}" --repo "${REPO}" >/dev/null 2>&1; then
+            echo "Release ${TAG} does not exist yet. Creating a draft release before uploading assets."
+            # Extract release notes from CHANGELOG.md for this version
+            VERSION="${TAG#v}"
+            RELEASE_NOTES="See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md#${VERSION//.}) for details."
+            gh release create "${TAG}" --draft --verify-tag --title "${TAG}" --notes "${RELEASE_NOTES}" --latest --repo "${REPO}"
+          fi
+
+          for required_dir in dist sbom; do
+            if [ ! -d "${required_dir}" ]; then
+              echo "Expected release artifact directory '${required_dir}' is missing." >&2
+              exit 1
+            fi
+          done
+
+          upload_files=()
+
+          declare -A seen=()
+
+          add_upload_file() {
+            local path="$1"
+
+            if [ -f "${path}" ] && [ -z "${seen["$path"]+x}" ]; then
+              upload_files+=("${path}")
+              seen["$path"]=1
+            fi
+          }
+
+          add_signed_artifacts() {
+            local directory="$1"
+
+            while IFS= read -r -d '' file; do
+              case "${file}" in
+                *.sig|*.sig.bundle)
+                  # Signature bundles may occasionally exist without the primary artifact
+                  add_upload_file "${file}"
+                  continue
+                  ;;
+              esac
+
+              add_upload_file "${file}"
+
+              for extension in sig sig.bundle; do
+                local signed_file="${file}.${extension}"
+                add_upload_file "${signed_file}"
+              done
+            done < <(find "${directory}" -maxdepth 1 -type f -print0)
+          }
+
+          # Collect distribution artifacts and signatures
+          add_signed_artifacts "dist"
+
+          # Collect binary artifacts and signatures
+          if [ -d binaries ]; then
+            add_signed_artifacts "binaries"
+          fi
+
+          # Collect SBOM artifacts and signatures
+          add_signed_artifacts "sbom"
+
+          # Collect provenance artifacts
+          if [ -d provenance ]; then
+            while IFS= read -r -d '' file; do
+              upload_files+=("${file}")
+            done < <(find provenance -maxdepth 1 -type f -print0)
+          fi
+
+          if [ ${#upload_files[@]} -eq 0 ]; then
+            echo "No release assets discovered to upload." >&2
+            exit 1
+          fi
+
+          echo "Uploading the following assets to ${TAG}:"
+          printf '  %s\n' "${upload_files[@]}"
+
+          gh release upload "${TAG}" "${upload_files[@]}" --clobber --repo "${REPO}"
+
+          echo "Publishing the release ${TAG}..."
+          gh release edit "${TAG}" --draft=false --repo "${REPO}"

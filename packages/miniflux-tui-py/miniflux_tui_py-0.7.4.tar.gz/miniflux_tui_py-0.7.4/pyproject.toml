@@ -1,0 +1,187 @@
+[project]
+name = "miniflux-tui-py"
+version = "0.7.4"
+description = "A Python TUI client for Miniflux RSS reader with feed sorting capabilities"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Peter Reuterås", email = "peter@reuteras.net"}
+]
+license = {text = "MIT"}
+keywords = ["tui", "terminal", "miniflux", "rss", "feed-reader"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Internet",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Office/Business :: News/Diary",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "textual>=6.4.0",
+    "miniflux>=1.1.4",
+    "html2text>=2025.4.15",
+    "tomli>=2.0.1; python_version < '3.11'",
+    "beautifulsoup4>=4.14.2",
+    "html5lib>=1.1",
+    "bleach>=6.3.0",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.6.0",
+    "pyright>=1.1.0",
+    "pylint>=4.0.2",
+    "pytest-benchmark>=4.0.0",
+    "bandit[toml]>=1.7.5",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.22",
+    "mkdocstrings[python]>=0.30.1",
+]
+fuzz = [
+    "atheris>=2.3.0",
+]
+binary = [
+    "pyinstaller>=6.10.0",
+]
+
+[project.scripts]
+miniflux-tui = "miniflux_tui.main:main"
+
+[project.urls]
+Homepage = "https://github.com/reuteras/miniflux-tui-py"
+Documentation = "https://reuteras.github.io/miniflux-tui-py/"
+Repository = "https://github.com/reuteras/miniflux-tui-py"
+Issues = "https://github.com/reuteras/miniflux-tui-py/issues"
+"Bug-tracker" = "https://github.com/reuteras/miniflux-tui-py/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["miniflux_tui"]
+
+[dependency-groups]
+dev = [
+    "pylint>=4.0.2",
+    "ruff>=0.6.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-cov>=4.0.0",
+    "pyright>=1.1.0",
+    "bandit[toml]>=1.7.5",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.22",
+    "mkdocstrings[python]>=0.30.1",
+]
+fuzz = [
+    "atheris>=2.3.0",
+]
+binary = [
+    "pyinstaller>=6.10.0",
+]
+
+[tool.uv]
+managed = true
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable common linting rules
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "S",      # flake8-bandit (security)
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "PL",     # pylint
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules that may be too strict
+ignore = [
+    "S101",   # Use of assert detected (useful in tests)
+    "PLR0913", # Too many arguments to function call
+    "PLR2004", # Magic value used in comparison
+    "PLR0904", # Too many public methods
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow assert statements and other test-specific patterns in tests
+"tests/**/*.py" = ["S101", "PLR2004", "ARG001", "PLR6301"]
+# Allow subprocess calls in scripts (they use hardcoded commands)
+"scripts/**/*.py" = ["S603", "S607"]
+# Allow password command execution helpers and git version detection to import subprocess and run trusted commands
+"miniflux_tui/config.py" = ["S404", "S603"]
+"miniflux_tui/utils.py" = ["S404", "S603"]
+
+[tool.ruff.format]
+# Use black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.pyright]
+include = ["miniflux_tui", "tests"]
+exclude = ["**/node_modules", "**/__pycache__"]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportPrivateUsage = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+
+[tool.bandit]
+exclude_dirs = ["tests", "fuzz"]
+skips = ["B101"]  # Skip assert_used check (used in tests)

@@ -1,0 +1,62 @@
+---
+name: CodeQL Analysis
+
+on:
+  push:
+    branches: [main]
+    # No paths filter - CodeQL must run on ALL commits for OpenSSF Scorecard 10/10
+  pull_request:
+    branches: [main]
+    paths:
+      - 'miniflux_tui/**'
+      - 'tests/**'
+      - 'fuzz/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/**'
+      - '.github/codeql/**'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze Code
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4.31.5
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          packs: codeql/python-queries:experimental
+          config-file: .github/codeql/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4.31.5
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4.31.5
+        with:
+          category: /language:${{ matrix.language }}

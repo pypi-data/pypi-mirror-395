@@ -1,0 +1,350 @@
+---
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.5.3)'
+        required: true
+        type: string
+      bump_type:
+        description: 'Version bump type (if version not specified)'
+        required: false
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      pr_number: ${{ steps.create-pr.outputs.pr_number }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          enable-cache: "false"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Determine version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            # Auto-bump based on bump_type
+            CURRENT=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+            IFS='.' read -r major minor patch <<< "$CURRENT"
+
+            case "$INPUT_BUMP_TYPE" in
+              major) VERSION="$((major + 1)).0.0" ;;
+              minor) VERSION="${major}.$((minor + 1)).0" ;;
+              patch) VERSION="${major}.${minor}.$((patch + 1))" ;;
+            esac
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice::Release version: $VERSION"
+
+      - name: Update version in pyproject.toml
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sed -i.bak "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
+          rm pyproject.toml.bak
+
+      - name: Regenerate uv.lock
+        run: uv lock
+
+      - name: Install git-cliff
+        run: |
+          CLIFF_VERSION="2.7.0"
+          wget -q "https://github.com/orhun/git-cliff/releases/download/v${CLIFF_VERSION}/git-cliff-${CLIFF_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar -xzf "git-cliff-${CLIFF_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          sudo mv "git-cliff-${CLIFF_VERSION}/git-cliff" /usr/local/bin/
+          rm -rf "git-cliff-${CLIFF_VERSION}" "git-cliff-${CLIFF_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+
+      - name: Update CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git-cliff --config cliff.toml --tag "$VERSION" --output CHANGELOG.md
+
+      - name: Setup Gitsign for commit signing
+        uses: chainguard-dev/actions/setup-gitsign@3e8a2a226fad9e1ecbf2d359b8a7697554a4ac6d # main
+
+      - name: Create release branch and commit
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="release/v${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add pyproject.toml CHANGELOG.md uv.lock
+          git commit -m "chore: Release v${VERSION}"
+
+          # Configure git to use token for push (avoids persisting credentials)
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "$BRANCH"
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        id: create-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          BRANCH="release/v${VERSION}"
+
+          PR_BODY=$(cat << 'EOF'
+          ## Release v$VERSION
+
+          This PR prepares the release of version $VERSION.
+
+          ### Changes
+          - Updated version in pyproject.toml
+          - Regenerated uv.lock
+          - Updated CHANGELOG.md with git-cliff
+
+          ### Next Steps
+          After this PR is merged, the release workflow will automatically:
+          1. Create a signed tag
+          2. Trigger the publish workflow
+          3. Publish to PyPI
+          4. Create GitHub release with binaries and SBOMs
+          5. Publish the release (no longer a draft)
+
+          ---
+          *This PR was automatically created by the release workflow.*
+          EOF
+          )
+
+          # Use VERSION variable substitution in the body
+          PR_BODY="${PR_BODY//\$VERSION/$VERSION}"
+
+          # Create PR and extract number using gh's JSON output for reliability
+          PR_URL=$(gh pr create \
+            --title "chore: Release v${VERSION}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH")
+
+          # Extract PR number from URL
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+
+          # Add label if it exists (non-critical, won't fail if label doesn't exist)
+          gh pr edit "$PR_NUMBER" --add-label "release" 2>/dev/null || echo "::warning::Could not add 'release' label (label may not exist)"
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "::notice::Created PR #$PR_NUMBER at $PR_URL"
+
+  auto-merge:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Wait for CI checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.prepare-release.outputs.pr_number }}
+        run: |
+          MAX_WAIT=600  # 10 minutes
+          ELAPSED=0
+
+          echo "Waiting for CI checks on PR #$PR_NUMBER..."
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(gh pr checks "$PR_NUMBER" --json state --jq '.[].state' | sort -u)
+
+            if echo "$STATUS" | grep -q "FAILURE\|ERROR"; then
+              echo "::error::CI checks failed on PR #$PR_NUMBER"
+              exit 1
+            fi
+
+            NON_PENDING=$(echo "$STATUS" | grep -vc "PENDING" || true)
+            TOTAL=$(echo "$STATUS" | grep -c . || true)
+            if [ "$NON_PENDING" -eq "$TOTAL" ]; then
+              echo "All checks passed!"
+              break
+            fi
+
+            echo "Checks still pending... (${ELAPSED}s/${MAX_WAIT}s)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "::error::Timeout waiting for CI checks"
+            exit 1
+          fi
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.prepare-release.outputs.pr_number }}
+        run: |
+          # Enable auto-merge - PR will be merged automatically after required approvals
+          # (auto-approve.yml provides 1 approval, need 1 more manual approval)
+          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
+          echo "::notice::Auto-merge enabled for PR #$PR_NUMBER - waiting for required approvals"
+
+      - name: Wait for PR to be merged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.prepare-release.outputs.pr_number }}
+        run: |
+          MAX_WAIT=1800  # 30 minutes - allows time for manual approval
+          ELAPSED=0
+          CHECK_INTERVAL=30  # Check every 30 seconds
+
+          echo "Waiting for PR #$PR_NUMBER to be merged (requires 2 approvals)..."
+          echo "- Auto-approve workflow provides 1 approval"
+          echo "- Requires 1 more manual approval from code owner"
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Check if PR is merged
+            PR_STATE=$(gh pr view "$PR_NUMBER" --json state --jq '.state')
+
+            if [ "$PR_STATE" = "MERGED" ]; then
+              echo "✅ PR #$PR_NUMBER has been merged!"
+              # Wait a bit longer for merge to fully propagate to all systems
+              echo "Waiting 10 seconds for merge to propagate..."
+              sleep 10
+              exit 0
+            fi
+
+            # Check if PR was closed without merging
+            if [ "$PR_STATE" = "CLOSED" ]; then
+              echo "::error::PR #$PR_NUMBER was closed without merging"
+              exit 1
+            fi
+
+            # Show approval status
+            REVIEW_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision --jq '.reviewDecision // "PENDING"')
+            APPROVALS=$(gh pr view "$PR_NUMBER" --json reviews --jq '[.reviews[] | select(.state == "APPROVED")] | length')
+
+            echo "Status: $PR_STATE | Approvals: $APPROVALS/2 | Review Decision: $REVIEW_DECISION (${ELAPSED}s/${MAX_WAIT}s)"
+
+            sleep "$CHECK_INTERVAL"
+            ELAPSED=$((ELAPSED + CHECK_INTERVAL))
+          done
+
+          echo "::error::Timeout waiting for PR #$PR_NUMBER to be merged after ${MAX_WAIT} seconds"
+          echo "::error::Manual approval may be required. Please approve the PR and the workflow will continue."
+          exit 1
+
+  create-tag:
+    needs: [prepare-release, auto-merge]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      actions: write
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Gitsign
+        uses: chainguard-dev/actions/setup-gitsign@3e8a2a226fad9e1ecbf2d359b8a7697554a4ac6d # main
+
+      - name: Create and push signed tag
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${VERSION}"
+
+          git config user.name "Miniflux Release Bot"
+          git config user.email "release@reuteras.net"
+
+          # Configure git to use token for pull/push (avoids persisting credentials)
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # Ensure we're on latest main
+          git pull --ff-only origin main
+
+          # Verify we're tagging a commit with the release message
+          # Note: GitHub appends PR number when merging, e.g. "chore: Release v0.5.6 (#443)"
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          if [[ ! "$COMMIT_MSG" =~ ^chore:\ Release\ v${VERSION}(\ \(#[0-9]+\))?$ ]]; then
+            echo "::error::Latest commit message does not match release: got '$COMMIT_MSG', expected 'chore: Release v${VERSION}' (with optional PR number)"
+            echo "::error::This usually means the PR merge hasn't propagated yet. Current commit:"
+            git log -1 --oneline
+            exit 1
+          fi
+
+          # Create signed tag
+          git tag -s "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+          echo "::notice::Created and pushed signed tag: $TAG on commit $(git rev-parse HEAD)"
+
+      - name: Trigger publish workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          TAG="v${VERSION}"
+
+          echo "Triggering publish workflow for tag: $TAG"
+          gh workflow run publish.yml --ref main --field tag="$TAG"
+
+          echo "::notice::Triggered publish workflow for tag: $TAG"

@@ -1,0 +1,12 @@
+---
+# CodeQL configuration for miniflux-tui-py
+# Excludes known false positives and non-issues
+
+query-filters:
+  - exclude:
+      id: py/possible-timing-attack-sensitive-info
+      paths:
+        - scripts/build_binary.py
+        - miniflux_tui/config.py  # Line 328: Checking for "password" keyword in error message, not comparing secrets
+        - tests/test_main.py  # Lines 174, 263: Test assertions checking "password" in output, not comparing secrets
+        - tests/test_config.py  # Line 364: Test assertion checking "password" in error message, not comparing secrets

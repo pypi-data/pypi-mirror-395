@@ -1,0 +1,133 @@
+---
+name: License Compliance Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+  schedule:
+    # Weekly scan on Mondays at 10 AM UTC
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  license-check:
+    name: Check Dependency Licenses
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Generate license report
+        run: |
+          uv run --with pip-licenses pip-licenses \
+            --format=json \
+            --with-urls \
+            --with-description \
+            --output-file=license-report.json
+
+      - name: Check for incompatible licenses
+        run: |
+          uv run python - <<'PY'
+          import json
+          import sys
+
+          # Licenses that are incompatible with MIT
+          COPYLEFT = ['GPL', 'AGPL', 'LGPL']
+          # Known safe licenses (partial matching allowed)
+          SAFE_LICENSES = ['MIT', 'Apache', 'BSD', 'ISC', 'Python Software Foundation', 'Public Domain', 'PSF', '0BSD']
+
+          # Dev-only packages (copyleft is acceptable in dev dependencies)
+          DEV_ONLY = [
+              'pytest', 'pytest-cov', 'pytest-asyncio', 'coverage',
+              'ruff', 'pyright', 'pylint', 'bandit', 'astroid',
+              'pip-licenses', 'mkdocs', 'mkdocstrings',
+              'atheris', 'pyinstaller'
+          ]
+
+          with open('license-report.json') as f:
+              licenses = json.load(f)
+
+          issues = []
+          warnings = []
+
+          for pkg in licenses:
+              name = pkg.get('Name', 'Unknown')
+              license_name = pkg.get('License', 'Unknown')
+
+              # Skip if it's a dev-only package
+              is_dev_only = any(dev in name.lower() for dev in [d.lower() for d in DEV_ONLY])
+
+              # Check if license contains any copyleft terms
+              has_copyleft = any(cl in license_name for cl in COPYLEFT)
+
+              if has_copyleft:
+                  # Check if it's not a false positive (e.g., "GPL" in "GPL-compatible")
+                  if not any(safe in license_name for safe in ['compatible', 'exception']):
+                      if is_dev_only:
+                          warnings.append(f"⚠️  {name}: {license_name} (dev dependency - acceptable)")
+                      else:
+                          issues.append(f"❌ {name}: {license_name} (runtime dependency - may need review)")
+              elif license_name == 'Unknown':
+                  warnings.append(f"⚠️  {name}: Unknown license")
+
+          if warnings:
+              print("\n⚠️  License warnings:\n")
+              for warning in warnings:
+                  print(warning)
+
+          if issues:
+              print("\n⚠️  Found packages with copyleft licenses in runtime dependencies:\n")
+              for issue in issues:
+                  print(issue)
+              print("\nNote: These licenses are compatible with MIT but impose copyleft requirements.")
+              print("Consider alternatives or ensure compliance with license terms.")
+              print("Current known cases: html2text (GPL-3.0) - acceptable for this project.")
+              # Don't fail the build for now, just warn
+              # sys.exit(1)
+          else:
+              print("\n✅ All runtime dependencies use permissive licenses")
+          PY
+
+      - name: Display license summary
+        if: always()
+        run: |
+          echo "## License Summary"
+          uv run --with pip-licenses pip-licenses --format=markdown --order=license
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: license-report
+          path: license-report.json
+          retention-days: 90

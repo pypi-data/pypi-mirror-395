@@ -1,0 +1,58 @@
+---
+name: pre-commit autoupdate
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  autoupdate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push pre-commit hook updates
+      pull-requests: write  # Required to create PR with autoupdate results
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure Python availability
+        run: uv python install 3.11
+
+      - name: Install pre-commit
+        run: uv tool install pre-commit
+
+      - name: Run pre-commit autoupdate
+        run: uv run pre-commit autoupdate
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412 # v7.0.9
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: pre-commit autoupdate"
+          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          branch: chore/pre-commit-autoupdate
+          delete-branch: true
+          title: "chore: pre-commit autoupdate"
+          body: |
+            ## Summary
+            - automatically run `pre-commit autoupdate`
+            - keep hook revisions current

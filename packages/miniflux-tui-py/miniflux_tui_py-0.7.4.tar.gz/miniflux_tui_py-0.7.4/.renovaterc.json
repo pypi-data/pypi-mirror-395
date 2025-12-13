@@ -1,0 +1,56 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended", "group:allNonMajor"],
+    "semanticCommits": "enabled",
+    "commitMessagePrefix": "chore(deps):",
+    "npm": {
+        "enabled": false
+    },
+    "vulnerabilityAlerts": {
+        "enabled": true
+    },
+    "prConcurrentLimit": 10,
+    "ignoreDeps": [],
+    "groupName": "Renovate Dependency Updates",
+    "groupSlug": "dependency-updates",
+    "labels": ["dependencies", "renovate"],
+    "packageRules": [
+        {
+            "description": "Disable npm updates (not used in this project)",
+            "matchManagers": ["npm"],
+            "enabled": false
+        },
+        {
+            "description": "All patch updates: create PRs immediately without schedules",
+            "matchUpdateTypes": ["patch"],
+            "schedule": []
+        },
+        {
+            "description": "All minor updates: create PRs immediately without schedules",
+            "matchUpdateTypes": ["minor"],
+            "schedule": []
+        },
+        {
+            "description": "All digest updates: create PRs immediately without schedules",
+            "matchUpdateTypes": ["digest", "pinDigest"],
+            "schedule": []
+        },
+        {
+            "description": "Major version updates: create PRs immediately but automerge disabled",
+            "matchUpdateTypes": ["major"],
+            "automerge": false,
+            "schedule": []
+        },
+        {
+            "description": "Restrict slsa-github-generator to v1.x only",
+            "matchDatasources": ["github-tags"],
+            "allowedVersions": "<=2.0.0",
+            "matchPackageNames": ["/slsa-framework/slsa-github-generator/"]
+        },
+        {
+            "description": "Skip trivy-action updates due to lookup failures",
+            "matchPackageNames": ["aquasecurity/trivy-action"],
+            "enabled": false
+        }
+    ]
+}

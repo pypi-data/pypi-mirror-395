@@ -1,0 +1,37 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run daily at 2 AM UTC
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    permissions:  # Minimal read-only permissions for dependency scanning
+      contents: read  # Required to read dependencies
+      pull-requests: read  # Required to check existing PRs
+      issues: read  # Required to check issues
+      security-events: read  # Required to read security alerts
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@a3c115cd6676c8a5bc72f9715f108759e570daf5 # v43.0.19
+        with:
+          configurationFile: .renovaterc.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          LOG_LEVEL: 'debug'
+          RENOVATE_REPOSITORIES: 'reuteras/miniflux-tui-py'
