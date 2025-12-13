@@ -1,0 +1,75 @@
+# VBV Status Checker (`vbvstatus`)
+
+A simple Python package for checking VBV (Verified by Visa) status and performing BIN (Bank Identification Number) lookups directly from your command line or Python script.
+
+## Features
+
+*   **Command Line Interface (CLI):** Quickly check status using the `vbvstatus` command.
+*   **Library Integration:** Easily integrate the checking logic into your Python applications.
+*   **VBV Status:** Checks VBV status against a local, bundled database.
+*   **BIN Lookup:** Uses the `https://bins.antipublic.cc/` API for detailed bank information.
+*   **Owner Credit:** Includes the owner's credit (`@unik_xd`) in the response.
+
+## Installation
+
+You can install the package using pip:
+
+\`\`\`bash
+pip install vbvstatus
+\`\`\`
+
+## Usage
+
+### Command Line
+
+Run the `vbvstatus` command followed by the card details in the format `cc|mm|yy|cvv`:
+
+\`\`\`bash
+vbvstatus 4000050000000000|12|25|123
+\`\`\`
+
+**Example Output:**
+
+\`\`\`json
+{
+    "status": "SUCCESS",
+    "cc_bin": "400005",
+    "vbv_status": "3D TRUE ❌",
+    "bin_lookup": {
+        "bin": "400005",
+        "brand": "VISA",
+        "type": "DEBIT",
+        "level": "CLASSIC",
+        "country": "UNITED STATES",
+        "country_code": "US",
+        "bank": "WELLS FARGO BANK, N.A.",
+        "url": "www.wellsfargo.com",
+        "phone": "1-800-869-3557"
+    },
+    "owner": "@unik_xd",
+    "time_taken": "0.54s"
+}
+\`\`\`
+
+### Python Library
+
+You can import the `check` function directly into your Python code:
+
+\`\`\`python
+from vbvstatus import check
+
+cc_data = "4000050000000000|12|25|123"
+result = check(cc_data)
+
+import json
+print(json.dumps(result, indent=4))
+\`\`\`
+
+## Data Source
+
+The VBV status data is bundled with the package in `vbvbin.txt`. The BIN lookup is performed via the external API: `https://bins.antipublic.cc/`.
+
+## Disclaimer
+
+This tool is provided for educational and authorized testing purposes only. Use responsibly.
+\`\`\`
