@@ -1,0 +1,37 @@
+<tr>
+    <td>
+        <div class="info-icon-container">
+            <i 
+            class="fa-solid fa-circle-info info-icon" 
+            onclick="parent.openDeviceDetail('{{ device.ip }}')" 
+            ></i>
+        </div>
+    </td>
+    <td>
+        <div>{{ device.ip }}</div>
+        {% if device.hostname %} 
+            <div><span class=alt>{{device.hostname}}</span></div>
+        {% endif %}
+    </td>
+    <td>
+        <div>{{ device.mac_addr or 'Unknown' }}</div>
+        {% if device.manufacturer %} 
+            <div><span class="alt">{{device.manufacturer}}</span></div>
+        {% endif %}
+    </td>
+    <td>{{ device.ports | join(", ") }}</td>
+    <td>
+        {% if device.stage == 'complete' %}
+            <span class="badge badge-success">complete</span>
+        {% elif device.stage == 'found' %}
+            <span class="badge badge-secondary">found</span>
+        {% elif device.stage == 'scanning' %}
+            <span class="badge badge-info">
+                scanning 
+                {{ (device.ports_scanned/data.port_list_length*100)|round|int if data.port_list_length > 0 else 0 }}%
+            </span>
+        {% else %}
+            <span class="badge badge-warning">{{device.stage}}</span>
+        {% endif %}
+    </td>
+</tr>
