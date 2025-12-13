@@ -1,0 +1,209 @@
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import ujson as json
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (QFileDialog, QApplication, QMessageBox)
+
+from coralnet_toolbox.Annotations.QtPatchAnnotation import PatchAnnotation
+from coralnet_toolbox.Annotations.QtPolygonAnnotation import PolygonAnnotation
+from coralnet_toolbox.Annotations.QtRectangleAnnotation import RectangleAnnotation
+from coralnet_toolbox.Annotations.QtMultiPolygonAnnotation import MultiPolygonAnnotation
+from coralnet_toolbox.Annotations.QtMaskAnnotation import MaskAnnotation
+
+from coralnet_toolbox.QtProgressBar import ProgressBar
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Classes
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class ImportAnnotations:
+    def __init__(self, main_window):
+        self.main_window = main_window
+        self.image_window = main_window.image_window
+        self.label_window = main_window.label_window
+        self.annotation_window = main_window.annotation_window
+
+    def import_annotations(self):
+        """Import annotations from JSON files into the current project."""
+        self.main_window.untoggle_all_tools()
+
+        if not self.annotation_window.active_image:
+            QMessageBox.warning(self.annotation_window,
+                                "No Images Loaded",
+                                "Please load images first before importing annotations.")
+            return
+
+        options = QFileDialog.Options()
+        file_paths, _ = QFileDialog.getOpenFileNames(self.annotation_window,
+                                                     "Load Annotations",
+                                                     "",
+                                                     "JSON Files (*.json);;All Files (*)",
+                                                     options=options)
+        if not file_paths:
+            return
+
+        try:
+            # Make cursor busy
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            progress_bar = ProgressBar(self.annotation_window, title="Reading Annotation File(s)")
+            progress_bar.show()
+            progress_bar.start_progress(len(file_paths))
+
+            # Read the annotations
+            all_data = {}
+            for file_path in file_paths:
+                with open(file_path, 'r') as file:
+                    data = json.load(file)
+                    all_data.update(data)
+                progress_bar.update_progress()
+
+        except Exception as e:
+            QMessageBox.warning(self.annotation_window,
+                                "Error Loading Annotations",
+                                f"An error occurred while loading annotations: {str(e)}")
+        finally:
+            # Restore the cursor
+            QApplication.restoreOverrideCursor()
+            progress_bar.stop_progress()
+            progress_bar.close()
+
+        if not all_data:
+            QMessageBox.warning(self.annotation_window,
+                                "No Annotations Found",
+                                "No annotations were found in the selected files.")
+            return
+
+        # Check if the annotations are in the correct format
+        keys = ['label_short_code', 'label_long_code', 'annotation_color', 'image_path', 'label_id']
+
+        # Reformat the data
+        filtered_annotations = {p: a for p, a in all_data.items() if p in self.image_window.raster_manager.image_paths}
+        total_annotations = sum(len(annotations) for annotations in filtered_annotations.values())
+
+        # --- This section for updating labels and colors can remain as is ---
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        progress_bar = ProgressBar(self.annotation_window, title="Importing Annotations")
+        progress_bar.show()
+        progress_bar.start_progress(total_annotations)
+        updated_annotations = False
+        try:
+            for image_path, image_annotations in filtered_annotations.items():
+                for annotation in image_annotations:
+                    if not all(key in annotation for key in keys):
+                        continue
+                    short_label = annotation['label_short_code']
+                    long_label = annotation['label_long_code']
+                    color = QColor(*annotation['annotation_color'])
+                    label_id = annotation['label_id']
+                    label = self.label_window.add_label_if_not_exists(short_label, long_label, color, label_id)
+                    if label.color != color:
+                        annotation['annotation_color'] = label.color.getRgb()
+                        updated_annotations = True
+                    progress_bar.update_progress()
+        except Exception as e:
+            print(f"Error loading label: {str(e)}")
+        finally:
+            QApplication.restoreOverrideCursor()
+            progress_bar.stop_progress()
+            progress_bar.close()
+        if updated_annotations:
+            QMessageBox.information(self.annotation_window, 
+                                    "Annotations Updated",
+                                    "Some annotations have been updated to match the color of the labels "
+                                    "already in the project.")
+        # --- End of label update section ---
+
+        # Make cursor busy
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        progress_bar = ProgressBar(self.annotation_window, title="Importing Annotations")
+        progress_bar.show()
+        progress_bar.start_progress(total_annotations)
+        
+        skipped_count = 0
+        duplicate_count = 0
+        
+        # OPTIMIZATION: Create lists to hold objects for batch processing
+        all_new_annotations = []
+        images_to_update = set()
+
+        try:
+            # Load the annotations by first creating all objects
+            for image_path, image_annotations in filtered_annotations.items():
+                
+                for annotation_dict in image_annotations:
+                    
+                    # Check if all required keys are present
+                    if not all(key in annotation_dict for key in keys):
+                        print(f"Warning: Missing required keys in annotation: {annotation_dict}")
+                        skipped_count += 1
+                        continue
+                    
+                    if annotation_dict['id'] in self.annotation_window.annotations_dict:
+                        print(f"Warning: Duplicate annotation ID found: {annotation_dict['id']}")
+                        duplicate_count += 1
+                        continue
+
+                    annotation_type = annotation_dict.get('type')
+                    annotation = None
+
+                    # Create annotation objects without adding them to the window yet
+                    if annotation_type == 'MaskAnnotation':
+                        annotation = MaskAnnotation.from_dict(annotation_dict, self.label_window)
+                        raster = self.image_window.raster_manager.get_raster(image_path)
+                        if raster:
+                            raster.mask_annotation = annotation
+                    elif annotation_type == 'PatchAnnotation':
+                        annotation = PatchAnnotation.from_dict(annotation_dict, self.label_window)
+                    elif annotation_type == 'PolygonAnnotation':
+                        annotation = PolygonAnnotation.from_dict(annotation_dict, self.label_window)
+                    elif annotation_type == 'RectangleAnnotation':
+                        annotation = RectangleAnnotation.from_dict(annotation_dict, self.label_window)
+                    elif annotation_type == 'MultiPolygonAnnotation':
+                        annotation = MultiPolygonAnnotation.from_dict(annotation_dict, self.label_window)
+                    else:
+                        raise ValueError(f"Unknown annotation type: {annotation_type}")
+
+                    if annotation and not isinstance(annotation, MaskAnnotation):
+                        all_new_annotations.append(annotation)
+                        images_to_update.add(image_path)
+
+                    # Update the progress bar
+                    progress_bar.update_progress()
+
+            # Add all created vector annotations in a single batch operation.
+            # This requires a corresponding `add_annotations` method in AnnotationWindow.
+            if all_new_annotations:
+                self.annotation_window.add_annotations(all_new_annotations)
+
+            # Update UI counts only ONCE per image after the batch is added.
+            for path in images_to_update:
+                self.image_window.update_image_annotations(path)
+
+            # Load the annotations for the currently visible image
+            self.annotation_window.load_annotations()
+
+            QMessageBox.information(self.annotation_window,
+                                    "Annotations Imported",
+                                    "Annotations have been successfully imported.")
+
+        except Exception as e:
+            QMessageBox.warning(self.annotation_window,
+                                "Error Importing Annotations",
+                                f"An error occurred while importing annotations: {str(e)}")
+
+        finally:
+            if skipped_count > 0:
+                print(f"Warning: Skipped {skipped_count} annotations due to missing keys.")
+            if duplicate_count > 0:
+                print(f"Warning: Skipped {duplicate_count} duplicate annotations based on ID.")
+            
+            # Restore the cursor
+            QApplication.restoreOverrideCursor()
+            progress_bar.stop_progress()
+            progress_bar.close()
