@@ -1,0 +1,94 @@
+# Migration notes
+
+Migration and deprecation notes for libvcs are here, see {ref}`history` as well.
+
+```{admonition} Welcome on board! 👋
+1. 📌 For safety, **always** pin the package
+2. 📖 Check the migration notes _(You are here)_
+3. 📣 If you feel something got deprecated and it interrupted you - past, present, or future - voice your opinion on the [tracker].
+
+   We want to make libvcs fun, reliable, and useful for users.
+
+   API changes can be painful.
+
+   If we can do something to draw the sting, we'll do it. We're taking a balanced approach. That's why these notes are here!
+
+   (Please pin the package. 🙏)
+
+   [tracker]: https://github.com/vcs-python/libvcs/discussions
+```
+
+## Next release
+
+_Notes on the upcoming release will be added here_
+
+<!-- Maintainers, insert migration notes for the next release here -->
+
+### pytest fixtures: `git_local_clone` renamed to `example_git_repo` (#468)
+
+- pytest: `git_local_clone` renamed to `example_git_repo`
+
+### Commands: Listing method renamed (#466)
+
+- `libvcs.cmd.git.GitCmd._list()` -> `libvcs.cmd.git.Git.ls()`
+- `libvcs.cmd.svn.Svn._list()` -> `libvcs.cmd.svn.Svn.ls()`
+
+## libvcs 0.30.0 (2024-06-18)
+
+### URLs: Variable renamings and moves (#463)
+
+- `RE_PIP_REV` moved from `libvcs.url.git` to `libvcs.url.constants`.
+- `RE_PATH` has changed:
+
+  - The pattern for user matching (e.g., `git@`) has been extracted to `RE_USER`.
+  - `RE_PATH` and `SCP_REGEX` (now `RE_SCP`) no longer include user regex pattern
+  - Existing patterns now use `RE_USER` explicitly.
+
+- `REGEX_SCP` renamed to `RE_SCP` for consistency.
+
+## libvcs 0.20.0 (2022-10-31)
+
+### URLs: Mapping now class attributes (#433)
+
+`URL.rule_map` is now a class attribute rather than a dataclass attribute.
+
+Before:
+
+```python
+@dataclasses.dataclass(repr=False)
+class GitLabURL(GitURL):
+    rule_map: RuleMap = RuleMap(
+        _rule_map={'gitlab_prefix': GitLabPrefix}
+    )
+```
+
+In python 3.11, that raises an error:
+
+```console
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 1211, in wrap
+    return _process_class(cls, init, repr, eq, order, unsafe_hash,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 959, in _process_class
+    cls_fields.append(_get_field(cls, name, type, kw_only))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 816, in _get_field
+    raise ValueError(f'mutable default {type(f.default)} for field '
+ValueError: mutable default <class 'libvcs.url.base.RuleMap'> for field rule_map is not allowed: use default_factory
+```
+
+After release:
+
+```python
+>>> import dataclasses
+>>> from libvcs.url.base import RuleMap
+>>> from libvcs.url.git import GitURL, DEFAULT_RULES
+>>> @dataclasses.dataclass(repr=False)
+... class MyGitURL(GitURL):
+...     rule_map = RuleMap(
+...         _rule_map={'gitlab_prefix': DEFAULT_RULES}
+...     )
+```
+
+<!---
+# vim: set filetype=markdown:
+-->

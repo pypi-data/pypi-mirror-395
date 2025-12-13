@@ -1,0 +1,1456 @@
+# Changelog
+
+To install the unreleased libvcs version, see [developmental releases](https://libvcs.git-pull.com/quickstart.html#developmental-releases).
+
+[pip](https://pip.pypa.io/en/stable/):
+
+```console
+$ pip install --user --upgrade --pre libvcs
+```
+
+[uv](https://docs.astral.sh/uv/):
+
+```console
+$ uv add libvcs --prerelease allow
+```
+
+## libvcs 0.39.x (unreleased)
+
+<!-- Maintainers, insert changes / features for the next release here -->
+
+_Upcoming changes will be written here._
+
+## libvcs 0.38.1 (2025-12-06)
+
+### Documentation (#498)
+
+Fix doctree warnings and broken references
+
+## libvcs 0.38.0 (2025-11-30)
+
+### New features
+
+#### Additional git subcommands (#465)
+
+New architecture for git subcommands that returns typed objects instead of raw strings:
+
+- **Traversal** handle collection-level operations (`ls()`, `get()`, `filter()`, `add()`/`create()`)
+- **Commands** handle per-entity operations (`show()`, `remove()`, `rename()`)
+- All `ls()` methods return `QueryList` for chainable filtering
+
+New subcommand managers accessible via `Git` instance:
+
+- {attr}`Git.branches <libvcs.cmd.git.Git.branches>` -> {class}`~libvcs.cmd.git.GitBranchManager`
+- {attr}`Git.remotes <libvcs.cmd.git.Git.remotes>` -> {class}`~libvcs.cmd.git.GitRemoteManager`
+- {attr}`Git.stashes <libvcs.cmd.git.Git.stashes>` -> {class}`~libvcs.cmd.git.GitStashManager`
+- {attr}`Git.tags <libvcs.cmd.git.Git.tags>` -> {class}`~libvcs.cmd.git.GitTagManager`
+- {attr}`Git.worktrees <libvcs.cmd.git.Git.worktrees>` -> {class}`~libvcs.cmd.git.GitWorktreeManager`
+- {attr}`Git.notes <libvcs.cmd.git.Git.notes>` -> {class}`~libvcs.cmd.git.GitNotesManager`
+- {attr}`Git.submodules <libvcs.cmd.git.Git.submodules>` -> {class}`~libvcs.cmd.git.GitSubmoduleManager`
+- {attr}`Git.reflog <libvcs.cmd.git.Git.reflog>` -> {class}`~libvcs.cmd.git.GitReflogManager`
+
+Example usage:
+
+```python
+git = Git(path="/path/to/repo")
+
+# List all branches, filter remote ones
+remote_branches = git.branches.ls(remotes=True)
+
+# Get a specific tag
+tag = git.tags.get(tag_name="v1.0.0")
+tag.delete()
+
+# Create a new branch and switch to it
+git.branches.create("feature-branch")
+```
+
+#### cmd: Enhanced Git.init() (#465)
+
+- Added `ref_format` parameter for `--ref-format` (files/reftable)
+- Added `make_parents` parameter to auto-create parent directories
+- Improved parameter validation with clear error messages
+- Extended `shared` parameter to support octal permissions (e.g., "0660")
+
+### Documentation
+
+- Add API documentation for all new Manager/Cmd classes (#465)
+- Split git subcommand documentation into separate pages: branch, tag, worktree, notes, reflog
+
+### Tests
+
+- Comprehensive test coverage for all new Manager/Cmd classes (#465)
+
+## libvcs 0.37.0 (2025-11-01)
+
+### Breaking changes
+
+- Drop support for Python 3.9; the new minimum is Python 3.10 (#497).
+
+  See also:
+  - [Python 3.9 EOL timeline](https://devguide.python.org/versions/#:~:text=Release%20manager-,3.9,-PEP%20596)
+  - [PEP 596](https://peps.python.org/pep-0596/)
+
+### Development
+
+- Add Python 3.14 to test matrix (#496)
+
+## libvcs 0.36.0 (2025-06-22)
+
+### Improvements
+
+- Add support for SCP-style Git URLs without requiring `git+ssh://` prefix (#490)
+  - URLs like `git@github.com:org/repo.git` are now recognized as Git repositories
+  - `create_project()` can now auto-detect VCS type for these URLs
+  - Addresses issues reported in [vcspull#49](https://github.com/vcs-python/vcspull/issues/49) and [vcspull#426](https://github.com/vcs-python/vcspull/pull/426)
+
+## libvcs 0.35.1 (2025-06-21)
+
+### Bug fixes
+
+- Fix `run()` output to show streaming progress of commands like `git clone`,
+  this fixes an issue downstream in `vcspull` (#493)
+
+### Development
+
+- Cursor rules for development loop and git commit messages (#488)
+
+## libvcs 0.35.0 (2025-02-22)
+
+### Breaking changes
+
+#### `run()` now uses `text=True` (#485)
+
+This means that unicode, not bytes, will be used for running `subprocess`
+commands in libvcs. If there are any compatibility issues with this, please file
+a ticket.
+
+### Development
+
+#### chore: Implement PEP 563 deferred annotation resolution (#483)
+
+- Add `from __future__ import annotations` to defer annotation resolution and reduce unnecessary runtime computations during type checking.
+- Enable Ruff checks for PEP-compliant annotations:
+  - [non-pep585-annotation (UP006)](https://docs.astral.sh/ruff/rules/non-pep585-annotation/)
+  - [non-pep604-annotation (UP007)](https://docs.astral.sh/ruff/rules/non-pep604-annotation/)
+
+For more details on PEP 563, see: https://peps.python.org/pep-0563/
+
+## libvcs 0.34.0 (2024-11-22)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+#### Project and package management: poetry to uv (#479)
+
+[uv] is the new package and project manager for the project, replacing Poetry.
+
+[uv]: https://github.com/astral-sh/uv
+
+#### Build system: poetry to hatchling (#479)
+
+[Build system] moved from [poetry] to [hatchling].
+
+[Build system]: https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
+[poetry]: https://github.com/python-poetry/poetry
+[hatchling]: https://hatch.pypa.io/latest/
+
+## libvcs 0.33.0 (2024-10-13)
+
+### New features
+
+#### Python 3.13 support (#477)
+
+Added Python 3.13 to package trove classifiers and CI tests.
+
+#### pytest plugin: Authorship fixtures (#476)
+
+- New, customizable session-scoped fixtures for default committer on Mercurial and Git:
+  - Name: {func}`libvcs.pytest_plugin.vcs_name`
+  - Email: {func}`libvcs.pytest_plugin.vcs_email`
+  - User (e.g. _`user <email@tld>`_): {func}`libvcs.pytest_plugin.vcs_user`
+  - For git only: {func}`libvcs.pytest_plugin.git_commit_envvars`
+
+#### pytest plugins: Default repos use authorship fixtures (#476)
+
+New repos will automatically apply these session-scoped fixtures.
+
+## libvcs 0.32.3 (2024-10-13)
+
+### Bug fixes
+
+- Pytest fixtures `hg_remote_repo_single_commit_post_init()` and `git_remote_repo_single_commit_post_init()` now support passing `env` for VCS configuration.
+
+  Both functions accept `hgconfig` and `gitconfig` fixtures, now applied in the `hg_repo` and `git_repo` fixtures.
+
+## libvcs 0.32.2 (2024-10-13)
+
+### Bug fixes
+
+- Pytest fixtures: `git_repo` and `hg_repo`: Set configuration for both fixtures.
+
+## libvcs 0.32.1 (2024-10-12)
+
+### Revert accidental commit
+
+Update to commands for `Git` from #465 were pushed to trunk before being prepared (even for experimental use).
+
+## libvcs 0.32.0 (2024-10-12)
+
+### Breaking changes
+
+#### pytest fixtures: Session-scoped `hgconfig` and `gitconfig` (#475)
+
+These are now set by `set_hgconfig` and `set_gitconfig`, which set `HGRCPATH` and `GIT_CONFIG`, instead of overriding `HOME`.
+
+### Documentation
+
+- Updates for pytest plugin documentation.
+
+## libvcs 0.31.0 (2024-10-12)
+
+### Breaking changes
+
+#### pytest plugin: Improve performacne via session-based scoping (#472)
+
+Improved test execution speed by over 54% by eliminated repetitive repository reinitialization between test runs.
+Git, Subversion, and Mercurial repositories are now cached from an initial starter repository
+
+#### pytest fixtures: `git_local_clone` renamed to `example_git_repo` (#468)
+
+Renamed `git_local_clone` to `example_git_repo` for better understandability in
+documentation / doctests.
+
+#### cmd: Listing method renamed (#466)
+
+- `libvcs.cmd.git.GitCmd._list()` -> `libvcs.cmd.git.Git.ls()`
+- `libvcs.cmd.svn.Svn._list()` -> `libvcs.cmd.svn.Svn.ls()`
+
+## libvcs 0.30.1 (2024-06-18)
+
+### Bug Fixes
+
+- url(git): Remove unused `weight=0` flags from `AWS_CODE_COMMIT_DEFAULT_RULES`
+  (#464)
+- url(git[GitURL]): Support for detection of AWS CodeCommit URLs (#464)
+
+### Tests
+
+- url(registry): Tests for `test_registry.py` detection of AWS CodeCommit URLs
+  (#464)
+
+### Documentation
+
+- README: Overhaul and fixes
+
+## libvcs 0.30.0 (2024-06-18)
+
+### New features
+
+### urls: AWS CodeCommit support (#443)
+
+- Support for [AWS CodeCommit] URL patterns. Examples:
+
+  - HTTPS: `https://git-codecommit.us-east-1.amazonaws.com/v1/repos/test`
+  - SSH: `ssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/test`
+  - HTTPS (GRC):
+    - `codecommit::us-east-1://test`
+    - `codecommit://test`
+
+[AWS CodeCommit]: https://docs.aws.amazon.com/codecommit/
+
+### Breaking changes
+
+#### urls: Variable changes (#463)
+
+- `RE_PIP_REV` moved from `libvcs.url.git` to `libvcs.url.constants`.
+- Regex pattern for user (e.g., `git@`) decoupled to `RE_USER`.
+- `RE_PATH` and `SCP_REGEX` (now `RE_SCP`) no longer include user regex pattern
+  - Existing patterns now use `RE_USER` explicitly.
+- `REGEX_SCP` renamed to `RE_SCP` for consistency.
+
+### Documentation
+
+- Automatically linkify links that were previously only text.
+- Fix docstrings in `query_list` for `MultipleObjectsReturned` and
+  `ObjectDoesNotExist`.
+
+### Development
+
+- poetry: 1.8.1 -> 1.8.2
+
+  See also: https://github.com/python-poetry/poetry/blob/1.8.2/CHANGELOG.md
+
+- Code quality: Use f-strings in more places (#460)
+
+  via [ruff 0.4.2](https://github.com/astral-sh/ruff/blob/v0.4.2/CHANGELOG.md).
+
+## libvcs 0.29.0 (2024-03-24)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- Aggressive automated lint fixes via `ruff` (#458)
+
+  via ruff v0.3.4, all automated lint fixes, including unsafe and previews were applied:
+
+  ```sh
+  ruff check --select ALL . --fix --unsafe-fixes --preview --show-fixes; ruff format .
+  ```
+
+  Branches were treated with:
+
+  ```sh
+  git rebase \
+      --strategy-option=theirs \
+      --exec 'poetry run ruff check --select ALL . --fix --unsafe-fixes --preview --show-fixes; poetry run ruff format .; git add src tests; git commit --amend --no-edit' \
+      origin/master
+  ```
+
+- poetry: 1.7.1 -> 1.8.1
+
+  See also: https://github.com/python-poetry/poetry/blob/1.8.1/CHANGELOG.md
+
+- ruff 0.2.2 -> 0.3.0 (#457)
+
+  Related formattings. Update CI to use `ruff check .` instead of `ruff .`.
+
+  See also: https://github.com/astral-sh/ruff/blob/v0.3.0/CHANGELOG.md
+
+## libvcs 0.28.2 (2024-02-17)
+
+### Fixes
+
+- `Git.rev_list`: Fix argument expansion (#455)
+
+  Resolves issue with _fatal: '--max-count': not an integer_.
+
+### Testing
+
+- CI: Bump actions to Node 20 releases (#456)
+
+## libvcs 0.28.1 (2024-02-08)
+
+### Packaging
+
+- Source distribution: Include `CHANGES`, `MIGRATION`, and `docs/` in tarball
+  (#454)
+
+## libvcs 0.28.0 (2024-02-07)
+
+### Improvement
+
+- `QueryList` generic support improved (#453)
+
+## libvcs 0.27.0 (2024-02-06)
+
+### Development
+
+- Strengthen linting (#514)
+
+  - Add flake8-commas (COM)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-commas-com
+    - https://pypi.org/project/flake8-commas/
+
+  - Add flake8-builtins (A)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-builtins-a
+    - https://pypi.org/project/flake8-builtins/
+
+  - Add flake8-errmsg (EM)
+
+    - https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
+    - https://pypi.org/project/flake8-errmsg/
+
+### CI
+
+- Move CodeQL from advanced configuration file to GitHub's default
+
+## libvcs 0.26.0 (2023-11-26)
+
+### Breaking changes
+
+- Rename pytest plugin protocol typings (#450):
+
+  - `CreateProjectCallbackProtocol` -> `CreateRepoPostInitFn`
+  - `CreateProjectCallbackFixtureProtocol` -> `CreateRepoPytestFixtureFn`
+
+### Bug fixes
+
+- Remove unused command: `Svn.mergelist` (#450)
+- Fix `Git.config` docstring (#450)
+
+### Development
+
+- ci: Add pydocstyle rule to ruff (#449)
+- Add test for direct usage of `HgSync` (#450)
+- pytest-watcher, Add configuration (#450):
+
+  - Run initially by default
+  - Skip post-save files from vim
+
+### Documentation
+
+- Add docstrings to functions, methods, classes, and packages (#449)
+
+## libvcs 0.25.1 (2023-11-23)
+
+### Packaging
+
+- Move `gp-libs` to `test` dependencies
+
+## libvcs 0.25.0 (2023-11-19)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Packaging
+
+- Poetry: 1.6.1 -> 1.7.0
+
+  See also: https://github.com/python-poetry/poetry/blob/1.7.0/CHANGELOG.md
+
+- Move formatting from `black` to [`ruff format`] (#448)
+
+  This retains the same formatting style of `black` while eliminating a
+  dev dependency by using our existing rust-based `ruff` linter.
+
+  [`ruff format`]: https://docs.astral.sh/ruff/formatter/
+
+- Packaging (poetry): Fix development dependencies
+
+  Per [Poetry's docs on managing dependencies] and `poetry check`, we had it wrong: Instead of using extras, we should create these:
+
+  ```toml
+  [tool.poetry.group.group-name.dependencies]
+  dev-dependency = "1.0.0"
+  ```
+
+  Which we now do.
+
+  [Poetry's docs on managing dependencies]: https://python-poetry.org/docs/master/managing-dependencies/
+
+### Development
+
+- CI: Update action package to fix warnings
+
+  - [dorny/paths-filter]: 2.7.0 -> 2.11.1
+
+  [dorny/paths-filter]: https://github.com/dorny/paths-filter
+
+## libvcs 0.24.0 (2023-10-22)
+
+### Bug fixes
+
+- Git Remote URLs: Fix bug that would cause git remotes with `@` to be chopped off after the
+  protocol (#446, fixes #431)
+
+### Packaging
+
+- Move pytest configuration to `pyproject.toml` (#441)
+
+### Development
+
+- ruff: Remove ERA / `eradicate` plugin
+
+  This rule had too many false positives to trust. Other ruff rules have been beneficial.
+
+- query_list: Refactor to use access {mod}`typing` via namespace as `t` (#439)
+
+## libvcs 0.23.0 (2023-08-20)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- Code quality improvements (#438)
+
+  Additional ruff settings have been enabled. The most recent contribution
+  includes 100+ automated fixes and 50+ hand-made fixes.
+
+### Post-release: v0.23.0post0 (2023-08-20)
+
+- Fixes code comments cleaned up by `ruff`, but missed in QA. In the future,
+  even when using an automated tool, we will review more thoroughly.
+
+## libvcs 0.22.2 (2023-08-20)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- `SubprocessCommand`: Typing fix for `text` param. Found via mypy(1).
+
+## libvcs 0.22.1 (2023-05-28)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Development
+
+- Add back `black` for formatting
+
+  This is still necessary to accompany `ruff`, until it replaces black.
+
+## libvcs 0.22.0 (2023-05-27)
+
+_Maintenance only, no bug fixes, or new features_
+
+### Internal improvements
+
+- Move formatting, import sorting, and linting to [ruff].
+
+  This rust-based checker has dramatically improved performance. Linting and
+  formatting can be done almost instantly.
+
+  This change replaces black, isort, flake8 and flake8 plugins.
+
+- poetry: 1.4.0 -> 1.5.0
+
+  See also: https://github.com/python-poetry/poetry/releases/tag/1.5.0
+
+## libvcs 0.21.2 (2023-04-07)
+
+### Development
+
+- Update mypy to 1.2.0
+
+### Fixes
+
+- SkipDefaultFieldsReprMixin: Fix typing for mypy 1.2.0
+
+## libvcs 0.21.1 (2023-03-15)
+
+### Fixes
+
+- Remove more `typing_extensions` from runtime (#437 didn't get them all)
+
+## libvcs 0.21.0 (2023-03-15)
+
+### New
+
+- QueryList learned to `.get()` to pick the first result (#435)
+
+  - Raises error if no items found (unless `default=` keyword argument passed)
+  - Raises error if multiple items found
+
+### Bug fixes
+
+- Remove required dependency of typing-extensions (#437)
+- Ignore a single line of mypy check in dataclasses for now (#437)
+
+## libvcs 0.20.0 (2022-10-31)
+
+### What's new
+
+#### Python 3.11 support (#433)
+
+Official support for python 3.11
+
+#### URLs: Mapping now class attributes (#433)
+
+`URL.rule_map` is now a class attribute rather than a dataclass attribute.
+
+```console
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 1211, in wrap
+    return _process_class(cls, init, repr, eq, order, unsafe_hash,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 959, in _process_class
+    cls_fields.append(_get_field(cls, name, type, kw_only))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/.python/3.11.0/lib/python3.11/dataclasses.py", line 816, in _get_field
+    raise ValueError(f'mutable default {type(f.default)} for field '
+ValueError: mutable default <class 'libvcs.url.base.RuleMap'> for field rule_map is not allowed: use default_factory
+```
+
+## libvcs 0.19.1 (2022-10-23)
+
+### Tests
+
+- Sync, git: Update pytest fixtures, via #432
+
+### Documentation
+
+- CLI, git: Split subcommands into separate pages (remote, stash, submodule), via #432
+
+## libvcs 0.19.0 (2022-10-23)
+
+### New features
+
+#### Commands
+
+via #430
+
+- Git
+
+  - Support for progress bar
+  - Add subcommands for:
+    - stash: {attr}`Git.stash <libvcs.cmd.git.Git.stash>` -> {class}`libvcs.cmd.git.GitStashCmd`
+    - remote: {attr}`Git.remote <libvcs.cmd.git.Git.remote>` -> {class}`libvcs.cmd.git.GitRemoteCmd`
+    - submodule: {attr}`Git.submodule <libvcs.cmd.git.Git.submodule>` ->
+      {class}`libvcs.cmd.git.GitSubmoduleCmd`
+  - Added commands for:
+    - {meth}`libvcs.cmd.git.Git.rev_parse`
+    - {meth}`libvcs.cmd.git.Git.rev_list`
+    - {meth}`libvcs.cmd.git.Git.symbolic_ref`
+    - {meth}`libvcs.cmd.git.Git.show_ref`
+
+- SVN
+
+  New and improved:
+
+  - {meth}`libvcs.cmd.svn.Svn.unlock`
+  - {meth}`libvcs.cmd.svn.Svn.lock`
+  - {meth}`libvcs.cmd.svn.Svn.propset`
+
+- Mercurial
+
+  New and improved:
+
+  - {meth}`libvcs.cmd.hg.Hg.pull`
+  - {meth}`libvcs.cmd.hg.Hg.clone`
+  - {meth}`libvcs.cmd.hg.Hg.update`
+
+#### Syncing
+
+via #430
+
+Git, SVN, and Mercurial have moved to `libvcs.cmd`
+
+## libvcs 0.18.1 (2022-10-23)
+
+_Maintenance only release, no bug fixes, or new features_
+
+- Documentation improvements
+- Development package updates
+- Add citation file (CITATION.cff)
+
+## libvcs 0.18.0 (2022-10-09)
+
+### New features
+
+#### URLs
+
+- Added `weight` to matchers (#428)
+
+  - More heavily weighted matcher will have preference over others
+  - Fixes an issue where `defaults` would be overwritten
+
+    The first, highest weighted will "win", avoiding the recursion causing defau defaults for other
+    matchers to be applied.
+
+## libvcs 0.17.0 (2022-09-25)
+
+### New features
+
+- URLs: Added `registry`, match find which VCS a URL matches with (#420)
+- `create_project`: Learn to guess VCS from URL, if none provided (#420)
+
+### Breaking changes
+
+URL renamings (#417):
+
+- `Matcher` -> `Rule`, `MatcherRegistry` -> `Rules`
+- `matches` -> `rule_map`
+- `default_patterns` -> `patterns`
+- `MATCHERS` -> `RULES`
+
+### Improvements
+
+pytest plugin:
+
+- `create_{git,svn,hg}_remote_repo()` now accepts `init_cmd_args` (`list[str]`, default:
+  `['--bare']`, #426)
+
+  To not use bare, pass `init_cmd_args=None`
+
+Sync:
+
+- `git`: Fix `update_repo` when there are only untracked files (#425, credit: @jfpedroza)
+
+URL (#423):
+
+- `hg`: Add `HgBaseURL`, `HgPipURL`
+- `svn`: Add `SvnBaseURL`, `SvnPipURL`
+- `URLProtocol`: Fix `is_valid` to use `classmethod`
+- All: Fix `is_valid` to use default of `None` to avoid implicitly filtering
+- Reduce duplicated code in methods by using `super()`
+
+### Packaging
+
+- Migrate `.coveragerc` to `pyproject.toml` (#421)
+- Remove `.tmuxp.before-script.sh` (was a `before_script` in `.tmuxp.yaml`) that was unused.
+- Move `conftest.py` to root level
+
+  - Can be excluded from wheel, included in sdist
+  - Required to satisfy pytest's `pytest_plugins` only being in top-level confte conftest.py files
+    since 4.0 (see
+    [notice](https://docs.pytest.org/en/stable/deprecations.html#pytest-plugins-in-non-top-level-conftest-files))
+  - Makes it possible to run `pytest README.md` with doctest plugin
+
+## libvcs 0.16.5 (2022-09-21)
+
+### Bug fixes
+
+- Use pytest's public API when importing (#418)
+
+## libvcs 0.16.4 (2022-09-18)
+
+### Infrastructure
+
+- Bump poetry to 1.1.x to 1.2.x
+
+## libvcs 0.16.3 (2022-09-18)
+
+### Bug fixes
+
+- `QueryList`: Fix lookups of objects (#415)
+
+### Tests
+
+- Basic pytest plugin test (#413)
+- Add test for object based lookups (#414)
+
+### Documentation
+
+- Improve doc examples / tests for `keygetter` and `QueryList` to show deep lookups for objects
+  (#415)
+
+### Infrastructure
+
+- CI speedups (#416)
+
+  - Avoid fetching unused apt package
+  - Split out release to separate job so the PyPI Upload docker image isn't pulled on normal runs
+  - Clean up CodeQL
+
+## libvcs 0.16.2 (2022-09-11)
+
+### Bug fix
+
+Remove `Faker` dependency (#412)
+
+## libvcs 0.16.1 (2022-09-11)
+
+### Bug fix
+
+Temporarily add `Faker` as a dependency (due to pytest), track longterm fix on (#411)
+
+## libvcs 0.16.0 (2022-09-11)
+
+### New features
+
+- Added a [pytest plugin](https://libvcs.git-pull.com/pytest-plugin.html). Create fresh, temporarily
+  repos on your machine locally for git, mercurial, and svn (#409)
+
+## libvcs 0.15.0 (2022-09-11)
+
+### Breaking changes
+
+- Moves (#408):
+
+  - `libvcs.parse` -> `libvcs.url`
+  - `libvcs.projects` -> `libvcs.sync`
+
+- Renames (#408):
+
+  - `BaseProject` -> `BaseSync`
+  - `MercurialProject` -> `HgSync`
+  - `SubversionProject` -> `SvnSync`
+  - `GitProject` -> `GitSync`
+
+- Deprecate custom functions in favor of standard library:
+  - `which()` in favor of {func}`shutil.which`, via #397
+  - `mkdir_p()` in favor of {func}`os.makedirs` and {meth}`pathlib.Path.mkdir` w/ `parents=True`,
+    via #399
+
+### Development
+
+- Remove `.pre-commit-config.yaml`: This can be done less obtrusively via flake8 and having the user
+  run the tools themselves.
+- Add [flake8-bugbear](https://github.com/PyCQA/flake8-bugbear) (#379)
+- Add [flake8-comprehensions](https://github.com/adamchainz/flake8-comprehensions) (#402)
+
+### Documentation
+
+- Render changelog in [`linkify_issues`] (#396, #403)
+- Fix Table of contents rendering with sphinx autodoc with [`sphinx_toctree_autodoc_fix`] (#403)
+- Deprecate `sphinx-autoapi`, per above fixing the table of contents issue (#403)
+
+  This also removes the need to workaround autoapi bugs.
+
+[`linkify_issues`]: https://gp-libs.git-pull.com/linkify_issues/
+[`sphinx_toctree_autodoc_fix`]: https://gp-libs.git-pull.com/sphinx_toctree_autodoc_fix/
+
+## libvcs 0.14.0 (2022-07-31)
+
+### What's new
+
+- New and improved logo
+- **Improved typings**
+
+  Now [`mypy --strict`] compliant (#390)
+
+  [`mypy --strict`]: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict
+
+- **Parser**: Experimental VCS URL parsing added (#376, #381, #384, #386):
+
+  VCS Parsers return {func}`dataclasses.dataclass` instances. The new tools support validation,
+  parsing, mutating and exporting into URLs consumable by the VCS.
+
+  ::: {warning}
+
+  APIs are unstable and subject to break until we get it right.
+
+  :::
+
+  - {mod}`libvcs.url.git`
+
+    - {class}`~libvcs.url.git.GitBaseURL` - Parse git URLs, `git(1)` compatible
+
+      - {meth}`~libvcs.url.git.GitBaseURL.is_valid`
+      - {meth}`~libvcs.url.git.GitBaseURL.to_url` - export `git clone`-compatible URL
+
+    - {class}`~libvcs.url.git.GitPipURL` - Pip URLs, {meth}`~libvcs.url.git.GitPipURL.is_valid`,
+      {meth}`~libvcs.url.git.GitPipURL.to_url`
+
+    - {class}`~libvcs.url.git.GitURL` - Compatibility focused,
+      {meth}`~libvcs.url.git.GitURL.is_valid` {meth}`~libvcs.url.git.GitURL.to_url`
+
+  - {mod}`libvcs.url.hg`
+
+    - {class}`~libvcs.url.hg.HgURL` - Parse Mercurial URLs
+      - {meth}`~libvcs.url.hg.HgURL.is_valid`
+      - {meth}`~libvcs.url.hg.HgURL.to_url` - export `hg clone`-compatible URL
+
+  - {mod}`libvcs.url.svn`
+
+    - {class}`~libvcs.url.svn.SvnURL` - Parse Subversion URLs
+      - {meth}`~libvcs.url.svn.SvnURL.is_valid`
+      - {meth}`~libvcs.url.svn.SvnURL.to_url` - export `svn checkout`-compatible URL
+
+  Detection can be extended through writing {class}`~libvcs.url.base.Matcher`s and adding them to
+  the classes' {class}`~libvcs.url.base.MatcherRegistry`
+
+  You can write your own VCS parser by implementing {class}`~libvcs.url.base.URLProtocol`, but it
+  would be most efficient if you studied the source of the `git(1)` parser to see how it's done.
+
+### Breaking changes
+
+- #391 Removed `flat` keyword argument for {class}`libvcs.sync.git.GitSync`. This was unused and the
+  equivalent can be retrieved via `.to_dict()` on `GitRemote`
+- #379 Support for `git+git` URLs removed. Pip removed these in 21.0 due to them being insecure
+  [^pip-git+git]
+- #372 Typings moved from `libvcs.types` -> {mod}`libvcs._internal.types`
+- #377 Remove deprecated functions and exceptions
+
+  - Removed `libvcs.shortcuts`
+    - Removed `libvcs.shortcuts.create_project_from_pip_url()`: This will be replaced in future
+      versions by #376 / parsing utilities
+    - Moved `libvcs.shortcuts.create_project()` to {func}`libvcs._internal.shortcuts.create_project`
+  - Removed {exc}`libvcs.exc.InvalidPipURL`
+
+[^pip-git+git]: pip removes `git+git@` <https://github.com/pypa/pip/pull/7543>
+
+### Fixes
+
+- Minor spelling fix in Git's `convert_pip_url()` exception
+- Fix mercurial cloning in {class}`libvcs.sync.hg.HgSync`
+
+  _Backport from 0.13.1_
+
+### Typings
+
+- Rename `VcsLiteral` -> `VCSLiteral`
+
+  _Backport from 0.13.4_
+
+- {func}`~libvcs.shortcuts.create_project`: Add overloads that return the typed project (e.g.,
+  {class}`~libvcs.sync.git.GitSync`)
+
+  _Backport from 0.13.3_
+
+### Cleanup
+
+- #378 #380 Remove duplicate `uses_netloc` scheme for `git+ssh` (this was in cpython since 2.7 / 3.1
+  [^git+ssh][^python:bugs:8657])
+
+[^git+ssh]: `uses_netloc` added `'git'` and `'git+ssh'` in {mod}`urllib.parse`
+
+    [python/cpython@ead169d]
+
+[python/cpython@ead169d]: https://github.com/python/cpython/commit/ead169d3114ed0f1041b5b59ca20293449608c50
+
+[^python:bugs:8657]: <https://bugs.python.org/issue8657>
+
+## libvcs 0.13.6 (2022-06-18)
+
+### Development
+
+- Move `libvcs.shortcuts` to {mod}`libvcs._internal.shortcuts`
+
+## libvcs 0.13.5 (2022-06-18)
+
+### Development
+
+- Note upcoming deprecation of `create_project_from_pip_url` in v0.14
+- Note `create_project` becoming internal API in upcoming release v0.14
+- Fix import in `libvcs.shortcuts` (in v0.14 this module will not exist)
+
+## libvcs 0.13.4 (2022-06-18)
+
+### Typing
+
+- Rename `VcsLiteral` -> `VCSLiteral`
+
+## libvcs 0.13.3 (2022-06-18)
+
+### Typings
+
+- `create_project()`: Add overloads that return the typed project (e.g.,
+  {class}`~libvcs.sync.git.GitSync`)
+
+## libvcs 0.13.2 (2022-06-12)
+
+### Typings
+
+- {func}`libvcs.sync.git.GitSync.remotes`: Add overload
+
+## libvcs 0.13.1 (2022-06-01)
+
+### Fixes
+
+- Fix mercurial cloning in {class}`libvcs.sync.hg.HgSync`
+
+## libvcs 0.13.0, "Jane" (2022-05-30)
+
+### Breaking changes
+
+- #343: `libvcs.cmd.core` moved to `libvcs._internal.run` to make it more clear the API is closed.
+
+  This includes {func}`~libvcs._internal.run.run`
+
+  Before in 0.13:
+
+  ```python
+  from libvcs.cmd.core import run
+  ```
+
+  New module in >=0.13:
+
+  ```python
+  from libvcs._internal.run import run
+  ```
+
+- #361: {class}`~libvcs._internal.run.run`'s params are now a pass-through to
+  {class}`subprocess.Popen`.
+
+  - `run(cmd, ...)` is now `run(args, ...)` to match `Popen`'s convention.
+
+- {class}`libvcs.sync.base.BaseSync`:
+
+  - Removed `parent_dir`:
+
+    Before: `project.parent_dir`
+
+    After: `project.parent.path`.
+
+  - `repo_name` switched from attribute to property
+
+- Keyword-only arguments via [PEP 3102], [PEP 570]
+
+  - #366: `libvcs.cmd` for hg, git, and svn updated to use
+
+  - #364: Project classes no longer accept positional arguments.
+
+    Deprecated in >=0.13:
+
+    ```python
+    GitSync('https://github.com/vcs-python/libvcs.git')
+    ```
+
+    New style in >=0.13:
+
+    ```python
+    GitSync(url='https://github.com/vcs-python/libvcs.git')
+    ```
+
+[pep 570]: https://peps.python.org/pep-0570/
+[pep 3102]: https://peps.python.org/pep-3102/#specification
+
+### What's new
+
+- **Commands**: Experimental command wrappers added (#346):
+
+  - {class}`libvcs.cmd.git.Git`
+
+    - {meth}`libvcs.cmd.git.Git.help`
+    - {meth}`libvcs.cmd.git.Git.reset`
+    - {meth}`libvcs.cmd.git.Git.checkout`
+    - {meth}`libvcs.cmd.git.Git.status`
+    - {meth}`libvcs.cmd.git.Git.config` via #360
+
+- **Command**: Now support `-C` (which accepts `.git` dirs, see git's manual) in addition to `cwd`
+  (subprocess-passthrough), #360
+
+### Bug fixes
+
+- Fix argument input for commands, for instance `git config --get color.diff` would not properly
+  pass-through to subprocess. git: #360, svn and hg: #365
+
+### Internals
+
+- #362 [mypy] support added:
+
+  - Basic mypy tests now pass
+  - Type annotations added, including improved typings for:
+
+    - {func}`libvcs._internal.run.run`
+    - {meth}`libvcs._internal.subprocess.SubprocessCommand.Popen`
+    - {meth}`libvcs._internal.subprocess.SubprocessCommand.check_output`
+    - {meth}`libvcs._internal.subprocess.SubprocessCommand.run`
+
+  - `make mypy` and `make watch_mypy`
+  - Automatic checking on CI
+
+- #345 `libvcs.utils` -> `libvcs._internal` to make it more obvious the APIs are strictly closed.
+- `StrOrPath` -> `StrPath`
+- #336: {class}`~libvcs._internal.subprocess.SubprocessCommand`: Encapsulated {mod}`subprocess` call
+  in a {func}`dataclasses.dataclass` for introspecting, modifying, mocking and controlling
+  execution.
+- Dataclass helper: {class}`~libvcs._internal.dataclasses.SkipDefaultFieldsReprMixin`
+
+  Skip default fields in object representations.
+
+  Credit: Pietro Oldrati, 2022-05-08,
+  [StackOverflow Post](https://stackoverflow.com/a/72161437/1396928)
+
+### Documentation
+
+- Document `libvcs.types`
+- #362: Improve developer documentation to note [mypy] and have tabbed examples for flake8.
+
+[mypy]: http://mypy-lang.org/
+
+### Packaging
+
+- Update description and keywords
+
+## libvcs 0.12.4 (2022-05-30)
+
+- _Backport from 0.13.x_ Fix argument input for hg and svn commands, would not properly pass-through
+  to subprocess. #365
+
+## libvcs 0.12.3 (2022-05-28)
+
+### Bug fixes
+
+- _Backport from 0.13.x_. Fix argument input for git commands, e.g. `git config --get color.diff`
+  would not properly pass-through to subprocess. #360
+
+## libvcs 0.12.2 (2022-05-10)
+
+### Packaging
+
+- Update [trove classifiers](https://pypi.org/classifiers/)
+
+## libvcs 0.12.1 (2022-05-10)
+
+### Packaging
+
+- Add keywords and update subscription
+- Add `py.typed` file to `libvcs/py.typed`
+
+## libvcs 0.12.0, "Nimbus" (2022-04-24)
+
+### Breaking
+
+- `GitRepo`, `SVNRepo`, `MercurialRepo`, `BaseRepo` have been renamed to `GitSync`, `SVNProject`,
+  `HgSync`, `BaseSync` (#327)
+- `GitSync`, `SVNProject`, `HgSync`, `BaseSync` have been moved to
+  `libvcs.sync.{module}.{Module}Project`
+- `repo_dir` param is renamed to `dir`:
+
+  Before: `GitSync(url='...', repo_path='...')`
+
+  After: `GitSync(url='...', path='...')`
+
+  #324
+
+- `dir` to `pathlib`, `BaseSync.path` -> `BaseSync.path`
+- Logging functions moved to {attr}`libvcs.sync.base.BaseSync.log` (#322)
+- Rename `ProjectLoggingAdapter` to `CmdLoggingAdapter`
+- `CmdLoggingAdapter`: Rename `repo_name` param to `keyword`
+- `create_repo` -> `create_project`
+- `GitRemote` and `GitStatus`: Move to {func}`dataclasses.dataclass` (#329)
+- `extract_status()`: Move to `GitStatus.from_stdout` (#329)
+
+### What's new
+
+- **Commands**: Experimental command wrappers added (#319):
+
+  - {class}`libvcs.cmd.git.Git`
+
+    - {meth}`libvcs.cmd.git.Git.run`
+    - {meth}`libvcs.cmd.git.Git.clone`
+    - {meth}`libvcs.cmd.git.Git.init`
+    - {meth}`libvcs.cmd.git.Git.pull`
+    - {meth}`libvcs.cmd.git.Git.rebase`
+
+  - {class}`libvcs.cmd.svn.Svn`
+
+    - {meth}`libvcs.cmd.svn.Svn.run`
+    - {meth}`libvcs.cmd.svn.Svn.checkout`
+    - {meth}`libvcs.cmd.svn.Svn.update`
+    - {meth}`libvcs.cmd.svn.Svn.status`
+    - {meth}`libvcs.cmd.svn.Svn.auth`
+    - {meth}`libvcs.cmd.svn.Svn.blame`
+    - {meth}`libvcs.cmd.svn.Svn.commit`
+
+  - {class}`libvcs.cmd.hg.Hg`
+
+    - {meth}`libvcs.cmd.hg.Hg.run`
+    - {meth}`libvcs.cmd.hg.Hg.clone`
+
+- {class}`libvcs.sync.git.GitSync` now accepts remotes in `__init__`
+
+  ```python
+  repo = GitSync(
+      url="https://github.com/vcs-python/libvcs",
+      repo_path=checkout,
+      remotes={
+          'gitlab': 'https://gitlab.com/vcs-python/libvcs',
+      }
+  )
+  ```
+
+  ```python
+  repo = GitSync(
+      url="https://github.com/vcs-python/libvcs",
+      repo_path=checkout,
+      remotes={
+          'gitlab': {
+              'fetch_url': 'https://gitlab.com/vcs-python/libvcs',
+              'push_url': 'https://gitlab.com/vcs-python/libvcs',
+          },
+      }
+  )
+  ```
+
+- {meth}`libvcs.sync.git.GitSync.update_repo` now accepts `set_remotes=True`
+
+### Compatibility
+
+- Python 3.7 and 3.8 dropped (#308)
+
+  Maintenance and bug support exists in
+  [`v0.11.x`](https://github.com/vcs-python/libvcs/tree/v0.11.x)
+
+### Development
+
+- Add codeql analysis (#303)
+- git test suite: Lots of parametrization (#309)
+- CI: Use poetry caching from
+  [@actions/setup v3.1](https://github.com/actions/setup-python/releases/tag/v3.1.0), (#316)
+- New constants for `str` -> class mappings
+
+  - {data}`libvcs.sync.constants.DEFAULT_VCS_CLASS_MAP`
+  - {data}`libvcs.sync.constants.DEFAULT_VCS_CLASS_UNION`
+  - {data}`libvcs.sync.constants.DEFAULT_VCS_LITERAL`
+
+- Remove tox and tox-poetry-installer. It turns out installing poetry inside a poetry project
+  doesn't work well. (`poetry update`, `poetry publish`, etc. commands would fail)
+- Add [doctest](https://docs.python.org/3/library/doctest.html) w/
+  [pytest + doctest](https://docs.pytest.org/en/7.1.x/how-to/doctest.html), (#321).
+- Publish to PyPI via CI when git tags are set.
+
+### Documentation
+
+- API: Split documentation of modules to separate pages
+- Fix sphinx-issues (#321)
+- Experiment with sphinx-autoapi (#328) for table of contents support
+
+## libvcs 0.11.1 (2022-03-12)
+
+### CVE-2022-21187: Command Injection with mercurial repositories
+
+- By setting a mercurial URL with an alias it is possible to execute arbitrary shell commands via
+  `.obtain()` or in the case of uncloned destinations, `.update_repo()`.
+  ([#306](https://github.com/vcs-python/libvcs/pull/306), credit: Alessio Della Libera)
+
+  See also: [cve.mitre.org](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-21187),
+  [nvd.nist.gov](https://nvd.nist.gov/vuln/detail/CVE-2022-21187),
+  [snyk](https://security.snyk.io/vuln/SNYK-PYTHON-LIBVCS-2421204).
+
+### Development
+
+- Run pyupgrade formatting (#305)
+- Tests:
+  - Move from pytest `tmp_dir` (`py.path.local`) to `tmp_path` (`pathlib.Path`)
+  - Text fixture updates: Use home directory via `tmp_path_factory`, generate config for git and hg.
+
+### Documentation
+
+- Move to furo theme
+- Root: `make start_docs`, `make design_docs`
+- docs/: `make start`, `make design`
+
+## libvcs 0.11.0, "Phebe" (2022-01-08)
+
+### Compatibility
+
+- Add python 3.10 (#300)
+- Drop python 3.6 (#300)
+
+### Development
+
+- Poetry: 1.1.7 -> 1.1.12 (#300)
+- Add `.pre-commit-config.yaml`
+
+## libvcs 0.10.1 (2021-11-30)
+
+- #295: Checkout remote branch before git rebase. Thank you @jensens!
+- #293: Fix revision handling with pip-urls. Thank you @jensens!
+- #279: Update poetry to 1.1
+  - CI: Use poetry 1.1.7 and `install-poetry.py` installer
+  - Relock poetry.lock at 1.1 (w/ 1.1.7's fix)
+
+## libvcs 0.10 (2021-06-16)
+
+- #311: Convert to markdown
+
+## libvcs 0.9 (2021-06-14)
+
+Generally speaking, refactor / magic is in the process of being stripped out in the next few
+releases. The API is subject to change significantly in pre-1.0 builds.
+
+[#271]:
+
+- Big version bump (0.5 -> 0.9)
+- Remove Python 2.7 support
+- Add annotations
+- Change `libvcs.git.GitRepo.status()` to return `GitStatus` named tuple
+- Breaking change: Repo objects now require `repo_dir` to be passed
+- Update black to 21.6b0
+
+[#271]: https://github.com/vcs-python/libvcs/pull/271
+
+## libvcs 0.5 (2020-08-11)
+
+- [refactor] [#267] overhaul docs
+
+  - Move sphinx api format to Numpy-style
+
+  - Move from reStructuredText to Markdown (via recommonmark). The master plan is to eliminate
+    docutils and sphinx as a bottleneck completely in favor of something else (e.g., gatsby with a
+    source that inspects our modules and can source intersphinx)
+
+  - Move from RTD to GitHub Action, full support of poetry extras packages, deploys straight to S3
+    and CloudFront
+
+- [#270] Build and publish packages via poetry
+- [#270] Overhaul development docs
+
+[#270]: https://github.com/vcs-python/libvcs/pull/270
+[#267]: https://github.com/vcs-python/libvcs/pull/267
+
+## libvcs 0.4.4 (2020-08-05)
+
+- [#268] `libvcs.base.BaseRepo`:
+  - no longer sets `**kwargs` to dictionary on the object
+  - remove `__slot__` and rename `name` attribute to `repo_name`
+
+[#268]: https://github.com/vcs-python/libvcs/pull/268
+
+## libvcs 0.4.3 (2020-08-01)
+
+- \[bug\] `libvcs.git.extract_status()` Fix issue capturing branch names with special characters
+
+## libvcs 0.4.2 (2020-08-01)
+
+- \[bug\] `libvcs.git.GitRepo.get_current_remote_name()` Handle case where upstream is unpushed
+- \[feature\] `libvcs.git.GitRepo.status()` - Retrieve status of repo
+- \[feature\] `libvcs.git.extract_status()` - Return structured info from `git status`
+
+## libvcs 0.4.1 (2020-08-01)
+
+- Remove log statement
+
+## libvcs 0.4 (2020-08-01)
+
+**Breaking changes**
+
+Internal functionality relating to remotes have been reorganized to avoid implicit behavior.
+
+- `~libvcs.git.GitRepo` methods have been renamed, they will be deprecated in 0.5:
+
+  - `GitRepo.remotes_get` renamed to `libvcs.git.GitRepo.remotes()`
+  - `GitRepo.remote_get` renamed to `libvcs.git.GitRepo.remote()`
+  - `GitRepo.remote_set` renamed to `libvcs.git.GitRepo.set_remote()`
+
+- `~libvcs.git.GitRepo` the `remotes` argument is deprecated and no longer used. Use
+  `libvcs.git.GitRepo.set_remote` after repo is instantiated.
+
+- `libvcs.git.GitRepo.obtain` no longer set remotes based on a `dict` passed to
+  `~libvcs.git.GitRepo`. This was deemed to specialized / implicit.
+
+- `libvcs.git.GitRepo.set_remote()` (formerly `remote_set`)
+
+  The new method accepts `name` and `url` (in that order). `name` no longer has a default value (was
+  `origin`).
+
+- `libvcs.git.GitRepo.remote()` (formerly `remote_get`):
+
+  - `remote` argument renamed to `name`. It will be removed in 0.5.0
+
+    The default value of `'origin'` has been removed
+
+  - Now returns `~libvcs.git.GitRemote` (a :py`collections.namedtuple` object)
+
+    The tuple is similar to the old output, except there is an additional value at the beginning,
+    the name of the remote, e.g. `('origin', '<fetch_url>', '<push_url>')`
+
+- `libvcs.git.GitRepo.remotes()` (formerly `remotes_get`) are now methods instead of properties.
+
+  Passing `flat=True` to return a `dict` of `tuple` instead of `dict`
+
+- New method: `libvcs.git.GitRepo.get_git_version()`
+
+- New method: `libvcs.git.GitRepo.get_current_remote_name()`
+
+## libvcs 0.3.3 (2020-07-29)
+
+- Remove f-string from test
+- `libvcs.git.GitRepo.obtain` Overwrite remote if exists
+
+## libvcs 0.3.2 (2020-07-26)
+
+- `258` `libvcs.git.GitRepo.remote_set`
+  - Fix updating of remote URLs
+  - Add new param: `overwrite`, usage: `repo.remote_set(url, 'origin', overwrite=True)`
+
+## libvcs 0.3.1post1 (2020-07-26)
+
+- Fix version in pyroject.toml
+- Update developer docs
+
+## libvcs 0.3.1 (2020-07-25)
+
+- Fix issue with subprocess.Popen loud warning on Python 3.8
+- [#296] - Move from Pipfile to poetry
+- Sort imports
+- Add isort package, isort configuration in setup.cfg, and `make isort` task to Makefile.
+- Add `project_urls` to setup.py
+
+[#296] https://github.com/vcs-python/libvcs/pull/296
+
+## libvcs 0.3.0 (2018-03-12)
+
+- Move vcspull to the vcs-python organization
+- Fix issue where VCS objects failed to set attribute in Ubuntu 18.04.
+
+## libvcs 0.2.3 (2016-12-22)
+
+- Update documentation to point to libvcs.git-pull.com
+- Switch doc theme to alabaster
+- Pin and update libraries via pyup
+  - update vulture 0.8.1 to 0.11
+  - update flake8 from 2.5.4 to 3.2.1
+  - update pytest-mock from 1.4.0 to 1.5.0
+  - update pytest from 3.0.4 to 3.0.5
+  - pin alabaster to 0.7.9
+  - pin sphinx to 1.5.1
+
+## libvcs 0.2.2 (2016-11-23)
+
+- Fix bug with unused `support` module in vcspull. See [vcspull#43]
+
+[vcspull#43]: https://github.com/vcs-python/vcspull/pull/43
+
+## libvcs 0.2.1 (2016-09-13)
+
+- Update pytest to 3.0.2, remove unused pytest-raisesregexp dependency.
+- Fix bug in `which` when executable is not found. Allow specifying search paths manually.
+- Better support for missing VCS when testing on git and subversion.
+
+## libvcs 0.2.0 (2016-06-24)
+
+- [#9] Support for `progress_callback` to use realtime output from commands in progress (such as
+  `git fetch`).
+- [#9] More tests, internal factoring and documentation, thanks @jcfr
+- [#9] Official support for pypy, pypy3
+- [#11] : Fix unbound local when updating git repos
+
+[#9]: https://github.com/vcs-python/libvcs/pull/9
+[#11]: https://github.com/vcs-python/libvcs/pull/11
+
+## libvcs 0.1.7 (2016-06-21)
+
+- `7` Add `check_returncode` property to run, thanks @jcfr
+- `8` Remove all cases of `run_buffered` / buffering from the library.
+
+## libvcs 0.1.6 (2016-06-21)
+
+- `5` Remove colorama dependency
+
+- `6` Remove log module. Logging defaults.
+
+  The library user can still use formatters and set log levels, for an example, see the vcspull
+  logging setup.
+
+  An example:
+
+        import logging
+
+        # your app
+        log.setLevel(level)
+        log.addHandler(logging.StreamHandler())
+
+        # vcslib logging options
+        vcslogger = logging.getLogger('libvcs')
+        vcslogger.propagate = False # don't pass libvcs settings up scope
+        vcslogger.addHandler(logging.StreamHandler())
+        vcslogger.setLevel(level)
+
+  You can also use `logging.Formatter` variables `repo_name` and `bin_name` with repos:
+
+        repo_channel = logging.StreamHandler()
+        repo_formatter = logging.Formatter(
+            '[%(repo_name)s] (%(bin_name)s) %(levelname)1.1s: %(message)s'
+        )
+        repo_channel.setFormatter(repo_formatter)
+        vcslogger = logging.getLogger('libvcs')
+        vcslogger.propagate = False # don't pass libvcs settings up scope
+        vcslogger.addHandler(repo_channel)
+        vcslogger.setLevel(level)
+
+## libvcs 0.1.5 (2016-06-21)
+
+- Fix issue where repo context wouldn't pass to repo logging adapter
+
+## libvcs 0.1.4 (2016-06-20)
+
+- Fix print_stdout_on_progress_end signature in git update
+
+## libvcs 0.1.3 (2016-06-20)
+
+- `create_repo` function for regular vcs urls
+- API docs updated
+
+## libvcs 0.1.2 (2016-06-20)
+
+- change signature on `create_repo_from_pip_url` to accept `pip_url` instead of `url`.
+- `Base` to accept `repo_dir` instead of `name` and `parent_dir`.
+
+## libvcs 0.1.1 (2016-06-20)
+
+- remove unneeded pyyaml, kaptan and click dependencies
+
+## libvcs 0.1.0 (2016-06-20)
+
+- libvcs split from [vcspull](https://github.com/vcs-python/vcspull)
+
+<!---
+vim: set filetype=markdown:
+-->
