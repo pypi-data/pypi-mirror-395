@@ -1,0 +1,1253 @@
+Metadata-Version: 2.4
+Name: bach-vehicle_database
+Version: 1.0.0
+Summary: MCP server for accessing Vehicle Database API
+Project-URL: Homepage, https://github.com/bachstudio/bach-vehicle_database
+Project-URL: Repository, https://github.com/bachstudio/bach-vehicle_database
+Project-URL: Documentation, https://github.com/bachstudio/bach-vehicle_database#readme
+Project-URL: Bug Tracker, https://github.com/bachstudio/bach-vehicle_database/issues
+Author: bachstudio
+License: MIT License
+        
+        Copyright (c) 2025 bachstudio
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: api,mcp,model-context-protocol,vehicle_database
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Vehicle Database MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Vehicle Database API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-vehicle_database`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Vehicle Database API。
+
+- **PyPI 包名**: `bach-vehicle_database`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-vehicle_database
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-vehicle_database bach_vehicle_database
+
+# 或指定版本
+uvx --from bach-vehicle_database@latest bach_vehicle_database
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-vehicle_database
+
+# 运行（命令名使用下划线）
+bach_vehicle_database
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-vehicle_database": {
+      "command": "uvx",
+      "args": ["--from", "bach-vehicle_database", "bach_vehicle_database"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-vehicle_database": {
+      "command": "uvx",
+      "args": ["--from", "bach-vehicle_database", "bach_vehicle_database"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `license_plate_ocr`
+
+For USA: This API endpoint returns the license plate number and state from the license plate image.  For UK: This API endpoint returns the license plate number the license plate image.
+
+**端点**: `POST /lp-detect`
+
+
+**参数**:
+
+- `file` (string): Example value: 
+
+- `url` (string): Example value: 
+
+
+
+---
+
+
+### `vin_ocr`
+
+This API endpoint reads a VIN number from the VIN sticker, dashboard, vehicle documents or any image. It will take an image as an input and returns the VIN number. Support: 17 digit VIN.
+
+**端点**: `POST /vin-ocr`
+
+
+**参数**:
+
+- `file` (string): Example value: 
+
+- `url` (string): Example value: 
+
+
+
+---
+
+
+### `title_check`
+
+Check title information of any vehicle with VIN It returns if the vehicle has salvage record or not on a particular date along with cause.  Coverage: All vehicles listed in North America.
+
+**端点**: `GET /title-check`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 5TFDY5F18KX840724
+
+
+
+---
+
+
+### `stolen_check`
+
+The Stolen Vehicle API enables users to check for any history of theft associated with a vehicle by VIN, providing stolen record information. This API supports a wide range of VIN formats, ensuring compatibility across multiple regions and vehicle types.  Global Coverage: This API provides worldwide access to stolen vehicle records, including all types of vehicles, such as cars, trucks, motorbikes, and boats.  Support: Works for all 17-Characters VINs and classic VINs (5-13 digits) globally.
+
+**端点**: `GET /stolen-check`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: YV4902RBXF2621196
+
+
+
+---
+
+
+### `by_vin___owner_manual`
+
+Support: US/CAD region
+
+**端点**: `GET /owner-manual-vin`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `by_plate_and_state`
+
+API provides oil type data and specifications by plate and state
+
+**端点**: `GET /oil-lookup-lp`
+
+
+**参数**:
+
+- `plate` (string) *必需*: Example value: 
+
+- `state` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `by_vin`
+
+API provides the oil type and its specifications by vin
+
+**端点**: `GET /oil-lookup-vin`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `universal_vin_decode`
+
+Coverage: 1981-Present Support: US/CAD/EU
+
+**端点**: `GET /universal-vin-decode`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `trims___cad_advanced_decode`
+
+Get the trims list by year, make, and model
+
+**端点**: `GET /cad-advanced-decode-trims`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `models___cad_advanced_decode`
+
+Get the model list by year and make
+
+**端点**: `GET /cad-advanced-decode-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `makes___cad_advanced_decode`
+
+Get the makes list by year
+
+**端点**: `GET /cad-advanced-decode-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `years____cad_advanced_decode`
+
+Get the year list for YMMT
+
+**端点**: `GET /cad-advanced-decode-years`
+
+
+
+---
+
+
+### `cad_decode_by_ymmt`
+
+Coverage: 1981- 2026 Support: CAD and US regions
+
+**端点**: `GET /cad-advanced-decode-ymmt`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2024
+
+- `make` (string) *必需*: Example value: Acura
+
+- `model` (string) *必需*: Example value: MDX
+
+- `trim` (string): Example value: A Spec Package 4dr SH AWD
+
+
+
+---
+
+
+### `cad_decode_by_vin`
+
+Coverage: 1981- 2026  Support: CAD and US regions
+
+**端点**: `GET /cad-advanced-vin-decode`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 4JGDF6EE3JB129875
+
+
+
+---
+
+
+### `trims___advanced_decode`
+
+Provides a list of trims available for Advanced Decode API by a given year, make, and model.
+
+**端点**: `GET /us-advanced-decode-trims`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `models___advanced_decode`
+
+Provides a list of models available for Advanced Decode API by a given year and make.
+
+**端点**: `GET /us-advanced-decode-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `makes___advanced_decode`
+
+Provides a list of makes available for Advanced Decode API by year.
+
+**端点**: `GET /us-advanced-decode-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `years___advanced_decode`
+
+Provides a list of years available for Advanced Decode API.
+
+**端点**: `GET /us-advanced-decode-years`
+
+
+
+---
+
+
+### `decode_by_ymmt`
+
+API  is built to return a wide range of data points. This category is designed for customers and businesses in need of complete vehicle specifications, features, and equipment. It returns comprehensive and accurate VIN descriptions, packages information, and more to deliver a complete picture of any vehicle.   Coverage : 1980-Present
+
+**端点**: `GET /us-advanced-decode-ymmt`
+
+
+**参数**:
+
+- `year` (string): Example value: 2006
+
+- `make` (string): Example value: Dodge
+
+- `model` (string): Example value: Stratus
+
+- `trim` (string): Example value: SXT 4dr Sedan Automatic
+
+
+
+---
+
+
+### `decode_by_vin`
+
+USA VIN decode is built to return a wide range of data points. This category is designed for customers and businesses in need of complete vehicle specifications, features, and equipment. It returns comprehensive and accurate VIN descriptions, packages information, and more to deliver a complete picture of any vehicle.   Coverage: 1981-present
+
+**端点**: `GET /us-advanced-vin-decode`
+
+
+**参数**:
+
+- `vin` (string): Example value: 4JGDF6EE3JB129875
+
+
+
+---
+
+
+### `market_value_by_vin`
+
+Get access to trade-in, private party and retail values for any vehicle with our vehicle market value API. Vehicle Databases API service allows you instant access to accurate vehicle market value information. We provide estimates of market value for used and new cars by VIN based on market trends analysis for used cars and dealer sales all across North America. We analyze vehicle market value data based on millions of vehicle sales and transactions. Our database is updated frequently to give ...
+
+**端点**: `GET /userreport/usa-marketvalue-exact`
+
+
+**参数**:
+
+- `vin` (string): Example value:  5TDYK3DC8FS560664 
+
+
+
+---
+
+
+### `eu_decode___basic`
+
+Provides the information of VIN analytics and basic vehicle information including specifications.
+
+**端点**: `GET /europe-vin-decode`
+
+
+**参数**:
+
+- `vin` (string): Example value: ADMJF4MR2H4788581
+
+
+
+---
+
+
+### `us_decode___basic`
+
+This API provides basic specifications including year,make.model, trim, engine specs, drivetype and fuel types of any vehicle.  **Note:** Works for all 17 digit VINs based on US and Canada regions and having coverage from 1981 to 2024.
+
+**端点**: `GET /userreport/vin-decoding-basic`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 1B3AL46XX6N227698
+
+
+
+---
+
+
+### `auction`
+
+Auction API comprises of information of instance of a vehicle being put up for sale through a vehicle auction in North America. The data includes the specifications of the vehicle at the time of the auction, along with all the related images for the listing.
+
+**端点**: `GET /auction`
+
+
+**参数**:
+
+- `vin` (string): Example value: 4JGDF6EE3JB129875
+
+
+
+---
+
+
+### `models___vehicle_warranty`
+
+Provides a list of models available for vehicle warranty API by a given year and make.
+
+**端点**: `GET /vehicle-warranties/check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `data` (string) *必需*: Example value: warranty
+
+
+
+---
+
+
+### `makes___vehicle_warranty`
+
+Provides a list of makes available for vehicle warranty API by year.
+
+**端点**: `GET /vehicle-warranties/check-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `data` (string) *必需*: Example value: warranty
+
+
+
+---
+
+
+### `year___vehicle_warranty`
+
+Provides a list of years available for vehicle warranty year.
+
+**端点**: `GET /vehicle-warranties/check-years`
+
+
+**参数**:
+
+- `data` (string): Example value: warranty
+
+
+
+---
+
+
+### `models___vehicle_repair`
+
+Provides a list of models available for vehicle repairs API by a given year and make.
+
+**端点**: `GET /vehicle-repairs/check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `data` (string) *必需*: Example value: repair
+
+
+
+---
+
+
+### `years___vehicle_repair`
+
+Provides a list of years available for vehicle repairs API.
+
+**端点**: `GET /vehicle-repairs/check-years`
+
+
+**参数**:
+
+- `data` (string) *必需*: Example value: repair
+
+
+
+---
+
+
+### `makes___vehicle_repair`
+
+Provides a list of makes available for vehicle repairs API by year.
+
+**端点**: `GET /vehicle-repairs/check-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `data` (string) *必需*: Example value: repair
+
+
+
+---
+
+
+### `model___vehicle_maintenance`
+
+Provides a list of models available for vehicle maintenance API by a given year and make.
+
+**端点**: `GET /vehicle-maintenance/check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2000
+
+- `make` (string) *必需*: Example value: acura
+
+- `data` (string) *必需*: Example value: maintenance
+
+
+
+---
+
+
+### `make___vehicle_maintenance`
+
+Provides a list of makes available for vehicle maintenance API by year.
+
+**端点**: `GET /vehicle-maintenance/check-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2000
+
+- `data` (string) *必需*: Example value: maintenance
+
+
+
+---
+
+
+### `year___vehicle_maintenance`
+
+Provides a list of years available for vehicle maintenance API.
+
+**端点**: `GET /vehicle-maintenance/check-years`
+
+
+**参数**:
+
+- `data` (string) *必需*: Example value: maintenance
+
+
+
+---
+
+
+### `motorcycle_decode`
+
+This API provides year, make, model, series, and  basic specifications of a motorcycle.  Coverage: This API supports VIN from 1981 to 2024.  Support: Works for all 17 digit VINs based on US and Canada region.
+
+**端点**: `GET /motorcyclevindecode/decode`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 1HD1KVP16NB664081
+
+
+
+---
+
+
+### `decode___electric_specs`
+
+An Electric Vehicle Specifications API gives detailed specifications on any electric car. It covers manufacturers from 1999-2023 which have launched electric cars. Apart from basic specifications, dimensions and features, it typically provides data on a range of electric vehicle specifications, including battery capacity, range, charging times and more.  **Coverage:** This API supports manufacturers from year 1999 to 2023.
+
+**端点**: `GET /evehicleapi/get-data`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2023
+
+- `make` (string) *必需*: Example value: Tesla
+
+- `model` (string) *必需*: Example value: Model Y
+
+- `trim` (string) *必需*: Example value: Performance 4Dr ALL Wheel Drive Sport Utility
+
+
+
+---
+
+
+### `ymm__specs`
+
+This API provides the vehicle's key data such as specs, engine details, transmission, dimensions, colors, features,  etc. from year 1999 to 2023.
+
+**端点**: `GET /autoblog/query`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+- `trim` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `us_plate_decode`
+
+This API provides details about year, make, model and VIN by taking license plate number and state. This API covers only USA states.
+
+**端点**: `GET /userreport/usa-license-decode`
+
+
+**参数**:
+
+- `license_plate` (string): Example value: RDP1247
+
+- `state` (string): Example value: TX
+
+
+
+---
+
+
+### `multiple_trims`
+
+Premium plus VIN decode is a more detailed breakdown of a vehicle. As soon as you enter VIN it gives you information not just limited to year, make, model, trim, engine, transmission but also details of interior, exterior, mechanical, entertainment, safety and comfort features of a vehicle. It also gives you information about the interior/exterior colors of vehicle with HEX codes, fuel economy, along with standard equipment details and more.  Coverage: This API supports VIN from 1999-2023.  S...
+
+**端点**: `GET /userreport/vin-decoding-premium-plus`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 
+
+- `multiple` (string) *必需*: Example value: true
+
+
+
+---
+
+
+### `vin_decode`
+
+Premium VIN decode is more than just a basic decode. It provides you detail information about a vehicle including detailed specifications. Covering year, make, model, trim, detailed engine specs, transmission, drivetrain, brakes \u0026 suspension, vehicle color names, some basic features of the vehicle and more.  Coverage: This API supports VIN from 1981-Present.  Support: 17 digit VIN number.
+
+**端点**: `GET /userreport/vin-decoding-premium`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 5TDYK3DC8FS560664
+
+
+
+---
+
+
+### `models___ymm_specifications`
+
+Provides a list of models available for YMM specifications API by a given year and make.
+
+**端点**: `GET /autoblog/model`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `makes___ymm_specifications`
+
+Provides a list of makes available for YMM specifications API by year.
+
+**端点**: `GET /autoblog/make`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `years__ymm_specifications`
+
+Provides a list of years available for YMM specifications API.
+
+**端点**: `GET /autoblog/year`
+
+
+
+---
+
+
+### `vehicle_repair`
+
+This API provides detailed information about the vehicle parts with price and labor cost.  Coverage: This API supports manufacturers from year 1992 to 2022.
+
+**端点**: `GET /serviceandmaintenance-enginesvc/repairs`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `years___vehicle_recall`
+
+Provides a list of years available for vehicle recall API.
+
+**端点**: `GET /recallcheckrepo/recall-check-years`
+
+
+
+---
+
+
+### `makes___vehicle_recalls`
+
+Provides a list of makes available for vehicle recalls API by year.
+
+**端点**: `GET /recallcheckrepo/recall-check-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `vehicle_recall`
+
+Our Recalls API provides details on all the open recalls of any vehicle, including the date of issue, the identification number of the recall, the remedy to the issue, and more.  Coverage: This API supports VIN from year 1952 to 2023.
+
+**端点**: `POST /recall-check`
+
+
+**参数**:
+
+- `x-Authkey` (string): Example value: 
+
+
+
+---
+
+
+### `vehicle_maintenance`
+
+This API provides information about the OEM vehicle maintenance schedules at mileage intervals  Coverage: This API supports VIN from year 2001 to 2022.  Support: 17 digit VIN number.
+
+**端点**: `GET /serviceandmaintenance-enginesvc/schedules`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2019
+
+- `make` (string) *必需*: Example value: jeep
+
+- `model` (string) *必需*: Example value: Wrangler Unlimited
+
+
+
+---
+
+
+### `vin_suggestion`
+
+This API detects the error in the VIN digits and provides suggestions for the correct VINs including year,make and model.  Coverage: This API supports VIN from year 1982 - present  Support: 17 digit VIN
+
+**端点**: `GET /deepmindsvc/deepmind`
+
+
+**参数**:
+
+- `vin` (string): Example value: {vin}
+
+
+
+---
+
+
+### `decode`
+
+UK registration decode API requires a valid UK registration number to return the year, make, model, color, engine details \u0026 more.
+
+**端点**: `GET /blightysvc/decode`
+
+
+**参数**:
+
+- `reg` (string) *必需*: Example value: {reg_num}
+
+- `for_api_portal` (string) *必需*: Example value: true
+
+
+
+---
+
+
+### `sales_history`
+
+Our Vehicle Sales History API offers a comprehensive solution for uncovering the sales history of a particular vehicle. Whether it was listed on classifieds, dealerships, or auction website.  Coverage: All vehicles listed in North America  Support: 17 digit VIN and classic (5-13 digit VINs)
+
+**端点**: `GET /saleshistorysvc/decode`
+
+
+**参数**:
+
+- `vin` (string) *必需*: Example value: 3C63DRGL4CG345156
+
+
+
+---
+
+
+### `market_value_by_ymm`
+
+Get access to trade-in, private party and retail values for any vehicle with our vehicle market value API. Vehicle Databases API service allows you instant access to accurate vehicle market value information. We provide estimates of market value for used and new cars by year, make, model and trim based on market trends analysis for used cars and dealer sales all across North America. We analyze vehicle market value data based on millions of vehicle sales and transactions. Our database is upda...
+
+**端点**: `GET /userreport/usa-marketvalue`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2011
+
+- `make` (string) *必需*: Example value: aston martin
+
+- `model` (string) *必需*: Example value: DB9
+
+
+
+---
+
+
+### `makes_market_value`
+
+Provides a list of makes available for market value API by year.
+
+**端点**: `GET /marketvalue/check-makes`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 1999
+
+
+
+---
+
+
+### `years_market_value`
+
+Provides a list of years available for market value API.
+
+**端点**: `GET /marketvalue/check-years`
+
+
+
+---
+
+
+### `models`
+
+Provides a list of models available for vehicle warranty API by a given year and make.
+
+**端点**: `GET /evehicleapi/check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2016
+
+- `make` (string) *必需*: Example value: tesla
+
+
+
+---
+
+
+### `years`
+
+Provides a list of years available for electric vechicle Specifications API.
+
+**端点**: `GET /evehicleapi/check-years`
+
+
+
+---
+
+
+### `trim`
+
+Provides a list of trims available for electric vehicle specifications API by a given year, make, and model.
+
+**端点**: `GET /evehicleapi/check-trims`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 2010
+
+- `make` (string) *必需*: Example value: tesla
+
+- `model` (string) *必需*: Example value: roadster
+
+
+
+---
+
+
+### `makes`
+
+List down the makes by year
+
+**端点**: `GET /evehicleapi/check-makes`
+
+
+**参数**:
+
+- `year` (string): Example value: 2016
+
+
+
+---
+
+
+### `trims___ymm_specifications`
+
+Provides a list of trims available for YMM specifications API by a given year, make, and model.
+
+**端点**: `GET /autoblog/trim`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `vehicle_warranty`
+
+Our Warranty API provides information on the type and length of any vehicles warranty when called by year, make and model. This API covers any kind of warranty, including basic, powertrain, drivetrain, corrosion, road assistance, etc.  Coverage: This API supports manufacturers from year 1999 to 2023.
+
+**端点**: `GET /serviceandmaintenance-enginesvc/warranties`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+- `model` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `models___vehicle_recalls`
+
+Provides a list of models available for vehicle recalls API by a given year and make.
+
+**端点**: `GET /recallcheckrepo/recall-check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 
+
+- `make` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `models_market_value`
+
+Provides a list of models available for market value API by a given year and make.
+
+**端点**: `GET /marketvalue/check-models`
+
+
+**参数**:
+
+- `year` (string) *必需*: Example value: 1999
+
+- `make` (string) *必需*: Example value: acura
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
