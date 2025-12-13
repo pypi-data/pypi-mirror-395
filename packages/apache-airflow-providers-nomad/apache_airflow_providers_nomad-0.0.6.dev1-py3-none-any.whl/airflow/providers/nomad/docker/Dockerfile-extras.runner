@@ -1,0 +1,45 @@
+# This file is part of apache-airflow-providers-nomad which is
+# released under Apache License 2.0. See file LICENSE or go to
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# for full license details.
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+
+FROM python:3.12-alpine
+
+# RUN useradd -ms /bin/bash runner
+RUN addgroup -S appgroup && adduser -S runner -G appgroup
+
+# gcc & co. needed for psutils (necessary for Airflow)
+RUN apk add --no-cache gcc python3-dev musl-dev linux-headers
+RUN apk add bash
+
+# In case a git repository is to be used instead of a dag-folder
+RUN apk add git
+
+USER runner
+
+RUN pip install apache-airflow-core
+RUN pip install apache-airflow-task-sdk
+
+# In case a git repository is to be used instead of a dag-folder
+RUN pip install apache-airflow-providers-git
+
+# To be replaced later with
+# RUN pip install apache-airflow-providers-nomad
+COPY ./src ./src
+COPY pyproject.toml README.md .
+RUN pip install  . --user
+
+RUN pip cache purge
+
+# As recommended by the Python docker container docs
+WORKDIR /usr/src/runner
