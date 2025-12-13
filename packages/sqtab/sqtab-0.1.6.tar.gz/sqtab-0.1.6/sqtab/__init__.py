@@ -1,0 +1,3 @@
+"""
+sqtab package initializer.
+"""
