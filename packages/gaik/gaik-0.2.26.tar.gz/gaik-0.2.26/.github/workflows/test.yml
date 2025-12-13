@@ -1,0 +1,70 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - '.github/workflows/**'
+  workflow_call:  # Allow this workflow to be called by other workflows
+    inputs:
+      ref:
+        description: 'Git ref to checkout (for tag-based builds)'
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref || github.ref }}  # Use input ref if provided, otherwise default
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install package
+      run: pip install ".[all,dev]"
+
+    - name: Smoke test basic import
+      run: python -c "from gaik import __version__; print(f'gaik {__version__} OK')"
+
+    - name: Run tests
+      run: pytest -v --strict-markers
+
+    - name: Install build dependencies
+      run: pip install build twine
+
+    - name: Build package
+      run: python -m build
+
+    - name: Check package with twine
+      run: twine check dist/*
+
+    - name: Upload build artifacts
+      if: matrix.python-version == '3.10'
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-dist-package
+        path: dist/
+        retention-days: 3
