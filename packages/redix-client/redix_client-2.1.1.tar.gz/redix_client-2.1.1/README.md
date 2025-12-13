@@ -1,0 +1,204 @@
+# redix-client
+
+Python client for Redix Universal Healthcare Conversion API.
+
+**Version**: 2.1.1
+**Repository**: [PyPI](https://pypi.org/project/redix-client/)
+
+## Install
+
+```sh
+pip install redix-client
+```
+
+## Quick Start
+
+```python
+from redix_client import RedixClient
+
+# Initialize client
+client = RedixClient(
+    base_url="https://demo.redix.com",
+    api_key="YOUR_API_KEY"
+)
+
+# Health check
+response = client.get("/")
+print(response)  # {'status': 'healthy', 'version': '2.1.1'}
+
+# List staging files
+files = client.get("/api/v2/staging-files")
+print(files)
+
+# Upload a file to staging
+result = client.post("/api/v2/staging/upload", files={
+    "file": "/path/to/input.txt"
+})
+
+# Convert HL7 to FHIR
+result = client.post("/api/v2/convert/hl7-to-fhir", files={
+    "file": "/path/to/message.hl7"
+})
+```
+
+## API Methods
+
+The client provides simple HTTP methods that work with any API endpoint:
+
+| Method | Description |
+|--------|-------------|
+| `client.get(endpoint, params=None)` | GET request |
+| `client.post(endpoint, data=None, json=None, files=None)` | POST request |
+| `client.put(endpoint, data=None, json=None, files=None)` | PUT request |
+| `client.patch(endpoint, data=None, json=None)` | PATCH request |
+| `client.delete(endpoint, params=None)` | DELETE request |
+| `client.download(endpoint, dest_path)` | Download file |
+
+## Examples
+
+### File Conversion (v1 API - Redix Engine)
+
+```python
+# Convert with file upload
+result = client.post("/api/v2/convert/file-upload",
+    files={
+        "Input_File": "/path/to/input.txt",
+        "IFD_File": "/path/to/rules/835.ifd",
+        "OFD_File": "/path/to/rules/835.ofd"
+    },
+    data={
+        "Conversion_Flag": "e - UN/EDIFACT/RMap",
+        "WarningLevel": 1,
+        "User_Data": "0*\\**:*?"
+    }
+)
+
+# View output file
+output = client.get(f"/api/v2/view-file/output/{result['filename_base']}.out")
+print(output['content'])
+```
+
+### FHIR Conversions (v2 API)
+
+```python
+# HL7 to FHIR
+result = client.post("/api/v2/convert/hl7-to-fhir", files={
+    "file": "/path/to/message.hl7"
+})
+
+# CDA to FHIR
+result = client.post("/api/v2/convert/cda-to-fhir", files={
+    "file": "/path/to/document.xml"
+})
+
+# HIPAA X12 to FHIR
+result = client.post("/api/v2/convert/hipaa-to-fhir", files={
+    "file": "/path/to/835.x12"
+})
+
+# Smart convert (auto-detect format)
+result = client.post("/api/v2/convert/smart", files={
+    "file": "/path/to/unknown_format.dat"
+})
+```
+
+### Batch Processing
+
+```python
+# Start batch conversion
+job = client.post("/api/v2/batch-convert/folder", data={
+    "Input_Subfolder": "incoming",
+    "Config_Profile": "835_to_rmap"
+})
+job_id = job["Job_Id"]
+
+# Check status
+status = client.get(f"/api/v2/batch-status/{job_id}")
+print(status)
+
+# List all batch jobs
+jobs = client.get("/api/v2/batch-jobs", params={"Limit": 10})
+```
+
+### File Operations
+
+```python
+# Upload to staging
+client.post("/api/v2/staging/upload", files={"file": "data.txt"})
+
+# List staging files
+files = client.get("/api/v2/staging-files")
+
+# Delete from staging
+client.delete("/api/v2/staging/myfile.txt")
+
+# Download converted file
+client.download("/api/v2/download-file/output/result.out", "./downloads/")
+```
+
+### Admin Operations (v2 API)
+
+```python
+# List users
+users = client.get("/api/v2/admin/users")
+
+# Create user
+client.post("/api/v2/admin/users", json={
+    "username": "newuser",
+    "password": "secure123",
+    "role": "user"
+})
+
+# Get statistics
+stats = client.get("/api/v2/statistics")
+
+# Get conversion history
+history = client.get("/api/v2/history", params={"limit": 50})
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+export REDIX_API_URL=https://demo.redix.com
+export REDIX_API_KEY=your-api-key
+```
+
+Then initialize without parameters:
+```python
+client = RedixClient()
+```
+
+### SSL Verification
+
+For self-signed certificates in development:
+```python
+client = RedixClient(
+    base_url="https://localhost:8080",
+    api_key="your-key",
+    verify_ssl=False
+)
+```
+
+## Error Handling
+
+```python
+from redix_client import RedixClient, RedixAPIError
+
+client = RedixClient(base_url="https://demo.redix.com", api_key="your-key")
+
+try:
+    result = client.get("/api/v2/batch-status/invalid_id")
+except RedixAPIError as e:
+    print(f"Error {e.status_code}: {e.message}")
+```
+
+## Documentation
+
+- [Interactive API Documentation](https://demo.redix.com/docs) - Swagger UI
+- [API Reference](https://demo.redix.com/redoc) - ReDoc
+
+## License
+
+MIT - Redix International, Inc.
