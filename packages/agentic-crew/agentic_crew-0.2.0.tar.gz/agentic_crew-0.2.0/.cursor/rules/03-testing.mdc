@@ -1,0 +1,92 @@
+# Testing Standards
+
+## Test Types
+
+### Unit Tests (`tests/`)
+- Fast, no external dependencies
+- Mock LLM calls and APIs
+- Run on every commit
+
+### E2E Tests (`tests/e2e/`)
+- Require API keys
+- Make real LLM calls
+- Run with `--e2e` flag
+
+## Commands
+
+```bash
+# Unit tests
+uv run pytest tests/ -v --ignore=tests/e2e
+
+# With coverage
+uv run pytest tests/ --cov=agentic_crew --cov-report=term-missing
+
+# E2E tests
+uv run pytest tests/e2e/ --e2e -v
+
+# Framework-specific E2E
+uv run pytest tests/e2e/ --e2e --framework=crewai -v
+```
+
+## Test Structure
+
+```python
+class TestDecomposer:
+    """Tests for framework decomposition."""
+
+    def test_detects_crewai(self, monkeypatch):
+        """CrewAI detected when installed."""
+        # Arrange
+        monkeypatch.setattr(
+            "agentic_crew.core.decomposer.is_framework_available",
+            lambda f: f == "crewai"
+        )
+        
+        # Act
+        result = detect_framework()
+        
+        # Assert
+        assert result == "crewai"
+```
+
+## Fixtures (conftest.py)
+
+```python
+@pytest.fixture
+def sample_crew_config():
+    """Sample crew configuration."""
+    return {
+        "name": "test_crew",
+        "agents": [{"role": "researcher", "goal": "Research"}],
+        "tasks": [{"description": "Task", "agent": "researcher"}]
+    }
+
+@pytest.fixture
+def temp_crewai_dir(tmp_path):
+    """Temporary .crewai directory."""
+    crewai_dir = tmp_path / ".crewai"
+    crewai_dir.mkdir()
+    (crewai_dir / "manifest.yaml").write_text("name: test\ncrews: {}")
+    return crewai_dir
+```
+
+## Coverage Requirements
+
+- Overall: 80%+
+- Core modules: 90%+
+- New code: 100%
+
+## Mocking Patterns
+
+```python
+# Mock framework availability
+monkeypatch.setattr(
+    "agentic_crew.core.decomposer.is_framework_available",
+    lambda f: f in ["crewai", "langgraph"]
+)
+
+# Mock LLM response
+def mock_llm(*args, **kwargs):
+    return "Mocked response"
+monkeypatch.setattr("crewai.LLM.generate", mock_llm)
+```

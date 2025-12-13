@@ -1,0 +1,85 @@
+# GitHub Copilot Space Configuration for agentic-crew
+# Defines contexts for Copilot to understand this repository
+
+name: agentic-crew
+description: Framework-agnostic AI crew orchestration
+
+# Repository context
+contexts:
+  # Core understanding
+  - name: architecture
+    description: Framework decomposition architecture
+    files:
+      - src/agentic_crew/core/decomposer.py
+      - src/agentic_crew/runners/base.py
+      - src/agentic_crew/runners/*.py
+      - AGENTS.md
+      - docs/ARCHITECTURE.md
+
+  # Development workflow
+  - name: development
+    description: Development commands and workflow
+    files:
+      - pyproject.toml
+      - AGENTS.md
+      - .cursor/rules/*.mdc
+
+  # Testing patterns
+  - name: testing
+    description: Test patterns and fixtures
+    files:
+      - tests/conftest.py
+      - tests/test_*.py
+
+  # Crew definitions
+  - name: crews
+    description: How to define and run crews
+    files:
+      - src/agentic_crew/crews/*/config/*.yaml
+      - src/agentic_crew/base/archetypes.yaml
+      - crewbase.yaml
+
+# Key concepts Copilot should understand
+concepts:
+  framework_decomposition: |
+    The ability to declare crews once in YAML and run them on 
+    CrewAI, LangGraph, or Strands based on what's installed.
+    
+  runner_interface: |
+    All runners implement BaseRunner with:
+    - build_crew(config) -> framework-specific crew
+    - run(crew, inputs) -> string result
+    - build_agent(config) -> framework-specific agent
+    - build_task(config, agent) -> framework-specific task
+
+  manifest_format: |
+    .crewai/manifest.yaml defines crews with:
+    - name, version, description
+    - llm config (provider, model)
+    - crews dict (agents.yaml, tasks.yaml paths)
+    - optional preferred_framework
+
+# Code patterns
+patterns:
+  - name: framework_detection
+    description: How to detect and select frameworks
+    example: |
+      from agentic_crew.core.decomposer import detect_framework, get_runner
+      
+      framework = detect_framework()  # Auto-detect
+      runner = get_runner(framework)
+      
+  - name: crew_execution
+    description: How to run a crew
+    example: |
+      from agentic_crew import run_crew
+      
+      result = run_crew(
+          package="my-package",
+          crew="my_crew", 
+          inputs={"task": "..."}
+      )
+
+# GitHub authentication reminder
+authentication:
+  github: "GH_TOKEN=\"$GITHUB_JBCOM_TOKEN\" gh <command>"

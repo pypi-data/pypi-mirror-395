@@ -1,0 +1,69 @@
+# PR Workflow
+
+## Creating a PR
+
+```bash
+# 1. Create branch
+git checkout -b feat/my-feature
+
+# 2. Make changes and commit
+git add .
+git commit -m "feat(scope): description"
+
+# 3. Run checks
+uv run pytest tests/ -v --ignore=tests/e2e
+uvx ruff check src/ tests/
+
+# 4. Push
+git push -u origin feat/my-feature
+
+# 5. Create PR (CRITICAL: use GITHUB_JBCOM_TOKEN)
+GH_TOKEN="$GITHUB_JBCOM_TOKEN" gh pr create \
+  --title "feat(scope): description" \
+  --body "$(cat <<'EOF'
+## Summary
+- What this PR does
+
+## Test Plan
+- [ ] Unit tests pass
+- [ ] Linting passes
+EOF
+)"
+```
+
+## Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+```
+
+### Types
+- `feat` - New feature (minor bump)
+- `fix` - Bug fix (patch bump)
+- `docs` - Documentation only
+- `refactor` - Code change, no behavior change
+- `test` - Tests only
+- `chore` - Maintenance
+
+### Scopes
+- `core` - core/ modules
+- `runners` - runners/ modules
+- `tools` - tools/ modules
+- `crews` - crews/ definitions
+- `ci` - GitHub Actions
+
+## PR Review Checklist
+
+- [ ] Tests added/updated
+- [ ] Documentation updated if needed
+- [ ] Linting passes
+- [ ] Type hints on public functions
+- [ ] AGENTS.md updated if architecture changed
+
+## Merging
+
+- Squash merge preferred
+- Branch auto-deleted after merge
+- Semantic release auto-runs on main

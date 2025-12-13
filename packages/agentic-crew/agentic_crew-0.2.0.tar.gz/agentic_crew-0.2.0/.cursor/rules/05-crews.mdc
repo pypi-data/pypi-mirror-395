@@ -1,0 +1,88 @@
+# Crew Definition Guidelines
+
+## Directory Structure
+
+```
+.crewai/crews/{crew_name}/
+├── config/
+│   ├── agents.yaml    # Agent definitions
+│   └── tasks.yaml     # Task definitions
+└── {crew_name}_crew.py  # Optional: Custom crew class
+```
+
+## agents.yaml Format
+
+```yaml
+researcher:
+  role: "Senior Research Analyst"
+  goal: "Discover comprehensive information about {topic}"
+  backstory: >
+    You are an experienced researcher with expertise in finding
+    and synthesizing information from multiple sources.
+  allow_delegation: false
+  verbose: true
+  tools:
+    - search_web
+    - read_file
+```
+
+## tasks.yaml Format
+
+```yaml
+research_task:
+  description: >
+    Research the topic: {topic}
+    Find key information, examples, and best practices.
+  expected_output: >
+    A comprehensive research report with sources.
+  agent: researcher
+
+write_task:
+  description: >
+    Based on the research, write documentation for {topic}.
+  expected_output: >
+    Well-formatted documentation ready for publication.
+  agent: writer
+  context:
+    - research_task  # Uses output from research_task
+```
+
+## Best Practices
+
+### Agents
+1. Single responsibility - ONE clear purpose
+2. Specific goals - Measurable outcomes
+3. Relevant backstory - Shapes behavior
+4. Minimal tools - Only what's needed
+
+### Tasks
+1. Atomic - ONE deliverable per task
+2. Clear context - Chain with `context`
+3. Specific expectations - Exact output format
+4. Proper ordering - Dependencies explicit
+
+## Running Crews
+
+```bash
+# Run with auto-detection
+uv run agentic-crew run <package> <crew> --input '{"topic": "..."}'
+
+# Force specific framework
+uv run agentic-crew run <package> <crew> --framework crewai --input '...'
+
+# Validate config only
+uv run agentic-crew validate <package> <crew>
+```
+
+## Registering in manifest.yaml
+
+```yaml
+crews:
+  my_new_crew:
+    description: "What this crew does"
+    agents: crews/my_new_crew/config/agents.yaml
+    tasks: crews/my_new_crew/config/tasks.yaml
+    knowledge:
+      - knowledge/domain_docs  # Optional
+    preferred_framework: auto
+```
