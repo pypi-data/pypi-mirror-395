@@ -1,0 +1,73 @@
+[package]
+name = "geodb-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license = "MIT OR Apache-2.0"
+description = "A high-performance geographic database with countries, states, cities, and more"
+repository.workspace = true
+readme = "README.md"
+documentation = "https://docs.rs/geodb-core"
+keywords = ["geography", "database", "countries", "cities", "geo"]
+categories = ["database", "data-structures"]
+
+# Configure docs.rs build
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+name = "geodb_core"
+path = "src/lib.rs"
+[[bin]]
+name = "profile_search"
+path = "src/bin/profile_search.rs"
+[features]
+default = ["json", "builder", "compact", "search_blobs"]
+# -----------------------------------------------------------------------------
+# Feature Flags
+# -----------------------------------------------------------------------------
+
+# "builder" = The Tooling.
+# Needs to Download (fetch), Read Source (json), and Handle Gzip (compact).
+builder = ["json", "dep:reqwest"]
+
+# "json" = Read capability for legacy/source files.
+# Enables the `loader/legacy_json.rs` module.
+json = ["dep:serde_json"]
+
+# "compact" = Compression support (GZIP).
+# Affects both Binary (smaller .bin) and JSON (reading .json.gz).
+compact = ["dep:flate2"]
+
+# ⚠️ ARCHITECTURE SWITCH ⚠️
+# If enabled: Uses the old "Nested" tree structure (Vec<Country> -> Vec<State>).
+# If disabled (Default): Uses the new "Flat" array structure.
+legacy_model = []
+
+western_opt = []
+use_smolstr = ["smol_str"]
+search_blobs = []
+
+[dependencies]
+bincode = { workspace = true }
+deunicode = { workspace = true }
+# --- Optional / Feature Gated ---
+# Used by 'compact' or 'builder'
+flate2 = { workspace = true, optional = true }
+once_cell = { workspace = true }
+#  HTTP Client (Blocking for CLI/Server usage)
+# Used by 'fetch'
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"], optional = true }
+serde = { workspace = true }
+# Used by 'json' or 'builder'
+serde_json = { workspace = true, optional = true }
+smol_str = { version = "0.3", features = ["serde"], optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.7"
+
+[[bench]]
+name = "benchmarks"
+harness = false
