@@ -1,0 +1,59 @@
+name: test
+on:
+  workflow_call:
+    inputs:
+      PYTHON_VERSION:
+        required: true
+        type: string
+
+env:
+  INTEGRATION_TEST_SDK_USER_PASSWORD: ${{ secrets.INTEGRATION_TEST_SDK_USER_PASSWORD }}
+  KPLER_BOT_PAT: ${{ secrets.KPLER_BOT_PAT }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ env.KPLER_BOT_PAT }}
+      - name: Setup environment
+        uses: Kpler/github-actions/actions/python/get-or-create-environment@v2.275.0
+        with:
+          python-version: ${{ inputs.PYTHON_VERSION }}
+          name-environment-artifact: environment-artifact
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: ./setup.py
+          key: v6-venv-${{ hashFiles('setup.py') }}
+      - name: install dependencies
+        run: |
+            python${{ inputs.PYTHON_VERSION }} -m venv venv
+            . venv/bin/activate
+            pip install --upgrade setuptools
+            pip install -e .[test,doc,publish]
+      - name: run tests with coverage
+        run: |
+          source venv/bin/activate
+          pytest -v --reruns 20 --reruns-delay 3 tests/ --cov-report=xml --cov=kpler.sdk
+        env:
+          PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
+          INTEGRATION_TEST_SDK_USER_LOGIN: "sdkuser@kpler.com"
+          INTEGRATION_TEST_SDK_USER_PASSWORD: ${{ env.INTEGRATION_TEST_SDK_USER_PASSWORD }}
+      - name: Save Cache
+        uses: actions/cache@v4
+        with:
+          path: ./venv
+          key: v6-venv-${{ hashFiles('setup.py') }}
+      - name: Run Sonar Scan
+        if: ${{ inputs.PYTHON_VERSION == '3.11' }}
+        uses: Kpler/github-actions/actions/common/run-sonar-scan@v2.240.0
+        with:
+          sonar-token: ${{ env.SONAR_TOKEN }}
+          github-token: ${{ env.GITHUB_TOKEN }}

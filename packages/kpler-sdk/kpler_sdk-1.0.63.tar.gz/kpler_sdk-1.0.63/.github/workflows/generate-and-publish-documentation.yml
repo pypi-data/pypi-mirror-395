@@ -1,0 +1,76 @@
+name: generate-and-publish-documentation
+env:
+  PYTHON_VERSION: 3.8
+
+on:
+  workflow_call:
+    secrets:
+      KPLER_BOT_PAT:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      PYTHON_SDK_DOC_CLOUDFRONT_DISTRIBUTION_ID:
+        required: true
+
+
+jobs:
+
+  generate-and-publish-documentation:
+    name: generate documentation
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.KPLER_BOT_PAT }}
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: ./setup.py
+          key: v6-venv-${{ hashFiles('setup.py') }}
+      - name: Upgrade pip and install rust compiler
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          sudo apt update && sudo apt install rustc -y
+          sudo apt install --reinstall python3-pip
+      - name: Generate Python SDK documentation
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade setuptools
+          pip install -e .[test,doc,publish]
+          cd doc
+          make clean
+          make html
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::923490415114:role/CIAccessRole
+          aws-region: eu-west-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 900
+      - name: Publish Python SDK documentation
+        run: |
+          cd ./doc/build/html
+          echo "Synchronize kp-prod-python-sdk-doc bucket"
+          aws s3 sync . s3://kp-prod-python-sdk-doc
+          echo "Invalidate cloudfront cache"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.PYTHON_SDK_DOC_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+        env:
+          role-to-assume: arn:aws:iam::923490415114:role/CIAccessRole
+          aws-region: eu-west-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 900
+      - name: Save Cache
+        uses: actions/cache@v4
+        with:
+          path: ./venv
+          key: v6-venv-${{ hashFiles('setup.py') }}

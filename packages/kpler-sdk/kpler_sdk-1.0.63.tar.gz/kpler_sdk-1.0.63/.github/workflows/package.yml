@@ -1,0 +1,33 @@
+name: package
+env:
+  PYTHON_VERSION: 3.8
+  NAME_ENVIRONMENT_ARTIFACT: environment-artifact
+
+
+on:
+  workflow_call:
+    secrets:
+      KPLER_BOT_PAT:
+        required: true
+
+jobs:
+
+  package:
+    name: Package
+    runs-on: ubuntu-22.04
+
+    steps:
+
+     - name: Checkout code
+       uses: actions/checkout@v4
+       with:
+         fetch-depth: 0
+         token: ${{ secrets.KPLER_BOT_PAT }}
+     - name: Build the Python source package based on scm
+       run: |
+          python setup.py sdist
+     - name: Store artifacts
+       uses: actions/upload-artifact@v4
+       with:
+          name: package-artifact
+          path: dist

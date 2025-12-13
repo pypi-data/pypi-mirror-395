@@ -1,0 +1,45 @@
+name: publish-sdk
+env:
+  PYTHON_VERSION: 3.8
+
+on:
+  workflow_call:
+    secrets:
+      KPLER_BOT_PAT:
+        required: true
+      PYPI_TOKEN_KPLER_SDK:
+        required: true
+
+jobs:
+
+  publish-sdk:
+    name: Publish SDK
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.KPLER_BOT_PAT }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-artifact
+          path: dist
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: ./venv
+          key: v6-venv-${{ hashFiles('setup.py') }}
+      - name: Init Pyirc
+        run: |
+          echo -e "[pypi]" >> ~/.pypirc
+          echo -e "username = __token__" >> ~/.pypirc
+          echo -e "password = ${{ secrets.PYPI_TOKEN_KPLER_SDK }}" >> ~/.pypirc
+      - name: Publish package to PyPi
+        run: |
+          source venv/bin/activate
+          echo "Check Pypi Package Version"
+          twine check dist/*
+          echo "Upload Package to Pypi"
+          twine upload dist/*

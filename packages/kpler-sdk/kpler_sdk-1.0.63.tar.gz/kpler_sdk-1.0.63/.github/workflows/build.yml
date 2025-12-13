@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+    branches-ignore:
+      - 'main'
+
+jobs:
+
+  validate-code:
+    uses: ./.github/workflows/validate-code.yml
+    secrets: inherit
+
+  test:
+    needs: validate-code
+    uses: ./.github/workflows/test.yml
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+    name: Tests on Python-${{ matrix.python-version }}
+    with:
+      PYTHON_VERSION: ${{ matrix.python-version }}
+    secrets: inherit
+
+  generate-documentation:
+    needs: [test]
+    uses: ./.github/workflows/generate-documentation.yml
+    secrets: inherit
+
+  package:
+    needs: generate-documentation
+    uses: ./.github/workflows/package.yml
+    secrets: inherit
+
+  package-cloud-and-push:
+    needs: package
+    uses: ./.github/workflows/package-cloud-and-push.yml
+    secrets: inherit

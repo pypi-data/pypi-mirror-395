@@ -1,0 +1,32 @@
+name: publish
+
+
+on:
+  push:
+    tags:
+      - 'public*'
+    branches-ignore:
+      - '**'
+
+jobs:
+
+  generate-and-publish-documentation:
+    uses: ./.github/workflows/generate-and-publish-documentation.yml
+    secrets:
+      KPLER_BOT_PAT: ${{ secrets.KPLER_BOT_PAT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      PYTHON_SDK_DOC_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.PYTHON_SDK_DOC_CLOUDFRONT_DISTRIBUTION_ID }}
+
+  package:
+    needs: generate-and-publish-documentation
+    uses: ./.github/workflows/package.yml
+    secrets:
+      KPLER_BOT_PAT: ${{ secrets.KPLER_BOT_PAT }}
+
+  publish-sdk:
+    needs: package
+    uses: ./.github/workflows/publish-sdk.yml
+    secrets:
+      KPLER_BOT_PAT: ${{ secrets.KPLER_BOT_PAT }}
+      PYPI_TOKEN_KPLER_SDK: ${{ secrets.PYPI_TOKEN_KPLER_SDK }}

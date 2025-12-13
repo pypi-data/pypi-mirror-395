@@ -1,0 +1,41 @@
+name: package-cloud-and-push
+env:
+  PYTHON_VERSION: 3.8
+
+
+on:
+  workflow_call:
+    secrets:
+      KPLER_BOT_PAT:
+        required: true
+      PACKAGECLOUD_TOKEN:
+        required: true
+
+jobs:
+
+  package-cloud-and-push:
+    name: Package
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.KPLER_BOT_PAT }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-artifact
+          path: dist
+      - name: Install Dependencies
+        run: |
+          sudo gem install package_cloud
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+      - name: Deploy Packages
+        run: |
+          package_cloud push  ${{ env.PACKAGECLOUD_REPO }}/${{ env.PACKAGECLOUD-DISTRIB }} ${{ env.PACKAGE_DIR }}
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          PACKAGE_DIR: ./dist/*.tar.gz
+          PACKAGECLOUD_REPO: 'kpler/stable'
+          PACKAGECLOUD-DISTRIB: python

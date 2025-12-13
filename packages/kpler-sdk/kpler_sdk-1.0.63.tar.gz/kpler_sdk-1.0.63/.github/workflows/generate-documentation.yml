@@ -1,0 +1,51 @@
+name: generate-documentation
+env:
+  NAME_ENVIRONMENT_ARTIFACT: environment-artifact
+  KPLER_ACTIONS_BRANCH: v2.240.0
+  MAIN_BRANCH_NAME: main
+  PYTHON_VERSION: 3.8
+
+on:
+  workflow_call:
+    secrets:
+      KPLER_BOT_PAT:
+        required: true
+
+
+
+jobs:
+
+  generate-documentation:
+    name: generate documentation
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.KPLER_BOT_PAT }}
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: ./setup.py
+          key: v6-venv-${{ hashFiles('setup.py') }}
+      - name: Upgrade pip and install rust compiler
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          sudo apt update && sudo apt install rustc -y
+          sudo apt install --reinstall python3-pip
+      - name: Generate Python SDK documentation
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade setuptools
+          pip install -e .[test,doc,publish]
+          cd doc
+          make clean
+          make html
+      - name: Save Cache
+        uses: actions/cache@v4
+        with:
+          path: ./venv
+          key: v6-venv-${{ hashFiles('setup.py') }}
