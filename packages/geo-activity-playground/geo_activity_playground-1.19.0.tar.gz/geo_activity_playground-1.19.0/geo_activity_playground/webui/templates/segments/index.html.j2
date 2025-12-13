@@ -1,0 +1,71 @@
+{% extends "page.html.j2" %}
+
+{% block container %}
+<h1>{{ _('Segments') }}</h1>
+
+
+<script>
+    function add_map(id, geojson) {
+        let map = L.map(id, {
+            fullscreenControl: true
+        })
+        L.tileLayer('/tile/color/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '{{ map_tile_attribution|safe }}'
+        }).addTo(map)
+
+        let geojson_layer = L.geoJSON(geojson).addTo(map)
+        map.fitBounds(geojson_layer.getBounds())
+        return map
+    }
+</script>
+
+<div class="row row-cols-1 row-cols-lg-3 g-4 mb-3">
+    {% for segment in segments %}
+
+    <div class="card">
+        <div class="card-img-top" id="map-segment-{{ segment.id }}" style="height: 200px; width: 100%;"></div>
+        <script>
+            fetch("/segments/line/{{ segment.id }}/line.geojson").then(response => response.json()).then(
+                geojson => {
+                    add_map("map-segment-{{ segment.id }}", geojson);
+                }
+            )
+        </script>
+        <div class="card-body">
+            <a href="{{ url_for('.show', id=segment.id) }}">
+                <h5 class="card-title">{{ segment.name }}</h5>
+            </a>
+            <p class="card-text">
+                {{ _('Length') }}: {{ '%.2f'|format(segment.length_km) }} km
+                <br />
+                {{ _('Matches') }}: {{ segment.matches|length }}
+            </p>
+            <a class="btn btn-sm btn-danger" href="{{ url_for('.delete', id=segment.id) }}"
+                onclick="if(!confirm('{{ _('Are you sure to delete this segment?') }}')){event.preventDefault()}">{{ _('Delete') }}</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+
+<div class="col">
+
+</div>
+
+<h2>{{ _('New Segment') }}</h2>
+
+<p>{{ _('To create a new segment, go to') }} <a href="https://bikerouter.de/" target="_blank">Bikerouter</a>, {{ _('create the segment that you want and download it as GeoJSON. Then upload that file with the form below.') }}</p>
+
+<form method="post" enctype="multipart/form-data" action="{{ url_for('.new') }}">
+    <div class="mb-3">
+        <label for="name" class="form-label">{{ _('Segment Name') }}</label>
+        <input type="text" class="form-control" id="name" name="name" />
+    </div>
+    <div class="mb-3">
+        <label for="file" class="form-label">{{ _('GeoJSON Segment File') }}</label>
+        <input type="file" name="file" id="file" class="form-control" multiple>
+    </div>
+    <button type="submit" class="btn btn-primary">{{ _('Upload') }}</button>
+</form>
+{% endblock %}

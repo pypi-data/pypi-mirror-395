@@ -1,0 +1,378 @@
+{% extends "page.html.j2" %}
+
+{% block container %}
+<div class="row mb-3">
+    <div class="col">
+        <h1>{{ activity["name"] }}</h1>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-sm-12 col-md-4">
+        <dl>
+            {% if activity.kind %}
+            <dt>{{ _('Kind') }}</dt>
+            <dd>{{ activity.kind.name }}</dd>
+            {% endif %}
+
+            {% if activity.equipment %}
+            <dt>{{ _('Equipment') }}</dt>
+            <dd>{{ activity.equipment.name }}</dd>
+            {% endif %}
+
+            {% if activity.tags %}
+            <dt>{{ _('Tags') }}</dt>
+            <dd>
+                {% for tag in activity.tags %}
+                {{ activity_tag(tag) }}
+                {% endfor %}
+            </dd>
+            {% endif %}
+
+            <dt>{{ _('Distance') }}</dt>
+            <dd>{{ activity.distance_km|round(1) }} km</dd>
+
+            {% if activity.elapsed_time %}
+            <dt>{{ _('Duration') }}</dt>
+            <dd>{{ activity.elapsed_time|td }} {{ _('elapsed') }}, {{ activity.moving_time|td }} {{ _('moving') }}</dd>
+
+            <dt>{{ _('Average moving speed') }}</dt>
+            <dd>{% if activity.average_speed_moving_kmh is not none %}
+                {{ activity.average_speed_moving_kmh|round(1) }} km/h =
+                {{ (60/activity.average_speed_moving_kmh)|round(1) }} min/km
+                {% else %}
+                {{ _('n/a') }}
+                {% endif %}
+            </dd>
+            <dt>{{ _('Average elapsed speed') }}</dt>
+            <dd>{{ activity.average_speed_elapsed_kmh|round(1) }} km/h = {{
+                (60/activity.average_speed_elapsed_kmh)|round(1) }} min/km</dd>
+            {% endif %}
+            {% if date is defined %}
+            <dt>{{ _('Start time') }}</dt>
+            <dd><a href="{{ url_for('activity.day', year=date.year, month=date.month, day=date.day) }}">{{ date }}</a>
+                {{ time }} {{ activity.iana_timezone }}
+            </dd>
+            {% endif %}
+
+            {% if activity.calories %}
+            <dt>{{ _('Calories') }}</dt>
+            <dd>{{ activity.calories }}</dd>
+            {% endif %}
+
+            {% if activity.steps %}
+            <dt>{{ _('Steps') }}</dt>
+            <dd>{{ activity.steps }}</dd>
+            {% endif %}
+
+            {% if activity.elevation_gain %}
+            <dt>{{ _('Elevation gain') }}</dt>
+            <dd>{{ activity.elevation_gain|round(0)|int }} m</dd>
+            {% endif %}
+
+            {% if new_tiles[14] %}
+            <dt>{{ _('New Explorer Tiles') }}</dt>
+            <dd>{{ new_tiles[14] }}</dd>
+            {% endif %}
+
+            {% if new_tiles[17] %}
+            <dt>{{ _('New Squadratinhos') }}</dt>
+            <dd>{{ new_tiles[17] }}</dd>
+            {% endif %}
+
+            <dt>{{ _('ID') }}</dt>
+            <dd>{{ activity.id }}</dd>
+            <dt>{{ _('Upstream ID') }}</dt>
+            <dd>{{ activity.upstream_id }}</dd>
+            <dt>{{ _('Source path') }}</dt>
+            <dd><a href="{{ url_for('.download_original', id=activity.id) }}">{{ activity.path }}</a></dd>
+            <dt>{{ _('Time series path') }}</dt>
+            <dd>{{ activity.time_series_path }}</dd>
+        </dl>
+
+        <a href="{{ url_for('.edit', id=activity['id']) }}" class="btn btn-secondary btn-small">{{ _('Edit') }}</a>
+        <a href="{{ url_for('.trim', id=activity['id']) }}" class="btn btn-secondary btn-small">{{ _('Trim') }}</a>
+        <a class="btn btn-small btn-danger" href="{{ url_for('.delete', id=activity.id) }}"
+            onclick="if(!confirm('{{ _('Are you sure to delete this?') }}')){event.preventDefault()}">{{ _('Delete') }}</a>
+    </div>
+    <div class="col-sm-12 col-md-8">
+        <div id="activity-show-map" style="height: 500px;" class="mb-3"></div>
+        <script>
+            var map = L.map('activity-show-map', {
+                fullscreenControl: true
+            });
+            L.tileLayer('/tile/pastel/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '{{ map_tile_attribution|safe }}'
+            }).addTo(map);
+
+            let geojson = L.geoJSON({{ color_line_geojson| safe }}, {
+                style: function (feature) { return { color: feature.properties.color ? feature.properties.color : 'red' } }
+            }).addTo(map)
+            map.fitBounds(geojson.getBounds());
+
+
+            fetch("{{ url_for('photo.map_for_activity', activity_id = activity.id) }}")
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    let layer = L.geoJSON(data, {
+                        pointToLayer: function (feature, latlng) {
+                            return L.marker(latlng, {
+                                icon: new L.Icon({
+                                    iconSize: [32, 32],
+                                    iconAnchor: [16, 16],
+                                    popupAnchor: [16, 0],
+                                    iconUrl: feature.properties.url_marker,
+                                })
+                            });
+                        },
+                        onEachFeature: function (feature, layer) {
+                            layer.bindPopup(`<a href="${feature.properties.url_full}" target="_blank"><img src="${feature.properties.url_popup}" /></a>`)
+                        }
+                    });
+                    let group = L.markerClusterGroup();
+                    group.addLayer(layer);
+                    group.addTo(map);
+                });
+        </script>
+
+
+        <style>
+            span.colorbar {
+                text-shadow: -1px -1px 0 black, -1px 0px 0 black, -1px 1px 0 black, 0px -1px 0 black, 0px 0px 0 black, 0px 1px 0 black, 1px -1px 0 black, 1px 0px 0 black, 1px 1px 0 black;
+                padding-left: 5px;
+                padding-right: 5px;
+                line-height: 130%;
+                color: white;
+            }
+        </style>
+
+        {% if line_color_bar %}
+        <div>
+            {% for value, color in line_color_bar.colors %}
+            <span class="colorbar" style="width: 15px; background-color: {{ color }}">{{ value }}</span>
+            {% endfor %}
+            {{ line_color_columns_avail[line_color_column].unit }}
+        </div>
+
+        <div class="mb-3" style="padding-top: 10px;">
+            <form method="GET">
+                <label class="form-label">{{ _('Line Color by') }}</label>
+                <select class="form-select" aria-label="{{ _('Line Color by') }}" name="line_color_column"
+                    onchange="this.form.submit()">
+                    {% for name, column in line_color_columns_avail.items() %}
+                    <option {% if name==line_color_column %} selected {% endif %} value="{{ name }}">{{
+                        column.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if activity.photos %}
+<h2 class="mb-3">{{ _('Photos') }}</h2>
+<div class="row mb-3">
+    {% for photo in activity.photos %}
+    <div class="col-md-3">
+        <img src="{{ url_for('photo.get', id=photo.id, size=512) }}" width="100%" />
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if activity.segment_matches %}
+<div class="row mb-3">
+    <div class="col">
+        <h2>{{ _('Matched Segments') }}</h2>
+        <div class="table-responsive">
+            <table class="table table-sort table-arrows">
+                <thead>
+                    <tr>
+                        <th>{{ _('Segment Name') }}</th>
+                        <th>{{ _('Duration in Segment') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in activity.segment_matches %}
+                    <tr>
+                        <td><a href="{{ url_for('segments.show', id=match.segment.id) }}">{{ match.segment.name }}</a></td>
+                        <td>{{ match.duration|abs_td }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class=" row mb-3">
+    <div class="col">
+        <h2>{{ _('Distance & speed') }}</h2>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        {{ vega_direct(distance_time_plot) }}
+    </div>
+    <div class="col-md-4">
+        {{ vega_direct(speed_time_plot) }}
+    </div>
+    <div class="col-md-4">
+        {{ vega_direct(speed_distribution_plot) }}
+    </div>
+</div>
+
+{% if elevation_time_plot is defined %}
+<div class="row mb-3">
+    <div class="col">
+        <h2>{{ _('Elevation') }}</h2>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        {{ vega_direct(elevation_time_plot) }}
+    </div>
+    {% if elevation_gain_cum_plot is defined %}
+    <div class="col-md-4">
+        {{ vega_direct(elevation_gain_cum_plot) }}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if heartrate_time_plot is defined %}
+<h2>{{ _('Heart rate') }}</h2>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        {{ vega_direct(heartrate_time_plot) }}
+    </div>
+    <div class="col-md-4">
+        {% if heart_zones_plot is defined %}
+        {{ vega_direct(heart_zones_plot) }}
+        {% else %}
+        <p>{{ _('Your activity has heart data, but this program doesn\'t know your maximum heart rate (or birth year) and therefore cannot compute the heart rate zones. Go to the') }} <a
+                href="{{ url_for('settings.heart_rate') }}">{{ _('settings') }}</a>.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if cadence_time_plot is defined %}
+<h2>{{ _('Cadence') }}</h2>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        {{ vega_direct(cadence_time_plot) }}
+    </div>
+</div>
+{% endif %}
+
+
+<h2>{{ _('Share picture') }}</h2>
+
+<p><img class="img-fluid" src="{{ url_for('.sharepic', id=activity.id) }}" /></p>
+
+<p>{{ _('Not happy with the displayed data?') }} <a href="{{ url_for('settings.sharepic') }}">{{ _('Change share picture settings') }}</a>.</p>
+
+{% if new_tiles_geojson %}
+<h2>{{ _('New explorer tiles') }}</h2>
+<p>{{ _('With this activity you have explored new explorer tiles. The following maps show the new tiles on the respective zoom levels.') }}</p>
+
+<div class="row mb-3">
+    {% for zoom, geojson in new_tiles_geojson.items() %}
+    <div class="col-md-6">
+        <h3>{{ _('Zoom') }} {{ zoom }}</h3>
+        <p>{{ _('There are') }} {{ new_tiles[zoom] }} {{ _('new tiles:') }}</p>
+        <div class="new-tiles-map"
+             data-zoom="{{ zoom }}"
+             data-tiles-geojson='{{ geojson | safe }}'
+             style="height: 300px; width: 100%;"></div>
+    </div>
+    {% endfor %}
+</div>
+
+<script type="module">
+    import { add_layers_to_map } from '/static/map-layers.js';
+
+    const attribution = '{{ map_tile_attribution|safe }}';
+    const trackGeojson = {{ color_line_geojson | safe }};
+
+    document.querySelectorAll('.new-tiles-map').forEach(container => {
+        const zoom = parseInt(container.dataset.zoom, 10);
+        const tilesGeojson = JSON.parse(container.dataset.tilesGeojson);
+
+        const map = L.map(container, { fullscreenControl: true });
+
+        L.tileLayer('/tile/color/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution
+        }).addTo(map);
+
+        // Add new tiles layer (orange outline)
+        const tilesLayer = L.geoJSON(tilesGeojson, {
+            style: { color: "#ff7700", fillOpacity: 0.0 }
+        }).addTo(map);
+
+        // Add activity track (red line)
+        L.geoJSON(trackGeojson, {
+            style: { color: "#ff0000" }
+        }).addTo(map);
+
+        // Add explorer overlay
+        add_layers_to_map(map, {
+            zoom,
+            attribution,
+            baseLayer: 'Color',
+            overlay: 'Visited'
+        });
+
+        map.fitBounds(tilesLayer.getBounds());
+    });
+</script>
+{% endif %}
+
+{% if similar_activites|length > 0 %}
+<div class="row mb-3">
+    <div class="col">
+        <h2>{{ _('Activities with the same name') }}</h2>
+
+        <p><a href="{{ url_for('.name', name=activity['name']) }}">{{ _('Overview over these activities') }}</a></p>
+
+        <div class="table-responsive">
+            <table class="table table-sort table-arrows">
+                <thead>
+                    <tr>
+                        <th>{{ _('Date') }}</th>
+                        <th class="numeric-sort">{{ _('Distance / km') }}</th>
+                        <th>{{ _('Elapsed time') }}</th>
+                        <th>{{ _('Equipment') }}</th>
+                        <th>{{ _('Kind') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for other_activity in similar_activites %}
+                    <tr>
+                        <td><a href="{{ url_for('.show', id=other_activity.id) }}">{{ other_activity.start_local|dt
+                                }}</a></td>
+                        <td>{{ other_activity.distance_km | round(1) }}</td>
+                        <td>{{ other_activity.elapsed_time|td }}</td>
+                        <td>{{ other_activity["equipment"] }}</td>
+                        <td>{{ other_activity["kind"] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
