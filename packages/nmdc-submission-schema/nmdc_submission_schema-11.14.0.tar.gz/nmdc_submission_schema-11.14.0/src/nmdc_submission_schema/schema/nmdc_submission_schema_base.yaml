@@ -1,0 +1,1037 @@
+name: nmdc_submission_schema
+description: Schema for creating Data Harmonizer interfaces for biosamples based on MIxS and other standards
+id: https://example.com/nmdc_submission_schema
+version: 0.0.0
+prefixes:
+  UO: http://purl.obolibrary.org/obo/UO_
+  qud: http://example.org/qud/
+  xsd: http://www.w3.org/2001/XMLSchema#
+  nmdc_sub_schema: https://example.com/nmdc_sub_schema/
+  linkml: https://w3id.org/linkml/
+  shex: http://www.w3.org/ns/shex#
+  schema: http://schema.org/
+default_prefix: nmdc_sub_schema
+default_range: string
+imports:
+  - linkml:types
+types:
+  unit:
+    name: unit
+    description: a string representation of a unit
+    notes:
+      - why isn't this picked up from the nmdc.yaml import?
+    mappings:
+      - qud:Unit
+      - UO:0000000
+    base: str
+    uri: xsd:string
+  decimal degree:
+    name: decimal degree
+    description: a float representation of a degree of rotation
+    base: float
+    uri: xsd:decimal
+  language code:
+    name: language code
+    description: a string representation of a language
+    base: str
+    uri: xsd:language
+enums:
+  BioticRelationshipEnum:
+    permissible_values:
+      commensalism:
+        annotations:
+          sntc_name: samp_biotic_relationship
+        notes:
+          - 'biotic_relationship_enum: free living'
+          - parasitism
+          - commensalism
+          - symbiotic
+          - mutualism
+        see_also:
+          - https://genomicsstandardsconsortium.github.io/mixs/biotic_relationship_enum/
+      free living:
+      mutualism:
+      parasitism:
+      symbiotic:
+  JgiContTypeEnum:
+    permissible_values:
+      plate:
+      tube:
+  JGISampleFormatEnum:
+    permissible_values:
+      10 mM Tris-HCl:
+      Ethanol:
+      Gentegra-DNA:
+      Gentegra-RNA:
+      Low EDTA TE:
+      MDA Reaction Buffer:
+      PBS:
+      Pellet:
+      TE:
+      Water:
+  JGIBiosafetyMaterialCategoryEnum:
+    description: Biosafety material category for samples sent to JGI
+    permissible_values:
+      Metagenome (Environmental):
+      Metagenome (Host-associated):
+  EnvPackageEnum:
+    permissible_values:
+      soil:
+        notes:
+          - I don't think this is a MIxS term anymore, so it make sense to define it here
+  GrowthFacilEnum:
+    permissible_values:
+      experimental_garden:
+        annotations:
+          sntc_name: growth_facility
+        notes:
+          - string range according to MIxS
+        see_also:
+          - https://genomicsstandardsconsortium.github.io/mixs/growth_facil/
+      field:
+      field_incubation:
+      glasshouse:
+      greenhouse:
+      growth_chamber:
+      lab_incubation:
+      open_top_chamber:
+      other:
+  RelToOxygenEnum:
+    permissible_values:
+      aerobe:
+        annotations:
+          sntc_name: oxygen_relationship
+        see_also:
+          - https://genomicsstandardsconsortium.github.io/mixs/rel_to_oxygen_enum/
+      anaerobe:
+      facultative:
+      microaerophilic:
+      microanaerobe:
+      obligate aerobe:
+      obligate anaerobe:
+  StoreCondEnum:
+    permissible_values:
+      fresh:
+        annotations:
+          sntc_name: storage_condt
+        notes:
+          - see samp_store_dur, samp_store_loc, samp_store_temp and store_cond (which takes a string range according to mixs-source).
+      frozen:
+      lyophilized:
+      other:
+  YesNoEnum:
+    description: replaces DnaDnaseEnum and DnaseRnaEnum
+    permissible_values:
+      'no': { }
+      'yes': { }
+  OxyStatSampEnum:
+    permissible_values:
+      aerobic:
+      anaerobic:
+      other:
+  SeasonEnum:
+    permissible_values:
+      spring:
+        meaning: NCIT:C94731
+      summer:
+        meaning: NCIT:C94732
+      autumn:
+        meaning: NCIT:C94733
+      winter:
+        meaning: NCIT:C94730
+slots:
+  air_data:
+    description: aggregation slot relating air data collections to a SampleData container
+    multivalued: true
+    range: AirInterface
+    inlined: true
+    inlined_as_list: true
+  biofilm_data:
+    description: aggregation slot relating biofilm data collections to a SampleData container
+    multivalued: true
+    range: BiofilmInterface
+    inlined: true
+    inlined_as_list: true
+  built_env_data:
+    description: aggregation slot relating built_env data collections to a SampleData container
+    multivalued: true
+    range: BuiltEnvInterface
+    inlined: true
+    inlined_as_list: true
+  emsl_data:
+    description: aggregation slot relating emsl data collections to a SampleData container
+    multivalued: true
+    range: EmslInterface
+    inlined: true
+    inlined_as_list: true
+  hcr_cores_data:
+    description: aggregation slot relating hcr_cores data collections to a SampleData container
+    multivalued: true
+    range: HcrCoresInterface
+    inlined: true
+    inlined_as_list: true
+  hcr_fluids_swabs_data:
+    description: aggregation slot relating hcr_fluids_swabs data collections to a SampleData container
+    multivalued: true
+    range: HcrFluidsSwabsInterface
+    inlined: true
+    inlined_as_list: true
+  host_associated_data:
+    description: aggregation slot relating host_associated data collections to a SampleData container
+    multivalued: true
+    range: HostAssociatedInterface
+    inlined: true
+    inlined_as_list: true
+  jgi_mg_data:
+    description: aggregation slot relating jgi_mg data collections to a SampleData container
+    multivalued: true
+    range: JgiMgInterface
+    inlined: true
+    inlined_as_list: true
+  jgi_mg_lr_data:
+    description: aggregation slot relating jgi_mg_lr data collections to a SampleData container
+    multivalued: true
+    range: JgiMgLrInterface
+    inlined: true
+    inlined_as_list: true
+  jgi_mt_data:
+    description: aggregation slot relating jgi_mt data collections to a SampleData container
+    multivalued: true
+    range: JgiMtInterface
+    inlined: true
+    inlined_as_list: true
+  misc_envs_data:
+    description: aggregation slot relating misc_envs data collections to a SampleData container
+    multivalued: true
+    range: MiscEnvsInterface
+    inlined: true
+    inlined_as_list: true
+  plant_associated_data:
+    description: aggregation slot relating plant_associated data collections to a SampleData container
+    multivalued: true
+    range: PlantAssociatedInterface
+    inlined: true
+    inlined_as_list: true
+  sediment_data:
+    description: aggregation slot relating sediment data collections to a SampleData container
+    multivalued: true
+    range: SedimentInterface
+    inlined: true
+    inlined_as_list: true
+  soil_data:
+    description: aggregation slot relating soil data collections to a SampleData container
+    multivalued: true
+    range: SoilInterface
+    inlined: true
+    inlined_as_list: true
+  wastewater_sludge_data:
+    description: aggregation slot relating wastewater_sludge data collections to a SampleData container
+    multivalued: true
+    range: WastewaterSludgeInterface
+    inlined: true
+    inlined_as_list: true
+  water_data:
+    description: aggregation slot relating water data collections to a SampleData container
+    multivalued: true
+    range: WaterInterface
+    inlined: true
+    inlined_as_list: true
+  metagenome_sequencing_non_interleaved_data:
+    description: >-
+      aggregation slot relating non-interleaved metagenome sequencing data collections to a 
+      SampleData container
+    multivalued: true
+    range: MetagenomeSequencingNonInterleavedDataInterface
+    inlined: true
+    inlined_as_list: true
+  metagenome_sequencing_interleaved_data:
+    description: >-
+      aggregation slot relating interleaved metagenome sequencing data collections to a SampleData 
+      container
+    multivalued: true
+    range: MetagenomeSequencingInterleavedDataInterface
+    inlined: true
+    inlined_as_list: true
+  metatranscriptome_sequencing_non_interleaved_data:
+    description: >-
+      aggregation slot relating non-interleaved metatranscriptome sequencing data collections to a 
+      SampleData container
+    multivalued: true
+    range: MetatranscriptomeSequencingNonInterleavedDataInterface
+    inlined: true
+    inlined_as_list: true
+  metatranscriptome_sequencing_interleaved_data:
+    description: >-
+      aggregation slot relating interleaved metatranscriptome sequencing data collections to a 
+      SampleData container
+    multivalued: true
+    range: MetatranscriptomeSequencingInterleavedDataInterface
+    inlined: true
+    inlined_as_list: true
+  dh_section:
+    description: dh_section grouping slot
+  emsl_section:
+    title: EMSL
+    rank: 2
+    is_a: dh_section
+  jgi_metagenomics_section:
+    title: JGI-Metagenomics
+    rank: 3
+    is_a: dh_section
+  jgi_metatranscriptomics_section:
+    title: JGI-Metatranscriptomics
+    rank: 4
+    is_a: dh_section
+  mixs_core_section:
+    title: MIxS Core
+    rank: 10
+    is_a: dh_section
+  mixs_inspired_section:
+    title: MIxS Inspired
+    rank: 7
+    is_a: dh_section
+  mixs_investigation_section:
+    rank: 8
+    is_a: dh_section
+  mixs_modified_section:
+    title: MIxS (modified)
+    rank: 6
+    is_a: dh_section
+  mixs_nassf_section:
+    rank: 9
+    is_a: dh_section
+  mixs_section:
+    title: MIxS
+    rank: 5
+    is_a: dh_section
+  sample_id_section:
+    title: Sample ID
+    rank: 1
+    is_a: dh_section
+  sequencing_section:
+    title: Sequencing Details
+    rank: 11
+    is_a: dh_section
+  data_files_section:
+    title: Data Files
+    rank: 12
+    is_a: dh_section
+  read_1_url:
+    title: read 1 FASTQ
+    description: >-
+      URL for FASTQ file of read 1 of a pair of reads.
+    comments:
+    - If multiple runs were performed, separate each URL with a semi-colon.
+    - External data urls should be available for at least a year. If you would like NMDC to submit 
+      your data to an appropriate raw data repository on your behalf please contact us at
+      microbiomedata.science@gmail.com.
+    range: string
+    required: true
+    slot_group: data_files_section
+    rank: 10
+    pattern: ^https://[^\s;]+(?:\s*;\s*https://[^\s;]+)*$
+  read_1_md5_checksum:
+    title: read 1 FASTQ MD5
+    description: >-
+      MD5 checksum of file in "read 1 FASTQ".
+    comments:
+    - If multiple runs were performed, separate each checksum with a semi-colon. The number of 
+      checksums should match the number of URLs in "read 1 FASTQ".
+    range: string
+    slot_group: data_files_section
+    rank: 11
+    pattern: ^[a-fA-F0-9]{32}(?:\s*;\s*[a-fA-F0-9]{32})*$
+  read_2_url:
+    title: read 2 FASTQ
+    description: >-
+      URL for FASTQ file of read 2 of a pair of reads.
+    comments:
+    - If multiple runs were performed, separate each URL with a semi-colon.
+    - External data urls should be available for at least a year. If you would like NMDC to submit
+      your data to an appropriate raw data repository on your behalf please contact us at
+      microbiomedata.science@gmail.com.
+    range: string
+    required: true
+    slot_group: data_files_section
+    rank: 12
+    pattern: ^https://[^\s;]+(?:\s*;\s*https://[^\s;]+)*$
+  read_2_md5_checksum:
+    title: read 2 FASTQ MD5
+    description: >-
+      MD5 checksum of file in "read 2 FASTQ".
+    comments:
+    - If multiple runs were performed, separate each checksum with a semi-colon. The number of 
+      checksums should match the number of URLs in "read 2 FASTQ".
+    range: string
+    slot_group: data_files_section
+    rank: 13
+    pattern: ^[a-fA-F0-9]{32}(?:\s*;\s*[a-fA-F0-9]{32})*$
+  interleaved_url:
+    title: interleaved FASTQ
+    description: >-
+      URL for FASTQ file of interleaved reads.
+    comments:
+    - If multiple runs were performed, separate each URL with a semi-colon.
+    - External data urls should be available for at least a year. If you would like NMDC to submit
+      your data to an appropriate raw data repository on your behalf please contact us at
+      microbiomedata.science@gmail.com.
+    range: string
+    required: true
+    slot_group: data_files_section
+    rank: 14
+    pattern: ^https://[^\s;]+(?:\s*;\s*https://[^\s;]+)*$
+  interleaved_md5_checksum:
+    title: interleaved FASTQ MD5
+    description: >-
+      MD5 checksum of file in "interleaved FASTQ".
+    comments:
+    - If multiple runs were performed, separate each checksum with a semi-colon. The number of 
+      checksums should match the number of URLs in "interleaved FASTQ".
+    range: string
+    slot_group: data_files_section
+    rank: 15
+    pattern: ^[a-fA-F0-9]{32}(?:\s*;\s*[a-fA-F0-9]{32})*$
+  cont_type:
+    description: Tube or plate (96-well)
+    title: JGI container type
+    rank: 11
+    range: JgiContTypeEnum
+    required: true
+    aliases:
+      - dna_cont_type
+      - rna_cont_type
+  replicate_group:
+    title: Biological replicate/sample group Name
+    description: Samples that are biological replicates should have the same group name.  If your project does not contain biological replicates, give each sample its own group name.
+    rank: 5
+    range: string
+    examples:
+      - value: SampleGroup1
+  cont_well:
+    title: plate position
+    comments:
+      - Required when 'plate' is selected for container type.
+      - Leave blank if the sample will be shipped in a tube.
+      - JGI will not process samples in corner wells, so A1, A12, H1 and H12 will not pass validation.
+      - Fill plate in column-wise format. B1-G1,A2-H2,A3-D3 (NOT A2-A11,B1-B8).
+    examples:
+      - value: B2
+    rank: 12
+    recommended: true
+    pattern: ^(?!A1$|A12$|H1$|H12$)(([A-H][1-9])|([A-H]1[0-2]))$
+    aliases:
+      - dna_cont_well
+      - rna_cont_well
+  container_name:
+    title: container name
+    comments:
+      - Must be unique across all tubes and plates, and <20 characters. 
+      - All samples in a plate should have the same plate name.
+    examples:
+      - value: Pond_MT_041618
+    rank: 10
+    required: true
+    pattern: ^[-_.a-zA-Z0-9]{1,20}$
+    aliases:
+      - dna_container_id
+      - rna_container_id
+  dnase:
+    title: DNase treatment
+    comments:
+      - Note DNase treatment is required for all RNA samples.
+    examples:
+      - value: 'no'
+    rank: 15
+    range: YesNoEnum
+    required: true
+    aliases:
+      - dna_dnase
+      - dnase_rna
+  jgi_samp_id:
+    title: JGI sample ID
+    comments:
+      - Do not edit these values. A template will be provided by NMDC in which these
+        values have been pre-filled.
+    examples:
+      - value: '187654'
+    rank: 3
+    slot_group: jgi_metagenomics_section
+    range: string
+    required: true
+    aliases:
+      - dna_samp_id
+      - rna_samp_id
+  jgi_sample_format:
+    description: Solution in which the JGI sample has been suspended
+    title: JGI sample format
+    examples:
+      - value: Water
+    rank: 13
+    range: JGISampleFormatEnum
+    required: true
+    aliases:
+      - dna_sample_format
+      - rna_sample_format
+  jgi_sample_name:
+    description: Give the JGI sample a name that is meaningful to you. Sample names
+      must be unique across all JGI projects and contain a-z, A-Z, 0-9, - and _ only.
+    title: JGI sample name
+    examples:
+      - value: JGI_pond_041618
+    rank: 4
+    range: string
+    required: true
+    pattern: ^[-_.a-zA-Z0-9]*$
+    aliases:
+      - dna_sample_name
+      - rna_sample_name
+  jgi_seq_project:
+    title: JGI seq project ID
+    comments:
+      - Do not edit these values. A template will be provided by NMDC in which these
+        values have been pre-filled.
+    examples:
+      - value: 1191234
+    rank: 1
+    required: true
+    range: float
+    aliases:
+      - Seq Project ID
+      - dna_seq_project 
+      - rna_seq_project
+  jgi_seq_project_name:
+    title: JGI seq project name
+    comments:
+      - Do not edit these values. A template will be provided by NMDC in which these
+        values have been pre-filled.
+    examples:
+      - value: JGI Pond metagenomics
+    rank: 2
+    required: true
+    range: string
+    aliases:
+      - dna_seq_project_name
+      - rna_seq_project_name
+  jgi_sample_volume:
+    title: JGI sample volume in ul
+    comments:
+      - Units must be in uL. Enter the numerical part only. Value must be 0-1000.
+        This form accepts values < 25, but JGI may refuse to process them unless permission has been granted by a project manager
+    examples:
+      - value: 25
+    rank: 8
+    range: float
+    required: true
+    minimum_value: 0
+    maximum_value: 1000
+    aliases:
+      - dna_volume
+      - rna_volume
+  nuc_acid_absorb1:
+    description: 260/280 measurement of nucleic acid sample purity
+    title: nucleic acid absorbance 260/280
+    comments:
+      - Recommended value is between 1 and 3.
+    examples:
+      - value: 2.02
+    rank: 7
+    range: float
+    recommended: true
+    aliases:
+      - dna_absorb1
+      - rna_absorb1
+  nuc_acid_absorb2:
+    description: 260/230 measurement of nucleic acid sample purity
+    title: nucleic acid absorbance 260/230
+    comments:
+      - Recommended value is between 1 and 3.
+    examples:
+      - value: 2.02
+    rank: 9
+    range: float
+    recommended: true
+    aliases:
+      - dna_absorb2
+      - nuc_acid_absorb2
+  nuc_acid_concentration:
+    see_also:
+      - nmdc:nucleic_acid_concentration
+    aliases:
+      - dna_concentration
+      - rna_concentration
+    title: nucleic acid concentration in ng/ul
+    comments:
+      - Units must be in ng/uL. Enter the numerical part only. Must be calculated using
+        a fluorometric method. Acceptable values are 0-2000.
+    examples:
+      - value: 100
+    rank: 6
+    range: float
+    required: true
+    minimum_value: 0
+    maximum_value: 2000
+  biosafety_mat_cat:
+    description: Select the biosafety material category for your JGI samples.
+    title: JGI Biosafety Material Category
+    rank: 16
+    range: JGIBiosafetyMaterialCategoryEnum
+    required: true
+
+classes:
+  AirInterface:
+    annotations:
+      excel_worksheet_name: air
+    description: air dh_interface
+    title: Air
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  BiofilmInterface:
+    annotations:
+      excel_worksheet_name: microbial mat_biofilm
+    description: biofilm dh_interface
+    title: Biofilm
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  BuiltEnvInterface:
+    annotations:
+      excel_worksheet_name: built environment
+    description: built_env dh_interface
+    title: Built Env
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  EmslInterface:
+    annotations:
+      excel_worksheet_name: EMSL
+    description: emsl dh_interface
+    title: Emsl
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+  HcrCoresInterface:
+    annotations:
+      excel_worksheet_name: hcr core
+    description: hcr_cores dh_interface
+    title: Hcr Cores
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+  HcrFluidsSwabsInterface:
+    annotations:
+      excel_worksheet_name: hcr fluids swab
+    description: hcr_fluids_swabs dh_interface
+    title: Hcr Fluids Swabs
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+  HostAssociatedInterface:
+    annotations:
+      excel_worksheet_name: host-associated
+    description: host_associated dh_interface
+    title: Host Associated
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  JgiMgInterface:
+    annotations:
+      excel_worksheet_name: JGI MG
+    description: Metadata for samples sent to JGI for standard metagenome sequencing
+    title: JGI MG
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - nuc_acid_absorb1
+      - nuc_acid_absorb2
+      - nuc_acid_concentration
+      - cont_type
+      - cont_well
+      - container_name
+      - dnase
+      - dna_isolate_meth
+      - biosafety_mat_cat
+      - jgi_samp_id
+      - jgi_sample_format
+      - jgi_sample_name
+      - jgi_seq_project
+      - jgi_seq_project_name
+      - jgi_sample_volume
+      - replicate_group
+    slot_usage:
+      cont_type:
+        slot_group: jgi_metagenomics_section
+      cont_well:
+        slot_group: jgi_metagenomics_section
+      container_name:
+        slot_group: jgi_metagenomics_section
+      dnase:
+        slot_group: jgi_metagenomics_section
+      biosafety_mat_cat:
+        slot_group: jgi_metagenomics_section
+      jgi_samp_id:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_format:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_name:
+        slot_group: jgi_metagenomics_section
+      jgi_seq_project:
+        slot_group: jgi_metagenomics_section
+      jgi_seq_project_name:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_volume:
+        slot_group: jgi_metagenomics_section
+      nuc_acid_absorb1:
+        slot_group: jgi_metagenomics_section
+      nuc_acid_absorb2:
+        slot_group: jgi_metagenomics_section
+      nuc_acid_concentration:
+        slot_group: jgi_metagenomics_section
+      dna_isolate_meth:
+        slot_group: jgi_metagenomics_section
+      replicate_group:
+        slot_group: jgi_metagenomics_section  
+    rules:
+      - title: well_requires_plate
+        description: If a well is specified, the container type must be a plate.
+        preconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ".+"
+        postconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+      - title: plate_requires_well
+        description: If a plate is specified, a well must be specified according to the pattern.
+        preconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+        postconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ^(?!A1$|A12$|H1$|H12$)(([A-H][1-9])|([A-H]1[0-2]))$
+  JgiMgLrInterface:
+    annotations:
+      excel_worksheet_name: JGI MG (Long Read)
+    description: Metadata for samples sent to JGI for long read metagenome sequencing
+    title: JGI MG (Long Read)
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - nuc_acid_absorb1
+      - nuc_acid_absorb2
+      - nuc_acid_concentration
+      - cont_type
+      - cont_well
+      - container_name
+      - dnase
+      - biosafety_mat_cat
+      - dna_isolate_meth
+      - jgi_samp_id
+      - jgi_sample_format
+      - jgi_sample_name
+      - jgi_seq_project
+      - jgi_seq_project_name
+      - jgi_sample_volume
+      - replicate_group
+    slot_usage:
+      cont_type:
+        slot_group: jgi_metagenomics_section
+      cont_well:
+        slot_group: jgi_metagenomics_section
+      container_name:
+        slot_group: jgi_metagenomics_section
+      dnase:
+        slot_group: jgi_metagenomics_section
+      biosafety_mat_cat:
+        slot_group: jgi_metagenomics_section
+      jgi_samp_id:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_format:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_name:
+        slot_group: jgi_metagenomics_section
+      jgi_seq_project:
+        slot_group: jgi_metagenomics_section
+      jgi_seq_project_name:
+        slot_group: jgi_metagenomics_section
+      jgi_sample_volume:
+        slot_group: jgi_metagenomics_section
+      nuc_acid_absorb1:
+        slot_group: jgi_metagenomics_section
+        required: true
+      nuc_acid_absorb2:
+        slot_group: jgi_metagenomics_section
+        required: true
+      nuc_acid_concentration:
+        slot_group: jgi_metagenomics_section
+      dna_isolate_meth:
+        slot_group: jgi_metagenomics_section
+      replicate_group:
+        slot_group: jgi_metagenomics_section
+    rules:
+      - title: well_requires_plate
+        description: If a well is specified, the container type must be a plate.
+        preconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ".+"
+        postconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+      - title: plate_requires_well
+        description: If a plate is specified, a well must be specified according to the pattern.
+        preconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+        postconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ^(?!A1$|A12$|H1$|H12$)(([A-H][1-9])|([A-H]1[0-2]))$
+  JgiMtInterface:
+    annotations:
+      excel_worksheet_name: JGI MT
+    description: jgi_mt dh_interface
+    title: JGI MT
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - nuc_acid_absorb1
+      - nuc_acid_absorb2
+      - nuc_acid_concentration
+      - cont_type
+      - cont_well
+      - container_name
+      - dnase
+      - biosafety_mat_cat
+      - rna_isolate_meth
+      - jgi_samp_id
+      - jgi_sample_format
+      - jgi_sample_name
+      - jgi_seq_project
+      - jgi_seq_project_name
+      - jgi_sample_volume
+      - replicate_group
+    slot_usage:
+      cont_type:
+        slot_group: jgi_metatranscriptomics_section
+      cont_well:
+        slot_group: jgi_metatranscriptomics_section
+      container_name:
+        slot_group: jgi_metatranscriptomics_section
+      dnase:
+        slot_group: jgi_metatranscriptomics_section
+      biosafety_mat_cat:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_samp_id:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_sample_format:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_sample_name:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_seq_project:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_seq_project_name:
+        slot_group: jgi_metatranscriptomics_section
+      jgi_sample_volume:
+        slot_group: jgi_metatranscriptomics_section
+      nuc_acid_absorb1:
+        slot_group: jgi_metatranscriptomics_section
+      nuc_acid_absorb2:
+        slot_group: jgi_metatranscriptomics_section
+      nuc_acid_concentration:
+        slot_group: jgi_metatranscriptomics_section
+      rna_isolate_meth:
+        slot_group: jgi_metatranscriptomics_section
+      replicate_group:
+        slot_group: jgi_metatranscriptomics_section
+        required: true  
+    rules:
+      - title: well_requires_plate
+        description: If a well is specified, the container type must be a plate.
+        preconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ".+"
+        postconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+      - title: plate_requires_well
+        description: If a plate is specified, a well must be specified according to the pattern.
+        preconditions:
+          slot_conditions:
+            cont_type:
+              equals_string: plate
+        postconditions:
+          slot_conditions:
+            cont_well:
+              pattern: ^(?!A1$|A12$|H1$|H12$)(([A-H][1-9])|([A-H]1[0-2]))$
+  MiscEnvsInterface:
+    annotations:
+      excel_worksheet_name: misc natural or artificial
+    description: misc_envs dh_interface
+    title: Misc Envs
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+  PlantAssociatedInterface:
+    annotations:
+      excel_worksheet_name: plant-associated
+    description: plant_associated dh_interface
+    title: Plant Associated
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  SedimentInterface:
+    annotations:
+      excel_worksheet_name: sediment
+    description: sediment dh_interface
+    title: Sediment
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  SoilInterface:
+    annotations:
+      excel_worksheet_name: soil
+    description: soil dh_interface
+    title: Soil
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+      - SoilMixsInspiredMixin
+  WastewaterSludgeInterface:
+    annotations:
+      excel_worksheet_name: wastewater sludge
+    description: wastewater_sludge dh_interface
+    title: Wastewater Sludge
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  WaterInterface:
+    annotations:
+      excel_worksheet_name: water
+    description: water dh_interface
+    title: Water
+    is_a: DhInterface
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+      - SampIdNewTermsMixin
+  MetagenomeSequencingNonInterleavedDataInterface:
+    description: Interface for non-interleaved metagenome sequencing data
+    title: Metagenome Sequence Data (Non-Interleaved)
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - read_1_url
+      - read_1_md5_checksum
+      - read_2_url
+      - read_2_md5_checksum
+  MetagenomeSequencingInterleavedDataInterface:
+    description: Interface for interleaved metagenome sequencing data
+    title: Metagenome Sequence Data (Interleaved)
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - interleaved_url
+      - interleaved_md5_checksum
+  MetatranscriptomeSequencingNonInterleavedDataInterface:
+    description: Interface for non-interleaved metatranscriptome sequencing data
+    title: Metatranscriptome Sequence Data (Non-Interleaved)
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - read_1_url
+      - read_1_md5_checksum
+      - read_2_url
+      - read_2_md5_checksum
+  MetatranscriptomeSequencingInterleavedDataInterface:
+    description: Interface for interleaved metatranscriptome sequencing data
+    title: Metatranscriptome Sequence Data (Interleaved)
+    mixins:
+      - DhMultiviewCommonColumnsMixin
+    slots:
+      - interleaved_url
+      - interleaved_md5_checksum
+  DhMultiviewCommonColumnsMixin:
+    description: Mixin with DhMutliviewCommon Columns
+    title: Dh Mutliview Common Columns
+    mixin: true
+  SampIdNewTermsMixin:
+    description: Mixin with SampIdNew Terms
+    title: SampId New Terms
+    mixin: true
+    slots:
+      - sample_link
+  SoilMixsInspiredMixin:
+    description: Mixin with SoilMixsInspired Terms
+    title: Soil MIxS Inspired Mixin
+    mixin: true
+    slots:
+      - collection_date_inc
+      - collection_time
+      - collection_time_inc
+      - experimental_factor_other
+      - filter_method
+      - isotope_exposure
+      - micro_biomass_c_meth
+      - micro_biomass_n_meth
+      - microbial_biomass_c
+      - microbial_biomass_n
+      - non_microb_biomass
+      - non_microb_biomass_method
+      - org_nitro_method
+      - other_treatment
+      - start_date_inc
+      - start_time_inc
+  DhInterface:
+    description: One DataHarmonizer interface, for the specified combination of a checklist, enviornmental_package, and various standards, user facilities or analysis types
+    title: Dh Root Interface
+  SampleData:
+    description: represents data produced by the DataHarmonizer tabs of the submission portal
+    title: SampleData
+    slots:
+      - air_data
+      - biofilm_data
+      - built_env_data
+      - host_associated_data
+      - plant_associated_data
+      - sediment_data
+      - soil_data
+      - wastewater_sludge_data
+      - water_data
+      - emsl_data
+      - jgi_mg_lr_data
+      - jgi_mg_data
+      - jgi_mt_data
+      - metagenome_sequencing_non_interleaved_data
+      - metagenome_sequencing_interleaved_data
+      - metatranscriptome_sequencing_non_interleaved_data
+      - metatranscriptome_sequencing_interleaved_data
+    tree_root: true
+settings:
+  float: '[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?'
+  percentage: '[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?%'
+  text: '[^;|\t\r\n]+'
+subsets:
+  nmdc_env_triad_enums:
+    todos:
+      - replace membership in this subset with mappings between the individual environmental triad/context enums and the EnvO subProperties
+    see_also:
+      - https://github.com/EnvironmentOntology/envo/blob/1598-try-creating-the-new-see_also-from-pr-1597-with-protege-564/src/envo/envo-edit.owl
+      - http://purl.obolibrary.org/obo/ENVO_03605010
