@@ -1,0 +1,166 @@
+Metadata-Version: 2.4
+Name: agentic-control-crews
+Version: 0.2.0
+Summary: CrewAI engine for agentic-control - autonomous AI crews for development tasks
+Project-URL: Homepage, https://github.com/jbcom/agentic-control
+Project-URL: Repository, https://github.com/jbcom/agentic-control
+Project-URL: Documentation, https://github.com/jbcom/agentic-control/tree/main/python#readme
+Author-email: Jon Bogaty <jon@jonbogaty.com>
+License: MIT
+Keywords: ai-agents,automation,crewai,mcp
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.11
+Requires-Dist: crewai[anthropic,tools]>=1.5.0
+Requires-Dist: pydantic>=2.12.4
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: vendor-connectors[meshy]>=202511.12.0
+Provides-Extra: mcp
+Requires-Dist: mcp>=1.0.0; extra == 'mcp'
+Provides-Extra: tests
+Requires-Dist: pytest-cov>=5.0.0; extra == 'tests'
+Requires-Dist: pytest-mock>=3.15.1; extra == 'tests'
+Requires-Dist: pytest>=9.0.1; extra == 'tests'
+Description-Content-Type: text/markdown
+
+# CrewAI - Package-Agnostic Crew Runner
+
+A generic CrewAI engine that discovers and runs crews defined in packages' `.crewai/` directories.
+
+## Quick Start
+
+```bash
+# List all packages with crews
+just crew-list
+
+# Run a specific crew
+just crew-run otterfall game_builder --input "Create a QuestComponent"
+
+# Show crew details
+just crew-info otterfall game_builder
+```
+
+## Architecture
+
+### Engine (`internal/crewai`)
+
+The engine provides:
+- **Discovery**: Finds `.crewai/` directories in packages
+- **Loading**: Parses YAML configs into CrewAI objects
+- **Running**: Executes crews with provided inputs
+- **CLI**: `crewai run <package> <crew> --input "..."`
+
+### Package Crews (`packages/<name>/.crewai/`)
+
+Each package can define its own crews:
+
+```
+packages/otterfall/.crewai/
+  manifest.yaml       # Package crew configuration
+  knowledge/          # Domain-specific knowledge files
+  crews/
+    game_builder/
+      agents.yaml     # Agent definitions
+      tasks.yaml      # Task definitions
+```
+
+## CLI Usage
+
+```bash
+# From the internal/crewai directory
+cd internal/crewai
+
+# List available packages and crews
+uv run python -m crew_agents list
+
+# Run a crew
+uv run python -m crew_agents run otterfall game_builder --input "Create X"
+
+# Run with input from file
+uv run python -m crew_agents run otterfall game_builder --file tasks.md
+
+# Show crew info
+uv run python -m crew_agents info otterfall game_builder
+
+# Legacy: Direct build (uses otterfall game_builder)
+uv run python -m crew_agents build "Create a QuestComponent"
+```
+
+## Adding Crews to a Package
+
+1. Create `.crewai/manifest.yaml`:
+
+```yaml
+name: mypackage
+description: My package crews
+version: "1.0"
+
+crews:
+  builder:
+    description: Build components
+    agents: crews/builder/agents.yaml
+    tasks: crews/builder/tasks.yaml
+    knowledge:
+      - knowledge/patterns
+```
+
+2. Create agent and task YAML files:
+
+```yaml
+# crews/builder/agents.yaml
+senior_engineer:
+  role: Senior Engineer
+  goal: Write production-quality code
+  backstory: You are a senior developer...
+```
+
+```yaml
+# crews/builder/tasks.yaml
+write_code:
+  description: Write the requested code
+  expected_output: Working code with tests
+  agent: senior_engineer
+```
+
+3. Add knowledge files (optional):
+
+```
+knowledge/
+  patterns/
+    architecture.md
+    examples.ts
+```
+
+## GitHub Actions
+
+The CrewAI workflow can be triggered manually:
+
+1. Go to Actions → CrewAI Tasks
+2. Select package and crew
+3. Choose input type (Kiro tasks or custom)
+4. Run workflow
+
+## Development
+
+```bash
+# Install dependencies
+cd internal/crewai
+uv sync
+
+# Run tests
+uv run pytest
+
+# Test tools
+uv run python -m crew_agents test-tools
+```
+
+## Dependencies
+
+- **crewai**: Core CrewAI framework
+- **anthropic**: Claude API access
+- **pyyaml**: YAML parsing
+- **mesh-toolkit**: 3D asset generation (optional, from mesh-toolkit PR)
