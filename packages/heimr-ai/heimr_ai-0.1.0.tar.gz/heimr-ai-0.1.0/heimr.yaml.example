@@ -1,0 +1,88 @@
+# Copyright (c) 2025 Juan Estevez Castillo
+# Licensed under AGPL v3. Commercial licenses available.
+# See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
+#
+# Heimr Configuration File
+# 
+# This file configures Heimr for analyzing load test results.
+# CLI arguments will override settings in this file.
+#
+# Usage:
+#   heimr analyze results.jtl --config heimr.yaml
+#   heimr analyze results.json -c heimr.yaml
+#
+
+# ============================================================================
+# Observability Sources
+# ============================================================================
+
+# Prometheus - for system metrics (CPU, memory, latency histograms)
+# Can be a URL or a file path
+prometheus: http://localhost:9090
+# prometheus: ./data/prometheus_metrics.json  # Or use local file
+
+# Loki - for log aggregation
+# Can be a URL or a file path
+loki: http://localhost:3100
+# loki: ./data/loki_logs.json  # Or use local file
+
+# Tempo - for distributed traces
+# Can be a URL or a file path
+tempo: http://localhost:3200
+# tempo: ./data/tempo_traces.json  # Or use local file
+
+
+# ============================================================================
+# LLM Configuration (AI-powered Root Cause Analysis - enabled by default)
+# ============================================================================
+
+# Local LLM (Ollama) - recommended for privacy
+llm_url: http://localhost:11434/v1
+
+# Model tier (auto-resolves to specific model):
+llm_model: medium  # Options: small, medium, large
+
+# Model Tiers:
+#   - small:  llama3.2:3b  (~2GB, laptops/CI/CD, fast)
+#   - medium: llama3.1:8b  (~5GB, balanced) [DEFAULT]
+#   - large:  qwen2.5:14b   (~9GB VRAM)  - High quality reasoning
+#
+# Or specify any model directly:
+# llm_model: llama3.1:405b
+# llm_model: mistral:7b
+# llm_model: codellama:13b
+
+# Cloud LLM alternatives (set API keys as environment variables):
+#   export OPENAI_API_KEY='sk-...'        # For OpenAI models
+#   export ANTHROPIC_API_KEY='sk-ant-...' # For Anthropic Claude
+#
+# When using cloud APIs, set the model:
+# llm_model: gpt-4o          # OpenAI
+# llm_model: gpt-4o-mini     # OpenAI (cheaper)
+# llm_model: claude-sonnet-4 # Anthropic
+
+# ============================================================================
+# Output Settings
+# ============================================================================
+
+# Path to save the analysis report (Markdown format)
+# Note: PDF and HTML dashboard are automatically generated alongside the markdown file
+output: ./reports/analysis.md
+
+# File format (auto-detected if not specified)
+# format: k6  # Options: jtl, k6, gatling, locust
+
+
+# ============================================================================
+# Comparison Settings (Optional - for regression testing)
+# ============================================================================
+
+# Compare current test with a baseline
+# compare_baseline: ./baseline/k6_results.json
+# compare_prometheus: ./baseline/prometheus_metrics.json
+# compare_loki: ./baseline/loki_logs.json
+# compare_tempo: ./baseline/tempo_traces.json
+
+# Path to save the comparison report
+# comparison: ./reports/comparison.md
+
