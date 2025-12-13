@@ -1,0 +1,94 @@
+name: Continuous Delivery of Algorand Python Testing package
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "scripts/**"
+      - "examples/**"
+      - "tests/**"
+
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: "Prerelease?"
+        type: boolean
+        required: true
+        default: true
+      dry_run:
+        description: "Dry Run? If true, won't commit or publish anything"
+        type: boolean
+        required: true
+        default: false
+
+concurrency: release
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  release:
+    name: Release `algorand-python-testing` package
+    runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+      contents: write
+      packages: read
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' && '--noop' || '' }}
+      PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease || 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install hatch
+        run: pipx install hatch
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Start LocalNet
+        run: pipx install algokit && algokit localnet start
+
+      - name: Check pre-commits
+        run: hatch run check
+
+      - name: Check pre-commits (examples)
+        run: hatch run examples:check
+
+      - name: Check wheels can be built
+        run: hatch build && hatch run cicd:clean_dist
+
+      - name: Run tests (codebase)
+        run: hatch run tests
+
+      - name: Run tests (examples)
+        run: hatch run examples:tests
+
+      - name: Python Semantic Release
+        id: semantic-release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: python-semantic-release/python-semantic-release@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ env.PRERELEASE == 'true' }}
+          root_options: $DRY_RUN
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry_run && steps.semantic-release.outputs.released == 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+
+      - uses: actions/upload-artifact@v4 # upload artifacts so they are retained on the job
+        with:
+          path: dist

@@ -1,0 +1,34 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    // tests/artifacts/Tuples/contract.py:8
+    // class TuplesContract(ARC4Contract, avm_version=11):
+    txn NumAppArgs
+    bz main___algopy_default_create@5
+    pushbytes 0x7229d79a // method "test_tuple_with_primitive_type()(uint64,bool)"
+    txna ApplicationArgs 0
+    match main_test_tuple_with_primitive_type_route@3
+    err
+
+main_test_tuple_with_primitive_type_route@3:
+    // tests/artifacts/Tuples/contract.py:9
+    // @arc4.abimethod()
+    txn OnCompletion
+    !
+    txn ApplicationID
+    &&
+    assert
+    pushbytes 0x151f7c75000000000000000080
+    log
+    pushint 1
+    return
+
+main___algopy_default_create@5:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return

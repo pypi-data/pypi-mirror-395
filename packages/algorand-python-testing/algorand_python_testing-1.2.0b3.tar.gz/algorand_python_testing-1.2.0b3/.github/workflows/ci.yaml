@@ -1,0 +1,77 @@
+name: Check Python Code (algopy_testing)
+
+on:
+  workflow_call:
+  pull_request:
+  schedule:
+    - cron: "0 8 * * 1" # Each monday 8 AM UTC
+
+jobs:
+  check-python:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install hatch
+        run: pip install hatch
+
+      - name: Start LocalNet
+        run: pipx install algokit && algokit localnet start
+
+      - name: Check pre-commits
+        run: hatch run check
+
+      - name: Check pre-commits (examples)
+        run: hatch run examples:check
+
+      - name: Validate examples folder
+        run: hatch run validate_examples
+
+      - name: Check wheels can be built
+        run: hatch build
+
+      - name: Check doctests
+        run: hatch run docs:test
+
+  test-python-matrix:
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install hatch
+        run: pip install hatch
+
+      - name: Start LocalNet
+        run: pipx install algokit && algokit localnet start
+
+      - name: Run tests with Python ${{ matrix.python-version }}
+        run: hatch run test.py${{ matrix.python-version }}:ci
+
+      - name: Run examples tests with Python ${{ matrix.python-version }}
+        run: hatch run examples.py${{ matrix.python-version }}:tests
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.python-version == '3.13' }}
+        with:
+          name: coverage-reports
+          path: |
+            ./coverage.xml
+          retention-days: 14
