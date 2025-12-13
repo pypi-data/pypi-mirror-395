@@ -1,0 +1,58 @@
+# fly.toml app configuration file generated for sudoku-telnet-server on 2025-12-08T00:04:43Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'sudoku-telnet-server'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PYTHONUNBUFFERED = '1'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8023
+
+  [[services.ports]]
+    port = 8023
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8024
+
+  [[services.ports]]
+    port = 8024
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8025
+
+  [[services.ports]]
+    port = 8025
+    handlers = ['http']
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 100
+    soft_limit = 80
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8026
+
+  [[services.ports]]
+    port = 8026
+    handlers = ['http']
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
