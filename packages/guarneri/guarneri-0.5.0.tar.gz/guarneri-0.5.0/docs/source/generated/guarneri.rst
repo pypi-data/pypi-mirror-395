@@ -1,0 +1,6 @@
+﻿guarneri
+========
+
+.. automodule:: guarneri
+
+   
