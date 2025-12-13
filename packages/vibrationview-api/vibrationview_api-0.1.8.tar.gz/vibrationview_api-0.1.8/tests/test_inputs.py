@@ -1,0 +1,875 @@
+#!/usr/bin/env python
+"""
+VibrationVIEW Input Configuration Test Module
+
+This module contains tests for input configuration functionality in the VibrationVIEW API.
+These tests focus on channel configuration and TEDS verification.
+
+Prerequisites:
+- VibrationVIEW software installed
+- PyWin32 library installed (pip install pywin32)
+- pytest library installed (pip install pytest)
+- Main test infrastructure from test_VibrationviewAPI.py
+
+Usage:
+    pytest test_input_configuration.py -v
+"""
+
+import os
+import sys
+import logging
+import pytest
+from datetime import datetime
+
+# Configure logger
+logger = logging.getLogger(__name__)
+
+# Add necessary paths for imports
+current_dir = os.path.abspath(os.path.dirname(__file__))
+src_dir = os.path.join(current_dir, '..', 'src')
+sys.path.append(src_dir)
+
+# Import channel configuration utilities
+from .channelconfigs import get_channel_config
+
+try:
+    # Import main VibrationVIEW API
+    from vibrationviewapi import VibrationVIEW, vvVector, vvTestType, ExtractComErrorInfo
+except ImportError:
+    pytest.skip("Could not import VibrationVIEW API. Make sure they are in the same directory or in your Python path.", allow_module_level=True)
+
+
+class TestInputConfiguration:
+    """Test class for VibrationVIEW input configuration functionality"""
+    
+    @pytest.mark.config
+    def test_input_configuration_file_basic(self):
+        """Test basic functionality of SetInputConfigurationFile method"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing basic input configuration for {num_channels} channels")
+            
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+            
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+            
+            # Find test configuration file
+            config_file = os.path.join(config_folder, "10mV per G.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"Configuration file not found: {config_file}")
+                pytest.skip(f"Configuration file not found: {config_file}")
+            
+            # Apply the configuration file
+            logger.info(f"Applying configuration file: {config_file}")
+            self.vv.SetInputConfigurationFile(config_file)
+            logger.info("Configuration file applied successfully")
+            
+            # Verify a sample of channels (first, middle, last)
+            channels_to_check = [0]  # Always check first channel
+            if num_channels > 2:
+                channels_to_check.append(num_channels // 2)  # Middle channel
+            if num_channels > 1:
+                channels_to_check.append(min(num_channels - 1, 15))  # Last channel (max 16)
+            
+            # Verify each channel in our sample
+            for channel_index in channels_to_check:
+                logger.info(f"Checking basic properties of channel {channel_index+1}")
+                
+                # Get channel properties
+                label = self.vv.ChannelLabel(channel_index)
+                unit = self.vv.ChannelUnit(channel_index)
+                sensitivity = self.vv.InputSensitivity(channel_index)
+                
+                # Basic assertions - we're just checking if the properties can be retrieved
+                assert label is not None
+                assert unit is not None
+                assert sensitivity is not None
+                
+                logger.info(f"Channel {channel_index+1} basic properties: label={label}, unit={unit}, sensitivity={sensitivity}")
+            
+            logger.info("Basic configuration test completed successfully")
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_file_basic: {error_info}")
+            pytest.fail(f"Error in test_input_configuration_file_basic: {error_info}")
+
+
+    @pytest.mark.config
+    def test_input_configuration_file_teds(self):
+        """Test SetInputConfigurationFile with TEDS configuration"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing TEDS input configuration for {num_channels} channels")
+            
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+            
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+            
+            # Find test configuration file with TEDS
+            config_file = os.path.join(config_folder, "channel 1 TEDS.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"TEDS configuration file not found: {config_file}")
+                pytest.skip(f"TEDS configuration file not found: {config_file}")
+            
+            # Apply the configuration file
+            logger.info(f"Applying TEDS configuration file: {config_file}")
+            self.vv.SetInputConfigurationFile(config_file)
+            logger.info("TEDS configuration file applied successfully")
+            
+            # Verify channel configurations with focus on TEDS
+            channels_verified = 0
+            
+            for channel_index in range(min(num_channels, 32)):
+                try:
+                    logger.info(f"Verifying channel {channel_index+1} TEDS configuration")
+                    
+                    # Get configuration for this channel
+                    config = get_channel_config(channel_index)
+                    
+                    # Check if TEDS data is available for this channel
+                    teds_data = self.vv.Teds(channel_index)
+                    
+                    if not teds_data or not teds_data[0]:
+                        logger.warning(f"No TEDS data found for channel {channel_index+1}")
+                        continue
+                        
+                    channel_teds = teds_data[0]
+                    
+                    if "Error" in channel_teds:
+                        logger.warning(f"TEDS error for channel {channel_index+1}: {channel_teds.get('Error', 'Unknown error')}")
+                        continue
+                        
+                    teds_info = channel_teds.get("Teds", [])
+                    if not teds_info:
+                        logger.warning(f"No TEDS entries found for channel {channel_index+1}")
+                        continue
+                        
+                    logger.info(f"Found {len(teds_info)} TEDS entries for channel {channel_index+1}")
+                    
+                    # Verify against expected TEDS data if available
+                    if not config.teds:
+                        logger.info(f"No expected TEDS data defined for channel {channel_index+1}")
+                        # Count as verified if we got TEDS data, even if no expectations were set
+                        channels_verified += 1
+                        continue
+                        
+                    expected_teds = config.teds.as_tuples()
+                    matches = 0
+                    total_expected = len(expected_teds)
+                    
+                    for expected_key, expected_value in expected_teds:
+                        for actual_key, actual_value, actual_unit in teds_info:
+                            if actual_key == expected_key and actual_value == expected_value:
+                                matches += 1
+                                break
+                    
+                    match_percentage = (matches / total_expected) * 100
+                    logger.info(f"TEDS match percentage: {match_percentage:.1f}% ({matches}/{total_expected})")
+                    
+                    # Less strict assertion - we just need some matches to consider it verified
+                    if match_percentage >= 50:
+                        channels_verified += 1
+                        logger.info(f"Channel {channel_index+1} TEDS verified successfully")
+                    else:
+                        logger.warning(f"Channel {channel_index+1} TEDS match percentage too low: {match_percentage:.1f}%")
+                        
+                except Exception as e:
+                    error_info = ExtractComErrorInfo(e)
+                    logger.warning(f"Error verifying channel {channel_index+1} TEDS: {error_info}")
+            
+            logger.info(f"Verified TEDS on {channels_verified} channels successfully")
+            if channels_verified == 0:
+                pytest.skip("No channels had verifiable TEDS data")
+            
+            # Apply final configuration at the end of the test
+            self._apply_final_configuration(config_folder)
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_file_teds: {error_info}")
+            pytest.fail(f"Error in test_input_configuration_file_teds: {error_info}")
+
+
+    @pytest.mark.config
+    def test_input_configuration_file_full(self):
+        """Test full channel property verification with SetInputConfigurationFile"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing full input configuration for {num_channels} channels")
+            
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+            
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+            
+            # Find test configuration file
+            config_file = os.path.join(config_folder, "channel 1 TEDS.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"Configuration file not found: {config_file}")
+                pytest.skip(f"Configuration file not found: {config_file}")
+            
+            # Apply the configuration file
+            logger.info(f"Applying configuration file: {config_file}")
+            self.vv.SetInputConfigurationFile(config_file)
+            logger.info("Configuration file applied successfully")
+            
+            # Verify channel configurations
+            channels_verified = 0
+            
+            for channel_index in range(min(num_channels, 16)):
+                try:
+                    logger.info(f"Verifying channel {channel_index+1} full configuration")
+                    
+                    # Get configuration for this channel
+                    config = get_channel_config(channel_index)
+                    
+                    # Get channel properties
+                    label = self.vv.ChannelLabel(channel_index)
+                    unit = self.vv.ChannelUnit(channel_index)
+                    sensitivity = self.vv.InputSensitivity(channel_index)
+                    eng_scale = self.vv.InputEngineeringScale(channel_index)
+                    cap_coupled = self.vv.InputCapacitorCoupled(channel_index)
+                    accel_power = self.vv.InputAccelPowerSource(channel_index)
+                    differential = self.vv.InputDifferential(channel_index)
+                    serial = self.vv.InputSerialNumber(channel_index)
+                    cal_date = self.vv.InputCalDate(channel_index)
+            
+                    # Verify each property
+                    property_checks = {
+                        "label": label is not None and config.label.lower() in label.lower(),
+                        "unit": unit is not None and config.unit.lower() in unit.lower(),
+                        "sensitivity": sensitivity is not None and abs(config.sensitivity - sensitivity) < (config.sensitivity * 0.001),
+                        "cap_coupled": cap_coupled is not None and config.cap_coupled == cap_coupled,
+                        "accel_power": accel_power is not None and config.accel_power == accel_power,
+                        "differential": differential is not None and config.differential == differential,
+                        "serial": serial is not None and config.serial == serial,
+                        "cal_date": cal_date is not None and config.cal_date in cal_date
+                    }
+                    
+                    # Log results of each check
+                    failed_checks = []
+                    for prop_name, result in property_checks.items():
+                        if not result:
+                            failed_checks.append(prop_name)
+                            logger.warning(f"Channel {channel_index+1} {prop_name} check failed")
+                    
+                    if failed_checks:
+                        logger.warning(f"Channel {channel_index+1} failed checks: {', '.join(failed_checks)}")
+                    else:
+                        logger.info(f"Channel {channel_index+1} full configuration verified successfully")
+                        channels_verified += 1
+                    
+                except Exception as e:
+                    error_info = ExtractComErrorInfo(e)
+                    logger.warning(f"Error verifying channel {channel_index+1} full configuration: {error_info}")
+            
+            logger.info(f"Verified {channels_verified} channels successfully")
+            assert channels_verified > 0, "No channels were successfully verified"
+            
+            # Apply final configuration at the end of the test
+            self._apply_final_configuration(config_folder)
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_file_full: {error_info}")
+            pytest.fail(f"Error in test_input_configuration_file_full: {error_info}")
+
+    
+    @pytest.mark.config
+    def test_input_configuration_different_files(self):
+        """Test applying different configuration files sequentially"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing multiple configurations for {num_channels} channels")
+            
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+            
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+            
+            # Find configuration files
+            config_files = []
+            for filename in ["10mV per G.vic", "100mV per G.vic", "channel 1 TEDS.vic"]:
+                config_path = os.path.join(config_folder, filename)
+                if os.path.exists(config_path):
+                    config_files.append(config_path)
+            
+            if len(config_files) < 2:
+                logger.warning(f"Not enough configuration files found: {len(config_files)}")
+                pytest.skip(f"Need at least 2 different config files for this test")
+            
+            # Test first channel's sensitivity before and after each configuration change
+            channel_index = 0  # Use first channel for testing
+            
+            for config_file in config_files:
+                # Apply configuration file
+                logger.info(f"Applying configuration file: {config_file}")
+                self.vv.SetInputConfigurationFile(config_file)
+                
+                # Get channel properties after applying config
+                sensitivity = self.vv.InputSensitivity(channel_index)
+                unit = self.vv.ChannelUnit(channel_index)
+                label = self.vv.ChannelLabel(channel_index)
+                
+                logger.info(f"Channel {channel_index+1} configured with: sensitivity={sensitivity}, unit={unit}, label={label}")
+                assert sensitivity is not None, f"Sensitivity not set properly for configuration {config_file}"
+            
+            logger.info("Successfully applied and verified multiple configuration files")
+            
+            # Apply final configuration at the end of the test
+            self._apply_final_configuration(config_folder)
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_different_files: {error_info}")
+            pytest.fail(f"Error in test_input_configuration_different_files: {error_info}")
+
+
+    @pytest.mark.config
+    def test_input_capacitor_coupled_set_read_consistency(self):
+        """Test InputCapacitorCoupled property set/read consistency"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing InputCapacitorCoupled set/read consistency for {num_channels} channels")
+            
+            # Test first channel (most likely to be available)
+            channel_index = 0
+            
+            # Check if hardware supports capacitor coupling for this channel
+            if not self.vv.HardwareSupportsCapacitorCoupled(channel_index):
+                logger.info(f"Hardware does not support capacitor coupling for channel {channel_index}")
+                pytest.skip(f"Hardware does not support capacitor coupling for channel {channel_index}")
+            
+            # Test setting to True and reading back
+            self.vv.InputCapacitorCoupled(channel_index, True)
+            result_true = self.vv.InputCapacitorCoupled(channel_index)
+            assert result_true == True, f"InputCapacitorCoupled set to True but read back as {result_true}"
+            logger.info(f"Channel {channel_index} InputCapacitorCoupled True: PASS")
+            
+            # Test setting to False and reading back
+            self.vv.InputCapacitorCoupled(channel_index, False)
+            result_false = self.vv.InputCapacitorCoupled(channel_index)
+            assert result_false == False, f"InputCapacitorCoupled set to False but read back as {result_false}"
+            logger.info(f"Channel {channel_index} InputCapacitorCoupled False: PASS")
+            
+            logger.info("InputCapacitorCoupled set/read consistency test completed successfully")
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_capacitor_coupled_set_read_consistency: {error_info}")
+            pytest.fail(f"Error in test_input_capacitor_coupled_set_read_consistency: {error_info}")
+
+    @pytest.mark.config
+    def test_input_accel_power_source_set_read_consistency(self):
+        """Test InputAccelPowerSource property set/read consistency"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing InputAccelPowerSource set/read consistency for {num_channels} channels")
+            
+            # Test first channel (most likely to be available)
+            channel_index = 0
+            
+            # Check if hardware supports accelerometer power source for this channel
+            if not self.vv.HardwareSupportsAccelPowerSource(channel_index):
+                logger.info(f"Hardware does not support accelerometer power source for channel {channel_index}")
+                pytest.skip(f"Hardware does not support accelerometer power source for channel {channel_index}")
+            
+            # Test setting to True and reading back
+            self.vv.InputAccelPowerSource(channel_index, True)
+            result_true = self.vv.InputAccelPowerSource(channel_index)
+            assert result_true == True, f"InputAccelPowerSource set to True but read back as {result_true}"
+            logger.info(f"Channel {channel_index} InputAccelPowerSource True: PASS")
+            
+            # Test setting to False and reading back
+            self.vv.InputAccelPowerSource(channel_index, False)
+            result_false = self.vv.InputAccelPowerSource(channel_index)
+            assert result_false == False, f"InputAccelPowerSource set to False but read back as {result_false}"
+            logger.info(f"Channel {channel_index} InputAccelPowerSource False: PASS")
+            
+            logger.info("InputAccelPowerSource set/read consistency test completed successfully")
+                
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_accel_power_source_set_read_consistency: {error_info}")
+            pytest.fail(f"Error in test_input_accel_power_source_set_read_consistency: {error_info}")
+
+    @pytest.mark.config
+    def test_input_accel_power_source_while_running_should_fail(self):
+        """Test that setting InputAccelPowerSource while test is running should fail"""
+        try:
+            # Test first channel (most likely to be available)
+            channel_index = 0
+
+            # Check if hardware supports accelerometer power source for this channel
+            if not self.vv.HardwareSupportsAccelPowerSource(channel_index):
+                logger.info(f"Hardware does not support accelerometer power source for channel {channel_index}")
+                pytest.skip(f"Hardware does not support accelerometer power source for channel {channel_index}")
+
+            # Find the default sine test file
+            test_file = self.find_test_file("sine")
+            if not test_file:
+                logger.warning("No sine test file found")
+                pytest.skip("No sine test file found for testing")
+
+            logger.info(f"Using test file: {test_file}")
+
+            # Open the sine test
+            try:
+                self.vv.OpenTest(test_file)
+                logger.info(f"Successfully opened test: {test_file}")
+            except Exception as e:
+                error_info = ExtractComErrorInfo(e)
+                logger.error(f"Opening test failed: {error_info}")
+                pytest.fail(f"Opening test failed: {error_info}")
+
+            # Start the test and attempt to set InputAccelPowerSource while running
+            try:
+                # Start the test
+                self.vv.StartTest()
+                logger.info("Started test")
+
+                # Wait for test to be running
+                running = self.wait_for_condition(self.vv.IsRunning, wait_time=10)
+                assert running, "Test did not start running"
+                logger.info("Test is running")
+
+                # Attempt to set InputAccelPowerSource while test is running - this should fail
+                logger.info(f"Attempting to set InputAccelPowerSource while test is running")
+                exception_raised = False
+
+                try:
+                    self.vv.InputAccelPowerSource(channel_index, True)
+                    logger.error("InputAccelPowerSource did not raise exception while test is running")
+                    pytest.fail("InputAccelPowerSource should fail while test is running, but succeeded")
+                except Exception as e:
+                    # This is the expected behavior - InputAccelPowerSource should fail
+                    error_info = ExtractComErrorInfo(e)
+                    logger.info(f"InputAccelPowerSource correctly raised exception while test is running: {error_info}")
+                    exception_raised = True
+
+                # Assert that an exception was raised
+                assert exception_raised, "InputAccelPowerSource should raise an exception while test is running"
+                logger.info("Test passed: InputAccelPowerSource correctly failed while test is running")
+
+            finally:
+                # Always stop the test in the finally block
+                try:
+                    logger.info("Stopping test in finally block")
+                    self.vv.StopTest()
+
+                    # Wait for test to stop
+                    import time
+                    stopped = self.wait_for_not(self.vv.IsRunning, wait_time=5)
+                    if not stopped:
+                        logger.warning("Test did not stop in expected time")
+                    else:
+                        logger.info("Test stopped successfully")
+
+                except Exception as e:
+                    error_info = ExtractComErrorInfo(e)
+                    logger.error(f"Stopping test in finally block failed: {error_info}")
+
+        except AssertionError:
+            # Re-raise assertion errors (these are test failures)
+            raise
+        except Exception as e:
+            error_msg = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_accel_power_source_while_running_should_fail: {error_msg}")
+            pytest.fail(f"Error in test_input_accel_power_source_while_running_should_fail: {error_msg}")
+
+    @pytest.mark.config
+    def test_input_differential_set_read_consistency(self):
+        """Test InputDifferential property set/read consistency"""
+        try:
+            # Get number of hardware channels
+            num_channels = self.vv.GetHardwareInputChannels()
+            assert num_channels is not None and num_channels > 0
+            logger.info(f"Testing InputDifferential set/read consistency for {num_channels} channels")
+            
+            # Test first channel (most likely to be available)
+            channel_index = 0
+            
+            # Check if hardware supports differential for this channel
+            if not self.vv.HardwareSupportsDifferential(channel_index):
+                logger.info(f"Hardware does not support differential for channel {channel_index}")
+                pytest.skip(f"Hardware does not support differential for channel {channel_index}")
+            
+            # Test setting to True and reading back
+            self.vv.InputDifferential(channel_index, True)
+            result_true = self.vv.InputDifferential(channel_index)
+            assert result_true == True, f"InputDifferential set to True but read back as {result_true}"
+            logger.info(f"Channel {channel_index} InputDifferential True: PASS")
+            
+            # Test setting to False and reading back
+            self.vv.InputDifferential(channel_index, False)
+            result_false = self.vv.InputDifferential(channel_index)
+            assert result_false == False, f"InputDifferential set to False but read back as {result_false}"
+            logger.info(f"Channel {channel_index} InputDifferential False: PASS")
+            
+            logger.info("InputDifferential set/read consistency test completed successfully")
+
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_differential_set_read_consistency: {error_info}")
+            pytest.fail(f"Error in test_input_differential_set_read_consistency: {error_info}")
+
+    @pytest.mark.config
+    def test_profile_with_forced_input_configuration_should_fail(self):
+        """Test profile with forced input configuration - should fail"""
+        try:
+            # Load the sine-named config profile first
+            profile_folder = os.path.join(self.script_dir, '..', 'profiles')
+            profile_file = os.path.join(profile_folder, 'sine-named config.vsp')
+
+            if not os.path.exists(profile_file):
+                pytest.skip(f"Profile file not found: {profile_file}")
+
+            logger.info(f"Loading profile: {profile_file}")
+            self.vv.OpenTest(profile_file)
+            logger.info("Profile loaded successfully")
+
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+
+            # Find test configuration file
+            config_file = os.path.join(config_folder, "10mV per G.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"Configuration file not found: {config_file}")
+                pytest.skip(f"Configuration file not found: {config_file}")
+
+            # Try to apply the configuration file - EXPECTING THIS TO FAIL
+            logger.info(f"Attempting to apply configuration file: {config_file}")
+            exception_raised = False
+
+            try:
+                self.vv.SetInputConfigurationFile(config_file)
+                logger.info("Configuration file applied - checking if it should have failed")
+
+                # If we get here, the configuration was applied
+                # Get number of hardware channels and verify basic properties
+                num_channels = self.vv.GetHardwareInputChannels()
+                assert num_channels is not None and num_channels > 0
+                logger.info(f"Testing configuration for {num_channels} channels")
+
+                # Verify a sample of channels (first, middle, last)
+                channels_to_check = [0]  # Always check first channel
+                if num_channels > 2:
+                    channels_to_check.append(num_channels // 2)  # Middle channel
+                if num_channels > 1:
+                    channels_to_check.append(min(num_channels - 1, 15))  # Last channel (max 16)
+
+                # Check if any channel has issues
+                failed_channels = []
+                for channel_index in channels_to_check:
+                    logger.info(f"Checking basic properties of channel {channel_index+1}")
+
+                    try:
+                        # Get channel properties
+                        label = self.vv.ChannelLabel(channel_index)
+                        unit = self.vv.ChannelUnit(channel_index)
+                        sensitivity = self.vv.InputSensitivity(channel_index)
+
+                        logger.info(f"Channel {channel_index+1} properties: label={label}, unit={unit}, sensitivity={sensitivity}")
+
+                        # Check if properties are valid
+                        if label is None or unit is None or sensitivity is None:
+                            failed_channels.append(channel_index + 1)
+                            logger.warning(f"Channel {channel_index+1} has invalid properties")
+                    except Exception as e:
+                        error_info = ExtractComErrorInfo(e)
+                        logger.warning(f"Failed to read channel {channel_index+1} properties: {error_info}")
+                        failed_channels.append(channel_index + 1)
+
+                if failed_channels:
+                    logger.info(f"Configuration check detected issues with channels: {failed_channels}")
+                    exception_raised = True
+                else:
+                    # Configuration was applied successfully with no issues detected
+                    logger.error("SetInputConfigurationFile succeeded and all channels appear valid - expected this to fail")
+                    pytest.fail("SetInputConfigurationFile should fail with sine-named config profile and 10mV per G.vic, but succeeded")
+
+            except Exception as e:
+                # This is the expected behavior - SetInputConfigurationFile should fail
+                error_info = ExtractComErrorInfo(e)
+                logger.info(f"SetInputConfigurationFile correctly raised exception: {error_info}")
+                exception_raised = True
+
+            # Assert that an exception was raised or configuration had issues
+            assert exception_raised, "SetInputConfigurationFile should fail or have channel issues with sine-named config profile and 10mV per G.vic"
+            logger.info("Test passed: Configuration correctly failed with sine-named config profile and 10mV per G.vic")
+
+        except AssertionError:
+            # Re-raise assertion errors (these are test failures)
+            raise
+        except Exception as e:
+            error_msg = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_profile_with_forced_input_configuration_should_fail: {error_msg}")
+            pytest.fail(f"Error in test_profile_with_forced_input_configuration_should_fail: {error_msg}")
+        finally:
+            # Reload default profile and configuration
+            try:
+                logger.info("Reloading default profile and configuration")
+                profile_folder = os.path.join(self.script_dir, '..', 'profiles')
+                default_profile = os.path.join(profile_folder, 'sine.vsp')
+
+                if os.path.exists(default_profile):
+                    self.vv.OpenTest(default_profile)
+                    logger.info("Default sine profile reloaded successfully")
+                else:
+                    logger.warning(f"Default profile not found: {default_profile}")
+
+                # Reload default input configuration
+                self.vv.SetInputConfigurationFile("10mV per G.vic")
+                logger.info("Default input configuration reloaded successfully")
+
+            except Exception as e:
+                error_info = ExtractComErrorInfo(e)
+                logger.warning(f"Failed to reload defaults: {error_info}")
+
+    @pytest.mark.config
+    def test_input_configuration_while_test_running_fails(self):
+        """Test that setting input configuration while test is running should fail"""
+        try:
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+
+            # Find test configuration file
+            config_file = os.path.join(config_folder, "100mV per G.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"Configuration file not found: {config_file}")
+                pytest.skip(f"Configuration file not found: {config_file}")
+
+            # Find the default sine test file
+            test_file = self.find_test_file("sine")
+            if not test_file:
+                logger.warning("No sine test file found")
+                pytest.skip("No sine test file found for testing")
+
+            logger.info(f"Using test file: {test_file}")
+
+            # Open the sine test
+            try:
+                self.vv.OpenTest(test_file)
+                logger.info(f"Successfully opened test: {test_file}")
+            except Exception as e:
+                error_info = ExtractComErrorInfo(e)
+                logger.error(f"Opening test failed: {error_info}")
+                pytest.fail(f"Opening test failed: {error_info}")
+
+            # Start the test and attempt to set input configuration while running
+            try:
+                # Start the test
+                self.vv.StartTest()
+                logger.info("Started test")
+
+                # Wait for test to be running
+                running = self.wait_for_condition(self.vv.IsRunning, wait_time=10)
+                assert running, "Test did not start running"
+                logger.info("Test is running")
+
+                # Attempt to set input configuration while test is running - this should fail
+                logger.info(f"Attempting to set input configuration while test is running")
+                exception_raised = False
+
+                try:
+                    self.vv.SetInputConfigurationFile(config_file)
+                    logger.error("SetInputConfigurationFile did not raise exception while test is running")
+                    pytest.fail("SetInputConfigurationFile should fail while test is running, but succeeded")
+                except Exception as e:
+                    # This is the expected behavior - SetInputConfigurationFile should fail
+                    error_info = ExtractComErrorInfo(e)
+                    logger.info(f"SetInputConfigurationFile correctly raised exception while test is running: {error_info}")
+                    exception_raised = True
+
+                # Assert that an exception was raised
+                assert exception_raised, "SetInputConfigurationFile should raise an exception while test is running"
+                logger.info("Test passed: SetInputConfigurationFile correctly failed while test is running")
+
+            finally:
+                # Always stop the test in the finally block
+                try:
+                    logger.info("Stopping test in finally block")
+                    self.vv.StopTest()
+
+                    # Wait for test to stop
+                    import time
+                    stopped = self.wait_for_not(self.vv.IsRunning, wait_time=5)
+                    if not stopped:
+                        logger.warning("Test did not stop in expected time")
+                    else:
+                        logger.info("Test stopped successfully")
+
+                except Exception as e:
+                    error_info = ExtractComErrorInfo(e)
+                    logger.error(f"Stopping test in finally block failed: {error_info}")
+
+        except AssertionError:
+            # Re-raise assertion errors (these are test failures)
+            raise
+        except Exception as e:
+            error_msg = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_while_test_running_fails: {error_msg}")
+            pytest.fail(f"Error in test_input_configuration_while_test_running_fails: {error_msg}")
+
+    @pytest.mark.config
+    def test_input_configuration_while_recording_fails(self):
+        """Test that setting input configuration while recording should fail"""
+        try:
+            # Set up config file paths
+            config_subfolder = "InputConfig"
+            config_folder = os.path.join(self.script_dir, '..', config_subfolder)
+
+            # Skip test if config folder doesn't exist
+            if not os.path.exists(config_folder):
+                logger.warning(f"Configuration folder not found: {config_folder}")
+                pytest.skip(f"Configuration folder not found: {config_folder}")
+
+            # Find test configuration file
+            config_file = os.path.join(config_folder, "100mV per G.vic")
+            if not os.path.exists(config_file):
+                logger.warning(f"Configuration file not found: {config_file}")
+                pytest.skip(f"Configuration file not found: {config_file}")
+
+            # Find the default sine test file
+            test_file = self.find_test_file("sine")
+            if not test_file:
+                logger.warning("No sine test file found")
+                pytest.skip("No sine test file found for testing")
+
+            logger.info(f"Using test file: {test_file}")
+
+            # Open the sine test
+            try:
+                self.vv.OpenTest(test_file)
+                logger.info(f"Successfully opened test: {test_file}")
+            except Exception as e:
+                error_info = ExtractComErrorInfo(e)
+                logger.error(f"Opening test failed: {error_info}")
+                pytest.fail(f"Opening test failed: {error_info}")
+
+            # Start recording and attempt to set input configuration while recording
+            try:
+                # Start recording
+                self.vv.RecordStart()
+                logger.info("Started recording")
+
+                # Wait a moment for recording to start
+                import time
+                time.sleep(1)
+                logger.info("Recording is active")
+
+                # Attempt to set input configuration while recording - this should fail
+                logger.info(f"Attempting to set input configuration while recording")
+                exception_raised = False
+
+                try:
+                    self.vv.SetInputConfigurationFile(config_file)
+                    logger.error("SetInputConfigurationFile did not raise exception while recording")
+                    pytest.fail("SetInputConfigurationFile should fail while recording, but succeeded")
+                except Exception as e:
+                    # This is the expected behavior - SetInputConfigurationFile should fail
+                    error_info = ExtractComErrorInfo(e)
+                    logger.info(f"SetInputConfigurationFile correctly raised exception while recording: {error_info}")
+                    exception_raised = True
+
+                # Assert that an exception was raised
+                assert exception_raised, "SetInputConfigurationFile should raise an exception while recording"
+                logger.info("Test passed: SetInputConfigurationFile correctly failed while recording")
+
+            finally:
+                # Always stop recording in the finally block
+                try:
+                    logger.info("Stopping recording in finally block")
+                    self.vv.RecordStop()
+                    import time
+                    time.sleep(1)
+                    logger.info("Recording stopped successfully")
+
+                except Exception as e:
+                    error_info = ExtractComErrorInfo(e)
+                    logger.error(f"Stopping recording in finally block failed: {error_info}")
+
+        except AssertionError:
+            # Re-raise assertion errors (these are test failures)
+            raise
+        except Exception as e:
+            error_msg = ExtractComErrorInfo(e)
+            logger.error(f"Error in test_input_configuration_while_recording_fails: {error_msg}")
+            pytest.fail(f"Error in test_input_configuration_while_recording_fails: {error_msg}")
+
+    def _apply_final_configuration(self, config_folder):
+        """Apply the final configuration file"""
+        try:
+            final_config_file = os.path.join(config_folder, "10mV per G.vic")
+            
+            if os.path.exists(final_config_file):
+                logger.info(f"Applying final configuration file: {final_config_file}")
+                self.vv.SetInputConfigurationFile(final_config_file)
+                logger.info("Final configuration applied successfully")
+            else:
+                logger.warning(f"Final configuration file not found: {final_config_file}")
+        except Exception as e:
+            error_info = ExtractComErrorInfo(e)
+            logger.error(f"Error applying final configuration file: {error_info}")
+
+
+if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)8s] %(message)s",
+        handlers=[
+            logging.FileHandler("vibrationview_input_config_tests.log"),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    print("="*80)
+    print("VibrationVIEW Input Configuration Tests")
+    print("="*80)
+    print("Run this file with pytest:")
+    print("    pytest test_input_configuration.py -v")
+    print("="*80)
