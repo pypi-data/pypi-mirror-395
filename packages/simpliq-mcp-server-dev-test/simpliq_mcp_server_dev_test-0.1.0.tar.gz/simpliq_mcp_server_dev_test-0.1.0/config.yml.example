@@ -1,0 +1,328 @@
+# ============================================================================
+# SimpliqData MCP Server - Configuration File
+# ============================================================================
+# This file contains all configuration options for the SimpliqData MCP Server.
+# Copy this file to 'config.yml' and adjust the settings as needed.
+
+# ============================================================================
+# DATABASE CONFIGURATION (Legacy Single-User Mode)
+# ============================================================================
+# Connection string for the default database (used in single-user mode)
+# Format: <dialect>+<driver>://<username>:<password>@<host>:<port>/<database>
+#
+# Examples:
+#   SQLite:      sqlite:///example.db
+#   PostgreSQL:  postgresql://user:password@localhost:5432/mydb
+#   MySQL:       mysql+pymysql://user:password@localhost:3306/mydb
+#   SQL Server:  mssql+pyodbc://user:password@host/db?driver=ODBC+Driver+17+for+SQL+Server
+connection_string: sqlite:///example.db
+
+# ============================================================================
+# SERVER CONFIGURATION
+# ============================================================================
+server:
+  # --------------------------------------------------------------------------
+  # HOST CONFIGURATION
+  # --------------------------------------------------------------------------
+  # The network interface the server will bind to
+  #
+  # Options:
+  #   127.0.0.1  - Local only (localhost). Server is only accessible from this machine
+  #   0.0.0.0    - All interfaces. Server is accessible from any network interface
+  #   <specific_ip> - Bind to a specific IP address
+  #
+  # Security Note: Use 127.0.0.1 for development, 0.0.0.0 for production with firewall
+  host: 0.0.0.0
+
+  # --------------------------------------------------------------------------
+  # PORT CONFIGURATION
+  # --------------------------------------------------------------------------
+  # The TCP port the server will listen on
+  #
+  # Common ports:
+  #   8000  - Default development port
+  #   8080  - Alternative HTTP port
+  #   443   - Standard HTTPS port (requires SSL and root/admin privileges)
+  #   5000  - Flask default port
+  #
+  # Note: Ports below 1024 require administrator/root privileges on most systems
+  port: 8000
+
+  # --------------------------------------------------------------------------
+  # DEBUG MODE
+  # --------------------------------------------------------------------------
+  # Enable Flask debug mode (detailed error messages, auto-reload)
+  #
+  # Options:
+  #   true   - Enable debug mode (DEVELOPMENT ONLY)
+  #   false  - Disable debug mode (RECOMMENDED FOR PRODUCTION)
+  #
+  # WARNING: Never enable debug mode in production! It exposes sensitive information
+  # and can be a security risk.
+  debug: false
+
+  # --------------------------------------------------------------------------
+  # SSL/HTTPS CONFIGURATION
+  # --------------------------------------------------------------------------
+  # Enable HTTPS encryption using SSL/TLS certificates
+  #
+  # Options:
+  #   true   - Enable SSL/HTTPS (requires valid certificate and key files)
+  #   false  - Use plain HTTP (no encryption)
+  ssl_enabled: false
+
+  # --------------------------------------------------------------------------
+  # SSL CERTIFICATE FILES
+  # --------------------------------------------------------------------------
+  # Paths to SSL certificate and private key files
+  # These are REQUIRED if ssl_enabled is true
+  #
+  # Supported formats:
+  #   - PEM format (most common, used by Let's Encrypt/Certbot)
+  #   - Absolute paths: /etc/letsencrypt/live/yourdomain.com/fullchain.pem
+  #   - Relative paths: ./certs/fullchain.pem (relative to mcp_server.py)
+  #
+  # Let's Encrypt (Certbot) default locations:
+  #   Certificate: /etc/letsencrypt/live/yourdomain.com/fullchain.pem
+  #   Private Key: /etc/letsencrypt/live/yourdomain.com/privkey.pem
+  #
+  # Windows paths (use forward slashes or double backslashes):
+  #   C:/certbot/live/yourdomain.com/fullchain.pem
+  #   C:\\certbot\\live\\yourdomain.com\\fullchain.pem
+  ssl_cert: /etc/letsencrypt/live/yourdomain.com/fullchain.pem
+  ssl_key: /etc/letsencrypt/live/yourdomain.com/privkey.pem
+
+  # --------------------------------------------------------------------------
+  # SERVER IDENTIFICATION
+  # --------------------------------------------------------------------------
+  # Server name and version (displayed in startup banner and API responses)
+  name: SimpliqData
+  version: 1.0.0
+
+
+  # ============================================================================
+  # NL→SQL / LLM CONFIGURATION
+  # ============================================================================
+  # Configure which LLM provider the server should use to translate natural
+  # language to SQL. You can also set these via environment variables.
+  #
+  # Supported providers: mock | openai | anthropic | gemini
+  #
+  # Environment variable override precedence:
+  #   SIMPLIQ_NL2SQL_PROVIDER takes precedence over this file.
+  #   Provider-specific env vars override values below.
+
+  nl2sql:
+    provider: mock  # mock | openai | anthropic | gemini
+
+    openai:
+      api_key: "sk-..."              # or set OPENAI_API_KEY env var
+      model: "gpt-4o-mini"
+      base_url: "https://api.openai.com"
+      temperature: 0.1
+      max_tokens: 800
+
+    anthropic:
+      api_key: "anth-sk-..."         # or set ANTHROPIC_API_KEY env var
+      model: "claude-3-5-sonnet-latest"
+      base_url: "https://api.anthropic.com"
+      temperature: 0.1
+      max_tokens: 800
+
+    gemini:
+      api_key: "AIza..."             # or set GEMINI_API_KEY (or GOOGLE_API_KEY)
+      model: "gemini-1.5-pro"
+      base_url: "https://generativelanguage.googleapis.com"
+      temperature: 0.1
+      max_tokens: 800
+
+
+# ============================================================================
+# CONFIGURATION EXAMPLES
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Example 1: Local Development (HTTP only)
+# ----------------------------------------------------------------------------
+# server:
+#   host: 127.0.0.1
+#   port: 8000
+#   debug: true
+#   ssl_enabled: false
+
+# ----------------------------------------------------------------------------
+# Example 2: Production Server with HTTPS (Let's Encrypt)
+# ----------------------------------------------------------------------------
+# server:
+#   host: 0.0.0.0
+#   port: 443
+#   debug: false
+#   ssl_enabled: true
+#   ssl_cert: /etc/letsencrypt/live/api.mydomain.com/fullchain.pem
+#   ssl_key: /etc/letsencrypt/live/api.mydomain.com/privkey.pem
+#   name: SimpliqData
+#   version: 1.0.0
+
+# ----------------------------------------------------------------------------
+# Example 3: Internal Network Server (HTTP, accessible from LAN)
+# ----------------------------------------------------------------------------
+# server:
+#   host: 0.0.0.0
+#   port: 8000
+#   debug: false
+#   ssl_enabled: false
+#   name: SimpliqData
+#   version: 1.0.0
+
+# ----------------------------------------------------------------------------
+# Example 4: Development with Custom Port
+# ----------------------------------------------------------------------------
+# server:
+#   host: 127.0.0.1
+#   port: 5000
+#   debug: true
+#   ssl_enabled: false
+#   name: SimpliqData-Dev
+#   version: 1.0.0-dev
+
+# ----------------------------------------------------------------------------
+# Example 5: HTTPS with Self-Signed Certificate (Testing)
+# ----------------------------------------------------------------------------
+# To generate self-signed certificate for testing:
+#   openssl req -x509 -newkey rsa:4096 -nodes \
+#     -keyout key.pem -out cert.pem -days 365 \
+#     -subj "/CN=localhost"
+#
+# server:
+#   host: 127.0.0.1
+#   port: 8443
+#   debug: false
+#   ssl_enabled: true
+#   ssl_cert: ./certs/cert.pem
+#   ssl_key: ./certs/key.pem
+#   name: SimpliqData
+#   version: 1.0.0
+
+# ----------------------------------------------------------------------------
+# Example 6: Production with Custom Port (behind reverse proxy)
+# ----------------------------------------------------------------------------
+# Use this when running behind nginx/Apache that handles SSL
+# server:
+#   host: 127.0.0.1
+#   port: 8080
+#   debug: false
+#   ssl_enabled: false
+#   name: SimpliqData
+#   version: 1.0.0
+
+
+# ============================================================================
+# OBTAINING SSL CERTIFICATES (Let's Encrypt / Certbot)
+# ============================================================================
+
+# Linux (Ubuntu/Debian):
+# 1. Install Certbot:
+#    sudo apt update
+#    sudo apt install certbot
+#
+# 2. Obtain certificate (standalone mode):
+#    sudo certbot certonly --standalone -d api.yourdomain.com
+#
+# 3. Certificate files will be created at:
+#    /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem
+#    /etc/letsencrypt/live/api.yourdomain.com/privkey.pem
+#
+# 4. Set permissions (if running as non-root user):
+#    sudo chmod 644 /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem
+#    sudo chmod 644 /etc/letsencrypt/live/api.yourdomain.com/privkey.pem
+#
+# 5. Auto-renewal (Certbot handles this automatically):
+#    sudo certbot renew --dry-run
+
+# Windows (with Certbot):
+# 1. Download Certbot for Windows from https://certbot.eff.org/
+# 2. Run in PowerShell (as Administrator):
+#    certbot certonly --standalone -d api.yourdomain.com
+# 3. Certificates will be created at:
+#    C:\Certbot\live\api.yourdomain.com\fullchain.pem
+#    C:\Certbot\live\api.yourdomain.com\privkey.pem
+
+# Reverse Proxy Setup (Recommended for Production):
+# Instead of using SSL directly in Flask, use a reverse proxy:
+# - nginx or Apache handles SSL/TLS
+# - SimpliqData runs on HTTP internally (e.g., port 8080)
+# - Reverse proxy forwards requests to SimpliqData
+# This is more secure and performant for production deployments.
+
+
+# ============================================================================
+# FIREWALL CONFIGURATION
+# ============================================================================
+
+# If ssl_enabled is true and you're using port 443:
+# Linux (ufw):
+#   sudo ufw allow 443/tcp
+#   sudo ufw allow 80/tcp  # If using HTTP redirect
+#
+# Linux (iptables):
+#   sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+#   sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+#
+# Windows Firewall:
+#   netsh advfirewall firewall add rule name="SimpliqData HTTPS" dir=in action=allow protocol=TCP localport=443
+
+
+# ============================================================================
+# SECURITY BEST PRACTICES
+# ============================================================================
+
+# 1. Always use HTTPS in production (ssl_enabled: true)
+# 2. Never enable debug mode in production (debug: false)
+# 3. Use strong SSL/TLS certificates (Let's Encrypt is free and recommended)
+# 4. Keep certificates up to date (Let's Encrypt auto-renews)
+# 5. Use a reverse proxy (nginx/Apache) for SSL termination in production
+# 6. Restrict host to 127.0.0.1 if not serving external traffic
+# 7. Use firewall rules to limit access to authorized IPs
+# 8. Regularly update SimpliqData and dependencies
+# 9. Monitor server logs for suspicious activity
+# 10. Use strong passwords for database connections
+
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+
+# Server won't start:
+#   - Check if port is already in use: netstat -ano | findstr :8000
+#   - Verify config.yml syntax (must be valid YAML)
+#   - Check SSL certificate paths exist and are readable
+
+# SSL errors:
+#   - Verify certificate files exist at specified paths
+#   - Check file permissions (must be readable by server process)
+#   - Ensure certificate is not expired: openssl x509 -in cert.pem -noout -dates
+#   - Test certificate: openssl verify -CAfile fullchain.pem fullchain.pem
+
+# Connection refused:
+#   - Check firewall rules allow the port
+#   - Verify host is 0.0.0.0 if accessing from external network
+#   - Ensure no other process is using the port
+
+# Permission denied (port < 1024):
+#   - Use sudo/admin to run server on ports < 1024
+#   - Or use a higher port number (8000, 8080, etc.)
+#   - Or use authbind (Linux) to grant specific port access
+
+
+# ============================================================================
+# ADDITIONAL RESOURCES
+# ============================================================================
+
+# Documentation:
+#   - README.md
+#   - docs/MULTI_USER_CLIENT_INTEGRATION.md
+#   - docs/README_MULTI_USER.md
+
+# Support:
+#   - GitHub Issues: https://github.com/yourusername/simpliq/issues
+#   - Documentation: ./docs/
