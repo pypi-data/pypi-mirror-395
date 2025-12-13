@@ -1,0 +1,57 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "g2opy"
+version = "2.2.0"
+description="g2o: A General Framework for Graph Optimization"
+readme = "README.md"
+authors = [
+  { name = "Rainer Kuemmerle", email = "rainer.kuemmerle@gmail.com" },
+]
+requires-python = ">=3.11"
+
+[tool.scikit-build]
+cmake.args = [
+  "-DBUILD_SHARED_LIBS:=Off",
+  "-DG2O_BUILD_PYTHON:=On",
+  "-DG2O_BUILD_APPS:=Off",
+  "-DG2O_BUILD_EXAMPLES:=Off",
+  "-DG2O_USE_OPENGL:=Off"
+]
+wheel.packages = ["python/g2opy"]
+messages.after-failure = "Build failed."
+build.targets = ["g2opy"]
+build.tool-args = ["-j4"]
+
+[[tool.scikit-build.overrides]]
+if.env.G2O_CACHE_BUILD = true
+build-dir = "/tmp/g2opy"
+
+[tool.cibuildwheel]
+build-frontend = "build[uv]"
+
+[tool.cibuildwheel.linux]
+before-build = "yum install -y eigen3-devel json-devel"
+
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux*"
+before-all = "apk add eigen nlohmann-json"
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_*"
+before-build = "brew install eigen nlohmann-json"
+
+# windows
+[[tool.scikit-build.overrides]]
+if.platform-system = "^win32"
+inherit.cmake.args = "append"
+cmake.args = [
+ "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+]
+build.tool-args = ["-maxcpucount:4"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*win*"
+before-all = "vcpkg --triplet x64-windows install eigen3 nlohmann-json"

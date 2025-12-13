@@ -1,0 +1,259 @@
+#include "py_optimizable_graph.h"
+
+#include <pybind11/native_enum.h>
+
+#include "g2o/core/eigen_types.h"
+#include "g2o/core/hyper_graph_action.h"  // IWYU pragma: keep
+#include "g2o/core/io/io_format.h"
+#include "g2o/core/jacobian_workspace.h"
+#include "g2o/core/optimizable_graph.h"
+#include "g2o/core/robust_kernel.h"  // IWYU pragma: keep
+
+namespace g2o {
+
+void declareOptimizableGraph(py::module& m) {
+  using CLS = OptimizableGraph;
+
+  py::classh<OptimizableGraph, HyperGraph> cls(m, "OptimizableGraph");
+
+  py::native_enum<CLS::ActionType>(cls, "ActionType", "enum.Enum")
+      .value("AT_PREITERATION", CLS::ActionType::kAtPreiteration)
+      .value("AT_POSTITERATION", CLS::ActionType::kAtPostiteration)
+      .value("AT_NUM_ELEMENTS", CLS::ActionType::kAtNumElements)
+      .export_values()
+      .finalize();
+
+  // typedef std::set<HyperGraphAction*>    HyperGraphActionSet;
+
+  py::classh<CLS::VertexIDCompare>(cls, "VertexIDCompare")
+      .def("__call__",
+           [](const CLS::Vertex* v1, const CLS::Vertex* v2) -> bool {
+             return v1->id() < v2->id();
+           });
+
+  py::classh<CLS::EdgeIDCompare>(cls, "EdgeIDCompare")
+      .def("__call__", [](const CLS::Edge* e1, const CLS::Edge* e2) -> bool {
+        return e1->internalId() < e2->internalId();
+      });
+
+  // typedef std::vector<OptimizableGraph::Vertex*>      VertexContainer;
+  // typedef std::vector<OptimizableGraph::Edge*>        EdgeContainer;
+
+  py::classh<CLS::Vertex, HyperGraph::Vertex, HyperGraph::DataContainer>(
+      cls, "OptimizableGraph_Vertex")
+      //.def(py::init<>())   // invalid new-expression of abstract class
+      .def(
+          "set_estimate_data",
+          [](CLS::Vertex& v, const VectorX& data) {
+            return v.setEstimateData(data);
+          },
+          "estimate"_a)
+      .def("get_estimate_data",
+           [](const CLS::Vertex& v) {
+             VectorX data;
+             const bool status = v.getEstimateData(data);
+             return status ? data : VectorX();
+           })
+
+      .def(
+          "set_minimal_estimate_data",
+          [](CLS::Vertex& v, const VectorX& data) {
+            return v.setMinimalEstimateData(data);
+          },
+          "estimate"_a, py::keep_alive<1, 2>())
+      .def("get_minimal_estimate_data",
+           [](const CLS::Vertex& v) {
+             VectorX data;
+             const bool status = v.getMinimalEstimateData(data);
+             return status ? data : VectorX();
+           })
+
+      .def("estimate_dimension",
+           &CLS::Vertex::estimateDimension)  // virtual, -> int
+      .def("estimate_dimension_at_compile_time",
+           &CLS::Vertex::estimateDimensionAtCompileTime)  // -> int
+      .def("minimal_estimate_dimension",
+           &CLS::Vertex::minimalEstimateDimension)  // virtual, -> int
+
+      //.def("oplus", &CLS::Vertex::oplus, "v"_a)  // const VectorX& -> void
+      .def("oplus",
+           [](CLS::Vertex& v, const VectorX& update) {
+             VectorX::MapType updateMap(const_cast<double*>(update.data()),
+                                        update.size());
+             v.oplus(updateMap);
+           })
+      .def("hessian_index", &CLS::Vertex::hessianIndex)  // -> int
+      .def("set_hessian_index", &CLS::Vertex::setHessianIndex,
+           "ti"_a)  // int -> void
+
+      .def("fixed", &CLS::Vertex::fixed)  // -> bool
+      .def("set_fixed", &CLS::Vertex::setFixed,
+           "fixed"_a)  // bool -> void
+
+      .def("marginalized", &CLS::Vertex::marginalized)  // -> bool
+      .def("set_marginalized", &CLS::Vertex::setMarginalized,
+           "marginalized"_a)  // bool -> void
+
+      .def("dimension", &CLS::Vertex::dimension)         // -> int
+      .def("set_dimension", &CLS::Vertex::setDimension)  // -> int
+      .def("set_id", &CLS::Vertex::setId,
+           "id"_a)                                        // int -> void
+      .def("col_in_hessian", &CLS::Vertex::colInHessian)  // -> int
+      .def("set_col_in_hessian", &CLS::Vertex::setColInHessian,
+           "c"_a)  // int -> void
+
+      .def("push", &CLS::Vertex::push)
+      .def("pop", &CLS::Vertex::pop)
+      .def("discard_top", &CLS::Vertex::discardTop)
+      .def("stack_size", &CLS::Vertex::stackSize)  // -> int
+
+      .def("solve_direct", &CLS::Vertex::solveDirect)
+      .def("clear_quadratic_form", &CLS::Vertex::clearQuadraticForm)
+      .def("lock_quadratic_form", &CLS::Vertex::lockQuadraticForm)
+      .def("unlock_quadratic_form", &CLS::Vertex::unlockQuadraticForm)
+      .def("update_cache", &CLS::Vertex::updateCache);
+
+  py::classh<CLS::Edge, HyperGraph::Edge, HyperGraph::DataContainer>(
+      cls, "OptimizableGraph_Edge")
+      //.def(py::init<>())
+      .def("set_measurement_data",
+           [](CLS::Edge& e, const VectorX& data) {
+             if (data.size() != e.measurementDimension()) return false;
+             return e.setMeasurementData(data.data());
+           })  // const double* -> bool
+      .def("get_measurement_data",
+           [](const CLS::Edge& e) {
+             VectorX data(e.measurementDimension());
+             const bool status = e.getMeasurementData(data.data());
+             return status ? data : VectorX();
+           })  // double * -> bool
+      .def("measurement_dimension", &CLS::Edge::measurementDimension)  // -> int
+      .def("measurement_dimension_at_compile_time",
+           &CLS::Edge::measurementDimensionAtCompileTime)
+      .def("minimal_measurement_dimension",
+           &CLS::Edge::minimalMeasurementDimension)
+      .def("construct_quadratic_form", &CLS::Edge::constructQuadraticForm)
+      .def("compute_error", &CLS::Edge::computeError)
+      .def("all_vertices_fixed", &CLS::Edge::allVerticesFixed)
+
+      .def("set_measurement_from_state",
+           &CLS::Edge::setMeasurementFromState)        // -> bool
+      .def("robust_kernel", &CLS::Edge::robustKernel)  // -> RobustKernelPtr
+      .def("set_robust_kernel", &CLS::Edge::setRobustKernel, "ptr"_a,
+           py::keep_alive<1, 2>())  // RobustKernel* -> void
+
+      .def("initial_estimate_possible", &CLS::Edge::initialEstimatePossible,
+           "from"_a,
+           "to"_a)  // (const OptimizableGraph::VertexSet&,
+                    // OptimizableGraph::VertexSet&) -> double
+      .def("initial_estimate", &CLS::Edge::initialEstimate, "from"_a, "to"_a)
+      .def("map_hessian_memory", &CLS::Edge::mapHessianMemory, "d"_a, "i"_a,
+           "j"_a, "row_mayor"_a)
+
+      .def("level", &CLS::Edge::level)  // -> int
+      .def("set_level", &CLS::Edge::setLevel,
+           "l"_a)                               // int -> void
+      .def("dimension", &CLS::Edge::dimension)  // -> int
+
+      .def("create_vertex", &CLS::Edge::createVertex)
+      .def("internal_id", &CLS::Edge::internalId)  // -> long long
+
+      .def("set_parameter_id", &CLS::Edge::setParameterId, "arg_num"_a,
+           "param_id"_a)  // (int, int) -> bool
+      .def("parameter", &CLS::Edge::parameter)
+      .def("num_parameters", &CLS::Edge::numParameters)
+      .def("param_ids", &CLS::Edge::parameterIds);
+
+  cls.def(py::init<>());
+  cls.def("vertex",
+          static_cast<std::shared_ptr<CLS::Vertex> (CLS::*)(int)>(&CLS::vertex),
+          "id"_a);  // int -> Vertex*
+
+  cls.def("add_vertex",
+          static_cast<bool (CLS::*)(const std::shared_ptr<HyperGraph::Vertex>&,
+                                    const std::shared_ptr<HyperGraph::Data>&)>(
+              &CLS::addVertex),
+          "v"_a, "user_data"_a, py::keep_alive<1, 2>(), py::keep_alive<2, 3>());
+  cls.def(
+      "add_vertex",
+      static_cast<bool (CLS::*)(const std::shared_ptr<HyperGraph::Vertex>&)>(
+          &CLS::addVertex),
+      "v"_a, py::keep_alive<1, 2>());
+  cls.def("remove_vertex", &CLS::removeVertex,
+          "v"_a);  // virtual, (Vertex*) -> bool
+
+  //   cls.def(
+  //       "add_edge",
+  //       (bool(CLS::*)(const std::shared_ptr<HyperGraph::Edge>&)) &
+  //       CLS::addEdge, "e"_a);
+  cls.def("add_edge",
+          static_cast<bool (CLS::*)(const std::shared_ptr<HyperGraph::Edge>&)>(
+              &CLS::addEdge),
+          "e"_a, py::keep_alive<1, 2>());
+
+  cls.def("set_edge_vertex", &CLS::setEdgeVertex, "e"_a, "pos"_a, "v"_a,
+          py::keep_alive<1, 2>(),
+          py::keep_alive<1, 4>());  // (HyperGraph::Edge*, int,
+                                    // HyperGraph::Vertex*) -> bool
+  cls.def("add_graph", &CLS::addGraph, "graph"_a,
+          py::keep_alive<1, 2>());               // -> void
+  cls.def("chi2", &CLS::chi2);                   // -> double
+  cls.def("max_dimension", &CLS::maxDimension);  // -> int
+  cls.def("dimensions", &CLS::dimensions);       // -> std::unordered_set<int>
+
+  cls.def("optimize", &CLS::optimize, "iterations"_a,
+          "online"_a = false);                     // (int, bool) -> int
+  cls.def("pre_iteration", &CLS::preIteration);    // int -> void
+  cls.def("post_iteration", &CLS::postIteration);  // int -> void
+
+  cls.def("add_pre_iteration_action", &CLS::addPreIterationAction, "action"_a,
+          py::keep_alive<1, 2>());  // HyperGraphAction* -> bool
+  cls.def("add_post_iteration_action", &CLS::addPostIterationAction, "action"_a,
+          py::keep_alive<1, 2>());  // HyperGraphAction* -> bool
+  cls.def("remove_pre_iteration_action", &CLS::removePreIterationAction,
+          "action"_a);  // HyperGraphAction* -> bool
+  cls.def("remove_post_iteration_action", &CLS::removePostIterationAction,
+          "action"_a);  // HyperGraphAction* -> bool
+
+  cls.def("push", static_cast<void (CLS::*)()>(&CLS::push));
+  cls.def("pop", static_cast<void (CLS::*)()>(&CLS::pop));
+  cls.def("discard_top", static_cast<void (CLS::*)()>(&CLS::discardTop));
+
+  cls.def("load",
+          static_cast<bool (CLS::*)(const char*, io::Format)>(&CLS::load),
+          "filename"_a, "format"_a = io::Format::kG2O);
+  cls.def("save",
+          static_cast<bool (CLS::*)(const char*, io::Format, int) const>(
+              &CLS::save),
+          "filename"_a, "format"_a = io::Format::kG2O, "level"_a = 0);
+
+  cls.def("set_fixed", &CLS::setFixed, "vset"_a, "fixes"_a,
+          py::keep_alive<1, 2>());  // (HyperGraph::VertexSet&, bool) -> void
+
+  cls.def("clear_parameters", &CLS::clearParameters);
+  cls.def("add_parameter", &CLS::addParameter, "p"_a,
+          py::keep_alive<1, 2>());  // Parameter* -> bool
+  cls.def("parameter", &CLS::parameter,
+          "id"_a);  // int -> Parameter*
+
+  cls.def("verify_information_matrices", &CLS::verifyInformationMatrices,
+          "verbose"_a = false);  // bool -> bool
+
+  cls.def_static("init_multi_threading", &CLS::initMultiThreading);
+  cls.def("jacobian_workspace",
+          static_cast<JacobianWorkspace& (CLS::*)()>(&CLS::jacobianWorkspace));
+  cls.def("recompute_jacobian_workspace_size",
+          &CLS::recomputeJacobianWorkspaceSize);
+  cls.def("hash", &CLS::hash, "include_estimates"_a);
+  // cls.def("parameters", (ParameterContainer& (CLS::*) ()) &CLS::parameters);
+
+  // saveSubset
+  // setRenamedTypesFromString
+  // isSolverSuitable
+  // saveVertex
+  // saveParameter
+  // saveEdge
+  // saveUserData
+}
+
+}  // namespace g2o
