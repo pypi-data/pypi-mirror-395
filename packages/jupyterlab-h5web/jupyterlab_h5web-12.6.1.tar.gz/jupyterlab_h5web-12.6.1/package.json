@@ -1,0 +1,105 @@
+{
+  "name": "jupyterlab-h5web",
+  "version": "12.6.1",
+  "description": "A JupyterLab extension to explore and visualize HDF5 file contents.",
+  "license": "MIT",
+  "homepage": "https://github.com/silx-kit/jupyterlab-h5web",
+  "keywords": [
+    "hdf5",
+    "nexus",
+    "h5web",
+    "h5grove",
+    "jupyter",
+    "jupyterlab",
+    "jupyterlab-extension"
+  ],
+  "author": {
+    "name": "European Synchrotron Radiation Facility",
+    "email": "h5web@esrf.fr"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/silx-kit/jupyterlab-h5web.git"
+  },
+  "bugs": {
+    "url": "https://github.com/silx-kit/jupyterlab-h5web/issues"
+  },
+  "engines": {
+    "node": "24.x",
+    "jlpm": "*"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "style": "style/index.css",
+  "sideEffects": [
+    "style/*.css"
+  ],
+  "files": [
+    "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+    "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
+  ],
+  "scripts": {
+    "build": "jlpm run build:lib && jlpm run build:labextension:dev",
+    "build:prod": "jlpm run clean && jlpm run build:lib && jlpm run build:labextension",
+    "build:labextension": "jupyter labextension build .",
+    "build:labextension:dev": "jupyter labextension build --development True --source-map True .",
+    "build:lib": "tsc --project tsconfig.build.json",
+    "clean": "jlpm run clean:lib",
+    "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
+    "clean:labextension": "rimraf jupyterlab_h5web/labextension",
+    "clean:all": "jlpm run clean:lib && jlpm run clean:labextension",
+    "lint": "run-p 'lint:*'",
+    "lint:eslint": "eslint --max-warnings=0",
+    "lint:tsc": "tsc",
+    "lint:prettier": "prettier --check .",
+    "watch": "run-p watch:src watch:labextension",
+    "watch:src": "tsc --project tsconfig.build.json --watch",
+    "watch:labextension": "jupyter labextension watch .",
+    "postversion": "git push && git push --tags"
+  },
+  "dependencies": {
+    "@h5web/app": "16.0.1",
+    "@jupyterlab/application": "^4.4.6",
+    "@jupyterlab/apputils": "^4.5.6",
+    "@jupyterlab/coreutils": "^6.4.6",
+    "@jupyterlab/docmanager": "^4.4.6",
+    "@jupyterlab/docregistry": "^4.4.6",
+    "@jupyterlab/filebrowser": "^4.4.6",
+    "@jupyterlab/launcher": "^4.4.6",
+    "@jupyterlab/rendermime": "^4.4.6",
+    "@jupyterlab/rendermime-interfaces": "^3.12.6",
+    "@jupyterlab/services": "^7.4.6",
+    "@jupyterlab/ui-components": "^4.4.6",
+    "@lumino/widgets": "^2.7.1",
+    "@react-hookz/web": "25.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@esrf/eslint-config": "1.6.1",
+    "@jupyterlab/builder": "^4.4.6",
+    "@types/node": "^24.10.1",
+    "@types/react": "^18.3.19",
+    "@types/react-dom": "^18.3.5",
+    "eslint": "9.38.0",
+    "mkdirp": "3.0.1",
+    "npm-run-all": "4.1.5",
+    "prettier": "3.6.2",
+    "rimraf": "6.1.0",
+    "typescript": "5.9.3"
+  },
+  "jupyterlab": {
+    "discovery": {
+      "server": {
+        "managers": [
+          "pip"
+        ],
+        "base": {
+          "name": "jupyterlab_h5web"
+        }
+      }
+    },
+    "extension": true,
+    "outputDir": "jupyterlab_h5web/labextension"
+  }
+}
