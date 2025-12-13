@@ -1,0 +1,142 @@
+{
+    "@odata.type": "#ComputerSystem.v1_13_0.ComputerSystem",
+    "Id": {{ identity|string|tojson }},
+    "Name": {{ name|string|tojson }},
+    "UUID": {{ uuid|string|tojson }},
+    {%- if feature_set == "full" %}
+    "Manufacturer": "Sushy Emulator",
+    "Status": {
+        "State": "Enabled",
+        "Health": "OK",
+        "HealthRollUp": "OK"
+    },
+    {% endif %}
+    {%- if power_state %}
+    "PowerState": {{ power_state|string|tojson }},
+    {%- endif %}
+    "Boot": {
+        {%- if boot_source_target %}
+        "BootSourceOverrideEnabled": "Continuous",
+        "BootSourceOverrideTarget": {{ boot_source_target|string|tojson }},
+        "BootSourceOverrideTarget@Redfish.AllowableValues": [
+            "Pxe",
+            "Cd",
+        {%- if boot_source_mode %}
+        {%- if uefi_mode %}
+            "Hdd",
+            "UefiHttp"
+        ],
+        "BootSourceOverrideMode": {{ boot_source_mode|string|tojson }},
+        "UefiTargetBootSourceOverride": "/0x31/0x33/0x01/0x01",
+        "HttpBootUri": {{ http_boot_uri|string|tojson }}
+        {%- else %}
+            "Hdd"
+        ],
+        "BootSourceOverrideMode": {{ boot_source_mode|string|tojson }}
+        {%- endif %}
+        {%- else %}
+            "Hdd"
+        ]
+        {%- endif %}
+        {%- else %}
+        "BootSourceOverrideEnabled": "Continuous"
+        {%- endif %}
+    },
+    {%- if feature_set == "full" %}
+    "ProcessorSummary": {
+        {%- if total_cpus %}
+        "Count": {{ total_cpus }},
+        {%- endif %}
+        "Status": {
+            "State": "Enabled",
+            "Health": "OK",
+            "HealthRollUp": "OK"
+        }
+    },
+    "MemorySummary": {
+        {%- if total_memory_gb %}
+        "TotalSystemMemoryGiB": {{ total_memory_gb }},
+        {%- endif %}
+        "Status": {
+            "State": "Enabled",
+            "Health": "OK",
+            "HealthRollUp": "OK"
+        }
+    },
+    {%- if bios_supported %}
+    "Bios": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/BIOS"|format(identity)|tojson }}
+    },
+    {%- endif %}
+    {%- if bios_version %}
+    "BiosVersion": {{ bios_version|string|tojson  }},
+    {%- endif %}
+    {%- if processors_supported %}
+    "Processors": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/Processors"|format(identity)|tojson }}
+    },
+    {%- endif %}
+    "Memory": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/Memory"|format(identity)|tojson }}
+    },
+    "SecureBoot": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/SecureBoot"|format(identity)|tojson }}
+    },
+    {%- if simple_storage_supported %}
+    "SimpleStorage": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/SimpleStorage"|format(identity)|tojson }}
+    },
+    {%- endif %}
+    "Storage": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/Storage"|format(identity)|tojson }}
+    },
+    {%- if indicator_led %}
+    "IndicatorLED": {{ indicator_led|string|tojson }},
+    {%- endif %}
+    {%- endif %}
+    {%- if feature_set != "minimum" %}
+    "EthernetInterfaces": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/EthernetInterfaces"|format(identity)|tojson }}
+    },
+    "VirtualMedia": {
+        "@odata.id": {{ "/redfish/v1/Systems/%s/VirtualMedia"|format(identity)|tojson }}
+    },
+    {%- endif %}
+    "Links": {
+        {%- if feature_set == "full" %}
+        "Chassis": [
+            {%- for chassis_ in chassis %}
+            {
+                "@odata.id": {{ "/redfish/v1/Chassis/%s"|format(chassis_)|tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor -%}
+        ],
+        {% endif %}
+        {%- if feature_set != "minimum" %}
+        "ManagedBy": [
+            {%- for manager in managers %}
+            {
+                "@odata.id": {{ "/redfish/v1/Managers/%s"|format(manager)|tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor -%}
+        ]
+        {% endif %}
+    },
+    "Actions": {
+        "#ComputerSystem.Reset": {
+            "target": {{ "/redfish/v1/Systems/%s/Actions/ComputerSystem.Reset"|format(identity)|tojson }},
+            "ResetType@Redfish.AllowableValues": [
+                "On",
+                "ForceOff",
+                "GracefulShutdown",
+                "GracefulRestart",
+                "ForceRestart",
+                "Nmi",
+                "ForceOn"
+            ]
+        }
+    },
+    "@odata.context": "/redfish/v1/$metadata#ComputerSystem.ComputerSystem",
+    "@odata.id": {{ "/redfish/v1/Systems/%s"|format(identity)|tojson }},
+    "@Redfish.Copyright": "Copyright 2014-2016 Distributed Management Task Force, Inc. (DMTF). For the full DMTF copyright policy, see http://www.dmtf.org/about/policies/copyright."
+}
