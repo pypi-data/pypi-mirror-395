@@ -1,0 +1,34 @@
+{#-
+# Authors: The scikit-plots developers
+# SPDX-License-Identifier: BSD-3-Clause
+
+# https://jinja.palletsprojects.com/en/stable/templates/
+# ~ operator is used for string concatenation in Jinja2.
+-#}
+{#- if version.split('+')[0] | trim == version -#} {#- endif -#}
+[
+  {
+    "name": "{{ dev_version | trim ~ " " ~ "(dev)" }}",
+    "version": "{{ dev_version.split('+')[0] | trim }}",
+    "url": "https://scikit-plots.github.io/dev/"
+  },
+  {%- set stable = '.'.join(stable_version.split('+')[0].split('.')[:3]) | trim %}
+  {
+    "name": "{{ stable | trim ~ " " ~ "(stable)" }}",
+    "version": "{{ stable }}",
+    "url": "https://scikit-plots.github.io/stable/",
+    "preferred": true
+  },
+  {%- set prev = '.'.join(prev_version.split('+')[0].split('.')[:3]) | trim %}
+  {
+    "name": "{{ prev | trim ~ " " ~ "(prev)" }}",
+    "version": "{{ prev }}",
+    "url": "{{ "https://scikit-plots.github.io/prev/" }}"
+  },
+  {%- set mini = '.'.join(mini_version.split('+')[0].split('.')[:3]) | trim %}
+  {
+    "name": "{{ mini | trim ~ " " ~ "(mini)" }}",
+    "version": "{{ mini }}",
+    "url": "https://scikit-plot.readthedocs.io/en/stable/#"
+  }
+]

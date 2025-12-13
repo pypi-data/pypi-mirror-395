@@ -1,0 +1,57 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+
+updates:
+  # Maintain dependencies for GitHub Actions as recommended in SPEC8:
+  # https://github.com/scientific-python/specs/pull/325
+  # At the time of writing, release critical workflows such as
+  # pypa/gh-action-pypi-publish should use hash-based versioning for security
+  # reasons. This strategy may be generalized to all other github actions
+  # in the future.
+  - package-ecosystem: github-actions # See documentation for possible values
+    directory: "/"    # ".github/workflows" Location of package manifests
+    schedule:
+      interval: daily                # daily, weekly, monthly
+      time: '11:11'
+    ignore:
+      - dependency-name: "bus1/cabuild"
+    commit-message:
+      prefix: "MAINT"
+    labels:
+      - "03 - Maintenance"
+      - "build/ci"
+      - "dependencies"
+      - "dev-automation"
+      - "github_actions"
+      - "maintenance"
+      - no-changelog-entry-needed
+    groups:
+      actions:
+        patterns:
+          - "*"
+    # cooldown:
+    #   default-days: 7
+    # reviewers:
+    #   - "scikit-plots/core-devs"
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+      time: '11:11'
+    ignore:
+      - dependency-name: "bus1/cabuild"
+    commit-message:
+      prefix: "MAINT"
+    labels:
+      - "03 - Maintenance"
+      - "build/ci"
+      - "dependencies"
+      - "maintenance"
+      - no-changelog-entry-needed
+    # reviewers:
+    #   - "scikit-plots/core-devs"

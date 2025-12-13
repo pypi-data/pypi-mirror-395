@@ -1,0 +1,101 @@
+# "Greetings"
+---
+name: "Issue-PR 🤖 Greetings"
+
+on:
+  issues:
+    types:
+    - opened
+    - edited
+  pull_request:
+    types: [opened, reopened, synchronize, edited]  # Triggers only on these events
+
+## simultaneity
+## This ensures that only one deployment to "production" can happen at a time.
+## If a new commit is pushed before the current job finishes, the in-progress job is canceled.
+concurrency:
+  ## Ensures that only one instance of this workflow runs per branch or PR at a time.
+  ## The 'group' key defines a unique concurrency group:
+  ## - github.workflow: Name of the workflow file.
+  ## - github.head_ref: (Only on pull_request) The name of the branch from which the PR was created (source branch). Example: "feature/add-login"
+  ## - github.run_id: (Always) A unique numeric ID for each run of a workflow. Useful as a fallback for uniqueness. Example: 6432789156
+  ## - github.ref: (Always) The full ref path of the branch or tag that triggered the workflow. Examples: For a push to a branch: "refs/heads/main" For a PR: "refs/pull/42/merge" For a tag: "refs/tags/v1.0.0"
+  ## - github.ref_name: (Always) Just the final part of the ref path (branch or tag name, does not exist for PRs). Examples: For a push to a branch: "main" For a tag: "v1.0.0"
+  ## This ensures: PRs use head_ref, Pushes/Tags use ref or ref_name, Fallback to run_id in edge cases
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref || github.run_id }}
+  ## If you push multiple times quickly, older runs would continue even though newer ones have started.
+  ## Canceling previous runs reduces resource usage and speeds up feedback.
+  ## If a new run is triggered for the same group, cancel the in-progress one.
+  cancel-in-progress: true
+
+# Restrict the permissions granted to the use of secrets.GITHUB_TOKEN in this
+# github actions workflow:
+# https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  contents: read        # Only read access to repository contents
+  pull-requests: write  # Full access to read and modify PRs (e.g., labels, comments)
+  issues: write         # Write access to issues (PRs are treated as issues)
+
+## Global environment variables (available to all jobs and steps)
+## Job-level environment variables (override global, scoped to this job)
+## Step-level environment variables (override job + global, scoped to this step)
+
+jobs:
+  greeting:
+    name: "Greeting Notifier"
+    runs-on: ubuntu-latest
+
+    # To enable this workflow on a fork, comment out:
+    if: github.repository == 'scikit-plots/scikit-plots'
+
+    steps:
+      - name: 'Greet First-Time Contributors'
+        uses: actions/first-interaction@34f15e814fe48ac9312ccf29db4e74fa767cbab7  # v1.3.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >+
+            Thank you for opening your first Issue into scikit-plots👋!
+
+            If you have not heard from us in a week or so, please leave a new
+            comment below and that should bring it to our attention.
+            Most of our reviewers are volunteers and sometimes things fall
+            through the cracks.
+
+            You can also join us:
+              - [on github](https://github.com/orgs/scikit-plots/discussions)
+              - [on gitter](https://gitter.im/scikit-plots/scikit-plots)
+            for real-time discussion.
+
+            For details on testing, writing docs, and our review process,
+            please see [the developer
+            guide](https://scikit-plots.github.io/dev/devel/index.html)
+
+            We strive to be a welcoming and open project. Please follow our
+            [Code of
+            Conduct](https://scikit-plots.github.io/dev/project/code_of_conduct.html).
+
+            GitHub issues in the scikit-plots repository are used to track bug
+            reports and feature requests; If your issue poses a question about
+            how to use scikit-plots, please instead raise your question in the
+            [on github](https://github.com/orgs/scikit-plots/discussions) and close
+            this issue.
+          pr-message: >+
+            Thank you for opening your first PR into scikit-plots👋!
+
+            If you have not heard from us in a week or so, please leave a new
+            comment below and that should bring it to our attention.
+            Most of our reviewers are volunteers and sometimes things fall
+            through the cracks.
+
+            You can also join us:
+              - [on github](https://github.com/orgs/scikit-plots/discussions)
+              - [on gitter](https://gitter.im/scikit-plots/scikit-plots)
+            for real-time discussion.
+
+            For details on testing, writing docs, and our review process,
+            please see [the developer
+            guide](https://scikit-plots.github.io/dev/devel/index.html)
+
+            We strive to be a welcoming and open project. Please follow our
+            [Code of
+            Conduct](https://scikit-plots.github.io/dev/project/code_of_conduct.html).
