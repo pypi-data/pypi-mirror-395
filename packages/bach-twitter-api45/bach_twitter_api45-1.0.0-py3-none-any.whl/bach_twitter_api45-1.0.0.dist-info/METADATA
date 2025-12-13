@@ -1,0 +1,711 @@
+Metadata-Version: 2.4
+Name: bach-twitter_api45
+Version: 1.0.0
+Summary: MCP server for accessing Twitter Api45 API
+Project-URL: Homepage, https://github.com/bachstudio/bach-twitter_api45
+Project-URL: Repository, https://github.com/bachstudio/bach-twitter_api45
+Project-URL: Documentation, https://github.com/bachstudio/bach-twitter_api45#readme
+Project-URL: Bug Tracker, https://github.com/bachstudio/bach-twitter_api45/issues
+Author: bachstudio
+License: MIT License
+        
+        Copyright (c) 2025 bachstudio
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: api,mcp,model-context-protocol,twitter_api45
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Twitter Api45 MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Twitter Api45 API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-twitter_api45`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Twitter Api45 API。
+
+- **PyPI 包名**: `bach-twitter_api45`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-twitter_api45
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-twitter_api45 bach_twitter_api45
+
+# 或指定版本
+uvx --from bach-twitter_api45@latest bach_twitter_api45
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-twitter_api45
+
+# 运行（命令名使用下划线）
+bach_twitter_api45
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-twitter_api45": {
+      "command": "uvx",
+      "args": ["--from", "bach-twitter_api45", "bach_twitter_api45"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-twitter_api45": {
+      "command": "uvx",
+      "args": ["--from", "bach-twitter_api45", "bach_twitter_api45"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `user_live`
+
+Checks if user is broadcasting something right now or not.
+
+**端点**: `GET /broadcast.php`
+
+
+**参数**:
+
+- `rest_id` (string) *必需*: Example value: 44196397
+
+
+
+---
+
+
+### `about_profile`
+
+Returns the information about the profile's registration and usage
+
+**端点**: `GET /about.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+
+
+---
+
+
+### `community_members`
+
+Gets the list of community members.
+
+**端点**: `GET /community_members.php`
+
+
+**参数**:
+
+- `community_id` (string) *必需*: Example value: 1506779564160258059
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `jobs_search`
+
+Search for the jobs on x.com/jobs
+
+**端点**: `GET /jobs.php`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: developer
+
+
+
+---
+
+
+### `communities_posts_search_latest`
+
+Search for the Latest posts in communities
+
+**端点**: `GET /search_communities_latest.php`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: superman
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `communities_posts_search_top`
+
+Search for the posts in communities post order top.
+
+**端点**: `GET /search_communities_top.php`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: superman
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `communities_search`
+
+Search for the communities on the X
+
+**端点**: `GET /search_communities.php`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: superman
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `followers`
+
+Get latest user's followers list
+
+**端点**: `GET /followers.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+- `cursor` (string): Example value: 
+
+- `blue_verified` (string): Example value: 
+
+
+
+---
+
+
+### `user_info`
+
+Using this method you can get information about user by the screenname.
+
+**端点**: `GET /screenname.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+- `rest_id` (string): Twitter user's id. This parameter overwrites screenname parameter.
+
+
+
+---
+
+
+### `users_media`
+
+Helps to get a user's media
+
+**端点**: `GET /usermedia.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+- `rest_id` (string): Example value: 
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `profiles_by_restids`
+
+Returns an array of users by their rest_ids.
+
+**端点**: `GET /screennames.php`
+
+
+**参数**:
+
+- `rest_ids` (string) *必需*: Example value: 44196397,34743251
+
+
+
+---
+
+
+### `user_timeline`
+
+This endpoint gets lates user's tweets by it's screenname.
+
+**端点**: `GET /timeline.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+- `rest_id` (string): Optional parameter that overwrites the screename. Screename could be a random string if this user id is passed.
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `comunity_posts`
+
+Returns the posts from the community.
+
+**端点**: `GET /community_timeline.php`
+
+
+**参数**:
+
+- `community_id` (string) *必需*: Example value: 1783990533192651232
+
+- `cursor` (string): Example value: 
+
+- `ranking` (string): Example value: 
+
+
+
+---
+
+
+### `list_followers`
+
+Get the followers of the list on Twitter / X
+
+**端点**: `GET /list_followers.php`
+
+
+**参数**:
+
+- `list_id` (string) *必需*: Example value: 1177128103228989440
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `list_members`
+
+Get the members of the list on Twitter / X
+
+**端点**: `GET /list_members.php`
+
+
+**参数**:
+
+- `list_id` (string) *必需*: Example value: 1177128103228989440
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `list_timeline`
+
+With this endpoint you can get the timeline of the lists.
+
+**端点**: `GET /listtimeline.php`
+
+
+**参数**:
+
+- `list_id` (string) *必需*: Example value: 1343798673386434560
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `user_replies`
+
+Gets user's replies of the user.
+
+**端点**: `GET /replies.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: 
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `spaces_info`
+
+Give you the basic information about the spaces.
+
+**端点**: `GET /spaces.php`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: 1yoJMwpbmaXKQ
+
+
+
+---
+
+
+### `search`
+
+WARNING: The Search endpoint is rate limited for new customers to 60 requests/minute. Please contact me if you need a higher limit. Email: alexander.xbx@gmail.com
+
+**端点**: `GET /search.php`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: cybertruck
+
+- `cursor` (string): Example value: 
+
+- `search_type` (string): Example value: 
+
+
+
+---
+
+
+### `latest_replies`
+
+Gets the latest replies of the tweet.
+
+**端点**: `GET /latest_replies.php`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: 1738106896777699464
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `check_follow`
+
+This endpoint get latest subscriptins of the user and latest followers for the target account. And checks if user follows the needed account.  WARNING: might not be suitable for big accounts or old subscriptions.
+
+**端点**: `GET /checkfollow.php`
+
+
+**参数**:
+
+- `user` (string) *必需*: Example value: 
+
+- `follows` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `tweet_info`
+
+With this endpoint you can get tweet info by it's id.
+
+**端点**: `GET /tweet.php`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: 1671370010743263233
+
+
+
+---
+
+
+### `tweet_thread`
+
+Gets the basic tweet info and the replies to it.
+
+**端点**: `GET /tweet_thread.php`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: 1738106896777699464
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `check_retweet`
+
+This endpoint get latest tweets of the user and checks if there is a retweet of the needed tweet.  WARNING: might not be suitable for old retweets.
+
+**端点**: `GET /checkretweet.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: 
+
+- `tweet_id` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `trends`
+
+Please let me know if you need other countries in the list.
+
+**端点**: `GET /trends.php`
+
+
+**参数**:
+
+- `country` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `affilates`
+
+Give you the list of affilates for the corporate account.
+
+**端点**: `GET /affilates.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: x
+
+- `cursor` (string): Example value: 
+
+
+
+---
+
+
+### `retweets`
+
+Get the list of of users who retweeted the tweet.
+
+**端点**: `GET /retweets.php`
+
+
+**参数**:
+
+- `id` (string) *必需*: Example value: 1700199139470942473
+
+- `cursor` (string): The value of the next_cursor field in the response. Example value: HBaE2pGdj9GLqjEAAA==
+
+
+
+---
+
+
+### `following`
+
+Get the list of accounts user is following.
+
+**端点**: `GET /following.php`
+
+
+**参数**:
+
+- `screenname` (string) *必需*: Example value: elonmusk
+
+- `cursor` (string): Example value: 
+
+- `rest_id` (string): Example value: 
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
