@@ -1,0 +1,101 @@
+[project]
+name = "cobjectric"
+version = "1.0.1"
+description = "Complex Object Metric - A library for measuring complexity of Python objects"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Nigiva", email = "contact@nigiva.com" }]
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+keywords = ["metrics", "json", "comparison", "machine-learning", "evaluation"]
+dependencies = [
+    "rapidfuzz>=3.14.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/nigiva/cobjectric"
+Documentation = "https://github.com/nigiva/cobjectric#readme"
+Repository = "https://github.com/nigiva/cobjectric.git"
+Issues = "https://github.com/nigiva/cobjectric/issues"
+
+[dependency-groups]
+dev = [
+    "notebook>=7.4.7",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "mypy>=1.14.1",
+    "ruff>=0.14.3",
+    "typos>=1.39.0",
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "invoke>=2.2.0",
+    "rich>=13.9.4",
+    "pre-commit>=4.0.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+plugins = []
+disable_error_code = ["import-untyped"]
+exclude = '\.venv|\.git|.*\.ipynb|\.github/scripts'
+
+[tool.isort]
+profile = "black"
+skip_glob = ["*.ipynb"]
+extend_skip = [".venv", ".git", "__pycache__", ".github/scripts"]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+extend-exclude = '''
+/(
+    \.venv
+  | \.git
+  | \.github/scripts
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.ruff_cache
+  | __pycache__
+  | build
+  | dist
+  | .*\.ipynb
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src/cobjectric --cov-report=html --cov-report=term-missing"
+
+[tool.coverage.run]
+relative_files = true
+source = ["src"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/.venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+skip_covered = true
+show_missing = false
