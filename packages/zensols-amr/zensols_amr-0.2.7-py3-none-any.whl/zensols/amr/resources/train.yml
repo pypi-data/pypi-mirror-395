@@ -1,0 +1,115 @@
+# @meta {desc: 'configuration used to train new models', date: '2024-02-03'}
+
+
+## Corpus preparers
+#
+# little prince
+amr_prep_lp_corp_resource:
+  class_name: zensols.install.Resource
+  url: '${amr_anon_default:isi_down_url}/amr-bank-struct-v3.0.txt'
+  name: null
+  clean_up: true
+
+amr_prep_lp_corp_installer:
+  class_name: zensols.install.Installer
+  base_directory: 'path: ${amr_trainer_default:corpus_raw_dir}'
+  resources: 'instance: list: amr_prep_lp_corp_resource'
+
+amr_prep_lp_corp_prepper:
+  class_name: zensols.amr.corpprep.SingletonCorpusPrepper
+  name: little-prince
+  installer: 'instance: amr_prep_lp_corp_installer'
+  dev_portion: 0.15
+
+
+# Bio AMR
+amr_prep_bio3_corp_resource:
+  class_name: zensols.install.Resource
+  url: '${amr_anon_default:isi_down_url}/2018-01-25/amr-release-bio-v3.0.txt'
+  name: null
+  clean_up: true
+
+amr_prep_bio3_corp_installer:
+  class_name: zensols.install.Installer
+  base_directory: 'path: ${amr_trainer_default:corpus_raw_dir}'
+  resources: 'instance: list: amr_prep_bio3_corp_resource'
+
+amr_prep_bio3_corp_prepper:
+  class_name: zensols.amr.corpprep.SingletonCorpusPrepper
+  name: bio3
+  installer: 'instance: amr_prep_bio3_corp_installer'
+  dev_portion: 0.15
+
+
+
+# AMR 3.0 release
+amr_prep_rel3_corp_resource:
+  class_name: zensols.install.Resource
+  url: 'file:download/amr_annotation_3.0_LDC2020T02.tgz'
+  name: amr_annotation_3.0
+  sub_path: data/amrs/split
+  check_path: amr_annotation_3.0
+  clean_up: true
+
+amr_prep_rel3_corp_installer:
+  class_name: zensols.install.Installer
+  base_directory: 'path: ${amr_trainer_default:corpus_raw_dir}'
+  resources: 'instance: list: amr_prep_rel3_corp_resource'
+
+amr_prep_rel3_corp_prepper:
+  class_name: zensols.amr.corpprep.AmrReleaseCorpusPrepper
+  name: amr-release-3
+  installer: 'instance: amr_prep_rel3_corp_installer'
+
+amr_prep_manager:
+  class_name: zensols.amr.corpprep.CorpusPrepperManager
+  stage_dir: 'path: ${amr_trainer_default:corpus_stage_dir}'
+  key_splits: 'path: ${amr_trainer_default:corpus_stage_dir}/../corpus-splits.json'
+  # all corpora, including the AMR 3.0 corpus (add to root level 'download' directory)
+  preppers: 'instance: tuple: amr_prep_lp_corp_prepper, amr_prep_bio3_corp_prepper, amr_prep_rel3_corp_prepper'
+  # for testing: only enable the (small) little prince corpus
+  #preppers: 'instance: tuple: amr_prep_lp_corp_prepper'
+
+
+### Corpus trainers
+#
+amr_parse_xfm_trainer:
+  class_name: zensols.amr.trainer.XfmTrainer
+  corpus_prep_manager: 'instance: amr_prep_manager'
+  model_installer: 'instance: amr_parse_${amr_default:parse_model}_installer'
+  model_name: '${amr_trainer_default:model_name}'
+  temporary_dir: 'path: ${amr_trainer_default:temporary_dir}/${model_name}'
+  output_model_dir: 'path: ${amr_trainer_default:output_model_dir}'
+  package_dir: 'path: ${amr_trainer_default:package_dir}'
+
+amr_parse_t5_trainer:
+  class_name: zensols.amr.trainer.T5Trainer
+  corpus_prep_manager: 'instance: amr_prep_manager'
+  model_installer: 'instance: amr_parse_${amr_default:parse_model}_installer'
+  model_name: '${amr_trainer_default:model_name}'
+  temporary_dir: 'path: ${amr_trainer_default:temporary_dir}/${model_name}'
+  output_model_dir: 'path: ${amr_trainer_default:output_model_dir}'
+  package_dir: 'path: ${amr_trainer_default:package_dir}'
+
+amr_parse_spring_trainer:
+  class_name: zensols.amr.trainer.SpringTrainer
+  corpus_prep_manager: 'instance: amr_prep_manager'
+  model_installer: 'instance: amr_parse_${amr_default:parse_model}_installer'
+  model_name: '${amr_trainer_default:model_name}'
+  temporary_dir: 'path: ${amr_trainer_default:temporary_dir}/${model_name}'
+  output_model_dir: 'path: ${amr_trainer_default:output_model_dir}'
+  package_dir: 'path: ${amr_trainer_default:package_dir}'
+
+amr_generate_t5wtense_trainer:
+  class_name: zensols.amr.trainer.T5WithTenseGeneratorTrainer
+  corpus_prep_manager: 'instance: amr_prep_manager'
+  model_installer: 'instance: amr_generate_${amr_default:generate_model}_installer'
+  model_name: '${amr_trainer_default:model_name}'
+  temporary_dir: 'path: ${amr_trainer_default:temporary_dir}/${model_name}'
+  output_model_dir: 'path: ${amr_trainer_default:output_model_dir}'
+  package_dir: 'path: ${amr_trainer_default:package_dir}'
+  nltk_lib_dir: 'path: ${default:temporary_dir}/nltk'
+  # relative path to the corpus prepared extracted files
+  annotate_dir: >-
+    eval: Path('${default:temporary_dir}/corp/stage/../gen-annotate').resolve().\
+          relative_to(Path('${default:root_dir}').absolute())

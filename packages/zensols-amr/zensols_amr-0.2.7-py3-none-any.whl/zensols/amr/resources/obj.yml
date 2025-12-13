@@ -1,0 +1,83 @@
+# @meta {desc: 'AMR API resource library', date: '2024-01-20'}
+
+
+## spaCy pipeline components
+#
+# spaCy pipeline component to parse AMR and add as an attribute to `Doc`s
+amr_parser_component:
+  class_name: zensols.nlp.Component
+  modules: 'list: zensols.amr.model'
+  pipe_name: 'amr_parser'
+  pipe_config:
+    parser_name: '${amr_default:amr_parser}'
+  # set the doc parser (via passed spaCy language model) to AmrParser
+  initializers: 'instance: tuple: ${amr_default:amr_parser}'
+
+# amrlib models
+amr_parser_amrlib:
+  class_name: zensols.amr.amrlib.AmrlibParser
+  installer: 'instance: amr_parse_${amr_default:parse_model}_installer'
+
+
+## Client usable objects
+#
+# generate English from AMR graphs
+amr_generator_amrlib:
+  class_name: zensols.amr.amrlib.AmrlibGenerator
+  installer: 'instance: amr_generate_${amr_default:generate_model}_installer'
+
+split_hyphen_token_mapper:
+  class_name: zensols.nlp.SplitTokenMapper
+  regex: "r'([-])'"
+
+# split entity tokens for alignment and feature annotation (see amr_base_doc_parser)
+amr_map_filter_token_normalizer:
+  class_name: zensols.nlp.MapTokenNormalizer
+  embed_entities: false
+  mapper_class_list:
+    - filter_token_mapper
+
+# used to parse and populate AMR graphs
+amr_pipeline_doc_parser:
+  class_name: zensols.nlp.sparser.SpacyFeatureDocumentParser
+  token_normalizer: 'instance: amr_map_filter_token_normalizer'
+  doc_class: 'class: zensols.amr.AmrFeatureDocument'
+  sent_class: 'class: zensols.amr.AmrFeatureSentence'
+  components: 'instance: list: amr_parser_component'
+  model_name: en_core_web_md
+  auto_install_model: true
+  reload_components: true
+
+# used for parsing human annotated AMR graphs with ``snt`` metadata, which is
+# useful for scoring
+amr_human_anon_doc_parser:
+  class_name: zensols.nlp.sparser.SpacyFeatureDocumentParser
+  token_normalizer: 'instance: amr_map_filter_token_normalizer'
+  doc_class: 'class: zensols.amr.AmrFeatureDocument'
+  sent_class: 'class: zensols.amr.AmrFeatureSentence'
+  components: 'instance: list: remove_sent_boundaries_component, amr_parser_component'
+  model_name: en_core_web_md
+  auto_install_model: true
+  reload_components: true
+
+# base document parser that splits on entities; this (token normalizer)
+# document parser instance is configured with embedded entities turned off so
+# whitespace delimited tokens match with the alignments
+amr_base_doc_parser:
+  class_name: zensols.amr.docfac.EntityCopySpacyFeatureDocumentParser
+  token_normalizer: 'instance: amr_map_filter_token_normalizer'
+  model_name: en_core_web_md
+  auto_install_model: true
+
+# creates feature docs from amr docs
+amr_feature_doc_factory:
+  class_name: zensols.amr.docfac.AmrFeatureDocumentFactory
+  doc_parser: 'instance: amr_base_doc_parser'
+
+
+## Plotting and writing
+#
+amr_dumper:
+  class_name: zensols.amr.dumper.GraphvizDumper
+  target_dir: 'path: ${amr_default:report_dir}'
+  overwrite_dir: true
