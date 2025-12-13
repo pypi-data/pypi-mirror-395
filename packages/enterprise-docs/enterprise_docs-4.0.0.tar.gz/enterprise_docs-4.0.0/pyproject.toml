@@ -1,0 +1,132 @@
+[build-system]
+requires = [
+  "setuptools>=70",
+  "setuptools_scm[toml]>=8",  # ✅ Dynamic versioning via Git tags
+  "wheel>=0.41",
+  "build>=1.2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-docs"
+version = "4.0.0"
+description = "Unified enterprise documentation suite for Dhruv13x organization — providing policy, compliance, and automation templates for enterprise-grade Python projects."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Dhruv", email = "dhruv13x@gmail.com" }
+]
+maintainers = [
+  { name = "Dhruv", email = "dhruv13x@gmail.com" }
+]
+keywords = [
+  "documentation",
+  "policy",
+  "templates",
+  "enterprise",
+  "compliance",
+  "automation"
+]
+dependencies = [
+  "rich>=13.0",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Documentation",
+  "Topic :: Software Development :: Quality Assurance",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed"
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=5.0.0",
+  "pytest-timeout>=2.2.0",
+  "pytest-json-report>=1.5.0",
+  "pytest-asyncio>=0.23.0",
+  "pytest-mock>=3.10.0",
+  "pyfakefs>=5.0.0",
+  "ruff>=0.6.0",
+  "black>=24.3.0",
+  "mypy>=1.11.0",
+  "PyYAML>=6.0",
+  "types-PyYAML>=6.0"
+]
+docs = [
+  "sphinx>=7.0",
+  "sphinx-rtd-theme>=2.0"
+]
+test = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0"
+]
+
+[project.scripts]
+enterprise-docs = "enterprise_docs.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dhruv13x/enterprise-docs"
+Repository = "https://github.com/dhruv13x/enterprise-docs.git"
+Documentation = "https://github.com/dhruv13x/enterprise-docs/tree/main/docs"
+Issues = "https://github.com/dhruv13x/enterprise-docs/issues"
+Changelog = "https://github.com/dhruv13x/enterprise-docs/blob/main/CHANGELOG.md"
+"Release Notes" = "https://github.com/dhruv13x/enterprise-docs/releases"
+
+[tool.pytest.ini_options]
+# All projects use src/ layout
+pythonpath = ["src"]
+
+# All tests live under tests/
+testpaths = ["tests"]
+
+# Async projects are common in your stack
+asyncio_mode = "auto"
+
+# Global pytest options
+addopts = [
+  "-v",
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+  "--tb=short",
+  "--showlocals",
+  "--import-mode=importlib",
+
+  # Time & perf
+  "--timeout=10",
+  "--durations=10",
+
+  # Coverage: target the real package
+  "--cov=src/enterprise_docs",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=html",
+  "--cov-report=xml",
+  "--cov-fail-under=85",
+]
+
+log_cli = true
+log_cli_level = "INFO"
+
+[tool.coverage.run]
+branch = true
+source = ["src/enterprise_docs"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
