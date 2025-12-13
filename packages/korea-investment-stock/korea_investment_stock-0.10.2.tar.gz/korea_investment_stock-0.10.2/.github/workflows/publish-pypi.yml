@@ -1,0 +1,91 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # v0.8.1, v1.0.0 등의 태그에만 트리거
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools-scm이 git 히스토리 필요
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          pytest korea_investment_stock/ -v \
+            --ignore=korea_investment_stock/test_korea_investment_stock.py \
+            --ignore=korea_investment_stock/test_integration_us_stocks.py \
+            --ignore=korea_investment_stock/cache/test_cached_integration.py \
+            -k "not (Redis or redis_storage or TestTokenStorageIntegration)"
+
+  build-and-publish:
+    name: Build and Publish to PyPI
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools-scm이 git 히스토리 필요
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine setuptools-scm
+
+      - name: Verify version from tag
+        run: |
+          # Tag에서 버전 추출 (v0.8.1 → 0.8.1)
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag version: $TAG_VERSION"
+
+          # setuptools-scm이 추출한 버전 확인
+          python -m setuptools_scm
+
+      - name: Build package
+        run: |
+          # 이전 빌드 정리
+          rm -rf dist/ build/ *.egg-info
+
+          # 패키지 빌드 (setuptools-scm이 자동으로 버전 설정)
+          python -m build
+
+          # 빌드 결과 확인
+          ls -lh dist/
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
