@@ -1,0 +1,150 @@
+"""Module for the CLI of the lazylog package.
+
+This module implements the command-line interface (CLI) for the lazylog package, specifically providing a tool to detect
+and optionally fix the use of f-strings in Python logging calls. The main goal is to enforce best practices by
+converting f-strings in log statements to the percent-format style, which is recommended for logging in Python to avoid
+unnecessary string interpolation when the log level is not enabled.
+
+The CLI can be used to scan one or more files, report any found f-strings in logging calls, and optionally rewrite the
+files to use percent-format strings instead. It also provides version information and basic error handling.
+
+Example usage:
+    # Check all Python files in the current directory and subdirectories
+    python -m lazy_log.cli
+
+    # Check all Python files in two directories
+    python -m lazy_log.cli lazy_log/ tests/data/
+
+    # Fix issues in all Python files in a directory
+    python -m lazy_log.cli mydir --fix
+
+    # Exclude specific files or directories
+    python -m lazy_log.cli mydir --exclude "*.pyc" "__pycache__/*"
+"""
+
+import argparse
+import contextlib
+import logging
+import sys
+from pathlib import Path, PurePosixPath
+
+from lazy_log.constants import PROG_NAME, VENV_DIRS
+from lazy_log.transformer import Transformer
+from lazy_log.utils import get_version, prepare_exclude_patterns, print_with_fallback
+
+logger = logging.getLogger(__name__)
+
+
+def process_file(file_path: Path | str, fix: bool, check_import: bool = False) -> int:
+    """Process a file to find and optionally fix f-strings in log lines.
+
+    Args:
+        file_path: Path to the file to process.
+        fix: If True, attempt to fix the f-strings found in the file.
+        check_import: If True, check if the logging module is imported in the file.
+
+    Returns:
+        Returns 0 if no issues were found or fixed, otherwise returns 1.
+    """
+    file_path = Path(file_path)
+    if not file_path.is_file():
+        return 1
+    with file_path.open("r", encoding="utf-8") as file:
+        content = file.read()
+    transformer = Transformer(file_path, check_import=check_import)
+    transformed_content = transformer.run(content)
+    if content == transformed_content or not transformer.issues:
+        return 0
+    if fix:
+        with file_path.open("w", encoding="utf-8") as file:
+            file.write(transformed_content)
+        print(f"F-strings found and fixed in '{file_path}'.")
+    elif transformer.issues:
+        print(f"F-strings found in '{file_path}':")
+        for issue in transformer.issues:
+            print(f"  - {issue}")
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for the CLI.
+
+    Args:
+        argv: List of command-line arguments.
+
+    Returns:
+        Returns 0 if the conversion is successful, otherwise returns 1.
+    """
+    parser = argparse.ArgumentParser(prog=PROG_NAME)
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        default=["."],
+        help="One or more directories or files to process. Defaults to current directory if not specified.",
+    )
+    parser.add_argument("--fix", help="Fix issues found in file.", action="store_true")
+    parser.add_argument(
+        "--exclude",
+        nargs="*",
+        default=[],
+        help="Exclude files or directories matching these patterns.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {get_version()}",
+    )
+    args = parser.parse_args(argv)
+
+    all_files: set[Path] = set()
+    exclude_patterns = prepare_exclude_patterns(args.exclude)
+
+    def is_in_venv(path: Path) -> bool:
+        parts = set(path.parts)
+        return any(venv in parts for venv in VENV_DIRS)
+
+    def is_excluded(path: Path, root: Path) -> bool:
+        candidates = [path.as_posix()]
+        with contextlib.suppress(ValueError):
+            candidates.append(path.relative_to(root).as_posix())
+        return any(
+            PurePosixPath(candidate).match(pattern)
+            for candidate in candidates
+            for pattern in exclude_patterns
+        )
+
+    for path_str in args.paths:
+        input_path = Path(path_str)
+        if input_path.is_file():
+            resolved_path = input_path.resolve()
+            root = resolved_path.parent
+            if not is_in_venv(resolved_path) and not is_excluded(resolved_path, root):
+                all_files.add(resolved_path)
+        elif input_path.is_dir():
+            root = input_path.resolve()
+            for file_path in root.glob("**/*.py"):
+                resolved_path = file_path.resolve()
+                if not is_in_venv(resolved_path) and not is_excluded(
+                    resolved_path,
+                    root,
+                ):
+                    all_files.add(resolved_path)
+        else:
+            print(
+                f"Warning: '{path_str}' is not a valid file or directory and will be ignored.",
+                file=sys.stderr,
+            )
+
+    filenames = [str(f) for f in sorted(all_files)]
+    logger.debug("Files to be processed: %s", len(filenames))
+    results = sum(process_file(filename, fix=args.fix) == 1 for filename in filenames)
+    if filenames and results == 0:
+        message = (
+            f"🚀 Scanned {len(filenames)} files, no f-strings in logging calls found."
+        )
+        print_with_fallback(message)
+    return 1 if results else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
