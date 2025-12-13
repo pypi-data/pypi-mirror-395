@@ -1,0 +1,84 @@
+[project]
+name = "zero-spinner"
+version = "0.1.1"
+description = "A zero dependency spinner"
+readme = "README.md"
+requires-python = ">=3.11, <4"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+]
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.17",
+]
+lint = [
+    "ruff>=0.14.3",
+    "ty>=0.0.1a25",
+]
+test = [
+    "click>=8.3.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["yeeti*"]
+exclude = ["yeeti.examples*"]
+
+[project.urls]
+Homepage = "https://github.com/matteozambon89/python-zero-spinner"
+Changelog = "https://github.com/matteozambon89/python-zero-spinner/releases"
+Issues = "https://github.com/matteozambon89/python-zero-spinner/issues"
+CI = "https://github.com/matteozambon89/python-zero-spinner/actions"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+include = ["src/**/*.py"]
+exclude = [".git", ".venv"]
+
+[tool.ruff.format]
+preview = true
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+preview = true
+select = ["N", "D", "DOC", "E", "W", "F", "I", "B", "C4", "ARG", "COM", "SIM", "CPY"]
+extend-select = ["D417", "D416", "D400", "W291", "W292", "W293"]
+ignore = ["D202", "COM818", "D104"]
+pydocstyle.convention = "google"
+
+[tool.ruff.lint.isort]
+lines-after-imports = -1
+section-order = ["future", "standard-library", "test", "third-party", "first-party", "yeeti", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+test = ["pytest"]
+yeeti = ["yeeti"]
+
+[tool.ruff.lint.flake8-copyright]
+author = "Yeeti"
+
+[tool.pytest.ini_options]
+console_output_style = "progress"
+python_files = ["*_test.py"]
+python_functions = "test_*"
+pythonpath = "src"
+addopts = "--cov=yeeti --cov-report html"
