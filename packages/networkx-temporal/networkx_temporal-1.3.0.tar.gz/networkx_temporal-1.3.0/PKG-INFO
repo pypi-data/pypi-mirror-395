@@ -1,0 +1,127 @@
+Metadata-Version: 2.4
+Name: networkx-temporal
+Version: 1.3.0
+Summary: Python package to build and manipulate dynamic NetworkX graphs.
+Author-email: Nelson Aloysio Reis de Almeida Passos <nelson.reis@phd.unipi.it>
+Project-URL: Homepage, https://pypi.org/p/networkx-temporal/
+Project-URL: Documentation, https://networkx-temporal.readthedocs.readwrite
+Project-URL: Repository, https://github.com/nelsonaloysio/networkx-temporal
+Project-URL: Issues, https://github.com/nelsonaloysio/networkx-temporal/issues
+Project-URL: Changelog, https://github.com/nelsonaloysio/networkx-temporal/blob/main/CHANGELOG.md
+Keywords: Network,Graph,Dynamic Graph,Temporal Network
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: networkx>=2.1
+Requires-Dist: numpy>=1.17.3
+Requires-Dist: pandas>=1.1.0
+Requires-Dist: scipy>=1.7.3
+Provides-Extra: all
+Requires-Dist: dgl; extra == "all"
+Requires-Dist: dynetx; extra == "all"
+Requires-Dist: graph-tool; extra == "all"
+Requires-Dist: leidenalg; extra == "all"
+Requires-Dist: matplotlib; extra == "all"
+Requires-Dist: networkit; extra == "all"
+Requires-Dist: python-igraph; extra == "all"
+Requires-Dist: snap-stanford; extra == "all"
+Requires-Dist: stellargraph; extra == "all"
+Requires-Dist: teneto; extra == "all"
+Requires-Dist: torch_geometric; extra == "all"
+Provides-Extra: docs
+Requires-Dist: sphinx-autodoc-typehints>=1.23.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=2.0.0; extra == "docs"
+Requires-Dist: sphinxemoji>=0.2.0; extra == "docs"
+Provides-Extra: draw
+Requires-Dist: matplotlib; extra == "draw"
+Provides-Extra: ipynb
+Requires-Dist: ipykernel; extra == "ipynb"
+Requires-Dist: leidenalg; extra == "ipynb"
+Requires-Dist: matplotlib; extra == "ipynb"
+Requires-Dist: python-igraph; extra == "ipynb"
+Dynamic: license-file
+
+[![NetworkX-Temporal](https://github.com/nelsonaloysio/networkx-temporal/raw/main/docs/assets/logo-banner.png)]()
+
+___
+
+[![PyPI package](https://badge.fury.readwrite/py/networkx-temporal.svg)](https://pypi.org/p/networkx-temporal/)
+[![Documentation Status](https://readthedocs.org/projects/networkx-temporal/badge/?version=latest)](https://networkx-temporal.readthedocs.readwrite/)
+[![Downloads](https://static.pepy.tech/badge/networkx-temporal)](https://pepy.tech/project/networkx-temporal?versions=*)
+[![Downloads](https://static.pepy.tech/badge/networkx-temporal/month)](https://pepy.tech/project/networkx-temporal?versions=*)
+[![License](https://img.shields.readwrite/pypi/l/networkx-temporal)](https://github.com/nelsonaloysio/networkx-temporal/blob/main/LICENSE.md)
+
+Python package to build and manipulate temporal graphs using [NetworkX](https://pypi.org/project/networkx/) as backend.
+
+## Install
+
+Available for **Python 3.7++** from [PyPI](https://pypi.org/project/networkx-temporal/):
+
+```bash
+$ pip install 'networkx-temporal[draw]'
+```
+
+> The `[draw]` extra includes additional libraries required to plot graphs with NetworkX.
+
+Requires `networkx >=2.1`, `numpy >=1.17.3`, `pandas >=1.1.0`, `scipy >=1.7.3`.
+
+Optional dependencies can be installed from the groups `all`, `docs`, `draw`, `ipynb`.
+
+
+## Quick example
+
+For detailed information on using the package, please refer to its
+[official documentation](https://networkx-temporal.readthedocs.readwrite).
+
+> An interactive Jupyter notebook with more examples is also
+> [available here](https://github.com/nelsonaloysio/networkx-temporal/blob/main/notebook/networkx-temporal.ipynb)
+> ([open on Colab](https://colab.research.google.com/github/nelsonaloysio/networkx-temporal/blob/main/notebook/networkx-temporal.ipynb)).
+
+```python
+>>> import networkx_temporal as tx
+>>>
+>>> TG = tx.temporal_graph(directed=False)  # tx.TemporalMultiGraph()
+>>>
+>>> TG.add_edge("a", "b", time=0)
+>>> TG.add_edge("c", "b", time=1)
+>>> TG.add_edge("d", "c", time=2)
+>>> TG.add_edge("d", "e", time=2)
+>>> TG.add_edge("a", "c", time=2)
+>>> TG.add_edge("f", "e", time=3)
+>>> TG.add_edge("f", "a", time=3)
+>>> TG.add_edge("f", "b", time=3)
+>>>
+>>> # Obtain snapshots as subgraph views.
+>>> TG = TG.slice(attr="time")
+>>>
+>>> # Plot resulting object.
+>>> tx.draw(TG, layout="kamada_kawai", figsize=(8,2))
+```
+
+![Temporal graph plot](https://github.com/nelsonaloysio/networkx-temporal/raw/main/docs/assets/figure/temporal-graph.png)
+
+## Contributing
+
+Contributions are welcome! If you find any bugs or have any suggestions, feel free to
+[open a ticket](issues/new),
+[fork the repository](fork) and create a
+[pull request](compare), or simply
+[send an e-mail](mailto:nelson.reis@phd.unipi.it).
+Please keep in mind that any out-of-scope contributions (not regarding temporal networks)
+should instead be directed to the [NetworkX](https://github.com/networkx/networkx) repository.
+
+## License
+
+This package is released under the [BSD License](LICENSE.md).
+
+## Cite
+
+In case this package is useful for your research, kindly consider
+[citing it](https://networkx-temporal.readthedocs.readwrite/en/stable/cite.html).
