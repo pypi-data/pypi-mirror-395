@@ -1,0 +1,95 @@
+name: Publish to Production PyPI
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.1.0
+
+permissions:
+  contents: write      # Required for creating GitHub releases
+  pull-requests: read  # Required for generating release notes
+
+jobs:
+  # Run tests before publishing
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build-and-publish:
+    needs: test  # Only publish if tests pass
+    runs-on: ubuntu-latest
+    environment: release  # Use GitHub environment for protection
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for setuptools-scm to read git tags
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build package
+      run: python -m build
+
+    - name: Check package
+      run: twine check dist/*
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        if twine upload dist/* 2>&1 | tee upload_output.txt; then
+          echo "✅ Successfully uploaded to PyPI"
+        else
+          if grep -q "File already exists" upload_output.txt; then
+            echo "::warning::Package version already exists on PyPI - skipping upload"
+            echo "⚠️ This version was already published to PyPI"
+          else
+            echo "❌ Upload failed with unexpected error"
+            cat upload_output.txt
+            exit 1
+          fi
+        fi
+
+    - name: Test installation from PyPI
+      run: |
+        # Wait for PyPI CDN to propagate the new version
+        sleep 30
+
+        # Extract version from tag (v0.2.20 -> 0.2.20)
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "Installing gaik version: $VERSION"
+
+        # Install exact version with no cache to avoid stale CDN responses
+        pip install --no-cache-dir "gaik==$VERSION"
+
+        # Verify correct version was installed
+        INSTALLED=$(python -c "from gaik import __version__; print(__version__)")
+        echo "Installed version: $INSTALLED"
+        if [ "$INSTALLED" != "$VERSION" ]; then
+          echo "ERROR: Version mismatch! Expected $VERSION but got $INSTALLED"
+          exit 1
+        fi
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-package
+        path: dist/
+        retention-days: 7
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true
+        files: dist/*
