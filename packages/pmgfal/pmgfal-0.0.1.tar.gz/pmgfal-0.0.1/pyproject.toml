@@ -1,0 +1,62 @@
+[project]
+name = "pmgfal"
+dynamic = ["version"]
+description = "pydantic model generator for atproto lexicons"
+readme = "README.md"
+authors = [{ name = "zzstoatzz", email = "thrast36@gmail.com" }]
+requires-python = ">=3.10"
+license = "MIT"
+
+keywords = ["atproto", "bluesky", "lexicon", "pydantic", "codegen"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Code Generators",
+    "Typing :: Typed",
+]
+
+dependencies = []
+
+[project.scripts]
+pmgfal = "pmgfal:main"
+
+[dependency-groups]
+dev = [
+    "maturin>=1.8.0",
+    "pytest>=8.3.0",
+    "pytest-sugar",
+    "ruff>=0.12.0",
+    "pydantic>=2.0.0",
+]
+
+[build-system]
+requires = ["maturin>=1.8.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "python"
+module-name = "pmgfal._pmgfal"
+bindings = "pyo3"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+ignore = ["COM812", "PLR0913", "SIM102", "SIM108"]
+extend-select = ["B", "C4", "I", "PIE", "RUF", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "I001"]
+"tests/**/*.py" = ["S101"]
