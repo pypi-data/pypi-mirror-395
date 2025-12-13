@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: valorant.py
+Version: 2.3.1
+Summary: An API wrapper for Valorant API written in Python.
+Author-email: STACiA <stacia.dev@gmail.com>
+Project-URL: homepage, https://github.com/staciax/valorant
+Project-URL: repository, https://github.com/staciax/valorant
+Project-URL: issues, https://github.com/staciax/valorant/issues
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python
+Classifier: Development Status :: 4 - Beta
+Classifier: Typing :: Typed
+Classifier: Framework :: AsyncIO
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp<4.0,>=3.11
+Requires-Dist: pydantic<3.0,>2.0
+Requires-Dist: aiohttp-client-cache[sqlite]<1.0,>=0.14.2
+Requires-Dist: pydantic-extra-types<3.0,>=2.10.6
+Provides-Extra: speed
+Requires-Dist: msgspec<1.0,>=0.19.0; extra == "speed"
+Dynamic: license-file
+
+# valorant
+An API wrapper for [Valorant API](https://valorant-api.com) written in Python.
+
+## Features
+- Supports all endpoints. (includes undocumented endpoints)
+- Fully type annotated.
+- [Pydantic V2](https://docs.pydantic.dev/latest/) models.
+- Supports Python 3.10+.
+- Supports all languages.
+- Caching support with SQLite backend (enabled by default).
+<!-- - Modern Pythonic API using `async` and  `await`. -->
+
+## Installing
+To install the library, you can just run the following command:
+```
+# uv
+uv add valorant.py
+
+# pip
+pip install valorant.py
+```
+
+### Optional Dependencies
+
+**Speed** - Faster JSON parsing with `msgspec`:
+```
+uv add "valorant.py[speed]"
+```
+
+> [!WARNING]  
+> `msgspec` does not currently support Python 3.14 and 3.14t. See [issue #171](https://github.com/jcrist/msgspec/issues/926).
+
+
+## Quick Example
+```py
+import asyncio
+import valorant
+
+
+async def main() -> None:
+    async with valorant.Client() as client:
+        weapons = await client.fetch_weapons()
+        for weapon in weapons:
+            print(weapon.display_name)
+            print(weapon.display_icon)
+
+
+asyncio.run(main())
+```
+
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+<!-- ## Project inspired by
+- [discord.py](https://github.com/Rapptz/discord.py) the Discord API wrapper for Python.  -->
+
+<!-- ## Support
+- [Discord Server](https://discord.com/invite/) -->
+
+## Links
+- [Valorant API](https://valorant-api.com)
+- [Official Discord Server](https://discord.com/invite/9V5MWgD)
