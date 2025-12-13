@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doclean"
+version = "0.1.2"
+description = "Minimal, safe, pyproject.toml-driven cleaning tool for Python projects."
+readme = "readme.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["license"]
+authors = [{ name = "Ed Armstrong" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Thaerious/doclean"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+# No dependencies for the MVP
+dependencies = []
+
+# This creates the `doclean` command
+[project.scripts]
+doclean = "doclean.cli:main"
+
+# Tell setuptools where your package lives
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "-x", "-s"]
+
+# Example config block that users of doclean will put in THEIR projects
+# This block is NOT used by doclean's own build
+[tool.doclean]
+paths = [
+    "build",
+    "dist",
+    "**/__pycache__",
+    ".pytest_cache"
+]
