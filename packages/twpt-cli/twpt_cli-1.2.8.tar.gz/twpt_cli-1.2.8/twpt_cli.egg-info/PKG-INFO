@@ -1,0 +1,817 @@
+Metadata-Version: 2.4
+Name: twpt-cli
+Version: 1.2.8
+Summary: ThreatWinds Pentest CLI - Command-line tool for managing automated penetration testing
+Author-email: ThreatWinds <support@threatwinds.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/threatwinds/twpt-cli
+Project-URL: Documentation, https://github.com/threatwinds/twpt-cli#readme
+Project-URL: Repository, https://github.com/threatwinds/twpt-cli
+Project-URL: Issues, https://github.com/threatwinds/twpt-cli/issues
+Keywords: penetration-testing,security,pentesting,cli,threatwinds,kali-linux,docker
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: Security
+Classifier: Topic :: System :: Systems Administration
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS
+Classifier: Environment :: Console
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.1.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: urllib3>=2.0.0
+Requires-Dist: grpcio>=1.60.0
+Requires-Dist: grpcio-tools>=1.60.0
+Requires-Dist: protobuf>=4.25.0
+Requires-Dist: docker>=7.0.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: distro>=1.8.0
+Requires-Dist: python-dateutil>=2.8.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: prompt-toolkit>=3.0.0
+Requires-Dist: flask>=3.0.0
+Requires-Dist: flask-cors>=4.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Dynamic: license-file
+
+# ThreatWinds Pentest CLI
+
+A powerful command-line interface for managing automated penetration testing using ThreatWinds' containerized Kali Linux environment. Schedule pentests, monitor progress in real-time, and download comprehensive security reports - all from your terminal.
+
+## What Does This Tool Do?
+
+The ThreatWinds Pentest CLI automates the process of running professional security assessments against your infrastructure:
+
+1. **Automated Vulnerability Scanning**: Runs comprehensive security scans against target domains, IPs, or networks
+2. **Penetration Testing**: Executes real-world attack simulations to identify exploitable vulnerabilities
+3. **Real-time Monitoring**: Stream pentest progress and results as they happen via gRPC
+4. **Evidence Collection**: Automatically generates and downloads detailed reports, screenshots, and proof-of-concept data
+5. **Container Management**: Manages Docker containers running Kali Linux with pre-configured pentest tools
+6. **Remote Execution**: Connect to remote pentest servers or run locally with Docker
+
+**Use Cases**:
+- Security teams running regular vulnerability assessments
+- DevOps teams integrating security testing into CI/CD pipelines
+- Penetration testers managing multiple client engagements
+- Bug bounty hunters automating reconnaissance and testing
+
+## Quick Start
+
+**Want to get started right away? Here's the fastest path:**
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/threatwinds/pt-cli
+cd pt-cli
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Initialize endpoint
+python run.py init --local
+
+# 3. Configure credentials
+python run.py configure
+# (Enter your ThreatWinds API key and secret)
+
+# 4. Run a pentest
+python run.py run example.com --watch
+
+# 5. Download results (use the friendly ID from step 4)
+python run.py download swift-falcon-strikes
+```
+
+That's it! Read on for detailed documentation.
+
+---
+
+## Features
+
+- **Interactive Shell Mode**: Built-in interactive shell with command history and auto-completion
+- **Easy Configuration**: Simple setup with API credentials and automatic Docker configuration
+- **Remote Endpoint Support**: Connect to remote pentest services without local Docker
+- **Automated Pentesting**: Schedule and manage penetration tests from the command line
+- **Real-time Monitoring**: Watch pentest progress with streaming updates (gRPC)
+- **Evidence Download**: Retrieve pentest reports and evidence with automatic extraction
+- **Container Management**: Full control over the pentest Docker container
+- **Cross-platform**: Supports all major Linux distributions
+
+## Prerequisites
+
+- **Python**: 3.8 or higher
+- **Operating System**: Linux (for Docker functionality) or any OS (for remote endpoints)
+- **ThreatWinds Account**: API credentials (get them at https://threatwinds.com/account)
+- **Docker** (optional): Only needed if running pentests locally
+
+## Project Structure
+
+This project contains:
+
+- **run.py** - Entry point to run the CLI
+- **requirements.txt** - Python dependencies
+- **twpt_cli/** - Main source code directory
+  - **commands/** - All CLI commands (configure, run, get, download, etc.)
+  - **sdk/** - SDK for API and gRPC communication
+  - **config/** - Configuration and credential management
+  - **docker/** - Docker container management
+  - **main.py** - CLI application setup
+  - **shell.py** - Interactive shell implementation
+- **venv/** - Virtual environment (you create this)
+
+**That's all you need!** Just run `python run.py` after installing dependencies.
+
+## Installation & Setup
+
+### Run from Source
+
+This is currently the only installation method:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/threatwinds/pt-cli
+cd pt-cli
+
+# 2. Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# OR
+.\venv\Scripts\activate  # On Windows
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run the CLI
+python run.py --help
+```
+
+**Usage**: All commands use `python run.py` as shown throughout this documentation.
+
+Examples:
+```bash
+python run.py configure
+python run.py run example.com
+python run.py get swift-falcon-strikes  # Use friendly pentest ID
+python run.py download swift-falcon-strikes
+```
+
+## Remote Endpoints
+
+The CLI supports connecting to remote ThreatWinds pentest services, allowing you to use the CLI without running Docker locally. This is useful for:
+
+- Connecting to centralized pentest infrastructure
+- Using the CLI on systems where Docker cannot be installed
+- Accessing shared pentest services across teams
+
+### Setting Up Remote Endpoints
+
+**Step 1: Initialize the remote endpoint**
+
+```bash
+python run.py init --host <IP_ADDRESS> --api-port 9741 --grpc-port 9742
+```
+
+Example:
+```bash
+python run.py init --host 15.235.4.158 --api-port 9741
+```
+
+**Step 2: Configure API credentials (skip Docker setup)**
+
+```bash
+python run.py configure --skip-docker
+```
+
+**Step 3: Use the CLI normally**
+
+```bash
+python run.py run example.com
+python run.py get swift-falcon-strikes  # Use friendly pentest ID
+python run.py download swift-falcon-strikes
+```
+
+### Switching Between Local and Remote
+
+**Switch to remote:**
+```bash
+python run.py init --host <remote-ip> --api-port 9741
+```
+
+**Switch back to local:**
+```bash
+python run.py init --local
+```
+
+### Checking Current Configuration
+
+```bash
+python run.py version --detailed
+```
+
+This will show whether you're using local Docker or a remote endpoint.
+
+## Commands
+
+### Interactive Shell
+
+Start the interactive shell by running without arguments:
+
+```bash
+$ python run.py
+```
+
+**Shell Commands:**
+- `run <target>` - Run a new pentest
+- `run <target> --plan <name>` - Run with a custom plan
+- `get <id>` - Get pentest details
+- `download <id>` - Download evidence
+- `list` - List recent pentests
+- `plan list` - List saved plans
+- `plan save <file> <name>` - Save a custom plan
+- `plan show <name>` - Show plan details
+- `init <host> <port>` - Configure remote endpoint
+- `configure` - Configure API credentials
+- `status` - Show configuration status
+- `update` - Update toolkit
+- `uninstall` - Uninstall toolkit
+- `version` - Show version
+- `help [command]` - Show help
+- `clear` - Clear screen
+- `exit` / `quit` / `q` - Exit shell
+
+**Features:**
+- Command history (↑/↓ arrows)
+- Tab auto-completion
+- Persistent history across sessions
+- Status indicators in prompt
+
+### `init`
+
+Initialize remote endpoint configuration.
+
+**Options:**
+- `--host`: Remote host IP address or hostname
+- `--api-port`: API service port (default: 9741)
+- `--grpc-port`: gRPC service port (default: 9742)
+- `--skip-test`: Skip connection testing
+- `--local`: Reset to local configuration (localhost)
+
+**Examples:**
+```bash
+# Configure remote endpoint
+python run.py init --host 15.235.4.158 --api-port 9741 --grpc-port 9742
+
+# Reset to local configuration
+python run.py init --local
+```
+
+### `configure`
+
+Configure the CLI with API credentials and Docker setup.
+
+**Options:**
+- `--api-key`: ThreatWinds API Key
+- `--api-secret`: ThreatWinds API Secret
+- `--skip-docker`: Skip Docker setup (use with remote endpoints)
+
+**Examples:**
+```bash
+# Interactive configuration
+python run.py configure
+
+# Non-interactive
+python run.py configure --api-key YOUR_KEY --api-secret YOUR_SECRET
+
+# Skip Docker (for remote endpoints)
+python run.py configure --skip-docker
+```
+
+### `run`
+
+Schedule a new penetration test.
+
+**Command aliases:**
+- `run` (primary command)
+- `schedule-pentest` (legacy alias, deprecated)
+
+**Options:**
+- `--config-file`: Path to JSON configuration file with context (credentials, scope, etc.)
+- `--target`: Single target to pentest (or positional with `run`)
+- `--targets`: Multiple targets (can be used multiple times)
+- `--scope`: Scope mode: `holistic` or `targeted` (default: auto-detect based on target type)
+- `--no-exploit`: Disable exploitation phase
+- `--safe`: Use safe mode (less aggressive)
+- `--watch`: Watch pentest progress in real-time
+- `--plan`: Custom pentest plan (see [Passing Context](#passing-context-to-a-pentest))
+
+**Examples:**
+```bash
+# Simple scan (auto-detects scope: holistic for public, targeted for private)
+python run.py run example.com
+
+# Override scope to targeted
+python run.py run example.com --scope targeted
+
+# Override scope to holistic
+python run.py run 192.168.1.1 --scope holistic
+
+# Safe mode with monitoring
+python run.py run example.com --safe --watch
+
+# Multiple targets
+python run.py run --targets example.com --targets test.com
+
+# Using config file for credentials/context
+python run.py run --config-file pentest-config.json
+
+# Using a custom pentest plan
+python run.py run example.com --plan web-audit
+python run.py run example.com --plan file:./my-custom-plan.md
+```
+
+### Passing Context to a Pentest
+
+There are two ways to pass additional context to a pentest:
+
+#### 1. Configuration File (`--config-file`)
+
+Use a JSON configuration file to provide credentials, scope settings, and test type for each target:
+
+```bash
+python run.py run --config-file pentest-config.json
+```
+
+**Example configuration file:**
+```json
+{
+  "Style": "AGGRESSIVE",
+  "Exploit": true,
+  "Targets": [
+    {
+      "Target": "example.com",
+      "Scope": "HOLISTIC",
+      "Type": "BLACK_BOX"
+    },
+    {
+      "Target": "api.example.com",
+      "Scope": "TARGETED",
+      "Type": "WHITE_BOX",
+      "Credentials": {
+        "username": "admin",
+        "password": "secret",
+        "api_key": "your-api-key",
+        "auth_url": "https://api.example.com/login"
+      }
+    }
+  ]
+}
+```
+
+**Configuration Options:**
+| Field | Values | Description |
+|-------|--------|-------------|
+| `Style` | `AGGRESSIVE`, `SAFE` | Test intensity (default: AGGRESSIVE) |
+| `Exploit` | `true`, `false` | Enable exploitation phase (default: true) |
+| `Scope` | `HOLISTIC`, `TARGETED` | HOLISTIC for full external scan, TARGETED for specific endpoints |
+| `Type` | `BLACK_BOX`, `WHITE_BOX` | BLACK_BOX (no credentials), WHITE_BOX (with credentials) |
+| `Credentials` | Object | Any auth details: username, password, api_key, tokens, etc. |
+
+#### 2. Custom Pentest Plans (`--plan`)
+
+Use a markdown document to define detailed pentest phases, steps, and specific instructions. The AI agent will execute each section systematically.
+
+```bash
+# Use a saved plan by name
+python run.py run example.com --plan web-audit
+
+# Use a plan file directly
+python run.py run example.com --plan file:./my-plan.md
+```
+
+**Managing Plans:**
+
+```bash
+# Save a plan from a markdown file
+python run.py plan save ./my-plan.md "Web App Audit"
+
+# List saved plans
+python run.py plan list
+
+# Show plan details
+python run.py plan show web-app-audit
+
+# Preview a plan file before saving
+python run.py plan preview ./my-plan.md
+
+# Delete a saved plan
+python run.py plan delete web-app-audit
+```
+
+**Example Plan File (`my-plan.md`):**
+
+```markdown
+# Web Application Security Audit
+
+## Phase 1: Reconnaissance
+- Enumerate all subdomains
+- Identify web technologies and frameworks
+- Map all API endpoints
+- Check for exposed admin panels
+
+## Phase 2: Authentication Testing
+- Test for default credentials
+- Check session management
+- Look for authentication bypass vulnerabilities
+- Test password reset functionality
+
+## Phase 3: Input Validation
+- Test all input fields for SQL injection
+- Check for XSS vulnerabilities
+- Test file upload functionality
+- Look for command injection points
+
+## Phase 4: API Security
+- Test API authentication mechanisms
+- Check for IDOR vulnerabilities
+- Test rate limiting
+- Look for information disclosure in API responses
+
+## Special Instructions
+- Focus on the /api/v2 endpoints
+- The application uses JWT tokens
+- Admin panel is at /admin (test with provided credentials)
+```
+
+Plans give you full control over what the AI agent tests and in what order.
+
+**Combining Config and Plans:**
+
+You can use both together for maximum control:
+
+```bash
+python run.py run --config-file creds.json --plan file:./api-audit.md
+```
+
+This provides credentials via the config file while using the plan to guide the testing methodology
+
+### `get` / `get-pentest`
+
+Get details of a specific pentest.
+
+**Command aliases:**
+- `get` (simplified name)
+- `get-pentest` (traditional name)
+
+**Arguments:**
+- `pentest_id`: The unique identifier of the pentest (e.g., swift-falcon-strikes)
+
+**Examples:**
+```bash
+# Check pentest status
+python run.py get swift-falcon-strikes
+```
+
+### `list` / `list-pentests`
+
+List recent penetration tests.
+
+**Examples:**
+```bash
+# List all pentests
+python run.py list
+```
+
+### `download` / `download-evidence`
+
+Download evidence/reports for a completed pentest.
+
+**Command aliases:**
+- `download` (simplified name)
+- `download-evidence` (traditional name)
+
+**Arguments:**
+- `pentest_id`: The unique identifier of the pentest (e.g., swift-falcon-strikes)
+
+**Options:**
+- `--output`, `-o`: Output directory (default: current directory)
+- `--no-extract`: Keep ZIP file without extracting
+
+**Examples:**
+```bash
+# Download and extract evidence
+python run.py download swift-falcon-strikes
+
+# Download to specific directory
+python run.py download dark-storm-rises --output ./reports
+
+# Keep ZIP without extracting
+python run.py download cyber-hawk-hunts --no-extract
+```
+
+### `update-latest`
+
+Update the pentest toolkit to the latest version.
+
+**Options:**
+- `--force`: Force update even if container is running
+
+**Examples:**
+```bash
+# Update toolkit
+python run.py update-latest
+
+# Force update
+python run.py update-latest --force
+```
+
+### `uninstall`
+
+Uninstall the pentest toolkit (removes Docker container and images).
+
+**Options:**
+- `--remove-data`: Also remove configuration and data files
+- `--yes`: Skip confirmation prompt
+
+**Examples:**
+```bash
+# Uninstall with confirmation
+python run.py uninstall
+
+# Uninstall and remove all data
+python run.py uninstall --remove-data --yes
+```
+
+### `version`
+
+Display version information.
+
+**Options:**
+- `--detailed`: Show detailed version information including configuration
+
+**Examples:**
+```bash
+# Show version
+python run.py version
+
+# Show detailed version and config
+python run.py version --detailed
+```
+
+### `plan`
+
+Manage custom pentest plans. Plans are markdown documents that define pentest phases, steps, and instructions that the AI agent will execute systematically.
+
+**Subcommands:**
+- `plan save <file> <name>`: Save a plan from a markdown file
+- `plan list`: List all saved plans
+- `plan show <name>`: Show details of a saved plan
+- `plan preview <file>`: Preview a plan file before saving
+- `plan delete <name>`: Delete a saved plan
+
+**Examples:**
+```bash
+# Save a plan with a name
+python run.py plan save ./my-plan.md "Web App Audit"
+
+# Save with description and tags
+python run.py plan save ./api-test.md api-security -d "API security testing" -t api -t rest
+
+# List all plans
+python run.py plan list
+
+# List plans filtered by tag
+python run.py plan list --tag api
+
+# Show plan details
+python run.py plan show web-app-audit
+
+# Show plan with full content
+python run.py plan show web-app-audit --content
+
+# Preview a plan file
+python run.py plan preview ./my-plan.md
+
+# Delete a plan
+python run.py plan delete old-plan
+python run.py plan delete old-plan --force  # Skip confirmation
+```
+
+Plans are stored in `~/.twpt/plans/` and can be used with the `run` command via `--plan <name>`.
+
+## Complete Workflow Example
+
+Here's a complete example of running a pentest from start to finish:
+
+```bash
+# 1. Activate virtual environment
+source venv/bin/activate
+
+# 2. Initialize endpoint (one-time setup)
+python run.py init --local  # For local Docker
+# OR
+python run.py init --host 15.235.4.158 --api-port 9741  # For remote endpoint
+
+# 3. Configure API credentials (one-time setup)
+python run.py configure
+# Enter your API key and secret when prompted
+
+# 4. Schedule a pentest
+python run.py run example.com --safe --watch
+# This will output a friendly pentest ID like: swift-falcon-strikes
+
+# 5. Check status (if not watching)
+python run.py get swift-falcon-strikes
+
+# 6. List all pentests
+python run.py list
+
+# 7. Download results when complete
+python run.py download swift-falcon-strikes --output ./reports
+
+# 8. View the report
+cd reports/pentest_swift-falcon-strikes_evidence
+ls -la  # See all evidence files and reports
+```
+
+## Configuration
+
+The CLI stores configuration in two files:
+- `~/.twpt/config.json`: API credentials (base64 encoded)
+- `~/.twpt/endpoint.json`: Remote endpoint configuration (when using remote mode)
+
+Environment variables:
+- `PT_API_HOST`: Override API host (default: localhost)
+- `PT_GRPC_HOST`: Override gRPC host (default: localhost)
+- `PT_API_PORT`: Override API port (default: 9741)
+- `PT_GRPC_PORT`: Override gRPC port (default: 9742)
+
+**Note**: Remote endpoint configuration (set via `python run.py init`) takes precedence over environment variables.
+
+## Docker Management
+
+The CLI automatically manages a Docker container running the pentest agent:
+- **Image**: `ghcr.io/threatwinds/twpt-agent:latest`
+- **Container Name**: `twpt-agent`
+- **Network**: Host network (required for pentesting)
+- **Privileges**: Runs in privileged mode (required for pentesting)
+
+### Manual Container Management
+
+```bash
+# Check container status
+docker ps -a | grep twpt-agent
+
+# View container logs
+docker logs twpt-agent
+
+# Restart container
+docker restart twpt-agent
+
+# Stop container
+docker stop twpt-agent
+
+# Remove container
+docker rm twpt-agent
+```
+
+## Development
+
+If you want to contribute or modify the code:
+
+### Setup Development Environment
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Install optional development tools
+pip install black isort mypy pytest
+```
+
+### Code Formatting
+
+```bash
+black twpt_cli/
+isort twpt_cli/
+```
+
+### Type Checking
+
+```bash
+mypy twpt_cli/
+```
+
+### Run Tests
+
+```bash
+pytest tests/
+```
+
+## Architecture
+
+The project structure:
+
+```
+twpt_cli/
+├── main.py           # CLI application and command registration
+├── shell.py          # Interactive shell implementation
+├── sdk/              # SDK for API communication
+│   ├── models.py         # Data models and enums
+│   ├── http_client.py    # HTTP/REST client
+│   ├── grpc_client.py    # gRPC streaming client
+│   ├── pentest_pb2.py    # Protobuf definitions
+│   └── pentest_pb2_grpc.py # gRPC stubs
+├── config/           # Configuration management
+│   ├── constants.py      # Constants and defaults
+│   └── credentials.py    # Credential handling
+├── docker/           # Docker container management
+│   ├── container.py      # Container lifecycle
+│   └── docker_install.py # Docker installation
+└── commands/         # CLI command implementations
+    ├── init.py               # Endpoint initialization
+    ├── configure.py          # API credential setup
+    ├── schedule_pentest.py   # Pentest scheduling
+    ├── get_pentest.py        # Pentest status
+    ├── download_evidence.py  # Evidence download
+    ├── list_pentests.py      # List pentests
+    ├── install_server.py     # Server installation
+    ├── update.py             # Update toolkit
+    ├── uninstall.py          # Uninstall toolkit
+    └── version_cmd.py        # Version information
+```
+
+## Troubleshooting
+
+### Docker Issues
+
+If Docker installation fails:
+```bash
+# Manual Docker installation on Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+```
+
+### Container Connection Issues
+
+If the CLI can't connect to the container:
+```bash
+# Check if container is running
+docker ps | grep twpt-agent
+
+# Restart container
+docker restart twpt-agent
+
+# Check container logs
+docker logs twpt-agent --tail 50
+```
+
+### Permission Issues
+
+If you get permission errors:
+```bash
+# Run with sudo (not recommended)
+sudo python run.py configure
+
+# Fix Docker permissions (recommended)
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+## Support
+
+- **Documentation**: https://docs.threatwinds.com
+- **Issues**: https://github.com/threatwinds/pt-cli/issues
+- **Email**: support@threatwinds.com
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
