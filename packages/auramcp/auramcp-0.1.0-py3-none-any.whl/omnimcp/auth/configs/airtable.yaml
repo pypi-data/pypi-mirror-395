@@ -1,0 +1,36 @@
+# Airtable API Authentication Configuration
+provider: airtable
+display_name: "Airtable"
+docs_url: "https://airtable.com/developers/web/api/authentication"
+
+auth_type: bearer
+
+# Airtable uses Bearer token (Personal Access Token or OAuth)
+bearer:
+  header_name: "Authorization"
+  prefix: "Bearer"
+
+# OAuth2 also available for integrations
+oauth2:
+  authorization_url: "https://airtable.com/oauth2/v1/authorize"
+  token_url: "https://airtable.com/oauth2/v1/token"
+  refresh_url: "https://airtable.com/oauth2/v1/token"
+  scopes:
+    - data.records:read
+    - data.records:write
+    - schema.bases:read
+    - schema.bases:write
+  token_placement: header
+  token_param_name: "Authorization"
+  token_prefix: "Bearer"
+
+quirks:
+  - "Personal Access Tokens (PAT) are recommended for server-side apps"
+  - "Rate limit: 5 requests per second per base"
+  - "Bulk operations recommended for efficiency"
+  - "Records limited to 100 per request"
+
+env_vars:
+  access_token: "AIRTABLE_API_KEY"
+  client_id: "AIRTABLE_CLIENT_ID"
+  client_secret: "AIRTABLE_CLIENT_SECRET"

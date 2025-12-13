@@ -1,0 +1,42 @@
+# GitHub API Authentication Configuration
+provider: github
+display_name: "GitHub"
+docs_url: "https://docs.github.com/en/rest/authentication"
+
+auth_type: bearer
+
+# OAuth2 Configuration for GitHub Apps and OAuth Apps
+oauth2:
+  authorization_url: "https://github.com/login/oauth/authorize"
+  token_url: "https://github.com/login/oauth/access_token"
+  refresh_url: ""
+  scopes:
+    - repo
+    - read:user
+    - user:email
+    - read:org
+    - write:org
+    - admin:org
+    - gist
+    - notifications
+    - workflow
+  token_placement: header
+  token_param_name: "Authorization"
+  token_prefix: "Bearer"
+
+# Personal Access Token (simpler setup)
+bearer:
+  header_name: "Authorization"
+  prefix: "Bearer"
+
+quirks:
+  - "Personal access tokens (classic) vs fine-grained tokens have different capabilities"
+  - "Rate limit: 5000 requests/hour for authenticated requests"
+  - "GitHub Apps have higher rate limits"
+  - "Some endpoints require specific scopes"
+  - "Fine-grained tokens are recommended for new integrations"
+
+env_vars:
+  client_id: "GITHUB_CLIENT_ID"
+  client_secret: "GITHUB_CLIENT_SECRET"
+  access_token: "GITHUB_TOKEN"
