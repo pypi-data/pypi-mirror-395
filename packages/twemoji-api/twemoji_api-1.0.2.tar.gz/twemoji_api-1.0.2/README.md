@@ -1,0 +1,113 @@
+# Twemoji API
+
+![PyPI](https://img.shields.io/pypi/v/twemoji-api)
+![Python](https://img.shields.io/pypi/pyversions/twemoji-api)
+![License](https://img.shields.io/github/license/gpedrosobernardes/twemoji_api)
+![Downloads](https://img.shields.io/pypi/dm/twemoji-api)
+
+A lightweight utility for resolving emojis into Unicode code points, local asset paths, and Twemoji URLs.
+Supports **PNG** and **SVG** assets and includes a similarity-based fallback system for emojis with modifiers (skin tones, ZWJ sequences, etc.).
+
+## Features
+
+* Convert emojis into Unicode code points
+* Resolve local Twemoji asset paths
+* Resolve URLs for PNG/SVG assets
+* Automatic fallback via similarity-based codepoint matching
+* Object-oriented access through `Twemoji`
+
+## Installation
+
+```bash
+pip install twemoji-api
+```
+
+## Usage
+
+### Basic
+
+```python
+from twemoji_api.api import get_emoji_path, get_emoji_url
+
+print(get_emoji_path("🔥"))
+print(get_emoji_url("🔥"))
+```
+
+### Using `Twemoji`
+
+```python
+from twemoji_api.api import Twemoji
+
+emoji = Twemoji("👏🏻")
+
+print(emoji.code_points)
+print(emoji.path)
+print(emoji.url)
+```
+
+### Similarity Lookup
+
+Useful for emojis with modifiers (skin tones) or multi-codepoint variants:
+
+```python
+from twemoji_api.api import (
+    get_emoji_code_points,
+    get_emoji_code_points_by_similarity,
+)
+
+cp = get_emoji_code_points("👏🏻")
+closest = get_emoji_code_points_by_similarity(cp)
+
+print(closest)
+```
+
+## API Reference
+
+### `get_extension_folder(extension)`
+
+Returns the asset folder (`72x72` or `svg`).
+
+### `get_emoji_path(emoji, extension="png")`
+
+Returns the local file path for an emoji.
+Falls back to similar code points if an exact file is not found.
+
+### `get_emoji_url(emoji, extension="png")`
+
+Returns the Twemoji GitHub URL for the asset.
+
+### `get_emoji_code_points(emoji)`
+
+Extracts a list of Unicode code points from the emoji.
+
+### `get_emojis_code_points_by_similarity(code_points)`
+
+Returns all file stems whose code points are a subset of the input.
+
+### `get_emoji_code_points_by_similarity(code_points)`
+
+Returns the best matching file stem or None.
+
+### `get_all_emojis(extension="png")`
+
+Returns a list of Twemoji objects for every emoji in the Twemoji database.
+
+### `Twemoji`
+
+* `emoji`
+* `extension`
+* `path`
+* `code_points`
+* `url`
+
+## License
+
+MIT
+
+## Twemoji Attribution
+
+This project includes graphics from Twemoji.
+Copyright 2019 Twitter, Inc and other contributors.
+Licensed under CC-BY 4.0:
+[https://creativecommons.org/licenses/by/4.0/](https://creativecommons.org/licenses/by/4.0/)
+No changes were made.
