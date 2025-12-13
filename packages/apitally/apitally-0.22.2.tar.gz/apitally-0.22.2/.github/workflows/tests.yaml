@@ -1,0 +1,122 @@
+name: Tests
+on:
+  push:
+    paths-ignore:
+      - .gitignore
+      - LICENSE
+      - README.md
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: pre-commit/action@v3.0.1
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --frozen
+          uv pip install drf-spectacular
+      - name: Run checks
+        run: uv run make check
+      - name: Run tests and create coverage report
+        run: uv run make test-coverage
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        deps:
+          - fastapi starlette
+          - fastapi==0.94.1 starlette
+          - flask
+          - flask==2.3.*
+          - flask==2.0.3 Werkzeug==2.*
+          - djangorestframework drf-spectacular django
+          - djangorestframework django uritemplate inflection
+          - djangorestframework django==4.2.* uritemplate inflection
+          - djangorestframework==3.12.* django==3.2.* uritemplate
+          - djangorestframework==3.10.* django==2.2.* uritemplate
+          - django-ninja django
+          - django-ninja==1.5.1 django==6.*
+          - django-ninja==1.4.5 django==5.*
+          - django-ninja==0.18.0 django==4.*
+          - litestar
+          - litestar==2.0.1
+          - blacksheep
+          - blacksheep==2.1.0
+        exclude:
+          - python: "3.9"
+            deps: litestar==2.0.1
+          - python: "3.9"
+            deps: django-ninja==1.4.5 django==5.*
+          - python: "3.9"
+            deps: django-ninja==1.5.1 django==6.*
+          - python: "3.10"
+            deps: django-ninja==1.5.1 django==6.*
+          - python: "3.11"
+            deps: django-ninja==1.5.1 django==6.*
+          - python: "3.12"
+            deps: djangorestframework==3.12.* django==3.2.* uritemplate
+          - python: "3.12"
+            deps: djangorestframework==3.10.* django==2.2.* uritemplate
+          - python: "3.12"
+            deps: litestar==2.0.1
+          - python: "3.13"
+            deps: djangorestframework==3.12.* django==3.2.* uritemplate
+          - python: "3.13"
+            deps: djangorestframework==3.10.* django==2.2.* uritemplate
+          - python: "3.13"
+            deps: litestar==2.0.1
+          - python: "3.14"
+            deps: fastapi==0.94.1 starlette
+          - python: "3.14"
+            deps: flask==2.0.3 Werkzeug==2.*
+          - python: "3.14"
+            deps: djangorestframework==3.12.* django==3.2.* uritemplate
+          - python: "3.14"
+            deps: djangorestframework==3.10.* django==2.2.* uritemplate
+          - python: "3.14"
+            deps: django-ninja==0.18.0 django==4.*
+          - python: "3.14"
+            deps: litestar==2.0.1
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install ${{ matrix.python }}
+      - name: Build Python package wheel
+        run: uv build --wheel
+      - name: Install test dependencies
+        run: uv sync --no-install-project --only-group test --frozen
+      - name: Install app dependencies
+        run: uv pip install ${{ matrix.deps }} ./dist/apitally-*.whl
+      - name: Run tests
+        run: uv run make test
