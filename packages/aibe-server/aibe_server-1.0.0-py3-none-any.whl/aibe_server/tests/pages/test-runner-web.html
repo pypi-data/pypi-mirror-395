@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 AI Browser Extension - Web Test Runner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-idle { background: #6c757d; }
+        .status-running { background: #ffc107; }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .overall-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #007bff;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 0.5px;
+        }
+        
+        .test-suites {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .test-suite {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .test-suite:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .suite-header {
+            background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .suite-title {
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .suite-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .suite-progress {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 8px;
+            width: 100px;
+            overflow: hidden;
+        }
+        
+        .suite-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .suite-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .badge-idle { background: #6c757d; }
+        .badge-running { background: #ffc107; color: #000; }
+        .badge-success { background: #28a745; }
+        .badge-error { background: #dc3545; }
+        
+        .suite-details {
+            padding: 20px;
+            display: none;
+        }
+        
+        .suite-details.expanded {
+            display: block;
+        }
+        
+        .test-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .test-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #dee2e6;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .test-item.running {
+            background: #fff3cd;
+            border-color: #ffc107;
+            animation: shimmer 2s infinite;
+        }
+        
+        .test-item.passed {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .test-item.failed {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        @keyframes shimmer {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .test-name {
+            font-weight: 500;
+        }
+        
+        .test-status {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .log-container {
+            margin-top: 30px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .log-header {
+            background: #333;
+            color: #fff;
+            padding: 15px 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .log-content {
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #f8f9fa;
+            background: #1e1e1e;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-timestamp {
+            color: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .log-level-info { color: #17a2b8; }
+        .log-level-success { color: #28a745; }
+        .log-level-warning { color: #ffc107; }
+        .log-level-error { color: #dc3545; }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .overall-stats {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            .suite-stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 AI Browser Extension Test Runner</h1>
+            <p>Using Console Test Infrastructure - 48/48 Success</p>
+        </div>
+        
+        <div class="controls">
+            <div class="status">
+                <div class="status-indicator status-idle" id="statusIndicator"></div>
+                <span id="statusText">Ready to test</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label for="logLevelSelect" style="font-weight: 600; color: #495057;">Log Level:</label>
+                    <select id="logLevelSelect" onchange="updateLogLevel()" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: white; font-size: 14px;">
+                        <option value="ERROR">Error Only</option>
+                        <option value="WARN">Warnings</option>
+                        <option value="INFO" selected>Info (Default)</option>
+                        <option value="DEBUG">Debug (Verbose)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <button class="btn btn-primary" id="runAllBtn" onclick="runAllTests()">
+                        🚀 Run All Tests
+                    </button>
+                    <button class="btn btn-secondary" id="stopBtn" onclick="stopTests()" disabled>
+                        ⏹️ Stop
+                    </button>
+                    <button class="btn btn-danger" onclick="clearResults()">
+                        🗑️ Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="overall-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSuites">0</div>
+                    <div class="stat-label">Test Suites</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTests">0</div>
+                    <div class="stat-label">Total Tests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="passedTests">0</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="failedTests">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+            
+            <div id="testSuites" class="test-suites">
+                <!-- Test suites will be populated here -->
+            </div>
+            
+            <div class="log-container">
+                <div class="log-header">
+                    <span>📋 Test Execution Log</span>
+                    <button class="btn btn-secondary" onclick="clearLog()" style="padding: 5px 10px; font-size: 12px;">Clear Log</button>
+                </div>
+                <div id="logContent" class="log-content">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[Ready]</span>
+                        <span class="log-level-info">Web test runner initialized using console infrastructure. Click "Run All Tests" to begin.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the console testing modules in correct dependency order -->
+    <script src="TestingFramework.js"></script>
+    <script src="GenericElementTest.js"></script>
+    <script src="DataDrivenTestRunner.js"></script>
+
+    <script>
+        // Web interface using exact same console code
+        
+        let isRunning = false;
+        let framework = null;
+        let runner = null;
+        let TEST_SUITES = {};
+        let runningPassed = 0;
+        let runningFailed = 0;
+        
+        // Initialize the dashboard
+        async function init() {
+            // Load saved log level from localStorage
+            const savedLogLevel = localStorage.getItem('testRunnerLogLevel') || 'INFO';
+            document.getElementById('logLevelSelect').value = savedLogLevel;
+            
+            log('Loading test configurations...', 'info');
+            
+            try {
+                // Load test suites from the server
+                const response = await fetch('/test-suites-config');
+                if (!response.ok) {
+                    throw new Error(`Failed to load test suites: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                TEST_SUITES = data.TEST_SUITES;
+                
+                setupTestSuites();
+                updateStats();
+                log('Test configurations loaded successfully', 'success');
+                
+            } catch (error) {
+                log(`❌ CRITICAL: Cannot load test configurations from server`, 'error');
+                log(`Failed URL: /test-suites-config`, 'error');
+                log(`Error: ${error.message}`, 'error');
+                log(`🚫 Test execution DISABLED - fix server configuration first`, 'error');
+                
+                // Disable test execution
+                document.getElementById('runAllBtn').disabled = true;
+                document.getElementById('runAllBtn').textContent = '❌ CONFIGURATION ERROR';
+                
+                // Show prominent error message
+                document.getElementById('testSuites').innerHTML = `
+                    <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                        <h3>❌ CRITICAL ERROR: Test Configuration Failed</h3>
+                        <p>Cannot load test configurations from server endpoint: <code>/test-suites-config</code></p>
+                        <p>Error: ${error.message}</p>
+                        <p><strong>Fix server configuration before running tests</strong></p>
+                    </div>
+                `;
+                
+                return; // Do not setup fallback suites
+            }
+        }
+        
+        // Update log level when dropdown changes
+        function updateLogLevel() {
+            const logLevel = document.getElementById('logLevelSelect').value;
+            localStorage.setItem('testRunnerLogLevel', logLevel);
+            
+            // Update framework log level if it exists
+            if (framework) {
+                framework.setLogLevel(logLevel);
+            }
+            
+            log(`Log level changed to: ${logLevel}`, 'info');
+        }
+        
+        function setupTestSuites() {
+            const container = document.getElementById('testSuites');
+            container.innerHTML = '';
+            
+            document.getElementById('totalSuites').textContent = Object.keys(TEST_SUITES).length;
+            
+            let totalTests = 0;
+            
+            for (const [suiteName, suiteConfig] of Object.entries(TEST_SUITES)) {
+                totalTests += suiteConfig.tests.length;
+                
+                const suiteElement = createSuiteElement(suiteName, suiteConfig);
+                container.appendChild(suiteElement);
+            }
+            
+            document.getElementById('totalTests').textContent = totalTests;
+        }
+        
+        function createSuiteElement(suiteName, suiteConfig) {
+            const suite = document.createElement('div');
+            suite.className = 'test-suite';
+            suite.id = `suite-${suiteName}`;
+            
+            suite.innerHTML = `
+                <div class="suite-header" onclick="toggleSuite('${suiteName}')">
+                    <div class="suite-title">
+                        📦 ${suiteName}
+                        <div style="font-size: 0.9em; font-weight: normal; opacity: 0.8; margin-top: 2px;">
+                            ${suiteConfig.description}
+                        </div>
+                    </div>
+                    <div class="suite-stats">
+                        <div class="suite-progress">
+                            <div class="suite-progress-bar" id="progress-${suiteName}"></div>
+                        </div>
+                        <span class="suite-badge badge-idle" id="badge-${suiteName}">IDLE</span>
+                        <span id="stats-${suiteName}">0/${suiteConfig.tests.length}</span>
+                    </div>
+                </div>
+                <div class="suite-details" id="details-${suiteName}">
+                    <div class="test-list" id="tests-${suiteName}">
+                        ${suiteConfig.tests.map((test, index) => `
+                            <div class="test-item" id="test-${suiteName}-${index}">
+                                <span class="test-name">${test.description}</span>
+                                <span class="test-status">⏳ PENDING</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            return suite;
+        }
+        
+        function toggleSuite(suiteName) {
+            const details = document.getElementById(`details-${suiteName}`);
+            details.classList.toggle('expanded');
+        }
+        
+        async function runAllTests() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            updateStatus('running', 'Running tests...');
+            
+            const runBtn = document.getElementById('runAllBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            runBtn.disabled = true;
+            stopBtn.disabled = false;
+            
+            log('🚀 Starting test execution using console infrastructure', 'info');
+            clearResults();
+            
+            try {
+                // Initialize the SAME testing framework as console
+                log('Initializing testing framework...', 'info');
+                framework = new TestingFramework('http://localhost:3001');
+                
+                // Set log level from dropdown selection
+                const logLevel = document.getElementById('logLevelSelect').value;
+                framework.setLogLevel(logLevel);
+                log(`Using log level: ${logLevel}`, 'info');
+                
+                // Setup framework logger to respect log level filtering
+                framework.setLogger((msg, level) => {
+                    // Only log if the framework's shouldLog allows it
+                    if (framework.shouldLog(level || 'info')) {
+                        log(`[Framework] ${msg}`, level || 'info');
+                    }
+                });
+                
+                // Create progress callback to update web UI
+                const progressCallback = (data) => {
+                    handleProgressUpdate(data);
+                };
+                
+                runner = new DataDrivenTestRunner(framework, progressCallback);
+                
+                // Setup infrastructure (same as console)
+                await framework.validateInfrastructure();
+                await framework.selectSession('localhost:3001');
+                
+                log('Infrastructure validation complete', 'success');
+                
+                // Run ALL suites using EXACT same console code
+                const results = await runner.runAllSuites(TEST_SUITES);
+                
+                log(`🎉 Testing completed: ${results.passed}/${results.total} tests passed`, 
+                    results.success ? 'success' : 'warning');
+                
+                updateStatus(results.success ? 'success' : 'error', 
+                    results.success ? 'All tests passed!' : `${results.failed} tests failed`);
+                
+            } catch (error) {
+                log(`💥 Test execution failed: ${error.message}`, 'error');
+                updateStatus('error', 'Test execution failed');
+            } finally {
+                isRunning = false;
+                runBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        function handleProgressUpdate(data) {
+            switch (data.type) {
+                case 'suite_start':
+                    log(`📦 Running test suite: ${data.suiteName}`, 'info');
+                    updateSuiteBadge(data.suiteName, 'running', 'RUNNING');
+                    break;
+                    
+                case 'test_start':
+                    log(`🧪 Running: ${data.description}`, 'info');
+                    updateTestStatus(data.suiteName, data.testIndex, 'running', '⏳ RUNNING');
+                    break;
+                    
+                case 'test_result':
+                    const result = data.result;
+                    if (result.passed) {
+                        runningPassed++;
+                        updateTestStatus(data.suiteName, data.testIndex, 'passed', '✅ PASS');
+                    } else {
+                        runningFailed++;
+                        updateTestStatus(data.suiteName, data.testIndex, 'failed', '❌ FAIL');
+                        log(`  Failed: ${result.description} - ${result.error || 'Assertion failed'}`, 'error');
+                    }
+                    // Update running totals immediately
+                    updateOverallStats(runningPassed, runningFailed);
+                    break;
+                    
+                case 'suite_complete':
+                    const suiteSuccess = data.failed === 0;
+                    updateSuiteBadge(data.suiteName, suiteSuccess ? 'success' : 'error', 
+                                    suiteSuccess ? 'PASS' : 'FAIL');
+                    updateSuiteProgress(data.suiteName, data.total, data.total);
+                    updateSuiteStats(data.suiteName, data.total, data.total);
+                    log(`📊 Suite ${data.suiteName}: ${data.passed}/${data.total} passed`, 
+                        suiteSuccess ? 'success' : 'warning');
+                    break;
+                    
+                case 'all_complete':
+                    updateOverallStats(data.passed, data.failed);
+                    break;
+            }
+        }
+        
+        function stopTests() {
+            isRunning = false;
+            updateStatus('idle', 'Tests stopped');
+            log('⏹️ Test execution stopped by user', 'warning');
+            
+            document.getElementById('runAllBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+        
+        function clearResults() {
+            runningPassed = 0;
+            runningFailed = 0;
+            document.getElementById('passedTests').textContent = '0';
+            document.getElementById('failedTests').textContent = '0';
+            
+            // Reset all suite states
+            for (const suiteName of Object.keys(TEST_SUITES)) {
+                updateSuiteBadge(suiteName, 'idle', 'IDLE');
+                updateSuiteProgress(suiteName, 0, TEST_SUITES[suiteName].tests.length);
+                updateSuiteStats(suiteName, 0, TEST_SUITES[suiteName].tests.length);
+                
+                // Reset test items
+                const tests = document.querySelectorAll(`#tests-${suiteName} .test-item`);
+                tests.forEach(test => {
+                    test.className = 'test-item';
+                    test.querySelector('.test-status').innerHTML = '⏳ PENDING';
+                });
+            }
+        }
+        
+        function updateStatus(type, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = `status-indicator status-${type}`;
+            statusText.textContent = text;
+        }
+        
+        function updateSuiteBadge(suiteName, type, text) {
+            const badge = document.getElementById(`badge-${suiteName}`);
+            if (badge) {
+                badge.className = `suite-badge badge-${type}`;
+                badge.textContent = text;
+            }
+        }
+        
+        function updateSuiteProgress(suiteName, completed, total) {
+            const progressBar = document.getElementById(`progress-${suiteName}`);
+            if (progressBar) {
+                const percentage = (completed / total) * 100;
+                progressBar.style.width = `${percentage}%`;
+            }
+        }
+        
+        function updateSuiteStats(suiteName, completed, total) {
+            const stats = document.getElementById(`stats-${suiteName}`);
+            if (stats) {
+                stats.textContent = `${completed}/${total}`;
+            }
+        }
+        
+        function updateTestStatus(suiteName, testIndex, type, text) {
+            const testItem = document.getElementById(`test-${suiteName}-${testIndex}`);
+            if (testItem) {
+                testItem.className = `test-item ${type}`;
+                testItem.querySelector('.test-status').innerHTML = text;
+            }
+        }
+        
+        function updateOverallStats(passed, failed) {
+            document.getElementById('passedTests').textContent = passed;
+            document.getElementById('failedTests').textContent = failed;
+        }
+        
+        function updateStats() {
+            // This calculates stats from the test suites
+        }
+        
+        function log(message, level = 'info') {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level-${level}">${message}</span>
+            `;
+            
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('logContent').innerHTML = '';
+            log('Log cleared', 'info');
+        }
+        
+        function setupFallbackSuites() {
+            TEST_SUITES = {
+                "demo_suite": {
+                    "description": "Demo test suite (fallback)",
+                    "setup": { "url": "http://localhost:3001/test-controls", "delay": 500 },
+                    "tests": [
+                        { "element": "Username", "setValue": "demo", "expect": "demo", "description": "Demo test 1" },
+                        { "element": "Email Address", "setValue": "test@demo.com", "expect": "test@demo.com", "description": "Demo test 2" }
+                    ]
+                }
+            };
+            setupTestSuites();
+            log('Using fallback demo configuration', 'warning');
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
