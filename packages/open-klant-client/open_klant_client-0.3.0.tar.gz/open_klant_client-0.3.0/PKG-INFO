@@ -1,0 +1,110 @@
+Metadata-Version: 2.4
+Name: open-klant-client
+Version: 0.3.0
+Summary: API Client library to communicate with the Open Klant service.
+Author-email: Maykin Media <support@maykinmedia.nl>
+License-Expression: EUPL-1.2
+Project-URL: Homepage, https://github.com/maykinmedia/open-klant-client
+Project-URL: Documentation, http://maykin-open-klant-client.readthedocs.io/en/latest/
+Project-URL: Bug Tracker, https://github.com/maykinmedia/open-klant-client/issues
+Project-URL: Source Code, https://github.com/maykinmedia/open-klant-client
+Keywords: maykin,openklant,open klant,klantinteracties,common ground,api client
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.12
+Description-Content-Type: text/x-rst
+License-File: LICENSE.md
+Requires-Dist: ape_pie>=0.2.0
+Provides-Extra: tests
+Requires-Dist: pytest; extra == "tests"
+Requires-Dist: tox; extra == "tests"
+Requires-Dist: ruff; extra == "tests"
+Requires-Dist: pyright; extra == "tests"
+Requires-Dist: vcrpy; extra == "tests"
+Requires-Dist: pydantic; extra == "tests"
+Requires-Dist: pytest-recording; extra == "tests"
+Requires-Dist: requests; extra == "tests"
+Requires-Dist: types-requests; extra == "tests"
+Requires-Dist: factory-boy; extra == "tests"
+Provides-Extra: docs
+Requires-Dist: sphinx; extra == "docs"
+Requires-Dist: sphinx-rtd-theme; extra == "docs"
+Provides-Extra: release
+Requires-Dist: bump-my-version; extra == "release"
+Dynamic: license-file
+
+=================
+Open Klant Client
+=================
+
+A Python client library for interacting with the `Open Klant API <https://github.com/maykinmedia/open-klant>`_.
+
+Installation
+============
+
+.. code-block:: bash
+
+    pip install open-klant-client
+
+Usage
+=====
+
+Initialize the client with your API endpoint and token:
+
+.. code-block:: python
+
+    from openklant_client import OpenKlantClient
+
+    client = OpenKlantClient(
+        base_url="https://example.com/klantinteracties/api/v1",
+        token="your_api_token"
+    )
+
+List resources
+--------------
+
+.. code-block:: python
+
+    # List all partijen
+    partijen = client.partij.list()
+
+    # List klantcontacten with filters
+    contacten = client.klant_contact.list(params={"onderwerp": "vraag"})
+
+    # Auto-paginate through all results (max_requests=None means paginate until all rows are retrieved)
+    for partij in client.partij.list_iter(max_requests=10):
+        print(partij)
+
+Get a specific resource
+-----------------------
+
+.. code-block:: python
+
+    # Get a partij by UUID
+    partij = client.partij.get(uuid="123e4567-e89b-12d3-a456-426614174000")
+
+Create a resource
+-----------------
+
+.. code-block:: python
+
+    # Create a new actor
+    actor = client.actor.create(
+        data={
+            "naam": "John Doe",
+            "soortActor": "medewerker",
+            "indicatieActief": True,
+            "actoridentificator": {
+                "objectId": "123456",
+                "codeObjecttype": "employee",
+                "codeRegister": "hr",
+                "codeSoortObjectId": "id",
+            },
+        }
+    )
