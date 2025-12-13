@@ -1,0 +1,72 @@
+diff --git a/distributed/distributed-schema.yaml b/distributed/distributed-schema.yaml
+index c93972cc..8b2ea414 100644
+--- a/distributed/distributed-schema.yaml
++++ b/distributed/distributed-schema.yaml
+@@ -155,6 +155,15 @@ properties:
+ 
+               See https://docs.dask.org/en/latest/how-to/customize-initialization.html for more information
+ 
++          resolve-worker-hostname:
++            type: boolean
++            description: |
++              Whether the scheduler should resolve the worker hostname when joining.
++              If true, the worker's contact string is resolved to an IP address when it connects
++              (and the IP address is used to identify the worker internally).  Otherwise, the
++              resolution is only done when a socket is connected.  Disabling hostname resolution
++              may be advantageous when using TLS security.
++
+           unknown-task-duration:
+             type: string
+             description: |
+diff --git a/distributed/distributed.yaml b/distributed/distributed.yaml
+index a0e02153..85fc5ae4 100644
+--- a/distributed/distributed.yaml
++++ b/distributed/distributed.yaml
+@@ -25,6 +25,7 @@ distributed:
+     pickle: True            # Is the scheduler allowed to deserialize arbitrary bytestrings
+     preload: []             # Run custom modules with Scheduler
+     preload-argv: []        # See https://docs.dask.org/en/latest/how-to/customize-initialization.html
++    resolve-worker-hostname: False # Whether or not the worker hostname is resolved to an IP address at connection time
+     unknown-task-duration: 500ms  # Default duration for all tasks with unknown durations ("15m", "2h")
+     default-task-durations:  # How long we expect function names to run ("1h", "1s") (helps for long tasks)
+       rechunk-split: 1us
+diff --git a/distributed/scheduler.py b/distributed/scheduler.py
+index 77338888..630ac0c0 100644
+--- a/distributed/scheduler.py
++++ b/distributed/scheduler.py
+@@ -172,6 +172,8 @@ DEFAULT_DATA_SIZE = parse_bytes(
+ )
+ STIMULUS_ID_UNSET = "<stimulus_id unset>"
+ 
++RESOLVE_WORKER_HOSTNAME = dask.config.get("distributed.scheduler.resolve-worker-hostname")
++
+ DEFAULT_EXTENSIONS = {
+     "locks": LockExtension,
+     "multi_locks": MultiLockExtension,
+@@ -4125,7 +4127,7 @@ class Scheduler(SchedulerState, ServerNode):
+         self,
+         *,
+         address: str,
+-        resolve_address: bool = True,
++        resolve_address: bool = RESOLVE_WORKER_HOSTNAME,
+         now: float | None = None,
+         resources: dict[str, float] | None = None,
+         host_info: dict | None = None,
+@@ -4241,7 +4243,7 @@ class Scheduler(SchedulerState, ServerNode):
+         server_id: str,
+         nthreads: int,
+         name: str,
+-        resolve_address: bool = True,
++        resolve_address: bool = RESOLVE_WORKER_HOSTNAME,
+         now: float,
+         resources: dict[str, float],
+         # FIXME: This is never submitted by the worker
+@@ -7679,7 +7681,7 @@ class Scheduler(SchedulerState, ServerNode):
+             dr = self.resources.setdefault(resource, {})
+             del dr[worker]
+ 
+-    def coerce_address(self, addr: str | tuple, resolve: bool = True) -> str:
++    def coerce_address(self, addr: str | tuple, resolve: bool = RESOLVE_WORKER_HOSTNAME) -> str:
+         """
+         Coerce possible input addresses to canonical form.
+         *resolve* can be disabled for testing with fake hostnames.

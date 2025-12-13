@@ -1,0 +1,253 @@
+devaf:
+  enabled: true
+  testtoken: dGVzdA==
+  testpem: dGVzdA==
+
+
+# Disable/enable RBAC
+rbac:
+  enabled: true
+  # Only if it exists
+  traefik:
+    serviceAccountName:
+
+# traefik nested config relates to the traefik Pod and Traefik running within it
+# that is acting as a proxy for traffic towards the gateway or user created
+# DaskCluster resources.
+traefik:
+  enabled: false
+  service:
+    # type: LoadBalancer
+    # type: ClusterIP
+    type: NodePort
+    port:
+      daskscheduler: 8786
+      daskworker: 8788
+  # Settings for nodeSelector, affinity, and tolerations for the traefik pods
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  # Number of instances of the proxy to run
+  replicas: 1
+  # Any annotations to add to the proxy pods
+  annotations: {}
+  # Resource requests/limits for the proxy pods
+  resources: {}
+  # The image to use for the proxy pod
+  image:
+    name: traefik
+    tag: "v2.5.7"
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  # Any additional arguments to forward to traefik
+  additionalArguments: []
+  # The proxy log level
+  loglevel: WARN
+  # Whether to expose the dashboard on port 9000 (enable for debugging only!)
+  dashboard: false
+
+# Disable/enable ServiceX as a dependency
+servicex:
+  enabled: false
+  # host: "http://coffea-casa-servicex-app:8000"
+
+xcache:
+  enabled: false
+
+htcondor:
+  enabled: false
+
+oidc_auth:
+  enabled: false
+
+#####################
+# Jupyterhub settings
+jupyterhub:
+  debug:
+    enabled: true
+  hub:
+    services:
+      test:
+        admin: true
+        apiToken: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
+    image:
+      name: jupyterhub/k8s-hub
+      tag: 1.2.0
+    command: ["sh", "-c"]
+    args:
+      - pip install --cache-dir /srv/jupyterhub/.cache/pip pyjwt pymacaroons && jupyterhub --config
+        /usr/local/etc/jupyterhub/jupyterhub_config.py --upgrade-db
+    # attemp to debug
+    # args: ["while true; do echo 'debug' && sleep 5; done;"]
+    extraEnv:
+      DASK_BASE_DOMAIN: kubernetes.docker.internal
+      CONDOR_ENABLED: 'False'
+      SERVICEX_ENABLED: 'False'
+    extraVolumeMounts:
+      - name: custom-templates
+        mountPath: /etc/jupyterhub/custom
+      - name: hub-extra-config-d
+        mountPath: /usr/local/etc/jupyterhub/auth.py
+        subPath: auth.py
+      - name: hub-extra-config-d
+        mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/secret_creation_hook.py
+        subPath: secret_creation_hook.py
+      # - name: hub-extra-config-d
+      ## Custom login page
+      #  mountPath: /etc/jupyterhub/custom/login.html
+      #  subPath: login.html
+      # - name: hub-extra-config-d
+      ## Custom login logo
+      #  mountPath: /usr/local/share/jupyterhub/static/images/logo.png
+      #  subPath: logo.png.bin
+    # - name: hub-extra-config-d
+    #  # Override GenericOAuthenticator with token refresh version
+    #  mountPath: /usr/local/lib/python3.8/dist-packages/oauthenticator/generic.py
+    #  subPath: oauthenticator-generic.py
+    # - name: hub-extra-config-d
+    #  # Pull in v14.2.0 of oauthenticator/oauth2.py, unmodified
+    #  # Our patched oauthenticator/generic.py comes from v14.2. as well
+    #  # Remove once hub is running v14+
+    #  mountPath: /usr/local/lib/python3.8/dist-packages/oauthenticator/oauth2.py
+    #  subPath: oauthenticator-oauth2-14.2.0.py
+    # - name: hub-extra-config-d
+    #  # Add CoffeaOAuthenticator to save tokens to secret
+    #  mountPath: /usr/local/lib/python3.8/dist-packages/oauthenticator/coffea.py
+    #  subPath: oauthenticator-coffea.py
+    extraVolumes:
+      - name: pool-password
+        secret:
+          secretName: htcondor-pool-password
+          items:
+            - key: token
+              path: POOL
+      - name: custom-templates
+        emptyDir: {}
+      - name: hub-extra-config-d
+        configMap:
+          name: hub-extra-config-d
+    extraConfig:
+      templates: |
+        c.JupyterHub.template_paths = ['/etc/jupyterhub/custom/']
+    config:
+      JupyterHub:
+        admin_access: true
+        authenticator_class: dummy
+      securityContext:
+        runAsUser: 0
+    networkPolicy:
+      egress:
+        - ports:
+          - protocol: TCP
+            port: 6443
+    readinessProbe:
+      periodSeconds: 10
+    db:
+      type: sqlite-memory
+  proxy:
+    service:
+      type: NodePort
+      nodePorts:
+        http: 30080
+      #  https: 30443
+      # type: LoadBalancer
+      # nodePorts:
+      #    http:
+      #    https:
+    https:
+      enabled: false
+      type: letsencrypt
+      hosts:
+        - local.jovyan.org
+      letsencrypt:
+        contactEmail: 'jovyan@jupyter.test'
+        acmeServer: https://pebble/dir
+    traefik:
+    # Fixing https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/1716
+      image:
+        name: traefik
+        tag: v2.9.6
+      extraVolumes:
+        - name: pebble-root-cert
+          configMap:
+            name: pebble
+      extraVolumeMounts:
+        - name: pebble-root-cert
+          subPath: root-cert.pem
+          mountPath: /etc/pebble/root-cert.pem
+      extraEnv:
+        LEGO_CA_CERTIFICATES: /etc/pebble/root-cert.pem
+    chp:
+      resources:
+        requests:
+          memory: 0
+          cpu: 0
+      # livenessProbe:
+      #  initialDelaySeconds: 30
+      # readinessProbe:
+      #  periodSeconds: 10
+      networkPolicy:
+        egress: []
+    extraEnv:
+      # explicit notation (the "name" field takes precedence)
+      CHP_NAMESPACE:
+        name: CHP_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+    # service:
+    #  type: LoadBalancer
+    #  labels: {}
+    #  # annotations:
+    #  #  external-dns.alpha.kubernetes.io/hostname: coffea-test.casa
+    #  nodePorts:
+    #    http:
+    #    https:
+    #  disableHttpPort: false
+    #  extraPorts: []
+    #  loadBalancerIP:
+  singleuser:
+    networkPolicy:
+      enabled: false
+    spec:
+      securityContext:
+        runAsUser: 6440
+    uid: 6440
+    gid: 11265
+    extraLabels:
+      jhub_user: '{username}'
+    lifecycleHooks:
+      postStart:
+        exec:
+          command: ['bash', '-c', 'mkdir -p /home/cms-jovyan/.condor/tokens.d/ ']
+          # && cp -f /etc/cmsaf-secrets/condor_token /home/cms-jovyan/.condor/tokens.d/condor_token ']
+    storage:
+      type: none
+    defaultUrl: "/lab"
+    extraEnv:
+      LABEXTENTION_FACTORY_CLASS: LocalCluster
+      LABEXTENTION_FACTORY_MODULE: dask.distributed
+    profileList:
+      - display_name: "Coffea Base Image"
+        description: "Test build"
+        kubespawner_override:
+          image: hub.opensciencegrid.org/coffea-casa/cc-ubuntu:latest
+          # tag: "set-by-chartpress"
+          # imagePullPolicy: Always
+          securityContext:
+            runAsUser: 6440
+            runAsGroup: 11265
+            allowPrivilegeEscalation: false
+            RunAsNonRoot: true
+        default: true
+  # The continuous-image-puller and hook-image-puller are disabled by default.
+  prePuller:
+    hook:
+      enabled: false
+    continuous:
+      enabled: false
+  scheduling:
+    userScheduler:
+      enabled: true
+      replicas: 2
+      logLevel: 10

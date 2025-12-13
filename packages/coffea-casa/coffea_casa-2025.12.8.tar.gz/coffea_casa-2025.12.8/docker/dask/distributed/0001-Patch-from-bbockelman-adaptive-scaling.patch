@@ -1,0 +1,16 @@
+diff --git a/distributed/deploy/spec.py b/distributed/deploy/spec.py
+index 7da310a2..532468af 100644
+--- a/distributed/deploy/spec.py
++++ b/distributed/deploy/spec.py
+@@ -356,7 +356,10 @@ class SpecCluster(Cluster):
+             to_close = set(self.workers) - set(self.worker_spec)
+             if to_close:
+                 if self.scheduler.status == Status.running:
+-                    await self.scheduler_comm.retire_workers(workers=list(to_close))
++                    worker_names = ["htcondor--%s--" % worker.job_id
++			for idx, worker in self.workers.items()
++			if idx in to_close and hasattr(worker, "job_id")]
++                    await self.scheduler_comm.retire_workers(names=worker_names)
+                 tasks = [
+                     asyncio.create_task(self.workers[w].close())
+                     for w in to_close

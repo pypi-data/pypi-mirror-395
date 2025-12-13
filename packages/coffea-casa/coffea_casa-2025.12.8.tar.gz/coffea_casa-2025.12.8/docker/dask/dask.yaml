@@ -1,0 +1,32 @@
+distributed:
+  scheduler:
+    allowed-failures: 10
+    bandwidth: 1000000000
+    work-stealing: False
+  worker:
+    memory:
+      # Recommendations for NERSC Cori
+      # https://jobqueue.dask.org/en/latest/configurations.html
+      target: False  # Avoid spilling to disk
+      spill: False  # Avoid spilling to disk
+      pause: 0.80  # fraction at which we pause worker threads
+      terminate: 0.95  # fraction at which we terminate the worker
+    profile:
+      interval: 1d
+      cycle: 2d
+      low-level: False
+  diagnostics:
+    nvml: False
+
+  version: 2
+  
+  dashboard:
+    link: "/user/{JUPYTERHUB_USER}/proxy/{port}/status"
+
+  admin:
+    system-monitor:
+      gil:
+        enabled: true
+        interval: 10us
+    tick:
+      limit: 5s # time allowed before triggering a warning
