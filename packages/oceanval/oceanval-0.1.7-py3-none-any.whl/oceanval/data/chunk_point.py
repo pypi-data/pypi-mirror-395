@@ -1,0 +1,920 @@
+
+# %% [markdown] tags=["remove-cell"]
+# ## Read in the data
+
+
+# %% tags=["remove-input", "remove-cell"]
+n_levels = definitions[variable].n_levels
+if n_levels > 1: 
+    layer_long = "sea surface"
+else:
+    layer_long = ""
+
+ff = glob.glob(f"data_dir_value/oceanval_matchups/point/{layer}/{variable}/{point_source}/*_{variable}.csv")[0]
+
+vv_source = os.path.basename(ff).split("_")[0]
+vv_source_raw = vv_source
+vv_source = vv_source.upper()
+df = pd.read_csv(ff)
+lon_max = lon_lim[1]
+lon_min = lon_lim[0]
+lat_max = lat_lim[1]
+lat_min = lat_lim[0]
+df = df.query(f"lon >= {lon_min} and lon <= {lon_max} and lat >= {lat_min} and lat <= {lat_max}").reset_index(drop = True) 
+# drop duplicates
+df = df.drop_duplicates().reset_index(drop = True)
+ff_dict = f"data_dir_value/oceanval_matchups/point/{layer}/{variable}/{point_source}/matchup_dict.pkl"
+point_time_res = ["year", "month", "day"]
+point_time_res = [x for x in point_time_res if x in df.columns]
+
+point_years = None
+variable_formula = None
+try:
+    with open(ff_dict, "rb") as f:
+        matchup_dict = pickle.load(f)
+        min_year = matchup_dict["start"]
+        max_year = matchup_dict["end"]
+        point_time_res = matchup_dict["point_time_res"]
+        if "point_years" in matchup_dict:
+            point_years = matchup_dict["point_years"]
+        if "model_variable" in matchup_dict:
+            variable_formula = matchup_dict["model_variable"]
+except:
+    pass
+
+if point_time_res is not None:
+    if isinstance(point_time_res, str):
+        point_time_res = [point_time_res]
+    if "year" not in point_time_res:
+        if "year" in df.columns:
+            df = df.drop(columns = "year")
+    if "month" not in point_time_res:
+        if "month" in df.columns:
+            df = df.drop(columns = "month")
+    if "day" not in point_time_res:
+        if "day" in df.columns:
+            df = df.drop(columns = "day")
+    df = df.drop_duplicates().reset_index(drop = True)
+    grouping = [x for x in ["lon", "lat", "year", "depth", "day", "month"] if x in df.columns]
+    df = df.groupby(grouping).mean().reset_index()
+
+try:
+    df = df.query("depth < 5").reset_index()
+    grouping = [x for x in ["lon", "lat", "year", "day", "month"] if x in df.columns]
+    df = df.groupby(grouping).mean().reset_index()
+except:
+    pass
+
+df_locs = df.loc[:,["lon", "lat"]].drop_duplicates()
+# bin to 0.01 resolution
+df_raw = copy.deepcopy(df)
+
+
+
+
+if len(point_time_res) > 0:
+    if "year" in point_time_res:
+        df = df.groupby(["lon", "lat", "year", "month"]).mean().reset_index()
+    else:
+        df = df.groupby(["lon", "lat",  "month"]).mean().reset_index()
+        if "year" in df.columns:
+            df = df.drop(columns = "year")
+        if "day" in df.columns:
+            df = df.drop(columns = "day")
+
+grouping = ["lon", "lat", "year", "month"]
+if bin_res is not None:
+    lon_res = bin_res[0]
+    lat_res = bin_res[1]
+    # round to nearest bin_res using bin_value
+    df = (
+        df
+        .assign(
+            lon = lambda x: bin_value(x.lon, lon_res),
+            lat = lambda x: bin_value(x.lat, lat_res)
+        )
+    )
+    grouping = [x for x in grouping if x in df.columns]
+    df = df.groupby(grouping).mean().reset_index()
+
+
+available = len(df_raw) > 10
+
+
+# %% tags=["remove-input", "remove-cell"]
+# A function for generating the data source
+
+def data_source(vv_source, vv_name):
+    return vv_source
+
+
+# %% tags=["remove-input"]
+if available:
+    intro = []
+    
+    if n_levels > 1:
+        intro.append(f"This data was extracted from vertical profiles. Values from the **top 5m** were extracted from the database. This was compared with the model values from the sea surface level.")
+    else:
+        intro.append(f"This data was extracted from point measurements in the database.")
+    
+    model_variable = definitions[variable].model_variable    
+    
+    import pickle
+    try:
+        ff_dict = f"data_dir_value/oceanval_matchups/point/{layer}/{variable}/matchup_dict.pkl"
+        with open(ff_dict, "rb") as f:
+            matchup_dict = pickle.load(f)
+            min_year = matchup_dict["start"]
+            max_year = matchup_dict["end"]
+            point_time_res = matchup_dict["point_time_res"]
+    
+        if min_year == max_year:
+            intro.append(f"The model output was matched up with the observational data with model output from  the year **{min_year}**.")
+        else:
+            intro.append(f"The model output was matched up with the observational data with model output from the years **{min_year} to {max_year}**.")
+        
+        if point_time_res == ["year", "month", "day"]:
+            intro.append(f"The model output was matched up precisely with the observational data for each day of the year in the years with data in both model and observations.")
+        if point_time_res == ["month", "day"]:
+            intro.append(f"The model output was matched up with the observational data for each day of the year. However, the year in the observational data was not considered, so the comparison is climatological.")
+        if point_time_res == ["month"]:
+            intro.append(f"The model output was matched up with the observational data for each month of the year. However, the year and day of month in the observational data was not considered, so the comparison is climatological.")
+        if point_years is not None:
+            point_start = point_years[0]
+            point_end = point_years[1]
+            if point_start > 1900:
+                if point_start < point_end:
+                    intro.append(f"The observational data was restricted to the years **{point_start} to {point_end}**.")
+                else:
+                    intro.append(f"The observational data was restricted to the year **{point_start}**.")
+        
+    except:
+        if "year" in df_raw.columns:
+            min_year = df_raw.year.min()
+            max_year = df_raw.year.max()
+            # coerce to int
+            min_year = int(min_year)
+            max_year = int(max_year)
+        if min_year == max_year:
+            intro.append(f"The model output was matched up with the observational data for the year **{min_year}**.")
+        else:
+            intro.append(f"The model output was matched up with the observational data for the years **{min_year} to {max_year}**.")
+    
+    
+    
+    md_basic(" ".join(intro).strip().replace("  ", " "))
+    
+    md(f"In total there were {len(df_raw)} values extracted from the observational database. The map below shows the locations of the matched up data for {vv_name}.", number = True)
+    if variable_formula is not None:
+        md_markdown(f"The following model output was used to compare with observational values: **{variable_formula}**.")
+    else:
+        md_markdown(f"The following model output was used to compare with observational values: **{model_variable}**.")
+    if bin_res is not None:
+        md_markdown(f"**Note**: the observational and model data were binned to a resolution of {bin_res[0]}° longitude by {bin_res[1]}° latitude and climatological monthly averages were calculated before analysis. This was carried out to reduce the influence of spatial bias on the validation statistics.") 
+    md("**Note**: Individual vertical profiles with more than one observation in the top 5m were averaged to give a single observation for that profile.")
+
+# %% tags=["remove-cell"]
+# bottom 1% of observations
+if available:
+    bot_low = df.observation.quantile(0.001)
+    df = df.query(f"observation >= {bot_low}")
+
+# %% tags=["remove-input"]
+# %%capture --no-display
+# %%R -i df_locs -i variable -i available -i unit -i concise -w 500
+if(available & concise == FALSE){
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2, warn.conflicts = FALSE)
+library(stringr)
+world_map <- map_data("world")
+# get lon, lat limits from profile_mld
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+xlim = c(min(df_locs$lon), max(df_locs$lon))
+ylim = c(min(df_locs$lat), max(df_locs$lat))
+
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+gg <- df_locs %>%
+# final six months of the year
+    ggplot()+
+    geom_point(aes(lon, lat))+
+    theme_gray(base_size = 14)+
+    # add colour scale. Minimum zero, label 100, ">100"
+    geom_polygon(data = world_map, aes(long, lat, group = group), fill = "grey60")+
+    coord_fixed(xlim = xlim, ylim = ylim, ratio = 1.5, expand = FALSE) 
+
+# figure out if lon minimum is less than -10
+if( min(df_locs$lon) < -13 ){
+    # add sensible labels for longitude and latitude
+
+    gg <- gg +
+    # remove the x and y axis totally
+    theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+          axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+          axis.title.x = element_blank(), axis.title.y = element_blank()) +
+    labs(x = "", y = "") 
+
+
+
+}
+
+    gg <- gg +
+    # remove the x and y axis totally
+    theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+          axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+          axis.title.x = element_blank(), axis.title.y = element_blank()) +
+    labs(x = "", y = "") 
+
+    # move legen
+
+gg
+}
+
+# %% tags=["remove-input"]
+if available and not concise:
+    if n_levels > 1 and layer_select != "all": 
+        md(f"**Figure {i_figure}:** Locations of matchups between simulated and observed {vv_name} in the top 5m of the water column.") 
+    else:
+        md(f"**Figure {i_figure}:** Locations of matchups between simulated and observed {vv_name}.") 
+
+    i_figure = i_figure + 1
+
+# %% tags=["remove-input"]
+# %%capture --no-display
+# %%R -i df -i variable -i unit -i layer_long -i vv_name -i available -w 800 
+options(warn=-1)
+options(warn=-1)
+library(tidyverse)
+library(stringr)
+library(ggtext)
+if(available){
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+if (("month" %in% colnames(df)) == FALSE){
+
+df_map <- df %>%
+    gather(variable, value, model:observation)
+    df_map
+# calculate the 98th percentil of the data
+p98 = quantile(df_map$value, 0.98)
+# cap the value at this
+df_map$value = pmin(df_map$value, p98)
+
+world_map <- map_data("world")
+
+Layer <- str_to_title(layer_long)
+name <- str_glue("{Layer} {vv_name} ({unit})")
+# ensure everything is superscripted where necessary
+# m-3 should be superscripted
+# Note: this is for ggplot2
+name <- str_replace_all(name, "m-([0-9]+)", "m<sup>-\\1</sup>")
+name = str_replace(name, "/m\\^2", "m<sup>-2</sup>")
+# fix /day
+name = str_replace(name, "/day", "day<sup>-1</sup>")
+# fix O_2
+name <- str_replace(name, "O_2", "O<sub>2</sub>")
+# CO2
+name <- str_replace(name, "CO2", "CO<sub>2</sub>")
+
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+
+gg <- df_map %>%
+    ggplot()+
+    geom_point(aes(lon, lat, colour = value))+
+    theme_gray(base_size = 14)+
+    coord_fixed(ratio = 1.5, xlim = c(min(df$lon), max(df$lon)), ylim = c(min(df$lat), max(df$lat)), expand = FALSE)+
+    labs(color = variable)+
+    # log10
+    theme(legend.position = "bottom", legend.title = element_markdown())  +
+    facet_wrap(~variable)+
+      scale_colour_viridis_c(
+        # use unit for the label
+        name = name,
+                       guide = guide_colorbar(title.position = "bottom", title.hjust = 0.5, title.theme = element_markdown(angle = 0, size = 20, family = "Helvetica"))
+  )+
+    theme(
+
+    legend.position = "bottom", legend.direction = "horizontal", legend.box = "horizontal", legend.key.width = unit(3.0, "cm"),
+    legend.key.height = unit(1.0, "cm"))
+
+
+
+
+gg <- gg + 
+    geom_polygon(data = world_map, aes(long, lat, group = group), fill = "grey60")
+
+# remove x and y axis names
+
+# ditch the whitespace around the plot
+gg <- gg + theme(plot.margin=unit(c(0,0,0,0),"cm"))
+gg <- gg +
+    # remove the x and y axis totally
+    theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+          axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+          axis.title.x = element_blank(), axis.title.y = element_blank()) +
+    labs(x = "", y = "") 
+gg
+
+}
+
+}
+
+# %% tags=["remove-input"]
+if available:
+    if "month" not in df.columns:
+        md(f"**Figure {i_figure}:** Map of average {layer_long} {vv_name} in the model and observational datasets.")
+        i_figure += 1
+
+# %% tags=["remove-input"]
+if available:
+    if "month" in df_raw.columns:
+        # summarize using md the number of observations in each month
+        # get the minimum and maximum number in each month and report the month
+        df_size = df_raw.groupby("month").size().reset_index()
+        df_size.columns = ["month", "n"]
+        n_min = df_size.n.min()
+        n_max = df_size.n.max()
+        month_min = list(df_size.query("n == @n_min").month.values)[0]
+        months_max = list(df_size.query("n == @n_max").month.values)[0] 
+        # convert to month names
+        import calendar
+        month_min = calendar.month_name[int(month_min)]
+        months_max = calendar.month_name[int(months_max)] 
+
+        # summarize using md
+
+        fig_summary = [f"The number of observations in each month ranged from {n_min} in {month_min} to {n_max} in {months_max}."]
+
+        if not concise:
+            fig_summary.append(f"Figure {i_figure} below shows the distribution of observations in each month.")
+
+        md(" ".join(fig_summary).strip().replace("  ", " "), number = True)
+
+    if "month" in df_raw.columns:
+        df_totals = (
+            df_raw.groupby("month").size().reset_index()
+            # rename
+            .rename(columns = {0: "n"})
+        )
+    else:
+        df_totals = pd.DataFrame({"month": ["All"], "n": [len(df_raw)]})
+
+
+
+# %% tags=["remove-input"]
+if available:
+    bias_text = []
+
+    bias_text.append(f"Figure {i_figure} below shows the bias between the model and observational data for {vv_name}.")
+    bias_text.append(f"The bias is calculated as the model value minus the observational value, and it is shown for each month of the year.")
+
+    md(" ".join(bias_text).strip().replace("  ", " "))
+
+# %% tags=["remove-input"]
+# %%capture --no-display
+# %%R -i df -i variable -i unit -i layer_long -w 1000 -h 1200 -i vv_name -i available -i layer_select
+if(available){
+options(warn=-1)
+# #%%R -i df -i variable -i unit -w 1600 -h 1000
+options(warn=-1)
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2, warn.conflicts = FALSE)
+library(stringr)
+library(tidyverse)
+world_map <- map_data("world")
+# get lon, lat limits from profile_mld
+
+xlim = c(min(df$lon), max(df$lon))
+ylim = c(min(df$lat), max(df$lat))
+
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+
+df <- df %>%
+    mutate(bias = model - observation) 
+
+# calculate the absolate bias
+
+df1 <- df %>%
+    mutate(bias = abs(bias))
+# calculate the 98th percentile of the absolute bias
+bias_high <- df1$bias %>% quantile(0.98)
+# cap the bias to +/1 98th percentile
+df$bias[df$bias > bias_high] <- bias_high
+df$bias[df$bias < -bias_high] <- -bias_high
+
+
+
+plot_month <- FALSE
+if("month" %in% colnames(df))
+    plot_month <- TRUE
+
+# # convert month number to month in profile_mld
+if(plot_month){
+    df <- df %>%
+        arrange(month)
+df$month <- factor(df$month, levels = df$month, labels = month.abb[df$month])
+}
+# df$month <- factor(df$month, labels = month.abb)
+
+title <- str_glue("Bias in {layer_long} {vv_name} ({unit})")
+# fix O_2
+title <- str_replace(title, "O_2", "O<sub>2</sub>")
+title <- str_replace(title, "CO2", "CO<sub>2</sub>")
+
+out = str_glue("../../oceanval_results/{layer_select}/{variable}/{layer_select}_{variable}_bias.csv")
+
+# # check directory exists for out
+if (!dir.exists(dirname(out))){
+    dir.create(dirname(out), recursive = TRUE)
+}
+df %>% write_csv(out)
+
+# df.to_csv(out, index = False)
+
+# export to csv
+
+title = str_replace(title, "/m\\^3", "m<sup>-3")
+title = str_replace(title, "/m\\^2", "m<sup>-2")
+# fix  O_2
+# replace pco2 with PCO_2
+title = str_replace_all(title, "pco2", "pCO<sub>2</sub>")
+title = str_replace(title, "pCO2", "pCO<sub>2</sub>")
+title = str_replace(title, "O_2", "O<sub>2</sub>")
+# 
+
+
+title <- str_replace_all(title, "m-([0-9]+)", "m<sup>-\\1</sup>")
+
+
+# not for ben
+    plot_width <- 6.0
+    if(df$month %>% n_distinct() < 9){
+        plot_width <- 4.5
+    }
+
+gg <- df %>%
+    ggplot()+
+    geom_point(aes(lon, lat, colour = bias))+
+    theme_dark(base_size = 24)+
+    # add colour scale. Minimum zero, label 100, ">100"
+    coord_fixed(xlim = xlim, ylim = ylim, ratio = 1.5, expand = FALSE) +
+    # move legend to the top. Make it 3 cm wide
+    # move legend title to the bottom and centre it
+    scale_colour_gradient2(low = "blue", high = "red",
+    limits = c(-bias_high, bias_high),
+                       guide = guide_colorbar(title.position = "bottom", title.hjust = 0.5, title.theme = ggtext::element_markdown(angle = 0, size = 20, family = "Helvetica"))
+  )+
+    theme(
+    legend.position = "bottom", legend.direction = "horizontal", legend.box = "horizontal", legend.key.width = unit(plot_width, "cm"),
+    legend.key.height = unit(1.0, "cm"))+
+    # set the legend title to bias
+    labs(fill = title)
+
+
+if (plot_month){
+    #  option: figure out how many months are in the data
+    # and wrap appropriately. this requires the w to be fixed in %%R. Not sure how to do this
+    gg <- gg + facet_wrap(~month)
+}
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+colour_lab <- str_glue("Model bias ({unit})")
+colour_lab <- str_replace(colour_lab, "/m\\^3", "m<sup>-3</sup>")
+colour_lab <- str_replace(colour_lab, "/m\\^2", "m<sup>-2</sup>")
+colour_lab <- str_replace_all(colour_lab, "m-([0-9]+)", "m<sup>-\\1</sup>")
+# fix /day
+colour_lab <- str_replace(colour_lab, "/day", "day<sup>-1</sup>")
+# fix O_2
+colour_lab <- str_replace(colour_lab, "O_2", "O<sub>2</sub>")
+colour_lab <- str_replace(colour_lab, "CO2", "CO<sub>2</sub>")
+
+#
+gg <- gg + labs(colour = title)
+
+gg <- gg + 
+    geom_polygon(data = world_map, aes(long, lat, group = group), fill = "grey70")
+
+gg <- gg +
+    # remove the x and y axis totally
+    theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+          axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+          axis.title.x = element_blank(), axis.title.y = element_blank()) +
+    labs(x = "", y = "") 
+
+    # move legen
+
+gg
+}
+
+# %% tags=["remove-input"]
+if available:
+    if n_levels > 1 and layer_select != "all":
+        md(f"**Figure {i_figure}**: Bias in {layer_long} {vv_name}. The bias is calculated as model - observation. The colour scale is from blue (negative bias) to red (positive bias). The colour scale is capped at the 98th percentile of the absolute bias. This is to avoid a few extreme outliers from dominating the colour scale. **Note:** values have been binned and averaged to the resolution of the model.") 
+    else:
+        md(f"**Figure {i_figure}**: Bias in {layer_long} {vv_name}. The bias is calculated as model - observation. The colour scale is from blue (negative bias) to red (positive bias). The colour scale is capped at the 98th percentile of the absolute bias. This is to avoid a few extreme outliers from dominating the colour scale.") 
+    i_figure += 1
+
+# create directory if non-existent, recursive
+    if os.path.isdir("adhoc/tmp") == False:
+        os.makedirs("adhoc/tmp")
+    df_raw.to_csv("adhoc/tmp/df_raw.csv")
+    df.to_csv("adhoc/tmp/df.csv")
+
+
+# %% tags=["remove-input"]
+if available:
+    scatter_text = []
+    scatter_text.append(f"Figure {i_figure} shows the distribution of {layer_long} {vv_name} observations in the model and observational datasets.") 
+
+    md(" ".join(scatter_text).strip().replace("  ", " "))
+
+
+# %% tags=["remove-input"]
+# %%capture --no-display
+# %%R -i df -i concise -i vv_name -i unit -w 1000 -h 1200 -i available
+if(concise == FALSE & available){
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+library(tidyverse, warn.conflicts = FALSE)
+
+
+x_lab <- str_glue("Model {vv_name} ({unit})")
+y_lab <- str_glue("Observed {vv_name} ({unit})")
+
+
+x_lab <- str_replace(x_lab, "/m\\^3", "m<sup>-3</sup>")
+y_lab <- str_replace(y_lab, "/m\\^3", "m<sup>-3</sup>")
+x_lab <- str_replace(x_lab, "/m\\^2", "m<sup>-2</sup>")
+y_lab <- str_replace(y_lab, "/m\\^2", "m<sup>-2</sup>")
+x_lab <- str_replace_all(x_lab, "m-([0-9]+)", "m<sup>-\\1</sup>")
+y_lab <- str_replace_all(y_lab, "m-([0-9]+)", "m<sup>-\\1</sup>")
+# fix O_2
+x_lab <- str_replace(x_lab, "O_2", "O<sub>2</sub>")
+y_lab <- str_replace(y_lab, "O_2", "O<sub>2</sub>")
+x_lab <- str_replace(x_lab, "CO2", "CO<sub>2</sub>")
+y_lab <- str_replace(y_lab, "CO2", "CO<sub>2</sub>")
+
+
+if ("month" %in% colnames(df)){
+df <- df %>%
+# convert month number to name, e.g. 1=Jan
+# do not use a factor
+    mutate(month = month.abb[month]) %>%
+    ungroup()
+
+df <- df %>%
+    mutate(month = "All months") %>%
+    ungroup() %>%
+    bind_rows(df)
+
+df$month <- factor(df$month, levels = c("All months", month.abb))
+
+}
+# replace pco2 with pCO2 with superscript in x_lab
+x_lab <- str_replace_all(x_lab, "co2", "CO<sub>2</sub>")
+y_lab <- str_replace_all(y_lab, "co2", "CO<sub>2</sub>")
+x_lab <- str_replace_all(x_lab, "CO2", "CO<sub>2</sub>")
+y_lab <- str_replace_all(y_lab, "CO2", "CO<sub>2</sub>")
+# fix /day
+x_lab <- str_replace(x_lab, "/day", "day<sup>-1</sup>")
+y_lab <- str_replace(y_lab, "/day", "day<sup>-1</sup>")
+# fix O_2
+x_lab <- str_replace(x_lab, "O_2", "O<sub>2</sub>")
+y_lab <- str_replace(y_lab, "O_2", "O<sub>2</sub>")
+
+
+
+gg <- df %>%
+# final six months of the year
+    ggplot()+
+    geom_point(aes(model, observation))+
+    theme_gray(base_size = 24)+
+    labs(fill = title)+
+    geom_abline()+
+    geom_smooth(aes(model, observation), method = "lm", se = FALSE)+
+    labs(x = x_lab, y = y_lab)+
+    theme(axis.title.x = ggtext::element_markdown())+
+    theme(axis.title.y = ggtext::element_markdown())
+
+    # move legen
+
+if ("month" %in% colnames(df)){
+    gg <- gg + 
+    facet_wrap(~month)
+}
+gg
+}
+
+# %% tags=["remove-input"]
+if available:
+    if concise is False:
+        if n_levels > 1: 
+            md(f"**Figure {i_figure}**: Simulated versus observed {vv_name} in the top 5m of the water column. The blue curve is a linear regression fit to the data, and the black line represents 1-1 relationship between the simulation and observations. The data has been averaged per model grid cell.") 
+        else:
+            if "year" not in df.columns:
+                md(f"**Figure {i_figure}**: Simulated versus observed {vv_name}. The blue curve is a linear regression fit to the data, and the black line represents 1-1 relationship between the simulation and observations. The data has been averaged per model grid cell and month.")
+        i_figure = i_figure + 1
+
+# %% tags=["remove-input"]
+# %%capture --no-display
+# %%R -i vv_name -i unit -i concise -w 500  -i available
+
+if(concise & available){
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2, warn.conflicts = FALSE)
+library(stringr)
+
+bin_value <- function(x, bin_res) {
+	floor((x + bin_res / 2) / bin_res + 0.5) * bin_res - bin_res / 2
+}
+
+df <- read_csv("adhoc/tmp/df.csv")
+
+
+
+x_lab <- str_glue("Model {vv_name} ({unit})")
+y_lab <- str_glue("Observed {vv_name} ({unit})")
+x_lab <- str_replace(x_lab, "/m\\^3", "m<sup>-3</sup>")
+y_lab <- str_replace(y_lab, "/m\\^3", "m<sup>-3</sup>")
+x_lab <- str_replace(x_lab, "/m\\^2", "m<sup>-2</sup>")
+y_lab <- str_replace(y_lab, "/m\\^2", "m<sup>-2</sup>")
+x_lab <- str_replace_all(x_lab, "m-([0-9]+)", "m<sup>-\\1</sup>")
+y_lab <- str_replace_all(y_lab, "m-([0-9]+)", "m<sup>-\\1</sup>")
+# fix /day
+x_lab <- str_replace(x_lab, "/day", "day<sup>-1</sup>")
+y_lab <- str_replace(y_lab, "/day", "day<sup>-1</sup>")
+
+gg <- df %>%
+# final six months of the year
+    ggplot()+
+    geom_point(aes(model, observation))+
+    theme_gray(base_size = 14)+
+    labs(fill = title)+
+    geom_abline()+
+    geom_smooth(aes(model, observation), method = "lm", se = FALSE)+
+    labs(x = x_lab, y = y_lab)+
+    theme(axis.title.x = ggtext::element_markdown())+
+    theme(axis.title.y = ggtext::element_markdown())
+    # move legen
+
+gg
+}
+
+# %% tags=["remove-input"]
+if available:
+    if concise:
+        md(f"**Figure {i_figure}**: Model vs observed {vv_name} for {layer_long} values. The blue line is a linear regression model fit to the data.")
+        i_figure += 1
+    if n_levels > 1: 
+        md(f"## Summary statistics for sea surface {vv_name}")
+    else:
+        md(f"## Summary statistics for {vv_name}") 
+
+# %% tags=["remove-input"]
+if available and not concise:
+    md(f"The overall ability of the model to predict the observed {vv_name} was assessed by calculating the average bias, the root mean square deviation (RMSD) and the correlation coefficient (R). The bias was calculated as the model value minus the observed value. The RMSD was calculated as the square root of the mean squared deviation. The correlation coefficient was calculated as the Pearson correlation coefficient between the model and observed values.") 
+    md(f"This was calculated for each month and for the entire dataset. The results are shown in the tables below.")
+
+# %% tags=["remove-input"]
+if available:
+    is_month = "month" in df_raw.columns
+    if is_month == False:
+        df_raw = df_raw.assign(month = 1)
+        df = df.assign(month = 1)
+    if variable not in [ "benbio"]:
+        df_bias = (
+            df_raw
+            .assign(bias = lambda x: x.model - x.observation)
+            .groupby("month")
+            .mean()
+            .reset_index()
+            .loc[:,["month", "bias"]]
+            # convert month number to name
+            .assign(month = lambda x: x.month.apply(lambda y: calendar.month_abbr[y]))
+        )
+        # add average bias to df_bias as a separate row
+        annual_bias = df_raw.model.mean() - df_raw.observation.mean() 
+        df_bias = pd.concat([df_bias, pd.DataFrame({"month": ["All"], "bias": [annual_bias]})])
+
+        # move the final row to the top
+        df_bias = pd.concat([df_bias.iloc[[-1]], df_bias.iloc[:-1]])
+    else:
+        # only want annual
+        df_bias = pd.DataFrame({"month": ["All"], "bias": [df_raw.model.mean() - df_raw.observation.mean()]})
+    # remove month == 1
+    if is_month == False:
+        df_bias = df_bias.query("month != 1")
+
+    if variable not in [ "benbio"]:
+        # now create an rmse dataframe
+        df_rmse = (
+            df_raw
+            .assign(month = lambda x: x.month.apply(lambda y: calendar.month_abbr[y]))
+            .groupby("month")
+            .apply(lambda x: np.sqrt((x.model - x.observation).pow(2).mean()))
+            .reset_index()
+            .rename(columns={0: "rmse"})
+        )
+        # add average rmse to df_rmse as a separate row
+        annual_rmse = np.sqrt(((df_raw.model - df_raw.observation).pow(2)).mean())
+        df_rmse = pd.concat([df_rmse, pd.DataFrame({"month": ["All"], "rmse": [annual_rmse]})])
+        # move the final row to the top
+        df_rmse = pd.concat([df_rmse.iloc[[-1]], df_rmse.iloc[:-1]])
+    else:
+        # only want annual
+        df_rmse = pd.DataFrame({"month": ["All"], "rmse": [np.sqrt(((df_raw.model - df_raw.observation).pow(2)).mean())]})
+    # remove month == 1
+    if is_month == False:
+        df_rmse = df_rmse.query("month != 1")
+
+    # rename the month column to Month
+    # merge the two dataframes
+    df_table = copy.deepcopy(df_bias).merge(df_rmse)
+    df_table = df_table.round(2)
+    # create df_corr
+    if variable not in [ "benbio"]:
+        df_corr = (
+            df_raw
+            .groupby("month")
+            .apply(lambda x: x.model.corr(x.observation))
+            .reset_index()
+            .rename(columns={0: "correlation"})
+            .assign(month = lambda x: x.month.apply(lambda y: calendar.month_abbr[y]))
+        )
+        # add average correlation to df_corr as a separate row
+        # calculate annual correlation using all data
+        annual_corr = df_raw.model.corr(df_raw.observation)
+        df_corr = pd.concat([df_corr, pd.DataFrame({"month": ["All"], "correlation": [annual_corr]})])
+        # df_corr = df_corr.append({"month": "All", "correlation": annual_corr}, ignore_index=True)
+
+        # move the final row to the top
+        df_corr = pd.concat([df_corr.iloc[[-1]], df_corr.iloc[:-1]])
+    else:
+        # only want annual
+        df_corr = pd.DataFrame({"month": ["All"], "correlation": [df_raw.model.corr(df_raw.observation)]})
+    # remove month == 1
+    if is_month == False:
+        df_corr = df_corr.query("month != 1")
+
+    df_table = df_table.merge(df_corr)
+    df_table = df_table.round(2)
+    df_table = df_table.rename(columns={"month": "Month", "bias": "Bias", "rmse": "RMSD", "correlation": "Correlation"})
+    df_table = df_table[["Month", "Bias", "RMSD", "Correlation"]]
+    # change Month to Period
+    df_table = df_table.rename(columns={"Month": "Time period"})
+
+    if variable not in [ "benbio"]:
+        # add commas to bias and rmse
+        df_number = df_raw.groupby("month").count().reset_index().loc[:,["month", "observation"]]
+    # convert month number to name
+        df_number["month"] = df_number["month"].apply(lambda x: calendar.month_abbr[x])
+        df_number = df_number.rename(columns={"month": "Time period", "observation": "Number of observations"})
+    else:
+        df_number = pd.DataFrame({"Time period": ["All"], "Number of observations": [len(df_raw)]})
+    if is_month == False:
+        df_number = df_number.query("`Time period` != '1'")
+
+    # add total number of observations
+    annual_number = len(df_raw)
+    if variable not in [ "benbio"]:
+        df_number = pd.concat([df_number, pd.DataFrame({"Time period": ["All"], "Number of observations": [annual_number]})])
+    # df_number = df_number.append({"Time period": "All", "Number of observations": annual_number}, ignore_index=True)
+    df_table = df_table.merge(df_number)
+
+    # include commas in the number of observations
+    df_table["Number of observations"] = df_table["Number of observations"].apply(lambda x: "{:,}".format(x))
+
+    # Now, we need to add the number of observations in df to df_table
+    # a dataframe with them
+
+    df_agg_numbers = (
+        df
+        .groupby("month")
+        .size()
+        .reset_index(name="n_observations")
+    )
+    # add total number of observations
+    if bin_res is not None:
+        total_n = len(df)
+        df_agg_numbers = pd.concat([df_agg_numbers, pd.DataFrame({"month": ["All"], "n_observations": [total_n]})])
+        # df_agg_numbers
+        df_agg_numbers = df_agg_numbers.rename(columns={"month": "Time period", "n_observations": "Number of observations"})
+        # convert month number to name
+        df_agg_numbers["Time period"] = df_agg_numbers["Time period"].apply(lambda x: calendar.month_abbr[x] if x != "All" else "All")
+        # include
+        df_agg_numbers["Agg_Number"] = df_agg_numbers["Number of observations"].apply(lambda x: "{:,}".format(x))   
+        # drop Number of observations
+        df_agg_numbers = df_agg_numbers.drop(columns=["Number of observations"])
+        df_agg_numbers = df_agg_numbers.merge(df_table, on = "Time period")
+        # Number of observations is Agg_number with  (Number of observations))
+        df_agg_numbers = df_agg_numbers.assign(**{"Number of observations": lambda x: x.Agg_Number + " (" + x["Number of observations"] + ")"})
+        df_agg_numbers = df_agg_numbers.drop(columns=["Agg_Number"])
+        # put All first
+        df_agg_numbers = pd.concat([df_agg_numbers[df_agg_numbers["Time period"] == "All"], df_agg_numbers[df_agg_numbers["Time period"] != "All"]])
+
+        if is_month == False:
+            df_agg_numbers = df_agg_numbers.query("`Time period` != '1'")
+
+        df_display(df_agg_numbers)
+    else:
+        df_display(df_table)
+
+
+
+# %% tags=["remove-input"]
+if bin_res is not None:
+    final_text = " Numbers in brackets show the number of raw unbinned observations."
+else:
+    final_text = ""
+
+md(f"**Table {i_table}:** Average bias ({unit}) and root-mean square deviation ({unit}) for the model's {layer_long} {vv_name} for each month. The bias is calculated as model - observation. The average bias is calculated as the mean of the monthly biases. {final_text}")
+i_table += 1
+
+
+# %% tags=["remove-input"]
+if available:
+    md(f"A linear regression analysis of modelled and observed {vv_name} was performed. The modelled {vv_name} was used as the independent variable and the observed {vv_name} was used as the dependent variable. The results are shown in the table below.")
+
+    md("The regression was carried out using the Python package statsmodels.")
+
+# %% tags=["remove-input"]
+
+# do a linear regression of model vs observed in df
+if available:
+    X = df.model.values
+    Y = df.observation.values
+    # linear regression using statsmodels
+    import statsmodels.api as sm
+    X = sm.add_constant(X)
+    # make X and Y random numbers between 0 and 1
+    X = sm.add_constant(X)
+    model = sm.OLS(Y, X).fit()
+    # get the slope and intercept
+    intercept, slope = model.params
+    # calculate the r squared
+    r2 = model.rsquared
+    # calculate the p value of the slope
+    p = model.f_pvalue
+
+    p = model.f_pvalue
+    # put that in a dataframe
+    df_stats = pd.DataFrame({"Slope": slope, "Intercept": intercept, "R2": r2, "P": p}, index = ["All"]).assign(Period = "All")
+    # do this month by month append to df_stats
+
+    for month in range(1, 13):
+        try:
+            X = df.query("month == @month").model.values
+            Y = df.query("month == @month").observation.values
+            X = sm.add_constant(X)
+            model = sm.OLS(Y, X).fit()
+            intercept, slope = model.params
+            r2 = model.rsquared
+            p = model.f_pvalue
+            df_stats = pd.concat([df_stats, pd.DataFrame({"Slope": slope, "Intercept": intercept, "R2": r2, "P": p}, index = [month]).assign(Period = month)])
+            df_stats.loc[df_stats.index[-1], "Period"] = calendar.month_abbr[month]
+        except:
+            pass
+    # sort period appropriately, so All is first then ordered by month
+    if is_month == False:
+        df_stats = df_stats[df_stats["Period"] != "1"]
+
+    df_stats["Period"] = pd.Categorical(df_stats["Period"], [calendar.month_abbr[x] for x in range(1, 13)] + ["All"])
+    # round p-value to 3 dp
+    df_stats["P"] = df_stats["P"].round(5)
+    # change P to p-value
+    df_stats = df_stats.rename(columns={"P": "p-value"})
+    # put Period first
+    df_stats = df_stats[["Period", "Slope", "Intercept", "R2", "p-value"]]
+    # 
+    df_display(df_stats)
+
+# %% tags=["remove-input"]
+if available:
+    md(f"**Table {i_table}:** Linear regression analysis of modelled and observed {vv_name}. The modelled {vv_name} was used as the independent variable and the observed {vv_name} was used as the dependent variable. The slope and intercept of the regression line are shown, along with the R<sup>2</sup> value and the p-value of the slope. Note: only months with sufficient values for a regression are shown.")
+    i_table += 1 
