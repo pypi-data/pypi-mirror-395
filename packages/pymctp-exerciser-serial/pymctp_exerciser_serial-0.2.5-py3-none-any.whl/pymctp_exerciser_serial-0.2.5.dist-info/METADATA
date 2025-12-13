@@ -1,0 +1,78 @@
+Metadata-Version: 2.4
+Name: pymctp-exerciser-serial
+Version: 0.2.5
+Summary: TTY/Serial port exerciser for pymctp
+Project-URL: Documentation, https://github.com/jls5177/pymctp#readme
+Project-URL: Issues, https://github.com/jls5177/pymctp/issues
+Project-URL: Source, https://github.com/jls5177/pymctp
+Author-email: Justin Simon <justin@simonctl.com>
+License: MIT
+Keywords: mctp,serial,tty,uart
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: System :: Hardware
+Requires-Python: >=3.8
+Requires-Dist: pymctp>=0.2.5
+Requires-Dist: pyserial
+Description-Content-Type: text/markdown
+
+# pymctp-exerciser-serial
+
+TTY/Serial port exerciser support for pymctp.
+
+This package provides an exerciser implementation for interfacing with serial/UART devices to send and receive MCTP packets over serial connections.
+
+## Installation
+
+```bash
+pip install pymctp-exerciser-serial
+```
+
+## Requirements
+
+- pymctp >= 0.1.0
+- pyserial
+- Serial/UART hardware or virtual serial ports
+
+## Usage
+
+```python
+from pymctp.exerciser import TTYSerialSocket
+
+# Open a serial connection
+socket = TTYSerialSocket(
+    tty='/dev/ttyUSB0',  # Serial port device
+    baudrate=115200,     # Baud rate
+    addr=0x20            # Target address
+)
+
+# Send/receive MCTP packets
+from pymctp.layers.mctp import UartTransport
+
+pkt = UartTransport(...)
+socket.send(pkt)
+
+response = socket.recv()
+```
+
+## Auto-Registration
+
+This package automatically registers itself with pymctp when installed. You can access it through the exerciser registry:
+
+```python
+from pymctp.exerciser import get_exerciser
+
+SerialSocket = get_exerciser('serial')
+```
+
+## License
+
+MIT
