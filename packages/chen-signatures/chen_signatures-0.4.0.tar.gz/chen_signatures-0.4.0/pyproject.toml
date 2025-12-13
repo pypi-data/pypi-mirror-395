@@ -1,0 +1,67 @@
+[project]
+name = "chen-signatures"
+dynamic = ["version"]
+description = "Fast path signatures"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    {name = "Alessandro Combi", email = "alecombi94@gmail.com"}
+]
+keywords = ["signatures", "rough-paths", "time-series", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+dependencies = [
+    "juliapkg>=0.1.10",
+    "juliacall>=0.9.20",
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0", "pytest-cov>=4.0.0"]
+torch = ["torch>=2.0.0"]
+benchmark = ["pysiglib>=0.2.2"]
+all = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "torch>=2.0.0", "pysiglib>=0.2.2"]
+
+[project.urls]
+Homepage = "https://github.com/aleCombi/ChenSignatures.jl"
+Repository = "https://github.com/aleCombi/ChenSignatures.jl"
+Issues = "https://github.com/aleCombi/ChenSignatures.jl/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "chen._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chen*"]
+
+[tool.setuptools.package-data]
+chen = ["juliapkg.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
