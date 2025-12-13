@@ -1,0 +1,1 @@
+from virtualitics_sdk.exceptions.exception import PredictException as PredictException
