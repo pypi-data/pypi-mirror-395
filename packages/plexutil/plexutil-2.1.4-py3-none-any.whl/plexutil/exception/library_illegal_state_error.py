@@ -1,0 +1,2 @@
+class LibraryIllegalStateError(Exception):
+    pass
