@@ -1,0 +1,2 @@
+class RelyingPartyClientSdkException(Exception):
+    pass
