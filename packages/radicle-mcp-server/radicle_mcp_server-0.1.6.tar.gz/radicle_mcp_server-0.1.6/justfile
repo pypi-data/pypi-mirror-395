@@ -1,0 +1,55 @@
+default:
+    @just --list
+
+test:
+    uv run python -m pytest tests/ -v --tb=short
+
+test-coverage:
+    uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term
+
+run:
+    uv run python -m src.server
+
+run-http:
+    uv run python -m src.server --transport http --host localhost --port 8000
+
+lint:
+    @command -v ruff >/dev/null 2>&1 && ruff check src/ tests/ || echo "ruff not available"
+
+format:
+    @command -v ruff >/dev/null 2>&1 && ruff format src/ tests/ || echo "ruff not available"
+
+typecheck:
+    @command -v mypy >/dev/null 2>&1 && mypy src/ || echo "mypy not available"
+
+# Build package
+build:
+    uv build
+
+publish-test:
+    uv publish --index testpypi
+
+publish:
+    uv publish
+
+bump-patch:
+    uv version --bump patch
+
+bump-minor:
+    uv version --bump minor
+
+bump-major:
+    uv version --bump major
+
+clean:
+    rm -rf build/
+    rm -rf dist/
+    rm -rf *.egg-info/
+    rm -rf .pytest_cache/
+    rm -rf .coverage
+    rm -rf htmlcov/
+    find . -type d -name __pycache__ -exec rm -rf {} +
+    find . -type f -name "*.pyc" -delete
+
+validate-yaml:
+    uv run python -c "from src.yaml_loader import VersionManager; VersionManager().get_current_definition()"
