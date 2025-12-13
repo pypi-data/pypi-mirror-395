@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fps"
+dynamic = ["version"]
+description = "A system for creating modular, configurable, pluggable and concurrent applications"
+readme = "README.md"
+authors = [
+    { name = "Jupyter Development Team", email = "jupyter@googlegroups.com" },
+]
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Typing :: Typed",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">= 3.10"
+dependencies = [
+    "anyio",
+    "anyioutils >=0.7.0,<0.8.0",
+    "structlog",
+    "exceptiongroup; python_version<'3.11'",
+    "importlib_metadata >=3.6; python_version<'3.10'",
+]
+
+[project.optional-dependencies]
+click = [
+    "click >=8.1.8,<9",
+]
+fastapi = [
+    "fastapi",
+]
+anycorn = [
+    "anycorn >=0.18.1,<0.19.0",
+]
+
+[dependency-groups]
+test = [
+    "pytest >=8,<10",
+    "trio >=0.32.0,<0.33",
+    "mypy",
+    "ruff",
+    "coverage[toml] >=7,<8",
+    "httpx",
+    "pydantic",
+]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
+[project.urls]
+Source = "https://github.com/jupyter-server/fps"
+Issues = "https://github.com/jupyter-server/fps/issues"
+
+[project.scripts]
+fps = "fps.cli._cli:main"
+
+[project.entry-points]
+"fps.modules" = {fps_module = "fps:Module"}
+
+[tool.hatch.version]
+path = "src/fps/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/fps"]
+
+[tool.hatch.build.targets.wheel]
+ignore-vcs = true
+packages = ["src/fps"]
+
+[tool.coverage.run]
+source = ["fps", "tests"]
+
+[tool.coverage.report]
+show_missing = true
