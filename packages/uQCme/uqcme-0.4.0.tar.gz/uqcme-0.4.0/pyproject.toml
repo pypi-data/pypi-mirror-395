@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uQCme"
+dynamic = ["version"]
+description = "Microbial Quality Control Tool - CLI and Dashboard"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  {name = "Kim Ng", email = "kimn@ssi.dk"},
+]
+urls = { "Repository" = "https://github.com/ssi-dk/uQCme" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# Core dependencies (shared logic)
+dependencies = [
+    "pandas>=1.5.0",
+    "PyYAML>=6.0",
+    "pydantic>=2.0.0",
+    "pandera>=0.18.0",
+]
+
+[project.optional-dependencies]
+# CLI - no additional dependencies beyond core
+cli = []
+# App/Dashboard dependencies
+app = [
+    "streamlit>=1.28.0",
+    "plotly>=5.15.0",
+    "openpyxl>=3.0.0",
+]
+# All dependencies (CLI + App)
+all = [
+    "streamlit>=1.28.0",
+    "plotly>=5.15.0",
+    "openpyxl>=3.0.0",
+]
+
+[project.scripts]
+uqcme = "uQCme.cli.main:main"
+uqcme-dashboard = "uQCme.app.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+uQCme = ["defaults/*"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "dirty-tag"
+write_to = "src/uQCme/_version.py"
