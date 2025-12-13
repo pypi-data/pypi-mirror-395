@@ -1,0 +1,110 @@
+[project]
+name = "pytest-intent"
+version = "0.9.0"
+description = "A pytest plugin for tracking requirement coverage."
+authors = [{ name = "celestialorb", email = "chris.m.busby@gmail.com" }]
+license = "Elastic-2.0"
+license-files = ["LICENSE*.md"]
+readme = "README.md"
+
+[tool.poetry]
+packages = [{ include = "intent" }]
+
+[tool.poetry.dependencies]
+python = "^3.11,<3.14"
+pytest = "^9.0.0"
+doorstop = "^3.0.2"
+pytest-harvest = "^1.10.5"
+rich-click = "^1.9.4"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8"
+poethepoet = "^0.37.0"
+pytest-repeat = "^0.9.4"
+twine = "^6.2.0"
+pytest-cov = "^7.0.0"
+pytest-xdist = "^3.8.0"
+
+[tool.poetry.plugins."pytest11"]
+"intent" = "intent"
+
+[tool.poetry.scripts]
+pytest-intent = "intent.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.poe.tasks.format]
+cmd = "ruff format"
+
+[tool.poe.tasks.lint]
+cmd = """
+ruff check
+"""
+
+[tool.poe.tasks.build]
+cmd = """
+poetry build
+    --output ${POE_ROOT}/.ci/artifacts/dist
+    -vvv
+"""
+
+[tool.poe.tasks.test]
+cmd = """
+pytest
+    --cov=intent
+    --cov-report=term
+    --cov-report=xml:${POE_ROOT}/.ci/artifacts/coverage.xml
+    --dist=load
+    --intent-coverage-report=${POE_ROOT}/.ci/artifacts/requirements.json
+    --numprocesses=auto
+"""
+
+[tool.poe.tasks.install]
+cmd = """
+pip install
+    --editable ${POE_ROOT}
+    --verbose
+"""
+
+[tool.poe.tasks.publish]
+cmd = """
+twine upload
+    --repository ${PYPI_REPOSITORY:-testpypi}
+    --non-interactive
+    --verbose
+    .ci/artifacts/dist/*
+"""
+
+[tool.ruff]
+namespace-packages = ["tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Ignore use of asserts. While these should only be limited to pytest files,
+    # we don't have a way to specify that with Ruff. Thus we disable it for the
+    # entire project for now.
+    "S101",
+
+    # Ignore Ruff's warning about redundant open modes, we like to be explicit.
+    "UP015",
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["S101", "PLR2004"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[[tool.mypy.overrides]]
+module = ["pycobertura", "pytest_benchmark.fixture"]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
