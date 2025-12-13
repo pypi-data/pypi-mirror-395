@@ -1,0 +1,149 @@
+[![PyPI version](https://badge.fury.io/py/mcmstclustering.svg)](https://badge.fury.io/py/mcmstclustering)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+
+
+# MCMSTStream
+
+**MCMSTStream** is a streaming clustering algorithm based on **Minimum Spanning Trees (MST)** and **KD-Tree–based micro-clusters**.  
+
+
+## Features
+
+## ✨ Features
+
+✔ Online streaming clustering  
+✔ Sliding window model  
+✔ KD-Tree accelerated micro-cluster formation  
+✔ Macro-cluster discovery via Minimum Spanning Tree  
+✔ Noise & outlier handling  
+✔ Visualization utilities  
+✔ Scikit-learn–compatible API (`fit`, `partial_fit`, `predict`, `get_params`, `set_params`)  
+✔ Supports incremental, real-time data processing 
+
+
+## Installation
+
+```bash
+pip install mcmststream
+
+```
+
+## Parameters
+If you want to use amount-based sliding window assign WindowType.AMOUNT_BASED
+If you want to use time based sliding window, assign WindowType.TIME_BASED
+N: int  -> Minimum number of points to form a cluster
+r: float  -> Initial cluster radius
+r_threshold: float  -> Radius increase/decrease threshold
+r_max: float  -> Maximum cluster radius
+window_type: WindowType -> {WindowType.AMOUNT_BASED,WindowType.TIME_BASED 
+window_size: int  -> For amount-based: number of points in window
+verbose: bool {True, False}
+	
+
+## Usage
+
+```bash
+
+import numpy as np
+from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.preprocessing import MinMaxScaler
+from mcmststream import MCMSTStream, load_exclastar
+
+# Load data 
+X, y_true = load_exclastar()
+
+# Normalize
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+np.random.seed(42)
+
+# Initialize with history keeping enabled
+clusterer = MCMSTStream(
+    W=270,  
+    n_micro=2, 
+    N=2,   
+    r=0.14, 
+    random_state=42,
+    keep_history=True  # Enable history tracking
+)
+for i, point in enumerate(X_scaled):
+        label = clusterer.partial_fit(point)
+        
+        # Visualize periodically
+        if i % 20 == 0 and i > 0:
+            print(f"\nStep {i}:")
+            print(f"  Current label for this point: {label}")
+            print(f"  Micro-clusters: {len(clusterer.micro_clusters)}")
+            print(f"  Macro-clusters: {len([m for m in clusterer.macro_clusters if m['active']])}")
+            if clusterer.keep_history:
+                hist_labels = np.array(clusterer.history_labels_)
+                print(f"  History labels (unique): {np.unique(hist_labels)}")
+            
+            clusterer.visualize(title=f"Step {i}")
+    
+ARI=adjusted_rand_score(y_true,clusterer.history_labels_)
+print("ARI=%0.4f"%ARI)
+
+```
+
+
+## Visualization
+
+The package includes a built-in visualization function:
+
+```bash
+
+clusterer.visualize(title="MCMSTStream Clustering Result")
+
+```
+
+
+## Evaluation
+
+Calculates:
+
+Silhouette Score
+
+Calinski-Harabasz Index
+
+Davies-Bouldin Index
+
+ARI, NMI, V-Measure (if true labels provided)
+
+```bash 
+
+metrics = clusterer.evaluate(true_labels=y_true)
+print(metrics)
+
+```
+
+
+
+## Citation
+
+If you use this algorithm in research, please cite the corresponding paper.
+
+```bash
+
+Erdinç, B., Kaya, M., & Şenol, A. (2024). MCMSTStream: applying minimum spanning tree to KD-tree-based micro-clusters to define arbitrary-shaped clusters in streaming data. Neural Computing and Applications, 36(13), 7025-7042.
+
+```
+
+## BibTeX
+
+```bash
+
+@article{erdincc2024mcmststream,
+  title={MCMSTStream: applying minimum spanning tree to KD-tree-based micro-clusters to define arbitrary-shaped clusters in streaming data},
+  author={Erdin{\c{c}}, Berfin and Kaya, Mahmut and {\c{S}}enol, Ali},
+  journal={Neural Computing and Applications},
+  volume={36},
+  number={13},
+  pages={7025--7042},
+  year={2024},
+  publisher={Springer}
+}
+
+```
+
