@@ -1,0 +1,200 @@
+# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+from __future__ import annotations
+
+import os
+from typing import Any, cast
+
+import pytest
+
+from fleet import Fleet, AsyncFleet
+from tests.utils import assert_matches_type
+from fleet.types.sessions.scrape import Response
+
+base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
+
+
+class TestBrowserStrategy:
+    parametrize = pytest.mark.parametrize("client", [False, True], indirect=True, ids=["loose", "strict"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_method_get(self, client: Fleet) -> None:
+        browser_strategy = client.sessions.scrape.browser_strategy.get(
+            "session_id",
+        )
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_raw_response_get(self, client: Fleet) -> None:
+        response = client.sessions.scrape.browser_strategy.with_raw_response.get(
+            "session_id",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        browser_strategy = response.parse()
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_streaming_response_get(self, client: Fleet) -> None:
+        with client.sessions.scrape.browser_strategy.with_streaming_response.get(
+            "session_id",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            browser_strategy = response.parse()
+            assert_matches_type(Response, browser_strategy, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_path_params_get(self, client: Fleet) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `session_id` but received ''"):
+            client.sessions.scrape.browser_strategy.with_raw_response.get(
+                "",
+            )
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_method_set(self, client: Fleet) -> None:
+        browser_strategy = client.sessions.scrape.browser_strategy.set(
+            session_id="session_id",
+            strategy="round_robin",
+        )
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_raw_response_set(self, client: Fleet) -> None:
+        response = client.sessions.scrape.browser_strategy.with_raw_response.set(
+            session_id="session_id",
+            strategy="round_robin",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        browser_strategy = response.parse()
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_streaming_response_set(self, client: Fleet) -> None:
+        with client.sessions.scrape.browser_strategy.with_streaming_response.set(
+            session_id="session_id",
+            strategy="round_robin",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            browser_strategy = response.parse()
+            assert_matches_type(Response, browser_strategy, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    def test_path_params_set(self, client: Fleet) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `session_id` but received ''"):
+            client.sessions.scrape.browser_strategy.with_raw_response.set(
+                session_id="",
+                strategy="round_robin",
+            )
+
+
+class TestAsyncBrowserStrategy:
+    parametrize = pytest.mark.parametrize(
+        "async_client", [False, True, {"http_client": "aiohttp"}], indirect=True, ids=["loose", "strict", "aiohttp"]
+    )
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_method_get(self, async_client: AsyncFleet) -> None:
+        browser_strategy = await async_client.sessions.scrape.browser_strategy.get(
+            "session_id",
+        )
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_raw_response_get(self, async_client: AsyncFleet) -> None:
+        response = await async_client.sessions.scrape.browser_strategy.with_raw_response.get(
+            "session_id",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        browser_strategy = await response.parse()
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_streaming_response_get(self, async_client: AsyncFleet) -> None:
+        async with async_client.sessions.scrape.browser_strategy.with_streaming_response.get(
+            "session_id",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            browser_strategy = await response.parse()
+            assert_matches_type(Response, browser_strategy, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_path_params_get(self, async_client: AsyncFleet) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `session_id` but received ''"):
+            await async_client.sessions.scrape.browser_strategy.with_raw_response.get(
+                "",
+            )
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_method_set(self, async_client: AsyncFleet) -> None:
+        browser_strategy = await async_client.sessions.scrape.browser_strategy.set(
+            session_id="session_id",
+            strategy="round_robin",
+        )
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_raw_response_set(self, async_client: AsyncFleet) -> None:
+        response = await async_client.sessions.scrape.browser_strategy.with_raw_response.set(
+            session_id="session_id",
+            strategy="round_robin",
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        browser_strategy = await response.parse()
+        assert_matches_type(Response, browser_strategy, path=["response"])
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_streaming_response_set(self, async_client: AsyncFleet) -> None:
+        async with async_client.sessions.scrape.browser_strategy.with_streaming_response.set(
+            session_id="session_id",
+            strategy="round_robin",
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            browser_strategy = await response.parse()
+            assert_matches_type(Response, browser_strategy, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Prism tests are disabled")
+    @parametrize
+    async def test_path_params_set(self, async_client: AsyncFleet) -> None:
+        with pytest.raises(ValueError, match=r"Expected a non-empty value for `session_id` but received ''"):
+            await async_client.sessions.scrape.browser_strategy.with_raw_response.set(
+                session_id="",
+                strategy="round_robin",
+            )
