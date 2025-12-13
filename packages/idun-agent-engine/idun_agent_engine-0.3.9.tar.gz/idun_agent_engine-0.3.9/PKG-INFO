@@ -1,0 +1,336 @@
+Metadata-Version: 2.4
+Name: idun-agent-engine
+Version: 0.3.9
+Summary: Python SDK and runtime to serve AI agents with FastAPI, LangGraph, and observability.
+Project-URL: Homepage, https://github.com/geoffreyharrazi/idun-agent-platform
+Project-URL: Repository, https://github.com/geoffreyharrazi/idun-agent-platform
+Project-URL: Documentation, https://github.com/geoffreyharrazi/idun-agent-platform/tree/main/libs/idun_agent_engine
+Project-URL: Issues, https://github.com/geoffreyharrazi/idun-agent-platform/issues
+Author-email: Geoffrey HARRAZI <geoffreyharrazi@gmail.com>
+License-Expression: MIT
+Keywords: agents,fastapi,langgraph,llm,observability,sdk
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Typing :: Typed
+Requires-Python: <3.14,>=3.12
+Requires-Dist: ag-ui-adk<0.4.0,>=0.3.4
+Requires-Dist: ag-ui-langgraph<0.1.0,>=0.0.20
+Requires-Dist: ag-ui-protocol<0.2.0,>=0.1.8
+Requires-Dist: aiosqlite<0.22.0,>=0.21.0
+Requires-Dist: arize-phoenix-otel<1.0.0,>=0.2.0
+Requires-Dist: arize-phoenix<12.0.0,>=11.22.0
+Requires-Dist: click>=8.2.0
+Requires-Dist: copilotkit<0.2.0,>=0.1.72
+Requires-Dist: deepagents<1.0.0,>=0.2.8
+Requires-Dist: fastapi<0.116.0,>=0.115.0
+Requires-Dist: google-adk<2.0.0,>=1.19.0
+Requires-Dist: google-cloud-logging<4.0.0,>=3.10.0
+Requires-Dist: guardrails-ai<0.8.0,>=0.7.0
+Requires-Dist: httpx<0.29.0,>=0.28.1
+Requires-Dist: idun-agent-schema<1.0.0,>=0.3.8
+Requires-Dist: langchain-core<2.0.0,>=1.0.0
+Requires-Dist: langchain-google-vertexai<4.0.0,>=2.0.27
+Requires-Dist: langchain-mcp-adapters<0.2.0,>=0.1.0
+Requires-Dist: langchain<2.0.0,>=1.0.0
+Requires-Dist: langfuse-haystack>=2.3.0
+Requires-Dist: langfuse<4.0.0,>=2.60.8
+Requires-Dist: langgraph-checkpoint-postgres<4.0.0,>=3.0.0
+Requires-Dist: langgraph-checkpoint-sqlite<4.0.0,>=3.0.0
+Requires-Dist: langgraph<2.0.0,>=1.0.0
+Requires-Dist: mcp<2.0.0,>=1.0.0
+Requires-Dist: openinference-instrumentation-google-adk<1.0.0,>=0.1.0
+Requires-Dist: openinference-instrumentation-guardrails<1.0.0,>=0.1.0
+Requires-Dist: openinference-instrumentation-langchain<1.0.0,>=0.1.13
+Requires-Dist: openinference-instrumentation-mcp<2.0.0,>=1.0.0
+Requires-Dist: openinference-instrumentation-vertexai<1.0.0,>=0.1.0
+Requires-Dist: opentelemetry-exporter-gcp-trace<2.0.0,>=1.6.0
+Requires-Dist: opentelemetry-exporter-otlp-proto-http<2.0.0,>=1.22.0
+Requires-Dist: psycopg-binary<4.0.0,>=3.3.0
+Requires-Dist: pydantic<3.0.0,>=2.11.7
+Requires-Dist: python-dotenv>=1.1.1
+Requires-Dist: sqlalchemy<3.0.0,>=2.0.36
+Requires-Dist: streamlit<2.0.0,>=1.47.1
+Requires-Dist: tavily-python<0.8.0,>=0.7.9
+Requires-Dist: uvicorn<0.36.0,>=0.35.0
+Description-Content-Type: text/markdown
+
+# Idun Agent Engine
+
+Turn any LangGraph-based agent into a production-grade API in minutes.
+
+Idun Agent Engine is a lightweight runtime and SDK that wraps your agent with a FastAPI server, adds streaming, structured responses, config validation, and optional observability — with zero boilerplate. Use a YAML file or a fluent builder to configure and run.
+
+## Installation
+
+```bash
+pip install idun-agent-engine
+```
+
+- Requires Python 3.13
+- Ships with FastAPI, Uvicorn, LangGraph, SQLite checkpointing, and optional observability hooks
+
+## Quickstart
+
+### 1) Minimal one-liner (from a YAML config)
+
+```python
+from idun_agent_engine.core.server_runner import run_server_from_config
+
+run_server_from_config("config.yaml")
+```
+
+Example `config.yaml`:
+
+```yaml
+server:
+  api:
+    port: 8000
+
+agent:
+  type: "langgraph"
+  config:
+    name: "My Example LangGraph Agent"
+    graph_definition: "./examples/01_basic_config_file/example_agent.py:app"
+    # Optional: conversation persistence
+    checkpointer:
+      type: "sqlite"
+      db_url: "sqlite:///example_checkpoint.db"
+    # Optional: provider-agnostic observability
+    observability:
+      provider: langfuse   # or phoenix
+      enabled: true
+      options:
+        host: ${LANGFUSE_HOST}
+        public_key: ${LANGFUSE_PUBLIC_KEY}
+        secret_key: ${LANGFUSE_SECRET_KEY}
+        run_name: "idun-langgraph-run"
+```
+
+Run and open docs at `http://localhost:8000/docs`.
+
+### 2) Programmatic setup with the fluent builder
+
+```python
+from pathlib import Path
+from idun_agent_engine import ConfigBuilder, create_app, run_server
+
+config = (
+    ConfigBuilder()
+    .with_api_port(8000)
+    .with_langgraph_agent(
+        name="Programmatic Example Agent",
+        graph_definition=str(Path("./examples/02_programmatic_config/smart_agent.py:app")),
+        sqlite_checkpointer="programmatic_example.db",
+    )
+    .build()
+)
+
+app = create_app(engine_config=config)
+run_server(app, reload=True)
+```
+
+## Endpoints
+
+All servers expose these by default:
+
+- POST `/agent/invoke`: single request/response
+- POST `/agent/stream`: server-sent events stream of `ag-ui` protocol events
+- GET `/health`: service health with engine version
+- GET `/`: root landing with links
+
+Invoke example:
+
+```bash
+curl -X POST "http://localhost:8000/agent/invoke" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Hello!", "session_id": "user-123"}'
+```
+
+Stream example:
+
+```bash
+curl -N -X POST "http://localhost:8000/agent/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Tell me a story", "session_id": "user-123"}'
+```
+
+## LangGraph integration
+
+Point the engine to a `StateGraph` variable in your file using `graph_definition`:
+
+```python
+# examples/01_basic_config_file/example_agent.py
+import operator
+from typing import Annotated, TypedDict
+from langgraph.graph import END, StateGraph
+
+class AgentState(TypedDict):
+    messages: Annotated[list, operator.add]
+
+def greeting_node(state):
+    user_message = state["messages"][-1] if state["messages"] else ""
+    return {"messages": [("ai", f"Hello! You said: '{user_message}'")]}
+
+graph = StateGraph(AgentState)
+graph.add_node("greet", greeting_node)
+graph.set_entry_point("greet")
+graph.add_edge("greet", END)
+
+# This variable name is referenced by graph_definition
+app = graph
+```
+
+Then reference it in config:
+
+```yaml
+agent:
+  type: "langgraph"
+  config:
+    graph_definition: "./examples/01_basic_config_file/example_agent.py:app"
+```
+
+Behind the scenes, the engine:
+
+- Validates config with Pydantic models
+- Loads your `StateGraph` from disk
+- Optionally wires a SQLite checkpointer via `langgraph.checkpoint.sqlite`
+- Exposes `invoke` and `stream` endpoints
+- Bridges LangGraph events to `ag-ui` stream events
+
+## Observability (optional)
+
+Enable provider-agnostic observability via the `observability` block in your agent config. Today supports Langfuse and Arize Phoenix (OpenInference) patterns; more coming soon.
+
+```yaml
+agent:
+  type: "langgraph"
+  config:
+    observability:
+      provider: langfuse   # or phoenix
+      enabled: true
+      options:
+        host: ${LANGFUSE_HOST}
+        public_key: ${LANGFUSE_PUBLIC_KEY}
+        secret_key: ${LANGFUSE_SECRET_KEY}
+        run_name: "idun-langgraph-run"
+```
+
+## Configuration reference
+
+- `server.api.port` (int): HTTP port (default 8000)
+- `agent.type` (enum): currently `langgraph` (CrewAI placeholder exists but not implemented)
+- `agent.config.name` (str): human-readable name
+- `agent.config.graph_definition` (str): absolute or relative `path/to/file.py:variable`
+- `agent.config.checkpointer` (sqlite): `{ type: "sqlite", db_url: "sqlite:///file.db" }`
+- `agent.config.observability` (optional): provider options as shown above
+- `mcp_servers` (list, optional): collection of MCP servers that should be available to your agent runtime. Each entry matches the fields supported by `langchain-mcp-adapters` (name, transport, url/command, headers, etc.).
+
+Config can be sourced by:
+
+- `engine_config` (preferred): pass a validated `EngineConfig` to `create_app`
+- `config_dict`: dict validated at runtime
+- `config_path`: path to YAML; defaults to `config.yaml`
+
+### MCP Servers
+
+You can mount MCP servers directly in your engine config. The engine will automatically
+create a `MultiServerMCPClient` and expose it on `app.state.mcp_registry`.
+
+```yaml
+mcp_servers:
+  - name: "math"
+    transport: "stdio"
+    command: "python"
+    args:
+      - "/path/to/math_server.py"
+  - name: "weather"
+    transport: "streamable_http"
+    url: "http://localhost:8000/mcp"
+```
+
+Inside your FastAPI dependencies or handlers:
+
+```python
+from idun_agent_engine.server.dependencies import get_mcp_registry
+
+@router.get("/mcp/{server}/tools")
+async def list_tools(server: str, registry = Depends(get_mcp_registry)):
+    return await registry.get_tools(server)
+```
+
+Or outside of FastAPI:
+
+```python
+from langchain_mcp_adapters.tools import load_mcp_tools
+
+registry = app.state.mcp_registry
+async with registry.get_session("math") as session:
+    tools = await load_mcp_tools(session)
+```
+
+## Examples
+
+The `examples/` folder contains complete projects:
+
+- `01_basic_config_file`: YAML config + simple agent
+- `02_programmatic_config`: `ConfigBuilder` usage and advanced flows
+- `03_minimal_setup`: one-line server from config
+
+Run any example with Python 3.13 installed.
+
+## CLI and runtime helpers
+
+Top-level imports for convenience:
+
+```python
+from idun_agent_engine import (
+  create_app,
+  run_server,
+  run_server_from_config,
+  run_server_from_builder,
+  ConfigBuilder,
+)
+```
+
+- `create_app(...)` builds the FastAPI app and registers routes
+- `run_server(app, ...)` runs with Uvicorn
+- `run_server_from_config(path, ...)` loads config, builds app, and runs
+- `run_server_from_builder(builder, ...)` builds from a builder and runs
+
+## Production notes
+
+- Use a process manager (e.g., multiple Uvicorn workers behind a gateway). Note: `reload=True` is for development and incompatible with multi-worker mode.
+- Mount behind a reverse proxy and enable TLS where appropriate.
+- Persist conversations using the SQLite checkpointer in production or replace with a custom checkpointer when available.
+
+## Roadmap
+
+- CrewAI adapter (placeholder exists, not yet implemented)
+- Additional stores and checkpointers
+- First-class CLI for `idun` commands
+
+## Contributing
+
+Issues and PRs are welcome. See the repository:
+
+- Repo: `https://github.com/geoffreyharrazi/idun-agent-platform`
+- Package path: `libs/idun_agent_engine`
+- Open an issue: `https://github.com/geoffreyharrazi/idun-agent-platform/issues`
+
+Run locally:
+
+```bash
+cd libs/idun_agent_engine
+poetry install
+poetry run pytest -q
+```
+
+## License
+
+MIT — see `LICENSE` in the repo root.
