@@ -1,0 +1,93 @@
+---
+title: "Read Any Repository"
+description: "Explore public records using handles or DIDs"
+---
+
+pdsx can read public records from any repository without authentication using the `-r` flag.
+
+## basic usage
+
+### read with handle
+
+```bash
+pdsx -r zzstoatzz.io ls app.bsky.feed.post --limit 5
+```
+
+pdsx automatically discovers the correct PDS:
+1. handle → DID (via DNS TXT or HTTPS well-known)
+2. DID → PDS URL (from DID document)
+3. fetches records from correct PDS
+
+<Note>
+**automatic PDS discovery** works for any handle or DID, including custom PDS instances. no manual configuration needed!
+</Note>
+
+### read with DID (more durable)
+
+```bash
+pdsx -r did:plc:44ybard66vv44zksje25o7dz ls app.bsky.feed.post --limit 5
+```
+
+DIDs are permanent identifiers - they don't change if user updates their handle.
+
+## handles vs DIDs
+
+handles can change or be reassigned. DIDs are permanent. use DIDs for automation or long-term references.
+
+## pagination
+
+```bash
+# first page
+pdsx -r zzstoatzz.io ls app.bsky.feed.post --limit 10
+# next page cursor: 3lyqmkpiprs2w
+
+# next page
+pdsx -r zzstoatzz.io ls app.bsky.feed.post --limit 10 --cursor 3lyqmkpiprs2w
+```
+
+cursors are opaque tokens. for json/yaml output, they go to stderr to avoid breaking parsing. for compact/table output, they appear after results. both humans and LLMs can copy the cursor value for the next command.
+
+## output formats
+
+```bash
+# json (for jq pipelines)
+pdsx -r zzstoatzz.io ls app.bsky.feed.post -o json | jq -r '.[].text'
+
+# yaml
+pdsx -r zzstoatzz.io ls app.bsky.actor.profile -o yaml
+
+# table
+pdsx -r zzstoatzz.io ls app.bsky.feed.post -o table --limit 5
+
+# compact (default)
+pdsx -r zzstoatzz.io ls app.bsky.feed.post
+```
+
+## examples
+
+```bash
+# read someone's bio
+pdsx -r zzstoatzz.io ls app.bsky.actor.profile -o json | jq -r '.[0].description'
+
+# get recent posts
+pdsx -r did:plc:o53crari67ge7bvbv273lxln ls app.bsky.feed.post --limit 3 -o json
+```
+
+## common collections
+
+| collection | contains |
+|-----------|----------|
+| `app.bsky.feed.post` | posts/skeets |
+| `app.bsky.actor.profile` | user profile |
+| `app.bsky.feed.like` | likes |
+| `app.bsky.graph.follow` | follows |
+| `app.bsky.feed.repost` | reposts |
+| `app.bsky.graph.list` | lists |
+
+
+## what's next
+
+- [URI troubleshooting](/quickstart#invalid-uri-format) - understand URI formats
+- [configure for writes](/guides/configure-for-writes) - set up authentication
+- [repositories concept](/concepts/repositories) - understand the data model
+- [addressing concept](/concepts/addressing) - deep dive into DIDs and handles
