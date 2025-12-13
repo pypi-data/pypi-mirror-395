@@ -1,0 +1,1 @@
+select id, [name], flux_process_id from flux_indicator order by id
