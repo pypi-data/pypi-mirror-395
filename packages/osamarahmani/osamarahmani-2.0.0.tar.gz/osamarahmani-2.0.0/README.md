@@ -1,0 +1,24 @@
+# 🚀 Osama Rahmani (CLI Portfolio)
+
+> A Python package that renders a Cyberpunk-style animated portfolio in the terminal.
+
+![Version](https://img.shields.io/badge/version-2.0.0-orange?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+## ⚡ Overview
+
+This is not just a package; it's a **digital business card**. It provides a programmatic way to access my contact details and a visually stunning CLI animation to showcase my stack, contact info, and projects.
+
+### ✨ Features
+* **Cyberpunk Boot Sequence:** A retro-futuristic loading bar and typing effects.
+* **Direct Variable Access:** Import my email, website, GitHub, and LinkedIn directly into your code.
+* **Custom Theme:** Styled with a custom "Warm Salmon" RGB palette.
+* **Zero Dependencies:** Runs on standard Python libraries.
+
+---
+
+## 📦 Installation
+
+```bash
+pip install osamarahmani
