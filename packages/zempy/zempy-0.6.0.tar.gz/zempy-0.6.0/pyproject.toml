@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zempy"
+version = "0.6.0"
+description = "OpticalStudio Python wrapper"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Anton Sharapov", email = "sharapov.anton@gmail.com" }]
+dependencies = [
+    "numpy>=1.23",
+    "pythonnet>=3.0.5",
+    "clr_loader>=0.2.7",
+    "allytools>=0.6.0"
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "ruff"]
+qa  = ["tox", "pre-commit"]
+gui = ["PyQt5"]
+
+[project.urls]
+Homepage = "https://github.com/SharapovAnton/Zempy"
+Source   = "https://github.com/SharapovAnton/Zempy"
+Issues   = "https://github.com/SharapovAnton/Zempy/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["zempy*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+zempy = ["py.typed"]
+
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = ["N"]
+
+# Ignore PEP8-naming for all ZOSAPI-style bindings
+per-file-ignores = { "src/zempy/zosapi/**" = ["N801", "N802", "N803", "N806"] }

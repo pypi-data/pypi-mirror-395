@@ -1,0 +1,29 @@
+from __future__ import annotations
+from typing import Protocol, runtime_checkable, Iterator, overload
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from zempy.zosapi.analysis.protocols.i_message import IMessage
+
+
+@runtime_checkable
+class IMessages(Protocol):
+    """Structural interface for ZOSAPI.Analysis.IMessages"""
+
+    def __iter__(self) -> Iterator["IMessage"]: ...
+    def __len__(self) -> int: ...
+    def __getitem__(self, index: int) -> "IMessage": ...
+
+    @overload
+    def WriteLine(self, s: str, userV: int, settingsV: int) -> None: ...
+    @overload
+    def WriteLine(self, s: str, userV: bool, settingsV: bool) -> None: ...
+    @overload
+    def WriteLine(self, s: str, userV: float, settingsV: float) -> None: ...
+    @overload
+    def WriteLine(self, s: str, userV: str, settingsV: str) -> None: ...
+    def WriteLine(self, s: str, userV: object, settingsV: object) -> None: ...
+    """Adds a formatted line with user and settings values to the message list."""
+
+    def AllToString(self) -> str: ...
+    """Returns all contained messages concatenated into a single string."""
