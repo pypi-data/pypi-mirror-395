@@ -1,0 +1,346 @@
+Metadata-Version: 2.4
+Name: aadc-cli
+Version: 1.0.9.3
+Summary: AADC - Agentic AI Developer Console. Build anything with AI.
+Home-page: https://github.com/yourusername/aadc
+Author: AADC Team
+Author-email: AADC Team <aanshsoodofficial102@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/yourusername/aadc
+Project-URL: Documentation, https://github.com/yourusername/aadc#readme
+Project-URL: Repository, https://github.com/yourusername/aadc
+Project-URL: Issues, https://github.com/yourusername/aadc/issues
+Keywords: ai,developer,agent,cli,code-generation,github
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: httpx>=0.25.0
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# 🔴 AADC - Agentic AI Developer Console
+
+An AI-powered CLI tool that creates complete, production-ready applications from natural language instructions. Built with Google's Gemini API.
+
+![Version](https://img.shields.io/badge/version-1.0.0-red.svg)
+![Python](https://img.shields.io/badge/python-3.9+-white.svg)
+
+## ✨ Features
+
+- **Multi-Model Support**: Switch between Gemini, OpenAI GPT, and Claude models
+- **Project Analysis**: `/init` analyzes your codebase for AI context
+- **Complete Code Generation**: Creates fully functional websites, apps, and games from a single instruction
+- **File Management**: Create, read, write, edit, and delete files and folders
+- **Background Terminals**: Run servers (Node.js, Python, etc.) in background sessions
+- **Persistent Memory**: Remembers your preferences and project details across sessions
+- **Permission Modes**: Control when the AI asks for confirmation
+- **Plan Mode**: Review AI's plan before it starts coding
+- **Command Execution**: Run shell commands, install packages, start servers
+- **Iterative Development**: Refine and modify your projects through conversation
+
+## 🚀 Quick Start
+
+### 1. Installation
+
+```bash
+# Clone or download this repository
+cd aadc
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Get Your API Key
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
+2. Create or sign in with your Google account
+3. Generate an API key
+
+### 3. Set Your API Key
+
+**Option A: .env File (Recommended)**
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env and add your key
+GEMINI_API_KEY=your-api-key-here
+```
+
+**Option B: Environment Variable**
+```bash
+export GEMINI_API_KEY="your-api-key-here"
+```
+
+**Option C: Enter When Prompted**
+The tool will ask for your API key on first run and optionally save it.
+
+### 4. Run the Agent
+
+```bash
+python main.py
+```
+
+## 📖 Usage
+
+### Interactive Mode
+
+Simply run the agent and start describing what you want to build:
+
+```bash
+$ python main.py
+
+╔══════════════════════════════════════════════════════════════╗
+║                    GEMINI CODING AGENT                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─[/home/user/projects]
+└─▶ Create a snake game with HTML, CSS, and JavaScript
+
+🔧 Tool: create_folder
+   ├─ folder_path: snake-game
+   └─ ✓ Success
+
+🔧 Tool: create_file
+   ├─ file_path: snake-game/index.html
+   ├─ content: <!DOCTYPE html>...
+   └─ ✓ Success
+
+...
+
+🤖 Assistant:
+I've created a complete Snake game! To play:
+1. Open snake-game/index.html in your browser
+2. Use arrow keys to control the snake
+3. Eat the red food to grow and score points
+```
+
+### Single Command Mode
+
+Run a single command without entering interactive mode:
+
+```bash
+python main.py "Create a todo app with React"
+```
+
+### CLI Options
+
+```bash
+python main.py --help
+
+Options:
+  prompt              Optional prompt for single command mode
+  -k, --api-key       Gemini API key (overrides env variable)
+  -d, --directory     Working directory for file operations
+  -v, --version       Show version
+```
+
+### Built-in Commands
+
+| Command | Description |
+|---------|-------------|
+| `/init` | Analyze codebase, generate AI context summary |
+| `/models [name]` | List or switch AI models |
+| `/help` | Show help information |
+| `/perm [mode]` | View/set permission mode (ask/auto/command_ask) |
+| `/plan` | Toggle plan mode on/off |
+| `/terminals` | List active background terminal sessions |
+| `/kill <id>` | Stop a background terminal |
+| `/output <id>` | View output from a terminal |
+| `/memory` | List all stored memories |
+| `/mem <query>` | Search memories |
+| `/forget <key>` | Remove a memory |
+| `/clear` | Clear conversation history |
+| `/cd <path>` | Change working directory |
+| `/pwd` | Print current directory |
+| `/ls` | List files in current directory |
+| `/exit` | Exit the agent |
+
+### Permission Modes
+
+Use `/perm <mode>` to control when the AI asks for confirmation:
+
+| Mode | Description |
+|------|-------------|
+| `ask` | Ask before executing ANY tool |
+| `auto` | Execute all tools automatically (default) |
+| `command_ask` | Only ask before shell commands |
+
+### Plan Mode
+
+Enable plan mode to have the AI create a `plan.md` first:
+- Use `/plan` to toggle on/off
+- Or prefix your request with `plan:` (e.g., "plan: create a todo app")
+- Review the plan and approve/disapprove before coding begins
+
+### Available Models
+
+Use `/models <name>` to switch between AI providers:
+
+| Model | Provider | Description |
+|-------|----------|-------------|
+| `gemini-3-pro-preview` | Google | Gemini 3 Pro Preview (default) |
+| `gemini-2.5-pro` | Google | Gemini 2.5 Pro |
+| `GPT-5.1` | OpenAI | GPT-5.1 |
+| `gpt-5-pro` | OpenAI | GPT-5 Pro |
+| `claude-sonnet-4-5` | Anthropic | Claude Sonnet 4.5 |
+| `claude-opus-4-5` | Anthropic | Claude Opus 4.5 |
+
+### Project Initialization
+
+Run `/init` to analyze your codebase:
+- Generates `.aadc-summary.md` with project overview
+- AI uses this for better context understanding
+- Run again after major changes to refresh
+
+### CLI Options
+
+```bash
+python main.py --help
+
+Options:
+  prompt              Optional prompt for single command mode
+  -k, --api-key       Gemini API key (overrides env variable)
+  -d, --directory     Working directory for file operations
+  -p, --plan          Start in plan mode
+  -m, --mode          Permission mode (ask/auto/command_ask)
+  -v, --version       Show version
+```
+
+## 🎯 Example Prompts
+
+### Web Development
+```
+Create a responsive portfolio website with a dark theme, about section, 
+project gallery, and contact form
+```
+
+### Games
+```
+Build a Tetris clone with score tracking and increasing difficulty
+```
+
+### Backend
+```
+Create a REST API with Express.js for a blog with posts and comments, 
+including MongoDB integration
+```
+
+### Utilities
+```
+Build a Python CLI tool that converts images to different formats 
+with support for batch processing
+```
+
+### Full-Stack
+```
+Create a real-time chat application with React frontend and 
+Socket.io backend
+```
+
+## 🛠️ Available Tools
+
+The agent has access to 19 tools organized into three categories:
+
+### File Operations
+| Tool | Description |
+|------|-------------|
+| `create_file` | Create a new file with content |
+| `create_folder` | Create a directory |
+| `delete_file` | Delete a file |
+| `delete_folder` | Delete a directory recursively |
+| `list_files` | List directory contents |
+| `read_file` | Read file content |
+| `write_file` | Write/overwrite file content |
+| `edit_file` | Make surgical edits to existing files |
+| `execute_command` | Run shell commands |
+
+### Terminal Management
+| Tool | Description |
+|------|-------------|
+| `open_terminal` | Start a background process (servers, etc.) |
+| `close_terminal` | Stop a background terminal |
+| `list_terminals` | List all active terminals |
+| `get_terminal_output` | Get output from a terminal |
+| `send_terminal_input` | Send input to a terminal |
+
+### Memory (Persistent)
+| Tool | Description |
+|------|-------------|
+| `remember` | Store information for future sessions |
+| `recall` | Retrieve a specific memory |
+| `search_memory` | Search through memories |
+| `list_memories` | List all stored memories |
+| `forget` | Remove a memory |
+
+## 🔧 Configuration
+
+Default settings can be modified in `config.py`:
+
+```python
+DEFAULT_CONFIG = {
+    "model": "gemini-2.5-pro-preview-05-06",
+    "max_tokens": 65536,
+    "temperature": 0.7,
+    "timeout": 300,
+    "max_iterations": 50,
+}
+```
+
+## 📁 Project Structure
+
+```
+aadc/
+├── main.py              # CLI entry point
+├── agent.py             # Multi-provider AI agent (Gemini/OpenAI/Anthropic)
+├── tools.py             # Tool implementations (19 tools)
+├── prompts.py           # System prompt
+├── config.py            # Configuration & model management
+├── utils.py             # Display utilities
+├── terminal_manager.py  # Background terminal handling
+├── memory.py            # Persistent memory system
+├── project_init.py      # Codebase analysis & summarization
+├── requirements.txt     # Dependencies
+├── .env.example         # API key template
+└── README.md            # This file
+```
+
+## 🔒 Security Notes
+
+- API keys are stored in `~/.aadc/.env` with restricted permissions
+- The agent can execute shell commands - use with appropriate caution
+- Review generated code before running in production environments
+
+## 🐛 Troubleshooting
+
+### "No API key found"
+Set your API key via environment variable or enter it when prompted.
+
+### "Model not found"
+Ensure you have access to the Gemini API and the model name is correct.
+
+### "Tool execution failed"
+Check file permissions and ensure paths are valid.
+
+## 📝 License
+
+MIT License - feel free to use and modify as needed.
+
+## 🤝 Contributing
+
+Contributions welcome! Feel free to submit issues and pull requests.
+
+---
+
+Built with ❤️ using Google Gemini API
