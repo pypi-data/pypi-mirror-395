@@ -1,0 +1,558 @@
+Metadata-Version: 2.4
+Name: py-jsearch
+Version: 0.0.1
+Summary: Unofficial Python client for JSearch API by Open Web Ninja
+Author-email: Taiwo-Sh <taiwo.r.shotunde@gmail.com>
+License-File: LICENSE
+Requires-Python: >=3.8
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: pydantic
+Requires-Dist: typing-extensions>=4.13.2
+Description-Content-Type: text/markdown
+
+# py-jsearch
+
+[![Test](https://github.com/Taiwo-Sh/py-jsearch/actions/workflows/test.yaml/badge.svg)](https://github.com/Taiwo-Sh/py-jsearch/actions/workflows/test.yaml)
+[![Code Quality](https://github.com/Taiwo-Sh/py-jsearch/actions/workflows/code-quality.yaml/badge.svg)](https://github.com/Taiwo-Sh/py-jsearch/actions/workflows/code-quality.yaml)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+An unofficial Python client for the [JSearch API](https://openwebninja.com/api/jsearch) by Open Web Ninja. Search for jobs, get job details, and retrieve salary estimates with a clean, type-safe interface.
+
+## Features
+
+- **Job Search** - Search across millions of jobs from Google for Jobs
+- **Job Details** - Get detailed information for specific jobs
+- **Salary Estimates** - Get salary information by job title and location
+- **Company Salaries** - Get salary data for specific companies
+- **Async & Sync Support** - Use async or synchronous clients based on your needs
+- **Type-Safe** - Full type hints with Pydantic models
+- **Easy to Use** - Intuitive API with comprehensive examples
+
+## Installation
+
+```bash
+pip install py-jsearch
+```
+
+Or with uv:
+
+```bash
+uv add py-jsearch
+```
+
+## Quick Start
+
+### Get Your API Key
+
+Sign up at [Open Web Ninja](https://openwebninja.com/) to get your JSearch API access key.
+
+### Basic Usage (Synchronous)
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+# Initialize the client
+client = JSearchClient(access_key="your-api-key-here")
+
+# Search for jobs
+params = JobSearchParams(
+    query="python developer in San Francisco",
+    num_pages=1
+)
+
+jobs = client.search_jobs(params)
+
+for job in jobs:
+    print(f"Title: {job.job_title}")
+    print(f"Company: {job.employer_name}")
+    print(f"Location: {job.job_location}")
+    print(f"Type: {job.job_employment_type}")
+    print(f"Apply: {job.job_apply_link}")
+    print("-" * 50)
+
+# Don't forget to close the client
+client.close()
+```
+
+### Using Context Manager (Recommended)
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+with JSearchClient(access_key="your-api-key-here") as client:
+    params = JobSearchParams(query="data scientist jobs")
+    jobs = client.search_jobs(params)
+    
+    for job in jobs:
+        print(f"{job.job_title} at {job.employer_name}")
+```
+
+### Async Usage
+
+```python
+import asyncio
+from py_jsearch import JSearchAsyncClient, JobSearchParams
+
+async def main():
+    async with JSearchAsyncClient(access_key="your-api-key-here") as client:
+        params = JobSearchParams(
+            query="software engineer",
+            country="us",
+            language="en"
+        )
+        
+        jobs = await client.search_jobs(params)
+        
+        for job in jobs:
+            print(f"{job.job_title} - {job.employer_name}")
+
+asyncio.run(main())
+```
+
+## Examples
+
+### 1. Advanced Job Search with Filters
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    params = JobSearchParams(
+        query="remote full stack developer",
+        page=1,
+        num_pages=2,
+        date_posted="week",  # Jobs posted in the last week
+        work_from_home=True,  # Remote jobs only
+        employment_types=["FULLTIME", "CONTRACTOR"],
+        job_requirements=["under_3_years_experience"],
+        country="us",
+        language="en"
+    )
+    
+    jobs = client.search_jobs(params)
+    
+    for job in jobs:
+        print(f"• {job.job_title}")
+        print(f"  Company: {job.employer_name}")
+        print(f"  Location: {job.job_location}")
+        print(f"  Type: {job.job_employment_type}")
+        print(f"  Posted: {job.job_posted_at}")
+        
+        if job.job_min_salary and job.job_max_salary:
+            print(f"  Salary: ${job.job_min_salary:,.0f} - ${job.job_max_salary:,.0f} {job.job_salary_period}")
+        
+        print(f"  Apply: {job.job_apply_link}")
+        print("-" * 80)
+```
+
+### 2. Get Job Details
+
+```python
+from py_jsearch import JSearchClient, JobDetailsParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    # Get details for a specific job
+    params = JobDetailsParams(
+        job_id="woj2gE2S_6LqvmLAAAAAAA==",
+        country="us",
+        language="en"
+    )
+    
+    job = client.get_job(params)
+    
+    if job:
+        print(f"Title: {job.job_title}")
+        print(f"Company: {job.employer_name}")
+        print(f"Description:\n{job.job_description}")
+        
+        # Check benefits
+        if job.job_benefits:
+            print(f"\nBenefits: {', '.join(job.job_benefits)}")
+        
+        # Check highlights
+        if job.job_highlights:
+            if job.job_highlights.qualifications:
+                print("\nQualifications:")
+                for qual in job.job_highlights.qualifications:
+                    print(f"  • {qual}")
+            
+            if job.job_highlights.responsibilities:
+                print("\nResponsibilities:")
+                for resp in job.job_highlights.responsibilities:
+                    print(f"  • {resp}")
+```
+
+### 3. Get Salary Estimates by Location
+
+```python
+from py_jsearch import JSearchClient, JobSalarySearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    params = JobSalarySearchParams(
+        job_title="software engineer",
+        location="New York",
+        location_type="CITY",
+        years_of_experience="FOUR_TO_SIX"
+    )
+    
+    salary_info = client.get_job_salary(params)
+    
+    if salary_info:
+        print(f"Location: {salary_info.location}")
+        print(f"Job Title: {salary_info.job_title}")
+        print(f"\nTotal Compensation:")
+        print(f"  Min: ${salary_info.min_salary:,.2f}")
+        print(f"  Median: ${salary_info.median_salary:,.2f}")
+        print(f"  Max: ${salary_info.max_salary:,.2f}")
+        
+        print(f"\nBase Salary:")
+        print(f"  Min: ${salary_info.min_base_salary:,.2f}")
+        print(f"  Median: ${salary_info.median_base_salary:,.2f}")
+        print(f"  Max: ${salary_info.max_base_salary:,.2f}")
+        
+        print(f"\nAdditional Pay:")
+        print(f"  Min: ${salary_info.min_additional_pay:,.2f}")
+        print(f"  Median: ${salary_info.median_additional_pay:,.2f}")
+        print(f"  Max: ${salary_info.max_additional_pay:,.2f}")
+        
+        print(f"\nData: {salary_info.salary_count} salaries")
+        print(f"Confidence: {salary_info.confidence}")
+        print(f"Updated: {salary_info.salaries_updated_at}")
+```
+
+### 4. Get Company-Specific Salaries
+
+```python
+from py_jsearch import JSearchClient, CompanySalarySearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    params = CompanySalarySearchParams(
+        company="Google",
+        job_title="Software Engineer",
+        location="United States",
+        location_type="COUNTRY",
+        years_of_experience="ONE_TO_THREE"
+    )
+    
+    salary_info = client.get_company_salary(params)
+    
+    if salary_info:
+        print(f"Company: {salary_info.company}")
+        print(f"Position: {salary_info.job_title}")
+        print(f"Location: {salary_info.location}")
+        print(f"\nSalary Range:")
+        print(f"  ${salary_info.min_salary:,.0f} - ${salary_info.max_salary:,.0f}")
+        print(f"  Median: ${salary_info.median_salary:,.0f} {salary_info.salary_period}")
+        print(f"\nBased on {salary_info.salary_count} salaries")
+```
+
+### 5. Search Jobs with Multiple Pages
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    params = JobSearchParams(
+        query="machine learning engineer",
+        page=1,
+        num_pages=3,  # Get 3 pages of results (30 jobs)
+        date_posted="month",
+        country="us"
+    )
+    
+    jobs = client.search_jobs(params)
+    
+    job_list = list(jobs)
+    print(f"Found {len(job_list)} jobs")
+    
+    for i, job in enumerate(job_list, 1):
+        print(f"{i}. {job.job_title} at {job.employer_name}")
+```
+
+### 6. Filter Jobs by Publisher
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    # Exclude specific job boards
+    params = JobSearchParams(
+        query="frontend developer",
+        exclude_job_publishers=["Indeed", "ZipRecruiter"],
+        work_from_home=True
+    )
+    
+    jobs = client.search_jobs(params)
+    
+    for job in jobs:
+        print(f"{job.job_title} - Posted on {job.job_publisher}")
+```
+
+### 7. Get Specific Job Fields (Field Projection)
+
+```python
+from py_jsearch import JSearchClient, JobDetailsParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    # Only get specific fields to reduce response size
+    params = JobDetailsParams(
+        job_id="woj2gE2S_6LqvmLAAAAAAA==",
+        fields=["job_title", "employer_name", "job_description", "job_apply_link"]
+    )
+    
+    job = client.get_job(params)
+    
+    if job:
+        print(f"Title: {job.job_title}")
+        print(f"Company: {job.employer_name}")
+        print(f"Apply: {job.job_apply_link}")
+```
+
+### 8. Handle Multiple Apply Options
+
+```python
+from py_jsearch import JSearchClient, JobSearchParams
+
+with JSearchClient(access_key="your-api-key") as client:
+    params = JobSearchParams(query="product manager")
+    jobs = client.search_jobs(params)
+    
+    for job in jobs:
+        print(f"Job: {job.job_title}")
+        
+        if job.apply_options:
+            print(f"  Available on {len(job.apply_options)} platforms:")
+            for option in job.apply_options:
+                direct = "✓" if option.is_direct else "✗"
+                print(f"    {direct} {option.publisher}: {option.apply_link}")
+        
+        print()
+```
+
+### 9. Async Batch Processing
+
+```python
+import asyncio
+from py_jsearch import JSearchAsyncClient, JobSearchParams
+
+async def search_multiple_queries(client, queries):
+    tasks = []
+    for query in queries:
+        params = JobSearchParams(query=query, num_pages=1)
+        tasks.append(client.search_jobs(params))
+    
+    results = await asyncio.gather(*tasks)
+    return results
+
+async def main():
+    queries = [
+        "python developer in Seattle",
+        "data analyst in Boston",
+        "devops engineer in Austin"
+    ]
+    
+    async with JSearchAsyncClient(access_key="your-api-key") as client:
+        all_results = await search_multiple_queries(client, queries)
+        
+        for query, jobs in zip(queries, all_results):
+            print(f"\n=== {query} ===")
+            for job in jobs:
+                print(f"  • {job.job_title} at {job.employer_name}")
+
+asyncio.run(main())
+```
+
+### 10. Error Handling
+
+```python
+from py_jsearch import (
+    JSearchClient,
+    JobSearchParams,
+    JSearchClientError,
+    JSearchAuthError,
+    JSearchResponseError
+)
+
+try:
+    with JSearchClient(access_key="your-api-key") as client:
+        params = JobSearchParams(query="software engineer")
+        jobs = client.search_jobs(params)
+        
+        for job in jobs:
+            print(f"{job.job_title} at {job.employer_name}")
+
+except JSearchAuthError as e:
+    print(f"Authentication failed: {e}")
+    print("Please check your API key")
+
+except JSearchResponseError as e:
+    print(f"Failed to parse response: {e}")
+
+except JSearchClientError as e:
+    print(f"API error: {e}")
+    if e.code:
+        print(f"Status code: {e.code}")
+    if e.response:
+        print(f"Request ID: {e.response.request_id}")
+
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## API Parameters
+
+### JobSearchParams
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | `str` | **required** | Search query (e.g., "python developer in NYC") |
+| `page` | `int` | `1` | Page number (1-100) |
+| `num_pages` | `int` | `1` | Number of pages to fetch (1-20) |
+| `country` | `str` | `"us"` | Country code (ISO 3166-1 alpha-2) |
+| `language` | `str` | `None` | Language code (ISO 639) |
+| `date_posted` | `str` | `"all"` | Filter: `"all"`, `"today"`, `"3days"`, `"week"`, `"month"` |
+| `work_from_home` | `bool` | `False` | Remote jobs only |
+| `employment_types` | `list[str]` | `None` | `["FULLTIME", "CONTRACTOR", "PARTTIME", "INTERN"]` |
+| `job_requirements` | `list[str]` | `None` | Experience/education requirements |
+| `radius` | `float` | `None` | Search radius in km |
+| `exclude_job_publishers` | `list[str]` | `None` | Publishers to exclude |
+| `fields` | `list[str]` | `None` | Specific fields to return |
+
+### JobDetailsParams
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `job_id` | `str` | **required** | Job ID (supports batch up to 20 IDs) |
+| `country` | `str` | `"us"` | Country code |
+| `language` | `str` | `None` | Language code |
+| `fields` | `list[str]` | `None` | Specific fields to return |
+
+### JobSalarySearchParams
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `job_title` | `str` | **required** | Job title for salary estimation |
+| `location` | `str` | **required** | Location for salary data |
+| `location_type` | `str` | `"ANY"` | `"ANY"`, `"CITY"`, `"STATE"`, `"COUNTRY"` |
+| `years_of_experience` | `str` | `"ALL"` | Experience level filter |
+| `fields` | `list[str]` | `None` | Specific fields to return |
+
+### CompanySalarySearchParams
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `company` | `str` | **required** | Company name |
+| `job_title` | `str` | **required** | Job title |
+| `location` | `str` | `None` | Location filter |
+| `location_type` | `str` | `"ANY"` | Location type |
+| `years_of_experience` | `str` | `"ALL"` | Experience level |
+
+## Response Models
+
+### Job
+
+Contains detailed job information including:
+
+- Basic info: `job_id`, `job_title`, `employer_name`, `job_description`
+- Location: `job_city`, `job_state`, `job_country`, `job_latitude`, `job_longitude`
+- Employment: `job_employment_type`, `job_employment_types`, `job_is_remote`
+- Application: `job_apply_link`, `apply_options`, `job_apply_is_direct`
+- Compensation: `job_min_salary`, `job_max_salary`, `job_salary_period`, `job_salary_currency`
+- Requirements: `job_required_experience`, `job_required_education`, `job_required_skills`
+- Highlights: `job_highlights` (qualifications, responsibilities, benefits)
+- Dates: `job_posted_at`, `job_posted_at_timestamp`, `job_posted_at_datetime_utc`
+
+### JobSalaryInfo
+
+Salary estimation data:
+
+- `location`, `job_title`
+- Total compensation: `min_salary`, `median_salary`, `max_salary`
+- Base salary: `min_base_salary`, `median_base_salary`, `max_base_salary`
+- Additional pay: `min_additional_pay`, `median_additional_pay`, `max_additional_pay`
+- Metadata: `salary_count`, `confidence`, `salaries_updated_at`, `publisher_name`
+
+### CompanySalaryInfo
+
+Company-specific salary data (same fields as JobSalaryInfo plus `company` field)
+
+## Client Options
+
+Both `JSearchClient` and `JSearchAsyncClient` support:
+
+```python
+client = JSearchClient(
+    access_key="your-api-key",
+    base_url="https://api.openwebninja.com/jsearch",  # Optional: custom API URL
+    timeout=30.0  # Optional: request timeout in seconds
+)
+```
+
+## Best Practices
+
+1. **Use Context Managers**: Always use `with` statements to ensure proper cleanup
+
+   ```python
+   with JSearchClient(access_key="key") as client:
+       # Your code here
+   ```
+
+2. **Handle Pagination**: Use `num_pages` carefully as requests beyond 10 pages cost 3x
+
+   ```python
+   params = JobSearchParams(query="developer", num_pages=2)  # 2x cost
+   ```
+
+3. **Filter Early**: Use filters to reduce results and API costs
+
+   ```python
+   params = JobSearchParams(
+       query="engineer",
+       date_posted="week",
+       work_from_home=True,
+       employment_types=["FULLTIME"]
+   )
+   ```
+
+4. **Field Projection**: Request only needed fields to reduce response size
+
+   ```python
+   params = JobDetailsParams(
+       job_id="abc123",
+       fields=["job_title", "employer_name", "job_apply_link"]
+   )
+   ```
+
+5. **Error Handling**: Always wrap API calls in try-except blocks
+
+   ```python
+   try:
+       jobs = client.search_jobs(params)
+   except JSearchAuthError:
+       # Handle auth error
+   except JSearchClientError:
+       # Handle API error
+   ```
+
+## Requirements
+
+- Python 3.8+
+- httpx
+- pydantic
+- typing-extensions
+
+## License
+
+This is an unofficial client and is not affiliated with Open Web Ninja.
+
+## Support
+
+For issues and questions:
+
+- GitHub Issues: [Report a bug or request a feature]
+- JSearch API Docs: <https://www.openwebninja.com/api/jsearch/docs>
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

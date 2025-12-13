@@ -1,0 +1,61 @@
+[project]
+name = "py-jsearch"
+version = "0.0.1"
+description = "Unofficial Python client for JSearch API by Open Web Ninja"
+readme = "README.md"
+authors = [
+    { name = "Taiwo-Sh", email = "taiwo.r.shotunde@gmail.com" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic",
+    "typing-extensions>=4.13.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "ruff>=0.14.7",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "respx>=0.21.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=py_jsearch",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "async_test: Async tests",
+]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+source = ["src/py_jsearch"]
+omit = ["tests/*", "**/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
