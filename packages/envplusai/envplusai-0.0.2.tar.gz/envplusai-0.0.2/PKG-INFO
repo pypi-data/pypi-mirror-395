@@ -1,0 +1,116 @@
+Metadata-Version: 2.4
+Name: envplusai
+Version: 0.0.2
+Summary: A lightweight Python package for managing environment variables with advanced features.
+Project-URL: Homepage, https://github.com/viswa-vr-de/pyenvplus
+Project-URL: Repository, https://github.com/viswa-vr-de/pyenvplus
+Project-URL: Documentation, https://github.com/viswa-vr-de/pyenvplus#readme
+Project-URL: Issues, https://github.com/viswa-vr-de/pyenvplus/issues
+Author-email: Viswavr <viswavr54@gmail.com>
+License: MIT
+Keywords: 12-factor,alias,app-settings,application-config,auto-env,automation,boolean,casting,clean,cli,config,config-management,configuration,configuration-management,cross-platform,deployment,dev-tools,developer-tools,development,devops,django,dotenv,dynamic-env,easy,easy-env,env loader,env-access,env-api,env-file,env-handler,env-helper,env-interface,env-library,env-module,env-package,env-parsing,env-plus,env-processor,env-reader,env-tools,env-utils,env-var,env-vars,env-wrapper,env-writer,environment,environment manager,environment-variables,envplus,extensible,fast,fastapi,flask,flexible,float,framework-agnostic,hot-reload,integer,json,library,lightweight,list,maintainable,microservices,modern,module,package,parsing,pipeline,powerful,production,productivity,python env,python-config,python-configuration,python-dotenv,python-environment,python-helpers,python-library,python-module,python-package,python-settings,python-tools,python-utils,python-variables,python3,python3.10,python3.11,python3.12,python3.6,python3.7,python3.8,python3.9,reliable,reload-env,robust-env,safe,scripting,secrets,secure,secure-env,settings,settings-management,simple,simple-env,smart-env,stable,strict mode,type-safe environment variables,typed,typed-env,utility,validated,validation,variables
+Requires-Python: >=3.6
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# envplus
+
+**envplus** is a lightweight Python package for managing environment variables with advanced features like type conversion, auto validation, hot reloading, and alias support.
+
+## Features
+
+- **Type Casting**: Easily cast environment variables to `str`, `int`, `float`, `bool`, `list`, and `json`.
+- **Auto Validation**: Detect missing keys and invalid types with clear error messages.
+- **Hot Reload**: Automatically reload values when `.env` file changes (lazy reload).
+- **Alias Support**: Fallback to alternative keys if the primary key is missing.
+- **Strict Mode**: Enforce presence of required variables.
+- **Default Values**: Safe handling of defaults.
+- **Debug Console**: Inspect loaded variables.
+
+## Installation
+
+```bash
+pip install envplus
+```
+
+## Usage
+
+### Basic Usage
+
+Create a `.env` file:
+
+```ini
+APP_ENV=development
+DEBUG=true
+PORT=8080
+ALLOWED_HOSTS=localhost,127.0.0.1
+DB_CONFIG={"host": "localhost", "port": 5432}
+```
+
+Use `envplus` in your code:
+
+```python
+from envplus import Env
+
+env = Env()
+
+# Read values with type casting
+mode = env.str("APP_ENV")
+debug = env.bool("DEBUG")
+port = env.int("PORT")
+hosts = env.list("ALLOWED_HOSTS")
+db_config = env.json("DB_CONFIG")
+
+print(f"Mode: {mode}, Debug: {debug}, Port: {port}")
+print(f"Hosts: {hosts}")
+print(f"DB Config: {db_config}")
+```
+
+### Strict Mode
+
+Enable strict mode to raise errors for missing variables without defaults.
+
+```python
+env = Env(strict=True)
+
+# Raises MissingEnvError if API_KEY is missing
+api_key = env.str("API_KEY")
+
+# Safe with default
+api_key = env.str("API_KEY", default="secret")
+```
+
+### Aliases
+
+Support legacy or alternative environment variable names.
+
+```python
+# Tries DATABASE_URL first, then DB_URL
+db_url = env.alias(["DATABASE_URL", "DB_URL"])
+```
+
+### Debugging
+
+Print all loaded environment variables (masked values not implemented yet, be careful in production!).
+
+```python
+env.debug()
+```
+
+## Development Setup
+
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   pip install -e .[dev]
+   ```
+3. Run tests:
+   ```bash
+   pytest
+   ```
+
+## License
+
+MIT
