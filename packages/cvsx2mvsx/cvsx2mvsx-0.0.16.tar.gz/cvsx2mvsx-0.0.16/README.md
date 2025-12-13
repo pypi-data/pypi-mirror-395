@@ -1,0 +1,111 @@
+# cvsx2mvsx
+
+**cvsx2mvsx** is a Python library and CLI tool designed to convert **CVSX** archives into **MVSX** or **MVS Stories** formats.
+
+## Installation
+
+```bash
+pip install cvsx2mvsx
+```
+
+## CLI Usage
+
+Convert a CVSX file to an MVSX archive:
+
+```bash
+cvsx2mvsx --input data/example.cvsx --output output.mvsx
+```
+
+Convert a CVSX file to the Stories format:
+
+```bash
+cvsx2mvsx --input data/example.cvsx --output output.stories --format stories
+```
+
+### Lattice to Mesh Conversion
+
+If your input CVSX contains Lattice segmentations (voxel masks) and you wish to convert them to meshes via Marching Cubes rather than keeping them as volumes:
+
+```bash
+cvsx2mvsx --input data/example.cvsx --output output.mvsx --lattice-to-mesh
+```
+
+### Arguments
+
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| `--input` | Path to the input `.cvsx` file. | Required |
+| `--output` | Path to the output file (`.mvsx` or `.stories`). | Required |
+| `--format` | Output format type (`mvsx` or `stories`). | `mvsx` |
+| `--lattice-to-mesh` | Enable Marching Cubes conversion for lattice data. | `False` |
+
+## Python API Usage
+
+### MVSX Pipeline
+
+To create an MVSX file, you define a pipeline that extracts, transforms to the internal model, transforms to MVSX state, and loads to disk.
+
+```python
+# 1. Declare the pipeline structure
+pipeline = Pipeline([
+    ExtractCVSX(),
+    TransformToInternal(),
+    TransformToMVSX(),
+    LoadMVSX()
+])
+
+# 2. Define run configuration
+config = PipelineConfig(
+      input_path="path/to/input.cvsx",
+      output_path="path/to/output.mvsx",
+      lattice_to_mesh=True,
+)
+
+# 3. Execute
+pipeline.run(config)
+```
+
+### Stories Pipeline
+
+To create a Story, simply swap the transformation and loading steps of the MVSX pipeline:
+
+```python
+pipeline = Pipeline([
+    ExtractCVSX(),
+    TransformToInternal(),
+    TransformToStories(),
+    LoadStories()
+])
+
+config = PipelineConfig(
+      input_path="path/to/input.cvsx",
+      output_path="path/to/output.stories",
+      lattice_to_mesh=True,
+)
+
+
+pipeline.run(config)
+```
+
+## Architecture
+
+The library follows a **ETL (Extract, Transform, Load) Pipeline** pattern.
+
+### Core Concepts
+
+1.  **Pipeline**: A container that executes a list of steps sequentially. It manages the lifecycle of the process.
+2.  **Context**: A shared state object passed between steps. It manages configuration, holds a temporary working directory for intermediate files, and cleans up resources automatically after execution.
+3.  **Steps**: Discrete units of logic that implement a generic interface.
+
+### The Pipeline Flow
+
+1.  **Extract (`ExtractCVSX`)**:
+      * Unzips the `.cvsx` archive into the pipeline context temp directory.
+      * Parses `index.json`, metadata, and BinaryCIF files using `ciftools`.
+2.  **Transform (`TransformToInternal`)**:
+      * Converts CVSX data into a normalized `InternalEntry` model.
+      * Handles complex logic like **Lattice-to-Mesh** conversion (Marching Cubes).
+3.  **Transform (`TransformToMVSX` / `TransformToStories`)**:
+      * Converts the `InternalEntry` into format-specific representations (MolViewSpec States or Stories).
+4.  **Load (`LoadMVSX` / `LoadStories`)**:
+      * Packages the processed assets and state into the final binary output file.
