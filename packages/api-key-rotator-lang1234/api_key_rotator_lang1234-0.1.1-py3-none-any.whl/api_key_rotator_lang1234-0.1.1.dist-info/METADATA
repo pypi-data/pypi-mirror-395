@@ -1,0 +1,302 @@
+Metadata-Version: 2.4
+Name: api-key-rotator-lang1234
+Version: 0.1.1
+Summary: A Python library for rotating API keys with automatic expiration handling
+Home-page: https://github.com/xLang1234/api-key-rotator
+Author: xLang1234
+License: MIT
+Project-URL: Homepage, https://github.com/xLang1234/api-key-rotator
+Project-URL: Documentation, https://github.com/xLang1234/api-key-rotator#readme
+Project-URL: Repository, https://github.com/xLang1234/api-key-rotator
+Project-URL: Bug Tracker, https://github.com/xLang1234/api-key-rotator/issues
+Keywords: api,key,rotation,rate-limit,api-key,key-management,thread-safe
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: Typing :: Typed
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# API Key Rotator
+
+[![PyPI version](https://badge.fury.io/py/api-key-rotator-lang1234.svg)](https://badge.fury.io/py/api-key-rotator-lang1234)
+[![Python Versions](https://img.shields.io/pypi/pyversions/api-key-rotator-lang1234.svg)](https://pypi.org/project/api-key-rotator-lang1234/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A powerful, thread-safe Python library for managing and rotating API keys with automatic expiration handling, TTL support, and dynamic key fetching.
+
+## Features
+
+✨ **Easy to Use** - Simple, intuitive API for managing multiple API keys  
+🔄 **Automatic Rotation** - Round-robin rotation between available keys  
+⏰ **TTL Support** - Automatic expiration based on time-to-live  
+🧵 **Thread-Safe** - Built for concurrent usage in multi-threaded applications  
+🔌 **Dynamic Fetching** - Callback support for fetching new keys on demand  
+🎯 **Decorator Support** - Automatic retry with new keys on API failures  
+📊 **Statistics** - Track key usage and pool statistics  
+
+## Installation
+
+Install from PyPI using pip:
+
+```bash
+pip install api-key-rotator-lang1234
+```
+
+## Quick Start
+
+### Basic Usage
+
+```python
+from api_key_rotator import KeyRotator
+
+# Initialize with your API keys
+rotator = KeyRotator(['key1', 'key2', 'key3'])
+
+# Get the next available key
+api_key = rotator.get_key()
+
+# Mark a key as expired (it will be skipped in rotation)
+rotator.mark_expired(api_key)
+
+# Restore an expired key
+rotator.mark_valid(api_key)
+
+# Add a new key to the pool
+rotator.add_key('key4')
+
+# Get statistics about your key pool
+stats = rotator.get_stats()
+print(stats)
+```
+
+### With Time-to-Live (TTL)
+
+```python
+from api_key_rotator import KeyRotator
+
+# Keys will automatically expire after 1 hour
+rotator = KeyRotator(
+    keys=['key1', 'key2', 'key3'],
+    ttl_seconds=3600
+)
+
+api_key = rotator.get_key()  # Automatically skips expired keys
+```
+
+### With Dynamic Key Fetching
+
+```python
+from api_key_rotator import KeyRotator
+
+def fetch_new_key():
+    """Fetch a new API key from your key management service."""
+    response = requests.get('https://your-api.com/generate-key')
+    return response.json()['api_key']
+
+# Rotator will automatically fetch new keys when needed
+rotator = KeyRotator(
+    keys=['initial_key'],
+    key_fetcher=fetch_new_key
+)
+
+api_key = rotator.get_key()
+```
+
+### Using the Decorator
+
+The `@with_key_rotation` decorator automatically retries failed API calls with new keys:
+
+```python
+from api_key_rotator import KeyRotator, with_key_rotation
+import requests
+
+rotator = KeyRotator(['key1', 'key2', 'key3'])
+
+@with_key_rotation(rotator, max_retries=3)
+def call_api(endpoint, api_key=None):
+    """Make an API call with automatic key rotation on failure."""
+    response = requests.get(
+        endpoint,
+        headers={'Authorization': f'Bearer {api_key}'}
+    )
+    response.raise_for_status()  # Raises exception on 4xx/5xx
+    return response.json()
+
+# The decorator will automatically retry with new keys on failures
+try:
+    data = call_api('https://api.example.com/data')
+except Exception as e:
+    print(f"All retries failed: {e}")
+```
+
+### Advanced Example
+
+```python
+from api_key_rotator import KeyRotator, with_key_rotation
+import requests
+import logging
+
+# Enable logging to see rotation activity
+logging.basicConfig(level=logging.INFO)
+
+# Advanced configuration
+rotator = KeyRotator(
+    keys=['key1', 'key2', 'key3'],
+    ttl_seconds=7200,  # 2 hours
+    key_fetcher=lambda: get_new_key_from_vault(),
+    auto_remove_expired=True  # Automatically remove expired keys
+)
+
+@with_key_rotation(rotator, max_retries=5, retry_on_exceptions=(requests.HTTPError,))
+def fetch_user_data(user_id, api_key=None):
+    response = requests.get(
+        f'https://api.example.com/users/{user_id}',
+        headers={'X-API-Key': api_key},
+        timeout=10
+    )
+    
+    # Rate limit handling
+    if response.status_code == 429:
+        raise requests.HTTPError("Rate limit exceeded")
+    
+    response.raise_for_status()
+    return response.json()
+
+# Use the function normally
+user = fetch_user_data(12345)
+
+# Check rotator statistics
+print(rotator.get_stats())
+```
+
+## API Reference
+
+### `KeyRotator`
+
+#### Constructor
+
+```python
+KeyRotator(
+    keys: List[str],
+    ttl_seconds: Optional[int] = None,
+    key_fetcher: Optional[Callable[[], str]] = None,
+    auto_remove_expired: bool = False
+)
+```
+
+**Parameters:**
+- `keys`: Initial list of API keys
+- `ttl_seconds`: Optional time-to-live for keys in seconds
+- `key_fetcher`: Optional callback to fetch new keys
+- `auto_remove_expired`: Automatically remove expired keys from pool
+
+#### Methods
+
+**`get_key() -> str`**  
+Get the next available API key using round-robin rotation.
+
+**`mark_expired(key: str) -> None`**  
+Mark a key as expired, removing it from rotation.
+
+**`mark_valid(key: str) -> None`**  
+Restore an expired key back to rotation.
+
+**`add_key(key: str) -> None`**  
+Add a new key to the rotation pool.
+
+**`remove_key(key: str) -> None`**  
+Remove a key from the rotator entirely.
+
+**`get_stats() -> Dict[str, Any]`**  
+Get statistics about the key pool including:
+- Total keys
+- Available keys
+- Expired keys
+- Usage statistics per key
+
+### `@with_key_rotation`
+
+```python
+@with_key_rotation(
+    rotator: KeyRotator,
+    max_retries: int = 3,
+    retry_on_exceptions: tuple = (Exception,)
+)
+```
+
+**Parameters:**
+- `rotator`: KeyRotator instance to use
+- `max_retries`: Maximum retry attempts
+- `retry_on_exceptions`: Tuple of exceptions to catch and retry on
+
+## Thread Safety
+
+`KeyRotator` is fully thread-safe and can be safely used in multi-threaded applications:
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+from api_key_rotator import KeyRotator
+
+rotator = KeyRotator(['key1', 'key2', 'key3'])
+
+def worker(task_id):
+    api_key = rotator.get_key()
+    # Use api_key for your task
+    return f"Task {task_id} completed with key {api_key[:8]}..."
+
+with ThreadPoolExecutor(max_workers=10) as executor:
+    results = list(executor.map(worker, range(100)))
+```
+
+## Use Cases
+
+- **Rate Limit Management**: Distribute API calls across multiple keys to avoid rate limits
+- **High Availability**: Automatic failover when keys expire or become invalid
+- **Load Distribution**: Balance load across multiple API accounts
+- **Key Rotation**: Implement security best practices with automatic key rotation
+- **Multi-Tenant Applications**: Manage API keys for multiple clients
+
+## Requirements
+
+- Python >= 3.7
+- No external dependencies (uses only Python standard library)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+xLang1234
+
+## Support
+
+If you encounter any issues or have questions, please [open an issue](https://github.com/yourusername/api-key-rotator/issues) on GitHub.
+
+## Changelog
+
+### 0.1.0 (2025-12-07)
+- Initial release
+- Core key rotation functionality
+- TTL support
+- Dynamic key fetching
+- Thread-safe operations
+- Decorator support for automatic retries
