@@ -1,0 +1,106 @@
+[project]
+name = "procustodibus_agent"
+dynamic = ["version"]
+description = "Synchronizes your WireGuard settings with Pro Custodibus."
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Networking :: Monitoring",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+authors = [
+    { name = "Arcem Tene", email = "dev@arcemtene.com" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.6.2"
+dependencies = [
+    "dnspython~=2.2",
+    "docopt-ng~=0.7",
+    "importlib-metadata>=4.8.3",
+    "inflection~=0.5",
+    "pynacl~=1.5",
+    "pywin32~=306.0 ; sys_platform == 'win32'",
+    "requests~=2.27",
+    "tabulate~=0.8",
+]
+
+[project.scripts]
+procustodibus-agent = "procustodibus_agent.cli:main"
+procustodibus-credentials = "procustodibus_agent.credentials:main"
+procustodibus-mfa = "procustodibus_agent.mfa.cli:main"
+
+[project.urls]
+Homepage = "https://www.procustodibus.com/"
+Changelog = "https://docs.procustodibus.com/guide/agents/download/#changelog"
+Documentation = "https://docs.procustodibus.com/guide/agents/run/"
+Source = "https://git.sr.ht/~arx10/procustodibus-agent"
+Tracker = "https://todo.sr.ht/~arx10/procustodibus-agent"
+
+[build-system]
+requires = ["hatchling", "versioningit"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.1",
+    "pytest-cov>=4.0.0",
+    "pytest-datadir>=1.4.1",
+    "pytest-mock>=3.6.1",
+    "pytest-timeout>=2.1.0",
+    "pytest-watcher>=0.2.5",
+    "ruff>=0.0.17",
+]
+freeze = [
+    "cx-freeze>=6.13.2",
+    "cx-logging>=3.0",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+omit = ["*/test/*"]
+source = ["procustodibus_agent"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/test*",
+]
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN", # no typing for now
+    "COM812", # recommended to ignore by ruff format
+    "D203", # use blank-line-before-class (D211) instead of one-blank-line-before-class
+    "D213", # use multi-line-summary-first (D212) instead of multi-line-summary-second-line
+    "EM", # allow literal & formatted exception messages
+    "FIX002", # allow TODOs
+    "FIX004", # allow HACKs
+    "ISC001", # recommended to ignore by ruff format
+    "PLR0913", # allow functions with lots of arguments
+    "PLR2004", # allow use magic values
+    "PTH110", # Path.exists() raises errors when os.path.exists() does not
+    "PTH123", # fix use of Path.open() later
+    "RUF012", # no typing for now
+    "TD002", # allow TODOs without an author
+    "TD003", # allow TODOs without an issue link
+    "TRY003", # allow use of vanilla exceptions
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.versioningit.vcs]
+default-tag = "0.0.0"

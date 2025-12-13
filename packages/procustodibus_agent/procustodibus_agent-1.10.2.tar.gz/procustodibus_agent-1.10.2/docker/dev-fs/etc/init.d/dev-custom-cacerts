@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+description="Dev Custom CA Certs"
+
+depend() {
+    need localmount
+    need net
+}
+
+start() {
+    python3=/opt/venvs/procustodibus-agent/bin/python3
+    files="$(find /usr/local/share/ca-certificates -type f 2>/dev/null || echo '')"
+    for file in $files; do
+        ebegin "Applying dev custom cacerts $file"
+        echo -e "\n# $file" | cat - $file >>$($python3 -m certifi)
+    done
+    eend 0
+}

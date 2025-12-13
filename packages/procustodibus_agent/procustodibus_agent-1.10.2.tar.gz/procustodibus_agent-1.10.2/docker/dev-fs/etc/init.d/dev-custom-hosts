@@ -1,0 +1,17 @@
+#!/sbin/openrc-run
+
+description="Dev Custom Hosts"
+
+depend() {
+    need localmount
+    need net
+}
+
+start() {
+    files="$(find /usr/local/share/hostnames -type f 2>/dev/null || echo '')"
+    for file in $files; do
+        ebegin "Applying dev custom hosts $file"
+        echo -e "\n# $file" | cat - $file >>/etc/hosts
+    done
+    eend 0
+}

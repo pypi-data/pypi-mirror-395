@@ -1,0 +1,18 @@
+#!/bin/sh
+# PROVIDE: procustodibus-agent
+# REQUIRE: DAEMON
+. /etc/rc.subr
+
+program=/opt/venvs/procustodibus-agent/bin/procustodibus-agent
+pidfile=/var/run/procustodibus-agent.pid
+syslog_tag=procustodibus-agent
+
+command=/usr/sbin/daemon
+command_args="-P $pidfile -T $syslog_tag $program --loop=120 --verbosity=INFO"
+desc="Pro Custodibus Agent"
+name=procustodibus_agent
+procustodibus_agent_env="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+rcvar=procustodibus_agent_enable
+
+load_rc_config $name
+run_rc_command "$1"

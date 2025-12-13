@@ -1,0 +1,56 @@
+#!/bin/sh -eu
+
+action=${1:-}
+iface=${2:-}
+options=${3:-}
+test $# -gt 2 || action=help
+
+help() {
+    cat << EOF >&2
+Pro Custodibus Agent fw_zone script.
+
+Adds/removes the specified WireGuard interface to the specified firewall zone.
+Run as root.
+
+Usage:
+  fw_zone ACTION IFACE OPTIONS
+
+Options:
+  Zone name (eg 'trusted')
+
+Examples:
+  fw_zone up wg0 trusted
+EOF
+}
+
+has_firewalld() {
+    command -v firewall-cmd >/dev/null && echo y || echo firewalld not found >&2
+}
+
+iface_in_zone() {
+    firewall-cmd --info-zone $options | sed -n '/interfaces:.*\b'$iface'\b/ay'
+}
+
+firewall() {
+    local rule="$*"
+    echo + firewall-cmd $rule >&2
+    firewall-cmd $rule
+}
+
+post_up() {
+    test ! "$(has_firewalld)" || test "$(iface_in_zone)" || \
+        firewall --zone $options --add-interface $iface
+}
+
+pre_down() {
+    test ! "$(has_firewalld)" || test ! "$(iface_in_zone)" || \
+        firewall --zone $options --remove-interface $iface
+}
+
+case $action in
+    pre_up) ;;
+    up|post_up) post_up ;;
+    down|pre_down) pre_down ;;
+    post_down) ;;
+    *) help ;;
+esac

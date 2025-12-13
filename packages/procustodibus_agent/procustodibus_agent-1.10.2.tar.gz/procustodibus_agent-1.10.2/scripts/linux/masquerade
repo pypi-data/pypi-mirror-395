@@ -1,0 +1,90 @@
+#!/bin/sh -eu
+
+action=${1:-}
+iface=${2:-}
+options=${3:-}
+test $# -gt 2 || action=help
+
+comment="pro custodibus agent masquerade script"
+mark=1
+
+help() {
+    cat << EOF >&2
+Pro Custodibus Agent masquerade script.
+
+Enables/disables masquerading of forwarded connections in/out of the specified
+WireGuard interface. Run as root.
+
+Usage:
+  masquerade ACTION IFACE OPTIONS
+
+Options:
+  all|true      Masquerades inbound and outbound connections
+  inbound       Masquerades connections inbound from the WireGuard network
+  outbound      Masquerades connections outbound to the WireGuard network
+  clean|false   Cleans up masquerading
+
+Examples:
+  masquerade up wg0 outbound
+EOF
+}
+
+has_ipv4() {
+    ip -brief address show dev $iface | sed -n /\./a${1:-ipv4}
+}
+
+has_ipv6() {
+    ip -brief address show dev $iface | sed -n /:/a${1:-ipv6}
+}
+
+clean() {
+    for exe in iptables ip6tables; do
+        $exe-save | awk -v exe="$exe" -v iface="$iface" -v comment="$comment" '
+        BEGIN { regex = " -[io] " iface " .*" comment }
+        /^\*/ { sub("\*", ""); table = $0 }
+        $0~regex {
+            sub("^-A", "-D");
+            cmd = exe " -t " table " " $0;
+            print "+ " cmd; system(cmd)
+        }
+        ' >&2
+    done
+}
+
+firewall() {
+    local rule="$*"
+    for exe in $(has_ipv4 iptables) $(has_ipv6 ip6tables); do
+        echo + $exe $rule -m comment --comment '"'$comment'"' >&2
+        $exe $rule -m comment --comment "$comment"
+    done
+}
+
+post_up_inbound() {
+    firewall -t mangle -A PREROUTING -i $iface -j MARK --set-mark $mark
+    firewall -t nat -A POSTROUTING ! -o $iface -m mark --mark $mark -j MASQUERADE
+}
+
+post_up_outbound() {
+    firewall -t nat -A POSTROUTING -o $iface -j MASQUERADE
+}
+
+post_up() {
+    clean
+    case "$options" in
+        all|true) post_up_inbound; post_up_outbound ;;
+        inbound) post_up_inbound ;;
+        outbound) post_up_outbound ;;
+    esac
+}
+
+pre_down() {
+    clean
+}
+
+case $action in
+    pre_up) ;;
+    up|post_up) post_up ;;
+    down|pre_down) pre_down ;;
+    post_down) ;;
+    *) help ;;
+esac

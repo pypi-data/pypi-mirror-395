@@ -1,0 +1,79 @@
+#!/bin/sh -eu
+
+action=${1:-}
+iface=${2:-}
+options=${3:-}
+test $# -gt 2 || action=help
+
+comment="pro custodibus agent clamp_mss script"
+
+help() {
+    cat << EOF >&2
+Pro Custodibus Agent clamp_mss script.
+
+Enables/disables MSS-clamping of forwarded connections in the specified
+WireGuard interface. Run as root.
+
+Usage:
+  clamp_mss ACTION IFACE OPTIONS
+
+Options:
+  outbound|true  Clamps MSS of connections outbound to the WireGuard network
+  clean|false   Cleans MSS-clamping
+
+Examples:
+  clamp_mss up wg0 outbound
+EOF
+}
+
+has_ipv4() {
+    ip -brief address show dev $iface | sed -n /\./a${1:-ipv4}
+}
+
+has_ipv6() {
+    ip -brief address show dev $iface | sed -n /:/a${1:-ipv6}
+}
+
+clean() {
+    for exe in iptables ip6tables; do
+        $exe-save | awk -v exe="$exe" -v iface="$iface" -v comment="$comment" '
+        BEGIN { regex = " -[io] " iface " .*" comment }
+        /^\*/ { sub("\*", ""); table = $0 }
+        $0~regex {
+            sub("^-A", "-D");
+            cmd = exe " -t " table " " $0;
+            print "+ " cmd; system(cmd)
+        }
+        ' >&2
+    done
+}
+
+firewall() {
+    local rule="$*"
+    for exe in $(has_ipv4 iptables) $(has_ipv6 ip6tables); do
+        echo + $exe $rule -m comment --comment '"'$comment'"' >&2
+        $exe $rule -m comment --comment "$comment"
+    done
+}
+
+post_up() {
+    clean
+    case "$options" in
+        outbound|true)
+            firewall -t mangle -A FORWARD -o $iface \
+                -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+            ;;
+    esac
+}
+
+pre_down() {
+    clean
+}
+
+case $action in
+    pre_up) ;;
+    up|post_up) post_up ;;
+    down|pre_down) pre_down ;;
+    post_down) ;;
+    *) help ;;
+esac

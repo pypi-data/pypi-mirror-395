@@ -1,0 +1,40 @@
+image: fedora/latest
+packages:
+- iproute # for tests
+- uv
+sources:
+- https://git.sr.ht/~arx10/procustodibus-agent
+tasks:
+- sync: |
+    cd procustodibus-agent
+    uv python install
+    uv sync
+- lint: |
+    cd procustodibus-agent
+    uv run ruff check
+    uv run ruff format --diff
+- test: |
+    cd procustodibus-agent
+    uv run pytest --cov --cov-report term-missing
+- test_py38: |
+    cd procustodibus-agent
+    uv run --python 3.8 pytest
+- test_py39: |
+    cd procustodibus-agent
+    uv run --python 3.9 pytest
+- test_py310: |
+    cd procustodibus-agent
+    uv run --python 3.10 pytest
+- test_py311: |
+    cd procustodibus-agent
+    uv run --python 3.11 pytest
+- test_py312: |
+    cd procustodibus-agent
+    uv run --python 3.12 pytest
+- test_py313: |
+    cd procustodibus-agent
+    uv run --python 3.13 pytest
+triggers:
+- action: email
+  condition: always
+  to: dev@arcemtene.com
