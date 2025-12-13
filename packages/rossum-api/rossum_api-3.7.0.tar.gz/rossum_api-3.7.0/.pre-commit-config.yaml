@@ -1,0 +1,53 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.2
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [
+            dacite,
+            httpx,
+            tenacity,
+            types-aiofiles,
+            types-mock,
+        ]
+        args: []
+        language: python
+        pass_filenames: false
+        types: [python]
+  - repo: local
+    hooks:
+      - id: commitizen-branch
+        name: commitizen conditionally check branch
+        description: >
+          Commitizen fails when there are no new commits. To overcome this, we created
+          tiny wrapper that verifies there are commits to check.
+
+          Original description from Commitizen:
+          Check all commit messages that are already on the current branch but not the
+          default branch on the origin repository. Useful for checking messages after
+          the fact (e.g., pre-push or in CI) without an expensive check of the entire
+          repository history.
+        entry: ./conditional-commitizen.sh
+        always_run: true
+        language: python
+        minimum_pre_commit_version: "1.4.3"
+        additional_dependencies: [
+          'commitizen',
+        ]

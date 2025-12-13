@@ -1,0 +1,70 @@
+# Per-service ruff linting
+lint.select = [
+    "B",  # bugbear
+    "C",  # mccabe
+    "D",  # PEP257 (pydocstyle)
+    "E",  # PEP8 (pycodestyle)
+    "F",  # pyflakes
+    "I",  # isort
+    "S",  # bandit
+    "W",  # PEP8  (pycodestyle)
+]
+lint.extend-select = [
+    "ARG",  # unused arguments
+    "C4",  # comprehensions
+    "ERA",  # eradicate,
+    "EXE",  # executable
+    "G",  # logging-format
+    "RET",  # returns formatting
+    "RUF",  # ruff-specific rules
+    "SIM",  # flake8-simplify
+    "T",  # print
+    "T10",  # breakpoint
+    "TCH",  # type-checking
+    "TID252",  # absolute imports
+    "UP",  # pyupgrade
+]
+lint.unfixable = ["ERA"]
+
+lint.ignore = [
+    "ARG001", # Unused function argument
+    "ARG002", # Unused method argument
+    "B026",  # Star-arg unpacking after a keyword argument is strongly discouraged
+    "B905",  # `zip()` without an explicit `strict=` parameter
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D107",  # Missing docstring in __init__
+    "E501",  # Long literals which Black can't split
+]
+
+line-length = 99
+target-version = "py310"
+extend-exclude = [
+    ".git",
+    ".mypy_cache",
+    "__pycache__",
+    ".pytest_cache",
+]
+
+[lint.flake8-type-checking]
+exempt-modules = []  # default is `typing`, but we want to include these under guards if possible
+runtime-evaluated-decorators = ["dataclasses.dataclass"]
+
+[lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[lint.pydocstyle]
+# Use numpy-style docstrings.
+convention = "numpy"
+
+[lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[lint.per-file-ignores]
+# commons module files
+"docs/**" = ["D"]
+"rossum_api/domain_logic/urls.py" = ["D"]
+"test.py" = ["D", "ERA001", "S", "T201"]
+"tests/**" = ["D", "S"]
