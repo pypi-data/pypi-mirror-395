@@ -1,0 +1,1 @@
+The objects in this module are used to process time-series data
