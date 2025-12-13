@@ -1,0 +1,327 @@
+{% load static %}
+{% load replace_filters %}
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script>
+            function confirmDelete() {
+                return confirm("Are you sure you want to delete these messages ?");
+            }
+
+            function confirmDeleteAssistant() {
+                return confirm("Are you sure you want to this assistant; all threads will become inaccessible ?");
+            }
+            function disableDeleteAssistant() {
+                return alert("The assistant has children; delete them first");
+	    }
+        </script>
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: [['$', '$'], ['\\(', '\\)'],['\\[','\\]']]
+                },
+            };
+        </script>
+        <script id="MathJax-script" async
+                src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+        </script>
+        <style> form label { display: inline-block; margin-right: 10px; } </style>
+	<style>
+  .back-button {
+    display: inline-block;
+    padding: 1px 2px;
+    background-color: blue ; /* green */
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: sans-serif;
+    transition: background-color:  blue ;
+  }
+
+  .back-button:hover {
+    background-color: #45a049; /* slightly darker green */
+  }
+
+  .back-button:active {
+    background-color: #3e8e41; /* pressed state */
+  }
+</style>
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+            <style>
+
+            h4 {
+                margin-bottom: 0.5em; /* or try 4px, 8px */
+            }
+
+            .wrap-text {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                max-width: 100%;
+            }
+
+            .wrap-summary{
+		padding: 10px,
+                word-wrap: break-word;
+		color: green;
+                overflow-wrap: break-word;
+                max-width: 100%;
+		margin-top: 10px;
+		border: 1px solid #aaa;
+            }
+            .container {
+                display: flex;
+                width: 100%;
+                flex-direction: row;
+                gap: 0px;
+            }
+
+            .here-button{
+                background-color: #f8f8f8
+            }
+            .navigation {
+                background-color: #c8c8c8;
+            }
+
+            .old-messages{
+                background-color: #f8f8f8
+            }
+            .left-column {
+                min-width: 30%;
+                padding: 10px;
+                border: 1px solid #ccc;
+                background-color: #e8e8e8;
+            }
+
+            .right-column {
+                flex: 1; /* Fills the remaining space */
+                padding: 10px;
+                border: 1px solid #ccc;
+                background-color: #e8e8e8;
+            }
+
+            .column {
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ccc;
+            }
+
+            @media (max-width: 1024px) {
+                .container {
+                    flex-direction: column;
+                }
+                .left-column {
+                    order: 2;
+                    width: 100%;
+                }
+                .right-column {
+                    order: 1;
+                    width: 100%;
+                }
+            }
+            a {
+                color: blue;
+                text-decoration: none;
+            }
+
+            .verbatim {
+                white-space: pre;
+                font-family: monospace;
+            }
+            .oldcontainer {
+                display: flex;
+                width: 100%;
+            }
+            .left {
+                min-width: 30%;
+                padding: 1rem;
+                background-color: #f0f0f0;
+            }
+            .right {
+                width: 70%;
+                padding: 1rem;
+                background-color: #e0e0e0;
+            }
+
+            .form-row {
+                flex-direction: row;
+                display: flex;
+                align-items: center;  /* Aligns vertically */
+                gap: 2px;             /* Space between elements */
+            }
+
+        </style>
+
+
+
+        <title>Query Interface</title>
+    </head>
+    <body style="display: flex; justify-content: top; align-items: center; flex-direction: column; margin: 0; min-height: 100vh; font-size:10pt ">
+        <div class='container'>
+            <div class="left-column">
+		    <form method="post">
+                    {% csrf_token %}
+		    <h4> View filter   <button name='action' value='filter' type="submit">Filter </button> </h4>
+                                {% for  i , c   in choices.items %}
+				{% if i  in keeps %}
+				<input type="checkbox" name='keep' value={{ i }} id="select-filter"  checked  > [{{ i }} ] </input>  {{c}} <br/>
+				{% else %}
+				<input type="checkbox" name='keep' value={{ i }} id="select-filter" > [{{ i }} ] </input>  {{ c }} <br/>
+				{% endif %}
+				{% endfor %}
+		 <p/>
+                    <div style="margin: 10 auto; padding: 1rem;  ">
+
+
+                        <div class='old-messages'>
+				<h4> Old queries     {{ keeps }} </h4> 
+				<!--
+				{% for i, c in resolved_choices %} 
+				 [ {{ i }}] {{ c }}         {% endfor %} 
+				 --!>
+                            {% if messages %}
+			    	<br/>
+
+                                <input type="checkbox" id="select-all"> Select all in <b> {{ name | replace:".,/" }} </b>   </em>
+                                <p> </p>
+                                {% for m in messages %}
+				{% if not user.is_staff %}
+				{% if m.previous_response_id == None and m.pk > 1 %} <hr> History reset <hr>   {% endif %}
+				{% endif %}
+                                    <span name='queryrow' class="form-row">
+                                        <input type="checkbox" name="entry" value="{{ m.pk}}" class="choice-box">
+                                        <button style="width: 100% ; text-align: left; " name='oldquery' value="{{m.user}}">{{ m.index| stringformat:"02d" }}:
+						[<span class="innerChoice" id="choice-{{m.pk}}">{{m.choice}}</span>] 
+						<span style="font-size: xx-small;"  > [ {{ m.username | username_from_email }} ] [ {{m.date|humanize_datetime}}]  </span> 
+                                            <div class="innerDiv" style="display: none"> {{m.response | safe }}  
+					    <div class='verbatim'> date={{m.date|localtime_no_microseconds }} tokens={{m.ntokens}} model={{ m.model }} dt={{ m.time_spent }}s saved_messages={{ m.last_messages }} chunks={{ m.max_num_results }}  {{ m.username }}</div>
+						{% if user.is_staff %}
+						<div class='wrap-summary'> {{ m.summary | safe }} </div> 
+						{% endif %}
+                                            </div>
+                                            <div class="mindex" style="display: none"> {{m.pk }} </div>
+                                            {{m.user|truncatechars:30}} <em> <span id="comment-{{m.pk}}" class="innerComment">{{ m.comment}}</span> </em>   
+					    <em> 
+					    {{m.response|clean_snippet:30}} </em>
+
+					    </button>
+                                        <div class="message_index"></div>
+                                    </span>
+                                {% endfor %}
+                                <p/>
+                                <button onclick="return confirmDelete()" name='action' value='delete' type="submit" id="deleteBtn" >Delete checked entries</button>
+                                <button name='action' value='print' type="submit">Print checked entries</button>
+                            {% endif %}
+                        </div>
+                        {% if  user.is_staff %}
+                            <h4 class="old-messages" > 
+				    <a href="{% url 'edit_assistant' pk=assistant_pk %}">Edit Assistant</a> </h4>
+			    {% if 1 == 0 %}
+			    {% if not children %}
+			    		<a href="{% url 'delete_assistant' pk=assistant_pk %}" onclick="return confirmDeleteAssistant()">B Delete Assistant</a>
+			    {% else %}
+				<a href="{% url 'delete_assistant' pk=assistant_pk %}" onclick="return disableDeleteAssistant()">C Delete Assistant</a>
+			    {% endif %}
+			    {% endif %}
+                            <hr/>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            <div class="right-column">
+
+                <div style="margin: 10 auto; padding: 1rem;  ">
+			
+
+                    <div class="navigation">
+			<a class='back-button' href="#" id="backLink">Go Back</a>
+                        {% if parent %}
+                            <span>
+                                &uarr; <a href='/django_ragamuffin/query/{{parent.name|replace:".,/" }}'> {{parent.name|replace:".,/" }} </a>
+                            </span>
+                        {% endif %}
+                        <button class="here-button" style="padding-left: 6px;"> <b> &bull; {{ name | replace:".,/"}} </b> </button>
+                        {% for item in children %}
+                            {% for pk,name in item.items %}
+                                <span  style="padding-left: 12px;"> &darr;
+                                    <a href='/django_ragamuffin/query/{{name|replace:".,/" }}'> {{name|replace:".,/" }} </a>
+                                </span>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                    <h4> Hello {{ request.user }}. Enter Your Query for  the {{ model }} assistant {{ name | replace:".,/" }} </h4>
+                    <form method="post" style="width: 100%" >
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button id='submitBtn' type='submit'> Submit new query </button>
+                    </form>
+                    <div id='response-block'>
+                        <div style="border: 1px dashed gray; background-color: #f9f9f9; padding: 1rem;">
+                            <div id='response' class='wrap-text' > {{ response| safe }}
+			    <div class='verbatim'> date={{date|localtime_no_microseconds}} ntokens={{ntokens}} model={{ model }} dt={{ time_spent }}s saved_messages={{ last_messages }} chunks={{ max_num_results }}  </div>
+				{% if user.is_staff %}
+	<div class='wrap-summary'> {{ summary | safe }} </div> 
+				{% endif %}
+                            </div>
+                        </div>
+                        {% if choice == 0 %}
+                            <div id="button-box" style="border: 4px dashed red; background-color: #f9f9f9; padding: 1rem; margin-top: 20px">
+                        {% else %}
+                            <div id="button-box" style="border: 1px dashed black; background-color: #f9f9f9; padding: 1rem; margin-top: 20px">
+
+                        {% endif %}
+
+                        <form id='myForm'>
+                            {% csrf_token %}
+                            <input type="text" style="display: none"  name="thread" value="{{request.path}}" />
+                            <input type="test" style="display: none" id="newmessage_index" name="newmessage_index" value="{{ mindex }}"  />
+                            <div class="form-row">
+                                {% for  i , c   in choices.items %}
+                                    {% if i ==  choice  %}
+                                        <label><input type="radio"  name="option" value={{i}}  checked > {{i}}-{{ c }} </label>
+                                    {% else %}
+                                        <label><input type="radio" name="option" value={{i}} >{{i}}-{{ c }} </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <label> <input style="display:none" type="radio" name="other"  value='99'> {{ comment }}</label> <p/> Further comment? (optional)
+                            <input style="width: 80ch ; " type="text" id="comment" name="option" value="{{comment}}" />
+                            <p/>
+                            <button id='send-button' style="display:none" type="submit">Submit assessment </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script src="{% static 'django_ragamuffin/script.js' %}"></script>
+<script>
+  const elems = document.querySelectorAll(".wrap-summary");
+  elems.forEach(el => { el.innerHTML = marked.parse( el.innerText ) ;  }  );
+</script>
+<script>
+  const ref = document.referrer;
+  if (ref) {
+    document.getElementById("backLink").href = ref;
+  } else {
+    // Fallback if no referrer (e.g. user typed URL directly)
+    document.getElementById("backLink").href = "/";
+  }
+</script>
+<script>
+document.addEventListener("input", function(e) {
+  if (e.target.tagName.toLowerCase() === "textarea") {
+    e.target.style.height = "auto";
+    e.target.style.height = e.target.scrollHeight + "px";
+  }
+});
+</script>
+
+
+
+
+
+</html>
+
