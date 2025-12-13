@@ -1,0 +1,210 @@
+[build-system]
+requires = [
+  "poetry-core>=1.8.0",
+  "poetry-dynamic-versioning>=1.9.1,<2.0",
+  # list dependencies to work with PIP_NO_DEPS=1
+  "MarkupSafe>=2.0",
+  "dunamai>=1.25,<2.0",
+  "jinja2>=3.0,<4.0",
+  "packaging>=24.0",
+  "tomlkit>=0.13",
+]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[project]
+name = "mira-omf"
+requires-python = ">=3.10,<4.0"
+description = "API Library for Open Mining Format"
+license = "MIT"
+license-files = [
+    "LICENSE",
+    "THIRD_PARTY_SOFTWARE.rst",
+]
+keywords = ["geology", "geophysics", "earth sciences"]
+readme = "README.rst"
+dynamic = ["dependencies", "classifiers"]
+authors = [
+    { name = "Mira Geoscience", email = "support@mirageoscience.com" },
+    { name = "Global Mining Guidelines Group", email = "info@gmggroup.org" }
+]
+maintainers = [{ name = "Dominique Fournier", email = "dominiquef@mirageoscience.com" }]
+version = "3.3.2rc1"
+
+[project.urls]
+repository = "https://github.com/MiraGeoscience/omf"
+#documentation  = "https://mirageoscience-omf.readthedocs-hosted.com/"
+homepage = "https://www.mirageoscience.com/mining-industry-software/python-integration/"
+
+[project.scripts]
+geoh5_to_omf = 'omf.scripts.geoh5_to_omf:main'
+omf_to_geoh5 = 'omf.scripts.omf_to_geoh5:main'
+
+[tool.poetry]
+requires-poetry = '>=2.0,<3.0'
+
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Scientific/Engineering :: Mathematics',
+    'Topic :: Scientific/Engineering :: Physics',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    'Natural Language :: English',
+]
+
+packages = [
+    { include = "omf" },
+]
+
+include = [
+    { path = "omf/_version.py", format = ["sdist", "wheel"] },
+]
+
+[tool.poetry.dependencies]
+numpy = "~1.26.0"  # also in geoh5py
+properties = "0.6.*"
+pypng = "^0.20220715"
+six = "^1.16"
+vectormath = "0.2.*"
+
+## dependencies from Git repositories
+#------------------------------------
+geoh5py = {version = ">=0.12.0b5, <0.13.dev", allow-prereleases = true}
+#geoh5py = {git = "https://github.com/MiraGeoscience/geoh5py.git", rev = "develop"}
+#geoh5py = {path = "../geoh5py", develop = true}
+
+[tool.poetry.group.dev.dependencies]
+Pygments = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+sphinx = "^5.3"
+pyyaml = '*'
+packaging = '*'
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.9.1,<2.0.0", extras = ["plugin"] }
+
+[[tool.poetry.source]]
+name = "public"
+url = "https://mirageoscienceltd.jfrog.io/artifactory/api/pypi/public-pypi-dev/simple"
+priority = "supplemental"
+
+
+[[tool.poetry.source]]
+name = "test"
+url = "https://mirageoscienceltd.jfrog.io/artifactory/api/pypi/test-pypi/simple"
+priority = "supplemental"
+
+[tool.poetry-dynamic-versioning]
+bump = true
+enable = false
+fix-shallow-repository = true
+strict = true
+style = "pep440"
+vcs = "git"
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["omf/_version.py", "recipe.yaml"]
+patterns = [
+    { value = '''(^__version__\s*(?::.*?)?=\s*['"])[^'"]*(['"])''', mode = "str" },
+    { value = '''(^\s*version\s*(?::.*?)?:\s*['"])[^'"]*(['"])''', mode = "str" },
+]
+
+[tool.poetry-dynamic-versioning.files."omf/_version.py"]
+persistent-substitution = true
+initial-content = """
+  # Version placeholder that will be replaced during substitution
+  __version__ = "0.0.0"
+"""
+
+[tool.poetry-dynamic-versioning.files."recipe.yaml"]
+persistent-substitution = true
+
+[tool.ruff]
+target-version = "py310"
+
+exclude = [
+    "docs/*",
+    # skip source files from upstream repo
+    "omf/fileio/fileio.py",
+    "omf/fileio/utils.py",
+    "omf/base.py",
+    "omf/data.py",
+    "omf/lineset.py",
+    "omf/pointset.py",
+    "omf/serializers.py",
+    "omf/surface.py",
+    "omf/texture.py",
+    "omf/volume.py",
+]
+
+[tool.ruff.lint]
+ignore = [
+    "B028",  # no-explicit-stacklevel for warnings.warn()
+    "E501",  # line-too-long - code is reformatted (do not care about comments and docstring)
+    "F401",  # unsused-import - covered by pycln
+    "RUF005",  # collection-literal-concatenation - wrong suggestion with numpy arrays
+    "RUF012", # TODO
+]
+
+select = [
+    "A",  # flake8-builtins
+    "B",  # flake8-bugbear
+    "B006",  # Do not use mutable data structures for argument defaults
+    "B9",  # flake8-bugbear opiniated warnings
+    "BLE",  # flake8-blind-except
+    "C4",  # flake8-comprehensions
+    "C9",  # mccabe
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "RUF",  # ruff rules
+    "TID", # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "W",  # pycodestyle warnings
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[tool.ruff.format]
+# default formatting is just fine
+
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+scripts_are_modules = true
+show_error_context = true
+show_column_numbers = true
+check_untyped_defs = true
+
+plugins = [
+#    "numpy.typing.mypy_plugin"
+]
+
+[tool.pytest.ini_options]
+
+[tool.coverage.run]
+branch = true
+source = ["mira_omf"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "raise NotImplementedError",
+    "pass",
+    "if TYPE_CHECKING",
+    "pragma: no cover"
+]
+
+fail_under = 80
+
+[tool.coverage.html]
+skip_empty = true
+skip_covered = true
