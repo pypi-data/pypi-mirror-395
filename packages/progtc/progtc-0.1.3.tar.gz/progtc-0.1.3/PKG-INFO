@@ -1,0 +1,240 @@
+Metadata-Version: 2.4
+Name: progtc
+Version: 0.1.3
+Summary: Programmatic tool calling for your agent.
+Author-email: Callum Downie <70471360+calmdown13@users.noreply.github.com>
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.10
+Requires-Dist: httpx-sse>=0.4.3
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: pydantic>=2.12.5
+Provides-Extra: server
+Requires-Dist: fastapi>=0.123.10; extra == 'server'
+Requires-Dist: rich>=14.2.0; extra == 'server'
+Requires-Dist: typer>=0.20.0; extra == 'server'
+Requires-Dist: uvicorn[standard]>=0.38.0; extra == 'server'
+Description-Content-Type: text/markdown
+
+<div align="center">
+<pre>
+╔══════════════════════════════════════════════════════════╗
+║   ██████╗ ██████╗  ██████╗  ██████╗ ████████╗ ██████╗    ║
+║   ██╔══██╗██╔══██╗██╔═══██╗██╔════╝ ╚══██╔══╝██╔════╝    ║
+║   ██████╔╝██████╔╝██║   ██║██║  ███╗   ██║   ██║         ║
+║   ██╔═══╝ ██╔══██╗██║   ██║██║   ██║   ██║   ██║         ║
+║   ██║     ██║  ██║╚██████╔╝╚██████╔╝   ██║   ╚██████╗    ║
+║   ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝    ╚═════╝    ║
+║                                           by capsa.ai    ║
+╚══════════════════════════════════════════════════════════╝
+</pre>
+
+[![CI](https://github.com/capsa-ai/progtc/actions/workflows/ci.yml/badge.svg)](https://github.com/capsa-ai/progtc/actions/workflows/ci.yml)
+![PyPI - Version](https://img.shields.io/pypi/v/progtc?color=brightgreen)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/progtc)
+
+</div>
+
+Programmatic tool calling for your agent.
+
+---
+
+## What is Programmatic Tool Calling?
+
+Programmatic Tool Calling is a strategy used to orchestrate an agent's tools through code rather than through individual API round-trips. Instead of your agent requesting tools one at a time with each result being returned to its context, your agent can write code that calls multiple tools, processes their outputs, and controls what information actually enters its context window.
+
+Programmatic Tool Calling was popularised by the likes of smolagents and claude. `progtc` is a framework agnostic implementation.
+
+The challenge that `progtc` solves is that, for security, your agent's code must be run in a sandboxed environment but typically your tools run locally. You therefore need a mechanism to communicate tool call requests and results to and from your sandbox.
+
+## Installation
+
+```bash
+pip install progtc # client only
+pip install "progtc[server]" # with server
+```
+
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv add progtc # client only
+uv add "progtc[server]" # with server
+```
+
+## Quick Start
+
+### 1. Start the Server (inside your sandbox)
+
+```bash
+progtc serve --host 0.0.0.0 --port 8000 --api-key your-secret-key
+```
+
+### 2. Execute Code from Your Client
+
+```python
+from progtc import AsyncProgtcClient
+
+client = AsyncProgtcClient(
+    base_url="https://your-sandbox-url:8000",
+    api_key="your-secret-key",
+)
+
+# Define your tools as async functions
+async def get_weather(city: str, country: str) -> str:
+    # Your actual implementation
+    return f"Weather in {city}, {country}: Sunny, 22°C"
+
+async def search_database(query: str) -> list[dict]:
+    # Your actual implementation
+    return [{"id": 1, "name": "Result"}]
+
+# Execute LLM-generated code that uses your tools
+code = """
+from tools import get_weather
+
+weather = await get_weather("London", "UK")
+print(f"The weather is: {weather}")
+"""
+
+result = await client.execute_code(
+    code=code,
+    tools={
+        "get_weather": get_weather,
+        "search_database": search_database,
+    },
+)
+
+print(result.stdout)  # "The weather is: Weather in London, UK: Sunny, 22°C"
+print(result.stderr)  # ""
+```
+
+## How It Works
+
+```mermaid
+sequenceDiagram
+    box rgba(100, 100, 255, 0.2) Your App
+        participant Client as Progtc Client
+    end
+    box rgba(100, 200, 100, 0.2) Code Sandbox
+        participant Server as Progtc Server
+        participant Process as Sub-Process
+    end
+
+    Client->>Server: POST /execute-code
+    Server->>Process: code
+
+    Note over Process: execute code
+
+    Process->>Server: tool call
+    Server->>Client: SSE: tool call
+
+    activate Process
+    Note over Process: paused
+
+    Note over Client: execute tool locally
+
+    Client->>Server: POST /tool-result
+    deactivate Process
+    Server->>Process: tool result
+
+    Note over Process: continue execution...
+
+    Process->>Server: stdout, stderr
+    Server->>Client: SSE: stdout, stderr
+```
+
+1. **Your client** sends code + a list of available tool names to the progtc server
+2. **The server** executes the code in an isolated process, injecting a `tools` module
+3. **When code calls a tool**, the server streams the call back to your client via SSE
+4. **Your client** executes the tool locally and sends the result back
+5. **The server** resumes code execution with the result
+6. **Stdout/stderr** are captured and streamed back when execution completes
+
+## Code Guidelines
+
+To use tools your code should import them from the tools module:
+
+```python
+from tools import my_tool
+```
+
+Tools are treated as async functions, therefore they must be awaited:
+
+```python
+from tools import my_tool
+await my_tool()
+```
+
+You will receive stdout and stderr, so print the variables you want to see:
+
+```python
+from tools import tool_a, tool_b
+a = tool_a()
+b = tool_b(a)
+print(b)
+```
+
+You can perform multiple tool calls at once using async gather:
+
+```python
+from tools import get_weather, search_database
+import asyncio
+
+# Call tools like regular async functions
+weather, results = await asyncio.gather(
+    get_weather("Tokyo", "Japan"),
+    search_database("hotels"),
+)
+
+print(f"Weather: {weather}")
+print(f"Results: {results}")
+```
+
+> **Note:** The code runs in a top-level async context, so you can use `await` directly without defining an async function.
+
+## Server CLI Options
+
+```bash
+progtc serve [OPTIONS]
+```
+
+| Option                     | Default                 | Description                                 |
+| -------------------------- | ----------------------- | ------------------------------------------- |
+| `--host`                   | `127.0.0.1`             | Host to bind to                             |
+| `--port`                   | `8000`                  | Port to bind to                             |
+| `--api-key`                | (env: `PROGTC_API_KEY`) | API key for authentication                  |
+| `--tool-call-timeout`      | `10.0`                  | Timeout for individual tool calls (seconds) |
+| `--code-execution-timeout` | `30.0`                  | Total timeout for code execution (seconds)  |
+
+## Error Handling
+
+The client returns a discriminated union—either success or one of several error types:
+
+```python
+from progtc.types import MessageType
+
+result = await client.execute_code(code, tools)
+
+match result.type:
+    case MessageType.SUCCESS:
+        print(f"Stdout: {result.stdout}")
+    case MessageType.SYNTAX_ERROR:
+        print(f"Syntax error: {result.stderr}")
+    case MessageType.RUNTIME_ERROR:
+        print(f"Runtime error: {result.stderr}")
+    case MessageType.TIMEOUT_ERROR:
+        print(f"Timeout: {result.stderr}")
+```
+
+## Example: Pydantic AI + E2B
+
+See [`examples/e2b-example/`](examples/e2b-example/) for a complete example using progtc with a [pydantic-ai](https://ai.pydantic.dev) agent and an [E2B](https://e2b.dev) sandbox.
+
+---
+
+<p align="center">
+  <b>Building AI agents?</b> We're hiring: <a href="https://capsa.ai/careers">capsa.ai/careers</a>
+</p>
