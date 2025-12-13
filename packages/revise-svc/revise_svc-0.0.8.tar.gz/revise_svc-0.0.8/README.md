@@ -1,0 +1,175 @@
+# REVISE
+
+REVISE (REconstruction via Vision-integrated Spatial Estimation) is a unified framework for reconstructing **Spatially-inferred Virtual Cells (SVCs)** by integrating spatial transcriptomics (ST) data, histological imaging, and matched single-cell RNA-seq references.
+
+Visit our [documentation](https://revise-svc.readthedocs.io/en/latest/) for installation, tutorials, examples and more. Download Sim2Real benchmark, generated results and Real application data in  [Zenodo](https://zenodo.org/records/17705737). Put them into [raw_data](./raw_data) dir if you want to reproduce our results.
+
+You can also check out our [podcast](https://www.ximalaya.com/sound/938384285) and watch our intro [videos](https://www.youtube.com/watch?v=U7u3jlu-qjY) for a quick overview.
+
+## Motivation
+
+Current ST technologies are limited by six key **confounding factors (CFs)** that hinder the reconstruction of biologically coherent single-cell units:
+
+![ST limitations](png/ST_limitations.png)
+
+<p align="center">Current ST limitations</p>
+
+- **Spatially heterogeneous CFs**: image segmentation artifacts, bin-to-cell assignment errors
+- **Spatially homogeneous CFs**: spot size, batch effects, gene panel limitations, gene dropout
+
+REVISE addresses these limitations through a **topology-aware hierarchical optimal transport (OT)** framework, generating two complementary types of virtual cells:
+
+- **sp-SVC**: leverages spatial priors to correct spatially heterogeneous CFs and preserve local tissue architecture
+- **sc-SVC**: integrates scRNA-seq references to restore transcriptome-wide coverage and correct dropout
+
+![REVISE Overview](png/REVISE_overview.png)
+
+<p align="center">Overview of the REVISE framework</p>
+
+## Highlights
+
+- **Unified Framework**: Handles six CFs across three ST platforms (sST, iST, hST)
+- **Dual SVC Modes**: sp-SVC for spatial refinement, sc-SVC for molecular completeness
+- **Benchmark Module**: Reproducible evaluation pipelines for simulated or public datasets
+- **Application Module**: Annotation, reconstruction, and downstream analyses for real ST data
+
+## SVC Applications
+
+### sp-SVC Applications
+
+- Recovers spatially resolved gene and pathway signals from Visium HD data
+- Identifies localized transcriptional programs (e.g., EMT at tumor leading edge)
+- Enhances spatial autocorrelation and clustering coherence
+
+### sc-SVC Applications
+
+- Reconstructs whole-transcriptome profiles for Xenium data
+- Defines fine-grained immune subtypes (T cells, TAMs, CAFs)
+- Reveals spatially organized cell-cell communication and clinical associations
+
+![SVC Applications](png/SVC_applications.png)
+
+<p align="center">Biological insights enabled by SVC reconstruction</p>
+
+## Quick Start
+
+Install the Python package via pip:
+
+```bash
+pip install revise-svc
+```
+
+If you want to use REVISE for a real ST application, please import these class:
+
+```bash
+# sp-SVC, usually for hST platforms (e.g., Visium HD)
+from revise.application import SpSVC
+
+# sc-SVC, usually for iST platforms (e.g., Xenium) and sST platforms (e.g., Visium)
+from revise.application import ScSVC
+```
+
+If you want to use REVISE for benchmark (such as in our Sim2Real-ST benchmark setting), please import these class:
+
+```bash
+# For two spa-hetero CFs: segmentation error and bin2cell
+from revise.benchmark import SpSVC
+
+# For two spa-homo CFs: spot size and batch effect
+from revise.benchmark import ScSVCSr
+
+# For two spa-homo CFs: gene panel limitation and dropout
+from revise.benchmark import ScSVCImpute
+```
+
+## Example
+
+### Run benchmark settings (sp-SVC)
+Please make sure that you have downloaded Sim2Real-ST benchmark datasets from [Zenodo](https://zenodo.org/records/17705737).
+```python
+import scanpy as sc
+import revise.benchmark as benchmark
+from revise.benchmark import SpSVC
+from revise.conf import BenchmarkSegConf
+
+# Initialize the config class for sp-SVC, check the detailed API at https://revise-svc.readthedocs.io/en/latest/source/api/generated/revise.conf.application_sp_conf.ApplicationSpConf.html
+config = BenchmarkSegConf(
+    sample_name=YOUR_OWN_SAMPLE_NAME,
+    annotate_mode="pot",
+    raw_data_path=YOUR_OWN_DATA_PATH,
+    result_root_path=YOUR_OWN_RESULT_PATH,
+    cell_type_col="Level1",
+    confidence_col="Confidence",
+    unknown_key="Unknown",
+    st_file=YOUR_OWN_ST_FILE,
+    gt_svc_file=YOUR_OWN_GT_SVC_FILE,
+    sc_ref_file=YOUR_OWN_SC_REF_FILE,
+    seg_method="seg_1",
+)
+adata_st = sc.read_h5ad(config.st_file_path)
+adata_gt_svc = sc.read_h5ad(config.gt_svc_file_path)
+adata_sc_ref = sc.read_h5ad(config.sc_ref_file_path)
+svc = SpSVC(adata_st, adata_sc_ref, config, adata_gt_svc, None)
+benchmark.main(svc)
+```
+
+### Run application settings
+
+```python
+import scanpy as sc
+from revise.application import SpSVC
+from revise.conf import ApplicationSpConf
+
+config = ApplicationSpConf(
+    sample_name=YOUR_OWN_SAMPLE_NAME,
+    annotate_mode="pot",
+    raw_data_path=YOUR_OWN_DATA_PATH,
+    result_root_path=YOUR_OWN_RESULT_PATH,
+    cell_type_col="Level1",
+    confidence_col="Confidence",
+    unknown_key="Unknown",
+    st_file=YOUR_OWN_ST_FILE,
+    sc_ref_file=YOUR_OWN_SC_REF_FILE,
+)
+
+adata_st = sc.read_h5ad(config.st_file_path)
+adata_sc_ref = sc.read_h5ad(config.sc_ref_file_path)
+svc = SpSVC(adata_st, adata_sc_ref, config=config, logger=None)
+svc.global_anchoring()
+svc.local_refinement()
+```
+
+## Reproducibility
+If you want to reproduce our results based on the Sim2Real-ST benchmark setting, you can run single [bash](./reproduce/benchmark/benchmark_bin2cell.sh) script as following:
+
+```bash
+# for bin2cell
+bash ./reproduce/benchmark/benchmark_bin2cell.sh
+
+# for batch effect 
+bash ./reproduce/benchmark/benchmark_batch_effect.sh
+
+...
+```
+
+Or you can use our merged [benchmark_main.sh](./benchmark_main.sh) script as following:
+
+```bash
+bash benchmark_main.sh
+```
+
+## Repository Layout
+
+- `revise/application`: SVC workflows for real datasets.
+- `revise/benchmark`: SVC variants for benchmarking studies.
+- `revise/methods`: Algorithm implementations and model components.
+- `revise/tools`: Distance metrics, logging helpers, and general utilities.
+- `conf`: Example configurations and experiment parameters.
+
+revise-svc exposes SVC interfaces with matching conf files: every SVC derives from `BaseSVC`, which defines initialization plus the abstract `global_anchoring` and `local_refinement` methods. `BaseSVCAnchor` extends `BaseSVC` and provides the shared `global_anchoring` used by all SVCs. SVCs are grouped into application and benchmark: application implements `SpSVC` and `ScSVC`; benchmark implements `SpSVC`, `ScSVCImpute`, and `ScSVCSr`. `SpSVC` targets segmentation and bin2cell confounding factors; `ScSVCImpute` targets gene panel and gene dropout; `ScSVCSr` targets batch effect and spot size. Conf implementations mirror the SVCs one-to-one, with parameters available on the website.
+
+![REVISE Workflow](png/revise-svc.png)
+
+## License
+
+REVISE is released under the MIT License.
