@@ -1,0 +1,167 @@
+Metadata-Version: 2.4
+Name: PyObservability
+Version: 1.4.0
+Summary: Lightweight OS-agnostic observability UI for PyNinja
+Author-email: Vignesh Rao <svignesh1793@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2025 TheVickypedia
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/thevickypedia/PyObservability
+Project-URL: Docs, https://thevickypedia.github.io/PyObservability
+Project-URL: Source, https://github.com/thevickypedia/PyObservability
+Project-URL: Bug Tracker, https://github.com/thevickypedia/PyObservability/issues
+Project-URL: Release Notes, https://github.com/thevickypedia/PyObservability/blob/main/release_notes.md
+Keywords: PyObservability,observability,system-monitor,PyNinja
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Topic :: System :: Monitoring
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp==3.13.*
+Requires-Dist: fastapi==0.122.*
+Requires-Dist: FastAPI-UI-Auth==0.2.1
+Requires-Dist: Jinja2==3.1.*
+Requires-Dist: pydantic==2.12.*
+Requires-Dist: pydantic-settings==2.12.*
+Requires-Dist: python-dotenv==1.2.*
+Requires-Dist: uvicorn[standard]==0.38.*
+Provides-Extra: dev
+Requires-Dist: pre-commit; extra == "dev"
+Dynamic: license-file
+
+# PyObservability
+
+![Python][label-pyversion]
+
+**Platform Supported**
+
+![Platform][label-platform]
+
+**Deployments**
+
+[![pypi][label-actions-pypi]][gha_pypi]
+[![docker][label-actions-docker]][gha_docker]
+
+[![Pypi][label-pypi]][pypi]
+[![Pypi-format][label-pypi-format]][pypi-files]
+[![Pypi-status][label-pypi-status]][pypi]
+
+## Kick off
+
+**Recommendations**
+
+- Install `python` [3.11] or above
+- Use a dedicated [virtual environment]
+
+**Install PyObservability**
+```shell
+python -m pip install pyobservability
+```
+
+**Initiate - IDE**
+```python
+import pyobservability
+
+
+if __name__ == '__main__':
+    pyobservability.start()
+```
+
+**Initiate - CLI**
+```shell
+pyobservability start
+```
+
+> Use `pyobservability --help` for usage instructions.
+
+**Containerized Deployment**
+```shell
+docker pull thevickypedia/pyobservability:latest
+
+docker run \
+    --name observability \
+    -p 8080:80 \
+    -v /home/user/config:/config \
+    --restart=no \
+    thevickypedia/pyobservability
+```
+
+## Environment Variables
+
+<details>
+<summary><strong>Sourcing environment variables from an env file</strong></summary>
+
+> _By default, `PyObservability` will look for a `.env` file in the current working directory._
+> _Other file options (like JSON and YAML) are supported with a custom kwarg or env var `env_file` pointing to the filepath._
+</details>
+
+**Mandatory**
+- **TARGETS** - Target URLs running `PyNinja` in the following format.
+    - `TARGETS='[{"name":"node1","base_url":"http://192.168.1.10:8000","apikey":"token1"},{"name":"node2","base_url":"http://192.168.1.11:8000"}]'`
+
+**Defaults**
+- **HOST** - Host IP to run PyObservability. Defaults to `127.0.0.1` or `0.0.0.0`
+- **PORT** - Port number to run PyObservability. Defaults to `8080`
+- **INTERVAL** - Polling interval to retrieve server information.
+
+**Optional**
+- **USERNAME** - Username to authenticate the monitoring page.
+- **PASSWORD** - Password to authenticate the monitoring page.
+- **TIMEOUT** - Timeout (in seconds) for UI authentication. Defaults to 5m.
+
+**Logging**
+> PyObservability uses ``uvicorn`` logger by default. Following options can be used to override the default logger.
+- **LOG** - Lazy logger to use a custom log format. Can either be `file` or `stdout`.
+- **DEBUG** - Enables debug level logging. Defaults to `False`.
+- **LOGS_PATH** - Directory path to store log files if `LOG` is set to `file`.
+- **LOG_CONFIG** - Path to a custom logging configuration file.
+
+## License & copyright
+
+&copy; Vignesh Rao
+
+Licensed under the [MIT License][license]
+
+[//]: # (Labels)
+
+[label-pypi-package]: https://img.shields.io/badge/Pypi%20Package-pyobservability-blue?style=for-the-badge&logo=Python
+[label-sphinx-doc]: https://img.shields.io/badge/Made%20with-Sphinx-blue?style=for-the-badge&logo=Sphinx
+[label-pyversion]: https://img.shields.io/badge/python-3.11%20%7C%203.12-blue
+[label-platform]: https://img.shields.io/badge/Platform-Linux|macOS|Windows-1f425f.svg
+[label-actions-pypi]: https://github.com/thevickypedia/PyObservability/actions/workflows/python-publish.yml/badge.svg
+[label-pypi]: https://img.shields.io/pypi/v/PyObservability
+[label-pypi-format]: https://img.shields.io/pypi/format/PyObservability
+[label-pypi-status]: https://img.shields.io/pypi/status/PyObservability
+[label-actions-docker]: https://github.com/thevickypedia/PyObservability/actions/workflows/docker.yml/badge.svg
+
+[3.11]: https://docs.python.org/3/whatsnew/3.11.html
+[virtual environment]: https://docs.python.org/3/tutorial/venv.html
+[gha_pypi]: https://github.com/thevickypedia/PyObservability/actions/workflows/python-publish.yml
+[gha_docker]: https://github.com/thevickypedia/PyObservability/actions/workflows/docker.yml
+[pypi]: https://pypi.org/project/PyObservability
+[pypi-files]: https://pypi.org/project/PyObservability/#files
+[license]: https://github.com/thevickypedia/PyObservability/blob/main/LICENSE
