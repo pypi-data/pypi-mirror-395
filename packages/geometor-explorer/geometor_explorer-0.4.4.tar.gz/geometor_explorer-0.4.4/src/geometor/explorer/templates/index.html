@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOMETOR Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/svg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body class="web">
+    <header>
+        <div id="file-manager">
+            <button id="new-btn"><span class="material-icons">add_box</span></button>
+            <button id="open-btn"><span class="material-icons">folder_open</span></button>
+            <button id="save-btn"><span class="material-icons">save</span></button>
+            <button id="save-as-btn"><span class="material-icons">save_as</span></button>
+        </div>
+        <div id="elements-group">
+            <button id="point-btn" accesskey="p" title="Construct Point (p)">Point</button>
+            <button id="polynomial-btn" accesskey="P" title="Construct Polynomial (P)">Polynomial</button>
+            <button id="line-btn" disabled accesskey="l" title="Construct Line (l)">Line</button>
+            <button id="circle-btn" disabled accesskey="c" title="Construct Circle (c)">Circle</button>
+            <button id="pb-btn" disabled title="Construct Perpendicular Bisector">P B</button>
+            <button id="ab-btn" disabled title="Construct Angle Bisector">A B</button>
+        </div>
+        <div id="graphics-group">
+            <button id="segment-btn" disabled accesskey="s" title="Set Segment (s)">Segment</button>
+            <button id="section-btn" disabled accesskey="S" title="Set Section (S)">Section</button>
+            <button id="polygon-btn" disabled accesskey="y" title="Set Polygon (y)">Polygon</button>
+        </div>
+        <input type="file" id="file-input" style="display: none;" />
+        <button id="analysis-toggle" title="Toggle Divine Analysis" class="{{ 'active' if analysis_enabled else '' }}"><span class="material-icons">star</span></button>
+        <button id="ancestors-btn" title="Toggle Ancestors on Hover"><span class="material-icons">account_tree</span></button>
+        <button id="settings-btn"><span class="material-icons">settings</span></button>
+    </header>
+    <div id="hover-card"></div>
+    <div id="main-container">
+        <main>
+            <svg id="drawing" xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 4 4" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <marker id="marker" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="3" markerHeight="3" orient="auto-start-reverse">
+                        <circle cx="3" cy="3" r="3" fill="context-stroke" vector-effect="non-scaling-stroke"></circle>
+                    </marker>
+                </defs>
+                <g id="graphics"></g>
+                <g id="highlights"></g>
+                <g id="elements"></g>
+                <g id="points"></g>
+            </svg>
+        </main>
+            <div id="timeline-container">
+                <button id="play-pause-btn"><span class="material-icons">play_arrow</span></button>
+                <input type="range" id="timeline-slider" min="0" max="100" value="0">
+                <div class="animation-controls">
+                    <button id="start-btn"><span class="material-icons">skip_previous</span></button>
+                    <button id="step-back-btn"><span class="material-icons">fast_rewind</span></button>
+                    <button id="step-fwd-btn"><span class="material-icons">fast_forward</span></button>
+                    <button id="end-btn"><span class="material-icons">skip_next</span></button>
+                    <input type="checkbox" id="animation-toggle" checked>
+                    <label for="animation-toggle">Animate</label>
+                </div>
+            </div>    </div>
+    <div id="resizer"></div>
+    <aside>
+        <div class="view-switcher">
+            <button id="category-view-btn" class="active">By Category</button>
+            <button id="chrono-view-btn">Chronological</button>
+            <button id="groups-view-btn">Groups</button>
+        </div>
+
+        <div id="view-container">
+            <div id="category-view">
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> <button class="toggle-vis-btn"><span class="material-icons">visibility</span></button> Points <span id="points-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="points-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>X</th>
+                                    <th>Y</th>
+                                    <th>Class</th>
+                                    <th>Guide</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> <button class="toggle-vis-btn"><span class="material-icons">visibility</span></button> Structures <span id="structures-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="structures-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Class</th>
+                                    <th>Guide</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> <button class="toggle-vis-btn"><span class="material-icons">visibility</span></button> Graphics <span id="graphics-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="graphics-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Class</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chronological-view" style="display: none;">
+                <div class="table-container">
+                    <table id="chrono-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Class</th>
+                                <th>Guide</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="groups-view" style="display: none;">
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> Sizes <span id="sizes-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="sizes-table">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> Chains <span id="chains-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="chains-table">
+                            <thead>
+                                <tr>
+                                    <th>Chain</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="collapsible-section">
+                    <h3><button class="collapse-btn"><span class="material-icons">expand_less</span></button> Points <span id="points-group-count">(0)</span></h3>
+                    <div class="table-container">
+                        <table id="points-group-table">
+                            <thead>
+                                <tr>
+                                    <th>Point</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Settings</h2>
+            <div class="modal-body">
+                <label for="theme-toggle">Light Theme</label>
+                <input type="checkbox" id="theme-toggle">
+                <br>
+                <label for="ancestors-toggle">Show ancestors on hover</label>
+                <input type="checkbox" id="ancestors-toggle">
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="new-model-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>New Model</h2>
+            <div class="modal-body">
+                <button id="new-blank-btn">Blank</button>
+                <button id="new-default-btn">Default</button>
+                <button id="new-equidistant-btn">Equidistant</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div id="status-bar">
+            <span id="status-filename">Unsaved Model</span>
+            <span id="status-selected"></span>
+            <span id="status-message">Ready</span>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

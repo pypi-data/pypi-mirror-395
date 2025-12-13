@@ -1,0 +1,1 @@
+generate detailed report of construction - step by step -

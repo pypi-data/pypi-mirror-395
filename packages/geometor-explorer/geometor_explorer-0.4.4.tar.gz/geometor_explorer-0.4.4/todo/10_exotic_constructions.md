@@ -1,0 +1,1 @@
+exotic constructions like the heptagon, heptadecagon, kepler's triangle (with the pyramids and circling the square), pappus and the hexagramum mysterium, 5 point circle
