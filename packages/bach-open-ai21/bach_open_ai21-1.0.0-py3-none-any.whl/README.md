@@ -1,0 +1,305 @@
+# Open Ai21 MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Open Ai21 API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-open_ai21`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Open Ai21 API。
+
+- **PyPI 包名**: `bach-open_ai21`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-open_ai21
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-open_ai21 bach_open_ai21
+
+# 或指定版本
+uvx --from bach-open_ai21@latest bach_open_ai21
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-open_ai21
+
+# 运行（命令名使用下划线）
+bach_open_ai21
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-open_ai21": {
+      "command": "uvx",
+      "args": ["--from", "bach-open_ai21", "bach_open_ai21"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-open_ai21": {
+      "command": "uvx",
+      "args": ["--from", "bach-open_ai21", "bach_open_ai21"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `conversation__llama_33_70b`
+
+talk to Llama 3
+
+**端点**: `POST /conversationllama`
+
+
+
+---
+
+
+### `get_img_url`
+
+GET IMG URL
+
+**端点**: `POST /getimgurl`
+
+
+
+---
+
+
+### `image_background_remover`
+
+IMAGE BACKGROUND REMOVER
+
+**端点**: `POST /bgremover`
+
+
+
+---
+
+
+### `ping_test`
+
+ping
+
+**端点**: `GET /`
+
+
+
+---
+
+
+### `claude_3`
+
+Use Claude 3
+
+**端点**: `POST /claude3`
+
+
+
+---
+
+
+### `gpt_35_based_chatbot_fast_and_reliable__mata_g`
+
+Try MATA G AI
+
+**端点**: `POST /conversationgpt35`
+
+
+
+---
+
+
+### `get_bot_details`
+
+GET BOT DETAILS
+
+**端点**: `POST /getbotdetails`
+
+
+
+---
+
+
+### `chat`
+
+select a bot from https://prlabsapi.com/assistants?red=rapidapi get bot id from website and paste here to use the chatbot Note : user id is required for private bots available models : 'matag2.1','matag2.0','matag1.0', llama2-70b, gpt 3.5
+
+**端点**: `POST /chatbotapi`
+
+
+
+---
+
+
+### `text_to_image_fast_and_high_quality`
+
+Stable and upgraded Version of Text To image. High Quality AI Image Generation at https://rapidapi.com/rphrp1985/api/chatgpt-42
+
+**端点**: `POST /texttoimage2`
+
+
+
+---
+
+
+### `chatgpt_gpt_35_powerful_and_accurate`
+
+Enjoy ChatGPT API at most affordable rate.
+
+**端点**: `POST /chatgpt`
+
+
+
+---
+
+
+### `text_to_speech`
+
+Convert text into speech
+
+**端点**: `POST /texttospeech`
+
+
+
+---
+
+
+### `question___answer`
+
+Our Context-Based Question Answering API provides a robust solution for answering questions based on given contexts or passages. By utilizing advanced natural language processing techniques, our API can understand the nuances of the context and accurately generate relevant answers to user queries. Whether you're building a virtual assistant, a knowledge base system, or any application that requires intelligent question answering, our API can assist you. Integrate our Context-Based Question An...
+
+**端点**: `POST /qa`
+
+
+
+---
+
+
+### `summarization_chatgpt_`
+
+Our Summarization API is a powerful tool designed to provide comprehensive and condensed summaries of lengthy documents. Using advanced natural language processing algorithms, our API extracts the most important information from the text and generates concise summaries that capture the key points. By integrating our Summarization API into your applications, you can streamline content analysis, save time, and enable users to quickly grasp the main ideas of lengthy articles, reports, or researc...
+
+**端点**: `POST /summary`
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
