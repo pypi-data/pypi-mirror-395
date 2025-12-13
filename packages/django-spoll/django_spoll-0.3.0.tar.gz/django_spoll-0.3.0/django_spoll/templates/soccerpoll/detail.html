@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{% static 'soccerpoll/styles.css' %}">
+    <title>Question - Details Information</title>
+</head>
+<body>
+{% if q %}
+    <form action="{% url 'soccerpoll:vote' q.id %}" method="post">
+        {% csrf_token %}
+        <fieldset>
+            <legend><h1>{{ q.text }}</h1></legend>
+            {% if err_msg %}<p><strong>{{ err_msg }}</strong></p>{% endif %}
+
+            {% if q.type.name == "player" %}
+
+                {% if q.playerchoice_set.count > 0 %}
+                    {% for c in q.playerchoice_set.all %}
+                        <input type="radio" name="choice" id="cp{{ forloop.counter }}" value="{{ c.id }}">
+                        <label for="cp{{ forloop.counter }}">{{ c.choice.name }}</label><br>
+                    {% endfor %}
+                {% else %}
+                    <h3>Selected question doesn't have choices available for now ...</h3>
+                {% endif %}
+
+            {% elif q.type.name == "team" %}
+
+                {% if q.teamchoice_set.count > 0 %}
+                    {% for c in q.teamchoice_set.all %}
+                        <input type="radio" name="choice" id="ct{{ forloop.counter }}" value="{{ c.id }}">
+                        <label for="ct{{ forloop.counter }}">{{ c.choice.name }}</label><br>
+                    {% endfor %}
+                {% else %}
+                    <h3>Selected question doesn't have choices available for now ...</h3>
+                {% endif %}
+
+            {% else %}
+
+                {% if q.coachchoice_set.count > 0 %}
+                    {% for c in q.coachchoice_set.all %}
+                        <input type="radio" name="choice" id="cc{{ forloop.counter }}" value="{{ c.id }}">
+                        <label for="cc{{ forloop.counter }}">{{ c.choice.name }}</label><br>
+                    {% endfor %}
+                {% else %}
+                    <h3>Selected question doesn't have choices available for now ...</h3>
+                {% endif %}
+
+            {% endif %}
+
+        </fieldset>
+        <input type="submit" value="Vote">
+    </form>
+{% else %}
+    <h1>No information about the question ...</h1>
+{% endif %}
+<div id="q_detail_results">
+    <h3>Current results:</h3>
+
+    {% if q_choices.count > 0 %}
+        {% for c in q_choices %}
+            <li><b>{{ c.choice.name }}:</b> {{ c.votes }} vote{{ c.votes|pluralize }}</li>
+        {% endfor %}
+    {% else %}
+        <h3>Selected question doesn't have choices available for now ...</h3>
+    {% endif %}
+    <br>
+    <a href="{% url 'soccerpoll:index' %}">return home</a>
+</div>
+</body>
+</html>
