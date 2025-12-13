@@ -1,0 +1,65 @@
+# This file should be used with the DOT command in your shell
+# it cannot be run directly, so run `. tests/testenv_dev`
+
+deactivate_testenv() {
+    if [ -n "${_OLD_PS1:-}" ] ; then
+        PS1="${_OLD_PS1:-}"
+        export PS1
+        unset _OLD_PS1
+    fi
+    if [ -n "${SNOWFLAKE_CONNECTIONS:-}" ] ; then
+        unset SNOWFLAKE_CONNECTIONS
+        if [ -n "${_OLD_SNOWFLAKE_CONNECTIONS:-}" ] ; then
+            SNOWFLAKE_CONNECTIONS="${_OLD_SNOWFLAKE_CONNECTIONS:-}"
+            export SNOWFLAKE_CONNECTIONS
+            unset _OLD_SNOWFLAKE_CONNECTIONS
+        fi
+    fi
+    if [ -n "${SNOWFLAKE_DEFAULT_CONNECTION_NAME:-}" ] ; then
+        unset SNOWFLAKE_DEFAULT_CONNECTION_NAME
+        if [ -n "${_OLD_SNOWFLAKE_DEFAULT_CONNECTION_NAME:-}" ] ; then
+            SNOWFLAKE_DEFAULT_CONNECTION_NAME="${_OLD_SNOWFLAKE_DEFAULT_CONNECTION_NAME:-}"
+            export SNOWFLAKE_DEFAULT_CONNECTION_NAME
+            unset _OLD_SNOWFLAKE_DEFAULT_CONNECTION_NAME
+        fi
+    fi
+    unset -f deactivate_testenv
+}
+
+echo "Modifying your shell to default to testing dev, to exit run deactivate_testenv"
+_OLD_PS1="$PS1"
+PS1="[testenv dev] $PS1"
+export PS1
+if [ -n "${SNOWFLAKE_DEFAULT_CONNECTION_NAME:-}" ] ; then
+    _OLD_SNOWFLAKE_DEFAULT_CONNECTION_NAME = "${SNOWFLAKE_DEFAULT_CONNECTION_NAME:-}"
+    export _OLD_SNOWFLAKE_DEFAULT_CONNECTION_NAME
+fi
+SNOWFLAKE_DEFAULT_CONNECTION_NAME='dev'
+export SNOWFLAKE_DEFAULT_CONNECTION_NAME
+if [ -n "${SNOWFLAKE_CONNECTIONS:-}" ] ; then
+    _OLD_SNOWFLAKE_CONNECTIONS = "${SNOWFLAKE_CONNECTIONS:-}"
+    export _OLD_SNOWFLAKE_CONNECTIONS
+fi
+SNOWFLAKE_CONNECTIONS='
+[sf_account]
+host="snowflake.dev.local"
+account="snowflake"
+user="admin"
+password="test"
+warehouse="COMPUTE_SERVICE_WAREHOUSE"
+port=8082
+protocol="http"
+role="accountadmin"
+
+[dev]
+host="s3testaccount.dev.local"
+account="s3testaccount"
+user="snowman"
+password="test"
+warehouse="regress"
+database="testdb"
+port=8082
+protocol="http"
+role="accountadmin"
+'
+export SNOWFLAKE_CONNECTIONS
