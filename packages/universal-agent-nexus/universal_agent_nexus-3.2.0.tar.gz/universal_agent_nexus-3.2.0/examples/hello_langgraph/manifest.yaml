@@ -1,0 +1,34 @@
+name: hello-langgraph
+version: "0.1.0"
+description: "Simple LangGraph adapter proof-of-concept"
+
+graphs:
+  - name: "main"
+    version: "0.1.0"
+    description: "Simple greeting graph"
+    entry_node: "greet"
+    nodes:
+      - id: "greet"
+        kind: "router"
+        label: "Greeting Router"
+        description: "Routes to appropriate greeting"
+        router:
+          name: "greeter"
+
+      - id: "respond"
+        kind: "task"
+        label: "Response Task"
+        description: "Generates final response"
+
+    edges:
+      - from_node: "greet"
+        to_node: "respond"
+        condition:
+          trigger: "success"
+
+routers:
+  - name: "greeter"
+    strategy: "llm"
+    model_candidates: ["gpt-4o-mini"]
+    default_model: "gpt-4o-mini"
+    system_message: "You are a friendly assistant. Greet the user warmly and answer any questions."
