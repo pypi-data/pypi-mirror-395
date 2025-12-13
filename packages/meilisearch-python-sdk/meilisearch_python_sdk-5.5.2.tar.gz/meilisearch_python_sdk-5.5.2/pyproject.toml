@@ -1,0 +1,121 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meilisearch-python-sdk"
+description = "A Python client providing both async and sync support for the Meilisearch API"
+authors = [ { name = "Paul Sanders", email = "paul@paulsanders.dev" } ]
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+readme = "README.md"
+keywords = ["meilisearch", "async", "python", "client", "sdk"]
+classifiers=[
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Typing :: Typed",
+]
+dynamic = ["version"]
+dependencies = [
+  "aiofiles>=0.7",
+  "camel-converter[pydantic]>=1.0.0",
+  "httpx[http2]>=0.17",
+  "pydantic>=2.0.0",
+  "PyJWT>=2.3.0",
+]
+
+[project.optional-dependencies]
+orjson = ["orjson>=3.10.6"]
+ujson = ["ujson>=5.10.0"]
+all = ["orjson", "ujson"]
+
+[dependency-groups]
+dev = [
+  "mkdocs==1.6.1",
+  "mkdocs-material==9.7.0",
+  "mkdocstrings[python]==1.0.0",
+  "mypy[faster-cache]==1.19.0",
+  "pre-commit==4.5.0",
+  "pytest==9.0.2",
+  "pytest-cov==7.0.0",
+  "pytest-asyncio==1.3.0",
+  "pytest-xdist==3.8.0",
+  "ruff==0.14.8",
+  "types-aiofiles==25.1.0.20251011",
+  "typing-extensions==4.15.0",
+  "types-ujson==5.10.0.20250822",
+]
+
+[tool.hatch.version]
+path = "meilisearch_python_sdk/_version.py"
+
+[project.urls]
+repository = "https://github.com/sanders41/meilisearch-python-sdk"
+homepage = "https://github.com/sanders41/meilisearch-python-sdk"
+documentation = "https://meilisearch-python-sdk.paulsanders.dev"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=meilisearch_python_sdk --cov-report term-missing --no-cov-on-fail --ignore examples"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = ["no_parallel"]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "examples/tests.*"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["aiocache.*", "truststore.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+fix = true
+
+[tool.ruff.lint]
+select=[
+  "E",  # pycodestyle
+  "B",  # flake8-bugbear
+  "W",  # Warning
+  "F",  # pyflakes
+  "UP",  # pyupgrade
+  "I001",  # unsorted-imports
+  "T201",  # Don't allow print
+  "T203",  # Don't allow pprint
+  "ASYNC",  # flake8-async
+  "RUF022",  # Unsorted __all__
+  "RUF023",  # Unforted __slots__
+]
+ignore=[
+  # Recommened ignores by ruff when using formatter
+  "E501",
+  "W191",
+  "E111",
+  "E114",
+  "E117",
+  "D206",
+  "D300",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "COM812",
+  "COM819",
+  "ISC001",
+  "ISC002",
+]
