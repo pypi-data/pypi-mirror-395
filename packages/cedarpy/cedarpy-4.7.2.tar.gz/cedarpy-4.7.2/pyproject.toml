@@ -1,0 +1,34 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+# Maturin merges package metadata from pyproject.toml (preferred) and Cargo.toml
+# c.f. https://github.com/PyO3/maturin?tab=readme-ov-file#python-metadata
+name = "cedarpy"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+dynamic = ["version", "readme"]
+
+[project.optional-dependencies]
+dev = [
+    'maturin>=1.8,<2',
+    'parameterized==0.9.0',
+    'pip-tools>=7.4.1',
+    'pytest == 7.4.0',
+]
+
+[tool.maturin]
+module-name = "cedarpy._internal"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+log_cli = true
+testpaths = [
+    "tests/unit"
+]
