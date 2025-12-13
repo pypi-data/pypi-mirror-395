@@ -1,0 +1,36 @@
+Metadata-Version: 2.3
+Name: ics_2000_python
+Version: 0.1.3
+Summary: 
+Keywords: ics_2000,ics-2000,klikaanklikuit
+Author: iiTzArcur
+Author-email: zefanjaj@gmail.com
+Requires-Python: >=3.12,<4.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: pycryptodome (>=3.21.0,<4.0.0)
+Requires-Dist: requests (>=2.32.3,<3.0.0)
+Project-URL: Repository, https://github.com/zefanjajobse/ics_2000_python
+Description-Content-Type: text/markdown
+
+# Python KlikAanKlikUit ICS-2000 library
+This library gives methods to control a ICS-2000 from KlikAanKlikUit. It is made to add support for this device within Home assistant, which implementation is available in [this](https://github.com/zefanjajobse/ics-2000-home-assistant) repository.
+
+## Usage example:
+```py
+from ics_2000.entities.dim_device import DimDevice
+from ics_2000.entities.switch_device import SwitchDevice
+from ics_2000.hub import Hub
+
+hub = Hub("example@email.com", "password")
+homes = hub.login()  # Authenticate
+print(homes) # returns a dictionary of homes, ex: {"0": "test home}
+hub.select_home("132829") # Select the right home by id
+hub.get_devices() # request devices
+for device in hub.devices:
+    if type(device) is SwitchDevice or type(device) is DimDevice:
+        print(device.name)
+        if device.get_on_status(): # returns bool
+            device.turn_off(False) # turn a device off
+```
