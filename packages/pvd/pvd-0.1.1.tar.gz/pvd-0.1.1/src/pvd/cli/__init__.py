@@ -1,0 +1,2 @@
+"""Paved CLI package."""
+
