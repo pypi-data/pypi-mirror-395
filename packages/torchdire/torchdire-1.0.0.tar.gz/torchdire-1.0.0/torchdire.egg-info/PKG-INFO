@@ -1,0 +1,162 @@
+Metadata-Version: 2.4
+Name: torchdire
+Version: 1.0.0
+Summary: Library for simplified AI model building with QGFD and YAML-based automation.
+Home-page: https://github.com/rajboopathiking/TorchDire
+Author: Boopathi Raj
+Author-email: Boopathi Raj <rajboopathiking@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2025 Boopathi_DataNostradamus
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Keywords: pytorch,deep learning,qgfd,robustness,automation,yaml,ml,ai
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch<2.3.0,>=2.0.0
+Requires-Dist: torchvision>=0.15.0
+Requires-Dist: timm
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: tqdm
+Requires-Dist: numpy<2
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
+Requires-Dist: pandas
+Requires-Dist: onnx
+Requires-Dist: onnxruntime
+Requires-Dist: onnxruntime-tools
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# 🔬 QGFD: Diffusion-Regularized Attention Replacement
+
+This repository provides a **universal, model-agnostic wrapper** that injects a
+**QGFD (Quasi-Gaussian Feature Diffusion)** attention mechanism into *any*
+PyTorch / HuggingFace transformer model — without modifying model internals.
+
+The system includes:
+
+- **`MultiHeadQGFDLayer`** — a drop-in replacement for multi-head attention  
+- **`SafeWrappedAttention`** — a universal wrapper that replaces existing attention modules  
+- **`wrap_model_with_qgfd(...)`** — recursively rewrites a full model in-place  
+- **`QGFD_Sanity_Checks.py`** — automated shape, gradient, and wrapping tests
+
+This library is intended for research experiments in stabilizing attention,
+regularizing attention distributions via diffusion, and replacing dot-product
+attention with a more structured update rule.
+
+---
+
+## ✨ Features
+
+### ✔ Universal Attention Replacement
+The wrapper detects any leaf module whose class name contains `"Attention"` and that
+has parameters typical of Q/K/V projections. It then replaces it with
+`SafeWrappedAttention`, preserving:
+
+- original module behavior  
+- caching (`present_key_value`)  
+- attention masks  
+- `output_attentions=True` compatibility  
+
+### ✔ QGFD Diffusion Layer
+`MultiHeadQGFDLayer` performs:
+
+1. standard Q/K/V projection  
+2. baseline softmax attention  
+3. **repeated diffusion steps**:  
+   \[
+     p_{t+1} = (1 - \alpha)p_0 + \alpha(p_t P)
+   \]  
+   where `P` is a normalized *key-similarity transition matrix*
+
+4. final value projection
+
+Includes:
+- cosine-sim transition matrix  
+- temperature scaling  
+- warmup schedule for α  
+- early stopping  
+- gradient-enabled diffusion (`detach_P=False` by default)  
+
+### ✔ Safety and Stability
+The wrapper includes:
+- robust attribute copying  
+- weight transfer from original attention  
+- verification step ensuring proper `.qgfd` and `._orig` attachment  
+- fallback heuristics for ambiguous architectures  
+
+### ✔ Fully Tested
+Run:
+
+```bash
+python QGFD_Sanity_Checks.py
+```
+
+📦 Installation
+Clone:
+
+```bash
+git clone https://github.com/rajboopathiking/TorchDire.git
+cd TorchDire
+```
+Install dependencies:
+
+```bash
+pip install torch transformers
+```
+(Transformers optional unless running HF smoke test)
+
+🚀 Usage
+1. Import components
+```python
+from qgfd_attention import MultiHeadQGFDLayer
+from universal_qgfd_replacer import wrap_model_with_qgfd
+from transformers import AutoModelForSeq2SeqLM
+
+model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+# Wrap all its attention layers
+model = wrap_model_with_qgfd(
+    model,
+    MultiHeadQGFDLayer,
+    diffusion_steps=4,
+    target_alpha=0.02,
+    warmup_steps=20000,
+    detach_P=False,
+    temp=1.0,
+    verbose=True
+)
+```
