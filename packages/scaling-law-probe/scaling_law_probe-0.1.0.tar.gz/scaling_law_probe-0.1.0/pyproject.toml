@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scaling-law-probe"
+version = "0.1.0"
+description = "Predict neural scaling laws from data geometry before expensive training runs"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Sandro Andric"}
+]
+keywords = [
+    "machine-learning",
+    "scaling-laws",
+    "intrinsic-dimension",
+    "neural-networks",
+    "deep-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20",
+    "scipy>=1.7",
+    "transformers>=4.20",
+    "torch>=1.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "black",
+    "isort",
+    "mypy",
+]
+datasets = [
+    "datasets>=2.0",
+]
+all = [
+    "scaling-law-probe[dev,datasets]",
+]
+
+[project.urls]
+Homepage = "https://github.com/sandroandric/neural-scaling-probe"
+Documentation = "https://github.com/sandroandric/neural-scaling-probe#readme"
+Repository = "https://github.com/sandroandric/neural-scaling-probe"
+Issues = "https://github.com/sandroandric/neural-scaling-probe/issues"
+
+[project.scripts]
+scaling-probe = "scaling_law_probe.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scaling_law_probe*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
