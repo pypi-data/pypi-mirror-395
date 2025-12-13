@@ -1,0 +1,30 @@
+{% extends base.html %}
+
+{% block body_left %}
+
+{% include system/component/system_css.html %}
+
+{% init total = "-1" %}
+{% init run_time = "-1" %}
+{% init rest_time = "-1" %}
+{% init progress = "0.0" %}
+
+{% include system/component/db_nav.html %}
+
+<div class="card">
+    {% render list_view %}
+</div>
+
+<script type="text/javascript">
+xnote.admin.backup = function () {
+    xnote.confirm("确认执行备份吗?", function (yes) {
+        xnote.http.get("/system/backup?p=db");
+        xnote.alert("执行中... <a target=\"_blank\" href=\"{{_server_home}}/system/log?log_type=mem&log_name=backup_db\">查看执行日志</a>");
+    });
+}
+</script>
+{% end %}
+
+{% block body_right %}
+    {% include system/component/admin_nav.html %}
+{% end %}
