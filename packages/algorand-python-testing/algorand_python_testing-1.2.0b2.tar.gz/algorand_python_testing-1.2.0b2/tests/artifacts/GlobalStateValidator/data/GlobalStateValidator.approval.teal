@@ -1,0 +1,94 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    bytecblock 0xc0eb5c67
+    // tests/artifacts/GlobalStateValidator/contract.py:4
+    // class GlobalStateValidator(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@5
+    bytec_0 // method "validate_g_args(uint64,string)void"
+    txna ApplicationArgs 0
+    match main_validate_g_args_route@3
+    err
+
+main_validate_g_args_route@3:
+    // tests/artifacts/GlobalStateValidator/contract.py:5
+    // @arc4.abimethod
+    txn OnCompletion
+    !
+    txn ApplicationID
+    &&
+    assert
+    b validate_g_args
+
+main___algopy_default_create@5:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// tests.artifacts.GlobalStateValidator.contract.GlobalStateValidator.validate_g_args[routing]() -> void:
+validate_g_args:
+    // tests/artifacts/GlobalStateValidator/contract.py:5
+    // @arc4.abimethod
+    txna ApplicationArgs 1
+    txna ApplicationArgs 2
+    // tests/artifacts/GlobalStateValidator/contract.py:7
+    // assert Txn.application_args(0) == arc4.arc4_signature("validate_g_args(uint64,string)void")
+    txna ApplicationArgs 0
+    bytec_0 // method "validate_g_args(uint64,string)void"
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:8
+    // assert Txn.application_args(1) == arg1.bytes
+    txna ApplicationArgs 1
+    dig 2
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:9
+    // assert Txn.application_args(2) == arg2.bytes
+    txna ApplicationArgs 2
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:10
+    // assert gtxn.ApplicationCallTransaction(Txn.group_index).app_args(1) == arg1.bytes
+    txn GroupIndex
+    dup
+    gtxns TypeEnum
+    pushint 6 // appl
+    ==
+    assert // transaction type is appl
+    pushint 1
+    gtxnsas ApplicationArgs
+    dig 1
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:11
+    // assert gtxn.Transaction(Txn.group_index).app_args(1) == arg1.bytes
+    txn GroupIndex
+    pushint 1
+    gtxnsas ApplicationArgs
+    dig 1
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:12
+    // assert op.GTxn.application_args(Txn.group_index, 1) == arg1.bytes
+    txn GroupIndex
+    gtxnsa ApplicationArgs 1
+    dig 1
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:13
+    // assert op.Txn.application_args(1) == arg1.bytes
+    txna ApplicationArgs 1
+    ==
+    assert
+    // tests/artifacts/GlobalStateValidator/contract.py:5
+    // @arc4.abimethod
+    pushint 1
+    return
