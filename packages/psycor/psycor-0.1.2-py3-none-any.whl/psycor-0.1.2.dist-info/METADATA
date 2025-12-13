@@ -1,0 +1,194 @@
+Metadata-Version: 2.4
+Name: psycor
+Version: 0.1.2
+Summary: CLI tool for Python project scaffolding and environment management
+Author: Adrian Obregon
+License: MIT License
+        
+        Copyright (c) 2025 Adrian Obregón
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Requires-Python: >=3.9
+Requires-Dist: click
+Requires-Dist: rich
+Requires-Dist: rich-click
+Requires-Dist: tomli-w
+Description-Content-Type: text/markdown
+
+# Psycor
+
+Psycor is a lightweight CLI tool for generating Python project scaffolding, managing virtual environments, and installing dependencies — all driven by a simple `psycor.toml` configuration file.
+
+It combines template-based project creation with minimal dependency and environment management, offering a consistent workflow for Python, FastAPI, and Flask projects.
+
+> **Status:** Experimental (v0.1.2). API and template structure may evolve.
+
+---
+
+## Features
+
+- Generate new projects from predefined templates  
+- Automatically create and manage virtual environments  
+- Install runtime and development dependencies defined in `psycor.toml`  
+- Add new dependencies dynamically with `psycor add`  
+- Launch an activated shell inside the project's virtual environment (`psycor venv`)  
+- Simple, extensible configuration system  
+- Built-in templates for Python, FastAPI, and Flask
+
+---
+
+## Installation
+
+Install from PyPI:
+
+```
+pip install psycor
+```
+
+Verify installation:
+
+```
+psycor --help
+```
+
+---
+
+## Quick Start
+
+### 1. Create a new project
+
+```
+psycor create my-app --template python
+```
+
+List available templates:
+
+```
+psycor create --list
+```
+
+### OR initialize Psycor in an existing directory
+
+```
+cd my-app
+psycor init
+```
+
+This creates the Psycor configuration file for the project.
+
+### 2. Install dependencies and create the virtual environment
+
+```
+cd my-app
+psycor install
+```
+
+### 3. Activate the virtual environment
+
+```
+psycor venv
+```
+
+Type `exit` to return to your previous shell.
+
+### 4. Add new dependencies
+
+```
+psycor add requests httpx
+```
+
+This installs the packages and updates your `psycor.toml`.
+
+---
+
+## Project Configuration (`psycor.toml`)
+
+Each generated project includes a configuration file that defines metadata, dependency groups, and virtual environment behavior.
+
+Example:
+
+```
+[project]
+name = "my-app"
+
+[venv]
+path = ".venv"
+
+[dependencies]
+runtime = ["fastapi", "uvicorn"]
+dev = ["pytest"]
+
+[commands]
+# Reserved for future use
+```
+
+Psycor relies on this file to manage environments and installation logic.
+
+---
+
+## Templates
+
+Psycor templates live under:
+
+```
+psycor/templates/<template-name>/
+```
+
+A template folder typically contains:
+
+- Directory structure to copy  
+- A `psycor.toml` file  
+- Starter code files  
+
+Built-in templates include:
+
+- `python` — minimal Python project  
+- `fastapi` — basic FastAPI application  
+- `flask` — basic Flask application  
+
+You can add additional templates by simply creating new folders under `templates/`.
+
+---
+
+## CLI Commands
+
+| Command | Description |
+|--------|-------------|
+| `psycor create NAME --template T` | Create a new project from a template |
+| `psycor create --list` | List available templates |
+| `psycor init` | Initialize Psycor configuration in an existing directory |
+| `psycor install` | Create the virtual environment and install dependencies |
+| `psycor venv` | Open a shell with the environment activated |
+| `psycor add pkg1 pkg2 ...` | Install and register additional dependencies |
+
+---
+
+## Experimental Status
+
+This project is early-stage (v0.1.2).  
+Behavior and APIs may change as development continues.  
+Feedback and contributions are welcome.
+
+---
+
+## License
+
+This project is licensed under the MIT License.  
+See the `LICENSE` file for more details.
