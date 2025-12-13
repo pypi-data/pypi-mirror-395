@@ -1,0 +1,59 @@
+{% if not skip_html_head %}
+  {% with title=title, description=description, image=image, url=url, type='article', skip_header=skip_header or not config.header, styles=['/css/blog.css', '/css/code.css'] %}
+      {% include 'common-head.html' %}
+  {% endwith %}
+
+<main>
+    <div class="container">
+        {% if not skip_header %}
+            {% if title %}
+              <div class="title">
+                  <h1>{{ title }}</h1>
+              </div>
+            {% endif %}
+
+            {% if description %}
+            <div class="description">
+                <h3>{{ description }}</h3>
+            </div>
+            {% endif %}
+
+            {% if published %}
+            <div class="published-date">
+                Published
+                {% if author %} by
+                    {% if author_email %}
+                        <a href="mailto:{{ author_email }}">
+                    {% endif %}
+
+                    {{ author }}
+
+                    {% if author_email %}
+                        </a>
+                    {% endif %}
+                {% endif %}
+                on {{ published }}
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {% if image %}
+        <div class="main-image-container">
+            <img class="main-image" src="{{ image }}" alt=".">
+        </div>
+        {% endif %}
+
+        <div class="content">
+{% endif %}
+
+            {{ content | safe }}
+
+{% if not skip_html_head %}
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+
+</main>
+  {% include 'common-tail.html' %}
+{% endif %}

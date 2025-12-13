@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- PWA & Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="{{ config.description }}">
+    <link rel="manifest" href="/manifest.json">
+    <!-- Android PWA -->
+    <meta name="theme-color" content="white">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="{{ config.title }}">
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-title" content="{{ config.title }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <!-- Orientation  -->
+    <meta name="screen-orientation" content="portrait">
+    <!-- RSS feed -->
+    <link rel="alternate" type="application/rss+xml" title="{{ config.title }}" href="/rss" />
+    <!-- Fonts & Styles -->
+    <link rel="stylesheet" href="/fonts/lora.css">
+    <link rel="stylesheet" href="/fonts/poppins.css">
+    <link rel="stylesheet" href="/fonts/fira-sans.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <!-- PWA builder -->
+    <script type="module" src="/pwabuilder-sw-register.js"></script>
+
+    <!--Preview card metadata -->
+    <meta property="og:title" content="{{ title }}">
+    <meta property="og:description" content="{{ description or config.description }}">
+    <meta property="og:image" content="{{ image or config.logo or '/icon-192.png' }}">
+    <meta property="og:url" content="{{ url or config.link }}">
+    <meta property="og:type" content="{{ type }}">
+    <meta property="og:site_name" content="{{ config.title or 'Blog' }}">
+
+    {% if styles %}
+        {% for style in styles %}
+            <link rel="stylesheet" type="text/css" href="{{ style }}">
+        {% endfor %}
+    {% endif %}
+    <title>{{ title }}</title>
+</head>
+<body>
+    {% if not skip_header %}
+    <header>
+        <div class="left">
+            {% if config.logo %}
+            <a href="{{ config.home_link or config.link }}" title="Home">
+                <img src="{{ config.logo }}" class="icon" alt="">
+            </a>
+            {% endif %}
+
+            <a href="{{ config.link }}" title="{{ config.title }}">
+                <span class="title">{{ config.title }}</span>
+            </a>
+        </div>
+
+        <div class="right">
+            <a href="/rss" target="_blank" title="RSS feeds">
+                <div class="icon"></div>
+            </a>
+        </div>
+    </header>
+    {% endif %}
