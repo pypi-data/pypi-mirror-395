@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+import "geometry_msg.proto";
+
+/* ========== Enums ========== */
+
+enum DynamicTrackType {
+  DTT_UNKNOWN = 0;
+  DTT_VEHICLE = 1;
+  DTT_TRUCK = 2;
+  DTT_BUS = 3;
+  DTT_MOTORCYCLE = 4;
+  DTT_BICYCLE = 5;
+  DTT_PEDESTRIAN = 6;
+  DTT_OTHER = 7;
+}
+
+enum DynamicTrackMotionStatus {
+  DTMS_UNKNOWN = 0;
+  DTMS_MOVING = 1;
+  DTMS_STATIONARY = 2;
+}
+
+enum DynamicTrackStatus {
+  DTS_UNKNOWN = 0;
+  DTS_NEW = 1;
+  DTS_UPDATED = 2;
+  DTS_COASTED = 3;
+}
+
+/* ========== DynamicTrack ========== */
+
+message DynamicTrack {
+  int32 id = 1;                                      // -1 -> invalid
+  repeated double bbox_lwh = 2;                      // length, width, height (x, y, and z directions)
+  Point   position_ego = 3;                          // relative position in ego XYZ frame
+  Vector3 rpy_ego      = 4;                          // relative pitch roll yaw in ego XYZ frame
+  double speed = 5;                                  // sqrt(v_x^2 + v_y^2 + v_z^2)
+  double vel_angle_actor_xy = 6;                     // angle of velocity vector wrt actor frame (beta)
+  double distance = 7;                               // radial distance from ego (between frame origins)
+  double distance_rate = 8;                          // distance rate of change
+  double azimuth = 9;                                // angle between ego x-axis and actor-frame origin
+  double azimuth_rate = 10;                          // azimuth rate of change
+  Vector3 linear_velocity      = 11;                 // ground velocity
+  Vector3 angular_velocity     = 12;                 // ground angular velocity
+  Vector3 linear_acceleration  = 13;                 // ground acceleration
+  Vector3 angular_acceleration = 14;                 // ground angular acceleration
+  DynamicTrackType type = 15;                        // 0:unknown; 1:vehicle; 2:truck; 3:bus; 4:motorcycle; 5:bicycle; 6:pedestrian; 7:other
+  DynamicTrackMotionStatus motion_status = 16;       // 0:unknown; 1:moving; 2:stationary
+  DynamicTrackStatus track_status = 17;              // 0:unknown; 1:new; 2:updated; 3:coasted
+  int32  age = 18;                                   // track age
+  float  poe = 19;                                   // track prob of exist: 0-100
+  float  confidence = 20;                            // track confidence: 0-100
+  repeated float covariance_xy = 21;                 // x,vx,ax,y,vy,ay covariance matrix (len=36)
+  repeated float covariance_z  = 22;                 // z,vz,az covariance matrix (len=9)
+  float var_length  = 23;                            // bbox length estimate variance
+  float var_width   = 24;                            // bbox width estimate variance
+  float var_height  = 25;                            // bbox height estimate variance
+  float var_heading = 26;                            // heading estimate variance
+  repeated float actor_intent = 27;                  // left straight right (len=3)
+  bool  is_tja = 28;                                 // TJA object indicator
+  google.protobuf.Timestamp born_time = 29;          // the first detection's timestamp when the track being initialized
+  repeated bool  track_input_present = 30;           // (Camera, Lidar, TJA, SRR_LF, SRR_RF, SRR_LR, SRR_RR) len=7
+  repeated int32 track_input_id      = 31;           // (Camera, Lidar, TJA, SRR_LF, SRR_RF, SRR_LR, SRR_RR) len=7
+}
+
+/* ========== RadarData ========== */
+
+message RadarData {
+  repeated DynamicTrack front_srr_left  = 1;  // Front short-range radar left
+  repeated DynamicTrack front_srr_right = 2;  // Front short-range radar right
+  repeated DynamicTrack rear_srr_left   = 3;  // Rear short-range radar left
+  repeated DynamicTrack rear_srr_right  = 4;  // Rear short-range radar right
+  repeated DynamicTrack lrr_fc          = 5;  // Long-range radar front center
+
+  // Long-range radar specific function objects (single targets, not lists)
+  DynamicTrack lrr_tja_target = 6;  // TJA target object (from FRD_Tja_TOBJ)
+  DynamicTrack lrr_ooi        = 7;  // OOI - Object of Interest (from FRD_OOI_Obj)
+}
+
+/* ========== Radar Message ========== */
+
+message Radar {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string scene_id = 6;
+  string run_id = 7; // grouping key for runs
+  RadarData radar = 8;
+}

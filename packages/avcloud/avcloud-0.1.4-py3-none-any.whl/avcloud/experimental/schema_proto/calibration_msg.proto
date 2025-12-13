@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+// Camera intrinsics (pixels) and distortion
+message IntrinsicsCamera {
+  double fx = 1;
+  double fy = 2;
+  double cx = 3;
+  double cy = 4;
+  repeated double distortion = 5; // plumb_bob: [k1,k2,t1,t2,k3] (optional)
+  int32 width = 6; //pixels
+  int32 height = 7; //pixels
+}
+
+// Extrinsics: raw calibration data as stored in original file
+// Note: This stores the original calibration file data for reference/audit purposes.
+//       For runtime coordinate transforms, query the Transform dataset which stores
+//       extrinsics in unified Quaternion format.
+message ExtrinsicsRaw {
+  double tx = 1; // meters
+  double ty = 2; // meters
+  double tz = 3; // meters
+
+  // Rotation parameters (3 values, interpretation depends on rotation_format):
+  // - If "EULER_RPY": [roll, pitch, yaw] in radians
+  // - If "AXIS_ANGLE": [rx, ry, rz] rotation vector in radians
+  repeated double rotation_params = 4;  // Fixed length: 3
+
+  string rotation_format = 5;  // "EULER_RPY" or "AXIS_ANGLE"
+}
+
+message CameraCalibration {
+  IntrinsicsCamera intrinsics = 1;
+  ExtrinsicsRaw extrinsics = 2; // sensor -> vehicle_base (raw calibration file data)
+}
+
+message LidarCalibration {
+  ExtrinsicsRaw extrinsics = 1; // sensor -> vehicle_base (raw calibration file data)
+}
