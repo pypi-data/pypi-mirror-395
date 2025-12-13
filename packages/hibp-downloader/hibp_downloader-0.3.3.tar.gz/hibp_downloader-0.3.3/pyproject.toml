@@ -1,0 +1,115 @@
+[build-system]
+build-backend = "pdm.backend"
+requires = [
+    "pdm-backend",
+]
+
+[tool.poetry]
+version = "0.3.3"
+
+[tool.slap]
+typed = true
+
+[tool.slap.release]
+branch = "dev"
+
+[tool.slap.test]
+check = "slap check"
+mypy = "dmypy run src"
+pytest = "pytest tests/ -vv"
+ruff-format = "ruff format --check"
+ruff-lint = "ruff check"
+
+[tool.slap.run]
+format = "ruff format ."
+check-prereqs = "set -e; uv --help > /dev/null || (echo 'Failed uv prereq!' && exit 1); pdm --help > /dev/null || (echo 'Failed pdm prereq!' && exit 1); flit --help > /dev/null || (echo 'Failed flit prereq!' && exit 1); echo \"Prereqs okay.\"\n"
+docs-dev = "set -e; cd docs && touch uv.lock && uv run --active -- bash -xc 'mkdocs serve'\n"
+docs-build = "set -e; cd docs && uv run --active -- bash -xc 'mkdocs build'\n"
+package-build = "set -e; slap release --validate && slap test && slap publish --dry --build-directory ./dist\n"
+
+[tool.mypy]
+pretty = true
+warn_redundant_casts = true
+namespace_packages = true
+show_error_codes = true
+show_error_context = true
+warn_no_return = true
+warn_unreachable = true
+
+[tool.uv]
+dev-dependencies = [
+    "ruff",
+    "pytest",
+    "mypy",
+    "types-aiofiles",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = [
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = [
+    "F401",
+]
+"src/hibp_downloader/models/__init__.py" = [
+    "F401",
+]
+"src/**/app.py" = [
+    "W293",
+]
+"src/hibp_downloader/lib/md4.py" = [
+    "E203",
+    "E741",
+]
+
+[project]
+name = "hibp-downloader"
+authors = [
+    { name = "Nicholas de Jong", email = "ndejong@threatpatrols.com" },
+]
+description = "Efficiently download HIBP new pwned password data by hash-prefix for a local-copy"
+version = "0.3.3"
+readme = "README.md"
+requires-python = ">=3.8,<4"
+keywords = [
+    "hibp-downloader",
+    "hibp",
+    "haveibeenpwned",
+    "haveibeenpwned-downloader",
+    "sha1",
+    "ntlm",
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "httpx[http2]>=0.21",
+    "httpcore>=0.14",
+    "aiofiles>=0.8",
+    "typer>=0.9.0",
+    "shellingham>=1.3.0",
+]
+
+[project.license]
+text = "BSD-3-Clause"
+
+[project.scripts]
+hibp-downloader = "hibp_downloader.main:entrypoint"
+
+[project.urls]
+Documentation = "https://threatpatrols.github.io/hibp-downloader"
+Homepage = "https://github.com/threatpatrols/hibp-downloader"
+Repository = "https://github.com/threatpatrols/hibp-downloader"
+"Bug Tracker" = "https://github.com/threatpatrols/hibp-downloader/issues"
