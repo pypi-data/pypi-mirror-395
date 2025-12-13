@@ -1,0 +1,98 @@
+[project]
+name = "bayesline-apiclient"
+version = "0.10.0"
+description = ""
+authors = []
+requires-python = ">=3.10,<4"
+dependencies = [
+    "bayesline-api==0.10.0",
+    "httpx>=0.28.1,<0.29",
+    "pyarrow>=16.1.0",
+    "tqdm>=4.67.1",
+]
+
+[project.optional-dependencies]
+gpu = ["bayesline-api[gpu]"]
+
+[dependency-groups]
+test = ["fastapi>=0.115.5,<0.116"]
+dev = [
+    "pytest",
+    "pytest-env",
+    "coverage[toml]>=7.6.12,<8",
+    "pytest-cov>=6.0.0,<7",
+    "black==25.1.0",  # https://github.com/psf/black/issues/4757 
+    "flake8>=7.1.1,<8",
+    "flake8-bandit>=4.1.1,<5",
+    "flake8-black>=0.3.6,<0.4",
+    "flake8-bugbear>=24.12.12,<25",
+    "flake8-isort>=6.1.2,<7",
+    "flake8-eradicate>=1.5.0,<2",
+    "flake8-print>=5.0.0,<6",
+    "mypy>=1.15.0,<2",
+    "isort>=6.0.0,<7",
+    "pytest-asyncio>=1.0.0",
+    "ipykernel>=6.29.5",
+]
+mypy = [
+    "pandas-stubs>=2.2.3.241126,<3",
+    "types-tqdm>=4.67.0.20250516",
+]
+
+[tool.uv_bumpversion.file."src/bayesline/apiclient/__init__.py"]
+
+[tool.uv]
+default-groups = [
+    "test",
+    "dev",
+    "mypy",
+]
+
+[tool.pytest_env]
+JAX_ENABLE_X64 = "0"
+
+[tool.uv.sources]
+
+
+[tool.hatch.build.targets.sdist]
+include = ["src/bayesline"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/bayesline"]
+package-data = { "bayesline.apiclient" = ["py.typed"] }
+
+[tool.hatch.build.targets.wheel.sources]
+"src/bayesline" = "bayesline"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.coverage.run]
+branch = true
+source = ["bayesline"]
+
+[tool.coverage.report]
+show_missing = false
+
+[tool.isort]
+profile = "black"
+
+[tool.commitizen]
+name = "cz_customize"
+tag_format = "${version}-bayesline-apiclient"
+bump_message = "bump: bayesline-apiclient $current_version → $new_version [skip-ci]"
+ignored_tag_formats = ["${version}-bayesline-*"]
+version_scheme = "semver2"
+version_provider = "uv"
+update_changelog_on_bump = false
+major_version_zero = true
+version_files = [
+    "src/bayesline/apiclient/__init__.py",
+]
+
+[tool.commitizen.customize]
+bump_pattern = "^(feat|fix|perf|refactor)\\(.*code/public/apiclient.*\\)(!)?:"
