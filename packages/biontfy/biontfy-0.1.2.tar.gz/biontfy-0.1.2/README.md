@@ -1,0 +1,75 @@
+# PyQt Custom Notification Library
+
+A highly customizable PyQt6 notification system, inspired by Telegram's desktop notifications.
+
+## Features
+
+- **Customizable Appearance**: Easily change the background color of notifications.
+- **Customizable Buttons**: Change the text and action of the 'Reply' button.
+- **Customizable Hide All**: Change the text and color of the 'Hide all' button.
+- **Sound Support**: Plays a custom sound (`msr.mp3`) upon notification display using `mpg123` (must be installed separately).
+- **Queuing System**: Manages multiple notifications gracefully.
+- **Animation**: Smooth fade-in and fade-out animations.
+
+## Installation
+
+Since this is a custom library, you would typically install it from a local source or a private repository.
+
+**Dependencies**
+
+You must have `PyQt6` installed. For sound support, you need the `mpg123` player installed on your system.
+
+```bash
+# Install PyQt6
+pip install PyQt6
+
+# Install mpg123 (Linux example)
+sudo apt-get install mpg123
+```
+
+## Usage
+
+```python
+import sys
+from PyQt6.QtWidgets import QApplication
+from pyqt_custom_notify import get_manager
+
+def main():
+    app = QApplication(sys.argv)
+    manager = get_manager()
+
+    # 1. Set global customizations
+    manager.set_customization(
+        default_bg_color="#1E1E1E", # Darker background
+        default_reply_text="Action", # Change 'Reply' text
+        hide_all_text="Close All", # Change 'Hide all' text
+        hide_all_color="#FF5733" # Change 'Hide all' text color to orange
+    )
+
+    # 2. Connect to the reply signal
+    def handle_reply(title: str, message: str):
+        print(f"Custom Action triggered for: {title} Message: {message}")
+    
+    manager.notificationReplied.connect(handle_reply)
+
+    # 3. Send a custom notification
+    manager.sendNotification(
+        user_pic_path="userpic1.png", # Image from the resources folder
+        title="Custom Title",
+        message="This is a fully customized notification!",
+        bg_color="#333333", # Override default background for this specific notification
+        reply_text="Click Me" # Override default reply text for this specific notification
+    )
+
+    # 4. Send a default notification
+    manager.sendNotification(
+        user_pic_path="userpic2.png",
+        title="Default Notification",
+        message="This uses the global default settings."
+    )
+
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
+```
