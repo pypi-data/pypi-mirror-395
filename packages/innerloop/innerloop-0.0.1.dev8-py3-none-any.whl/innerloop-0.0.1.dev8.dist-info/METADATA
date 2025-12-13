@@ -1,0 +1,107 @@
+Metadata-Version: 2.4
+Name: innerloop
+Version: 0.0.1.dev8
+Summary: LLM in a loop with tools, MCP, sessions, and structured outputs.
+Project-URL: Homepage, https://github.com/botassembly/innerloop
+Project-URL: Documentation, https://botassembly.org/innerloop
+Project-URL: Repository, https://github.com/botassembly/innerloop
+Project-URL: Issues, https://github.com/botassembly/innerloop/issues
+Project-URL: Changelog, https://botassembly.org/innerloop/changelog/
+Author-email: Ian Maurer <imaurer@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: agent,ai,anthropic,automation,claude,codex,devtool,gemini,llm,openai,sdk
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: anthropic>=0.40.0
+Requires-Dist: google-generativeai>=0.8.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: openai>=1.50.0
+Requires-Dist: pydantic>=2.10.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.11.0; extra == 'dev'
+Requires-Dist: pytest>=7.4.0; extra == 'dev'
+Requires-Dist: python-dotenv>=1.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# InnerLoop
+
+[![PyPI](https://img.shields.io/pypi/v/innerloop.svg)](https://pypi.org/project/innerloop/)
+[![Python](https://img.shields.io/pypi/pyversions/innerloop.svg)](https://pypi.org/project/innerloop/)
+[![License](https://img.shields.io/github/license/botassembly/innerloop.svg)](LICENSE)
+
+**Pure Python SDK for LLM agent loops with tools, sessions, and structured outputs.**
+
+## Install
+
+```bash
+pip install innerloop
+```
+
+## Quick Example
+
+```python
+from innerloop import Loop, tool
+
+@tool
+def get_weather(city: str) -> str:
+    """Get weather for a city."""
+    return f"Weather in {city}: 72°F, sunny"
+
+loop = Loop(
+    model="anthropic/claude-sonnet-4",
+    tools=[get_weather],
+)
+
+response = loop.run("What's the weather in NYC?")
+print(response.text)
+```
+
+## Features
+
+- **Tools** - `@tool` decorator for Python functions
+- **Structured Output** - Pydantic validation with automatic retry
+- **Sessions** - Multi-turn conversations with JSONL persistence
+- **Streaming** - Sync and async event streaming
+- **Providers** - Anthropic, OpenAI, Google, OpenRouter, Ollama, LM Studio
+
+## Documentation
+
+Full documentation in [docs/](docs/):
+
+- [Getting Started](docs/getting-started.md) - Installation and first steps
+- [Configuration](docs/configuration.md) - All configuration options
+- [Providers](docs/providers.md) - Cloud and local LLM providers
+- [Tools](docs/tools.md) - Creating custom tools
+- [Structured Output](docs/structured-output.md) - Pydantic models
+- [Sessions](docs/sessions.md) - Multi-turn conversations
+- [Streaming](docs/streaming.md) - Events and async patterns
+
+## Development
+
+```bash
+uv sync --all-extras
+make check  # Lint, format, type check
+make test   # Run tests
+```
+
+## License
+
+MIT
