@@ -1,0 +1,151 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chuk-mcp-math-server"
+version = "0.2.2"
+description = "Configurable mathematical computation server for MCP protocol"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Chuk AI Team", email = "chrishayuk@somejunkmailbox.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+requires-python = ">=3.11"
+
+# Core dependencies - always required
+dependencies = [
+    "chuk-mcp-math>=0.1.3",
+    "chuk-mcp-server>=0.15",
+    "pydantic>=2.0",
+    "pyyaml>=6.0.2",
+]
+
+# Optional dependency groups
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "twine>=4.0.0",
+    "build>=1.0.0"
+]
+
+# Full installation with all optional features
+full = [
+    "chuk-mcp-math-server[dev]"
+]
+
+[project.scripts]
+# Main entry points
+chuk-mcp-math-server = "chuk_mcp_math_server.cli:main"
+math-server = "chuk_mcp_math_server.cli:main"
+
+# Version and info utilities
+chuk-mcp-math-server-info = "chuk_mcp_math_server._cli:main"
+chuk-mcp-math-server-version = "chuk_mcp_math_server._version:print_version_info"
+
+# Convenience scripts
+math-server-stdio = "chuk_mcp_math_server:run_server_stdio"
+math-server-http = "chuk_mcp_math_server:run_server_http"
+
+[project.urls]
+Homepage = "https://github.com/chuk-mcp/chuk-mcp-math-server"
+Documentation = "https://github.com/chuk-mcp/chuk-mcp-math-server/blob/main/README.md"
+Repository = "https://github.com/chuk-mcp/chuk-mcp-math-server.git"
+Issues = "https://github.com/chuk-mcp/chuk-mcp-math-server/issues"
+
+# Development tool configurations
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"debug/*.py" = ["E722", "F401"]  # Allow bare except and unused imports in debug scripts
+"examples/*.py" = ["E722", "F401"]  # Allow bare except and unused imports in examples
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["chuk_mcp_math_server"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "chuk_mcp.*",
+    "chuk_mcp_math.*",
+    "fastapi.*",
+    "uvicorn.*",
+    "yaml.*"
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+# Dependency overrides for compatibility
+[tool.uv]
+override-dependencies = [
+    # uvloop doesn't support Windows, so we make it optional
+    "uvloop>=0.17.0; sys_platform != 'win32'"
+]
