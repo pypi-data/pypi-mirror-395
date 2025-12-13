@@ -1,0 +1,118 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vibeatlas-ship"
+version = "0.1.0-beta"
+description = "SHIP Protocol SDK - Success Heuristics for Intelligent Programming. Measure AI coding reliability."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "VibeAtlas", email = "ship@vibeatlas.dev" }
+]
+maintainers = [
+    { name = "VibeAtlas Team", email = "team@vibeatlas.dev" }
+]
+keywords = [
+    "ai",
+    "coding",
+    "reliability",
+    "ship-protocol",
+    "ship-score",
+    "vibeatlas",
+    "ai-coding",
+    "code-quality",
+    "github-copilot",
+    "cursor",
+    "claude",
+    "llm",
+    "context-optimization",
+    "developer-tools"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "respx>=0.20.0",
+]
+langchain = [
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://ship.vibeatlas.dev"
+Documentation = "https://vibeatlas.dev/docs/ship"
+Repository = "https://github.com/vibeatlas/ship-protocol"
+Issues = "https://github.com/vibeatlas/ship-protocol/issues"
+Changelog = "https://github.com/vibeatlas/ship-protocol/blob/main/CHANGELOG.md"
+
+[project.scripts]
+ship = "vibeatlas_ship.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vibeatlas_ship"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=vibeatlas_ship --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = []
+
+[tool.coverage.run]
+source = ["vibeatlas_ship"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,285 @@
+Metadata-Version: 2.4
+Name: vibeatlas-ship
+Version: 0.1.0b0
+Summary: SHIP Protocol SDK - Success Heuristics for Intelligent Programming. Measure AI coding reliability.
+Project-URL: Homepage, https://ship.vibeatlas.dev
+Project-URL: Documentation, https://vibeatlas.dev/docs/ship
+Project-URL: Repository, https://github.com/vibeatlas/ship-protocol
+Project-URL: Issues, https://github.com/vibeatlas/ship-protocol/issues
+Project-URL: Changelog, https://github.com/vibeatlas/ship-protocol/blob/main/CHANGELOG.md
+Author-email: VibeAtlas <ship@vibeatlas.dev>
+Maintainer-email: VibeAtlas Team <team@vibeatlas.dev>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: ai,ai-coding,claude,code-quality,coding,context-optimization,cursor,developer-tools,github-copilot,llm,reliability,ship-protocol,ship-score,vibeatlas
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Topic :: Software Development :: Testing
+Classifier: Typing :: Typed
+Requires-Python: >=3.9
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: respx>=0.20.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: langchain
+Requires-Dist: langchain-core>=0.1.0; extra == 'langchain'
+Requires-Dist: langchain>=0.1.0; extra == 'langchain'
+Description-Content-Type: text/markdown
+
+# vibeatlas-ship
+
+[![SHIP Score](https://img.shields.io/badge/SHIP_Score-85%20(A)-green?style=flat)](https://ship.vibeatlas.dev)
+[![PyPI version](https://img.shields.io/pypi/v/vibeatlas-ship.svg)](https://pypi.org/project/vibeatlas-ship/)
+[![Python Version](https://img.shields.io/pypi/pyversions/vibeatlas-ship.svg)](https://pypi.org/project/vibeatlas-ship/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
+
+**SHIP Protocol SDK** - Success Heuristics for Intelligent Programming
+
+> The industry standard for measuring AI coding agent reliability.
+
+## Why SHIP?
+
+**70% of AI coding tasks fail.** There's no standard metric for reliability.
+
+SHIP Score (0-100) predicts whether AI-assisted code will work:
+
+| Grade | Score | Reliability |
+|-------|-------|-------------|
+| A+ | 95-100 | 95%+ success rate |
+| A | 85-94 | 85-94% success rate |
+| B | 70-84 | 70-84% success rate |
+| C | 50-69 | 50-69% success rate |
+| D | 30-49 | 30-49% success rate |
+| F | 0-29 | <30% success rate |
+
+## Installation
+
+```bash
+pip install vibeatlas-ship
+```
+
+## Quick Start
+
+### Async (Recommended)
+
+```python
+import asyncio
+from vibeatlas_ship import ShipClient, FileInfo, Language
+
+async def main():
+    async with ShipClient() as client:
+        response = await client.assess(
+            files=[
+                FileInfo(
+                    path="main.py",
+                    content='''
+def calculate_total(items):
+    return sum(item.price for item in items)
+                    ''',
+                    language=Language.PYTHON,
+                )
+            ],
+            prompt="Add error handling and type hints",
+        )
+
+        # Get your SHIP Score
+        print(f"SHIP Score: {response.ship_score.score} ({response.ship_score.grade.value})")
+        print(f"Confidence: {response.confidence.confidence_score}")
+        print(f"Focus: {response.focus.focus_score}")
+        print(f"Context: {response.context.context_score}")
+        print(f"Efficiency: {response.efficiency.efficiency_score}")
+
+        # Get recommendations
+        for rec in response.recommendations:
+            print(f"  [{rec.type}] {rec.message}")
+
+asyncio.run(main())
+```
+
+### Sync Client
+
+```python
+from vibeatlas_ship import SyncShipClient, FileInfo, Language
+
+with SyncShipClient() as client:
+    response = client.quick_assess(
+        code="def hello(): print('world')",
+        prompt="Add type hints and docstring",
+        language=Language.PYTHON,
+    )
+    print(f"SHIP Score: {response.ship_score.score}")
+```
+
+### From Files
+
+```python
+from vibeatlas_ship import SyncShipClient
+
+with SyncShipClient() as client:
+    response = client.assess_files(
+        file_paths=["src/main.py", "src/utils.py"],
+        prompt="Refactor to use async/await",
+        project_root="/path/to/project",
+    )
+```
+
+## Features
+
+### Antifragile Design
+
+Built with Talebian principles - the SDK gets stronger from failures:
+
+- **Circuit Breaker**: Prevents cascade failures
+- **Exponential Backoff**: Smart retry with jitter
+- **Graceful Degradation**: Never crashes, always returns useful info
+
+```python
+from vibeatlas_ship import ShipClientConfig, CircuitBreaker, RetryPolicy
+
+config = ShipClientConfig(
+    # Circuit breaker settings
+    circuit_breaker=CircuitBreaker(
+        failure_threshold=5,
+        failure_window_seconds=60,
+        recovery_timeout_seconds=30,
+    ),
+    # Retry settings
+    retry_policy=RetryPolicy(
+        max_retries=3,
+        base_delay_ms=1000,
+        max_delay_ms=30000,
+    ),
+)
+
+client = ShipClient(config)
+```
+
+### Self-Learning Feedback Loop
+
+Help improve the model by providing feedback:
+
+```python
+from vibeatlas_ship import TaskOutcome
+
+# After your AI task completes
+await client.feedback(
+    request_id=response.request_id,
+    outcome=TaskOutcome(
+        task_completed=True,
+        first_attempt_success=True,
+        total_attempts=1,
+        user_satisfaction=5,
+    ),
+)
+```
+
+### Full Type Safety
+
+Complete type hints and Pydantic validation:
+
+```python
+from vibeatlas_ship import (
+    ShipResponse,
+    ShipScore,
+    ConfidenceAssessment,
+    FocusAssessment,
+)
+
+# All types are fully typed and validated
+response: ShipResponse = await client.assess(...)
+score: ShipScore = response.ship_score
+confidence: ConfidenceAssessment = response.confidence
+```
+
+## API Reference
+
+### ShipClient
+
+| Method | Description |
+|--------|-------------|
+| `assess()` | Assess code context and get SHIP Score |
+| `quick_assess()` | Quick assessment from single code snippet |
+| `assess_files()` | Assess files from disk |
+| `feedback()` | Submit feedback for learning |
+| `get_score()` | Get project's current score |
+| `get_metrics()` | Get account metrics |
+| `health()` | Check API health |
+
+### Types
+
+| Type | Description |
+|------|-------------|
+| `FileInfo` | File with content and metadata |
+| `Context` | Context for assessment |
+| `ShipScore` | Score breakdown |
+| `ShipResponse` | Full assessment response |
+| `TaskOutcome` | Feedback outcome data |
+
+### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ShipError` | Base exception |
+| `ShipTimeoutError` | Request timed out |
+| `ShipRateLimitError` | Rate limit exceeded |
+| `ShipValidationError` | Invalid request |
+| `CircuitBreakerOpenError` | Circuit breaker open |
+
+## Configuration
+
+```python
+from vibeatlas_ship import ShipClientConfig, create_client
+
+client = create_client(
+    api_key="ship_free_...",  # Optional for free tier
+    base_url="https://ship.vibeatlas.dev",
+    timeout_seconds=30,
+)
+```
+
+Environment variables:
+
+```bash
+export SHIP_API_KEY="ship_free_..."
+export SHIP_BASE_URL="https://ship.vibeatlas.dev"
+```
+
+## Philosophy
+
+This SDK follows **Talebian/Antifragile** principles:
+
+1. **Optionality**: Multiple ways to achieve the same goal
+2. **Barbell Strategy**: Safe defaults + advanced configuration
+3. **Via Negativa**: Improve by removing failure modes
+4. **Convexity**: Failures cost little, successes compound
+5. **Skin in the Game**: Confidence scores = accountability
+
+## Links
+
+- **Documentation**: https://vibeatlas.dev/docs/ship
+- **API Reference**: https://ship.vibeatlas.dev
+- **GitHub**: https://github.com/vibeatlas/ship-protocol
+- **npm Package**: https://www.npmjs.com/package/@vibeatlas/ship-protocol
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+Built with love by [VibeAtlas](https://vibeatlas.dev) - Making AI coding reliable.
