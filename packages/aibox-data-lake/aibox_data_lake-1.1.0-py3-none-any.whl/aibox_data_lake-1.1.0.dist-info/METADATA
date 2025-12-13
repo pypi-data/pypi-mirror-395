@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: aibox-data-lake
+Version: 1.1.0
+Summary: AiBox Data Lake Toolkit.
+Author: AiBox Lab
+Maintainer-email: Moésio Filho <moesio.f@gmail.com>
+Project-URL: Homepage, https://aiboxlab.org/data-lake
+Project-URL: Documentation, https://aiboxlab.org/data-lake
+Project-URL: Repository, https://github.com/aiboxlab/data-lake
+Project-URL: Issues, https://github.com/aiboxlab/data-lake/issues
+Project-URL: Changelog, https://github.com/aiboxlab/data-lake/blob/main/CHANGELOG.md
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Development Status :: 3 - Alpha
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: google-cloud-storage>=3.3.1
+Requires-Dist: ibis-framework[duckdb]>=11.0.0
+Requires-Dist: pandas>=2.3.2
+Requires-Dist: platformdirs>=4.4.0
+Requires-Dist: pyarrow>=21.0.0
+Requires-Dist: pydantic>=2.11.7
+Requires-Dist: pydantic-settings>=2.10.1
+Requires-Dist: rich>=14.1.0
+Requires-Dist: smart-open[all]>=7.3.1
+Requires-Dist: typer>=0.17.4
+Requires-Dist: uv>=0.8.15
+Dynamic: license-file
+
+<h1 align="center">
+  <br>
+  <a href="https://aiboxlab.org/en/"><img src="https://aiboxlab.org/img/logo-aibox.png" alt="AiBox Lab" width="200"></a>
+  <br>
+  aibox-data-lake
+  <br>
+</h1>
+
+<h4 align="center">AiBox Data Lake Toolkit.</h4>
+
+
+[![Python](https://img.shields.io/pypi/pyversions/aibox-data-lake.svg)](https://badge.fury.io/py/aibox-data-lake)
+[![PyPI](https://badge.fury.io/py/aibox-data-lake.svg)](https://badge.fury.io/py/aibox-data-lake)
+
+# Quickstart
+
+The AiBox Data Lake Toolkit is a slim library that provides uniform access to Data Lakes on Cloud Providers (e.g., GCP). This library is developed for internal usage, but most of the source code and standards adopted are common for other purposes.
+
+The library can be installed with your favorite package manager:
+
+```sh
+uv add aibox-data-lake
+uv pip install aibox-data-lake
+pip install aibox-data-lake
+```
+
+Once installed, the library must be configured by running `aibox-dl config`. The library provides a simple registry for buckets (on any major cloud), which associates a bucket URL (e.g., `gs://my-bucket`) to a name (e.g., `bronze`). The cloud credentials must be configured by the cloud client libraries (e.g., `google-cloud-storage`, `boto3`). The CLI provides other features such as listing objects, and reading dataset metadata.
+
+The main class for programmatic access and manipulation of the Data Lake is the [aibox.data_lake.Client](./src/aibox/data_lake/client.py). This class provides methods for common operations on the Data Lake, such as reading specific files or loading datasets. Example usage:
+
+```python
+from aibox.data_lake import Client
+
+# Load the configuration and authenticates
+#   to the cloud providers.
+client = Client()
+
+# List all objects present on the
+#   bronze-tier bucket
+client.list_objects("<bucket-name>")
+
+# Loads a structured data source (e.g.,
+#   .parquet, .csv).
+ds = client.get_tabular_dataset("<bucket-name>", "<dataset-prefix>")
+
+# A structured data source can be easily
+#   loaded to a DataFrame
+ds.to_frame()
+```
