@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<title>rna-tools.online</title>
+
+<style>
+ .hint {color:#808080;font-size:12px;}
+
+.dz {
+    border: dashed !important;
+    background-color: white !important;
+    border-radius: 10px !important;
+}
+
+.dz:hover {
+    background-color: aliceblue !important;
+}
+</style>
+
+<script>
+
+    var progress_interval;
+
+    $(document).ready( function(){
+        progress_interval = setInterval(checkProgress, 500);
+    });
+
+    function checkProgress() {
+        $.ajax({
+            url: "{% url 'ajax_job_status' job_id=j.job_id tool='seq' %}",
+            success: function(d) {
+		lt = $('#log_txt').html().trim().length;
+		nl = d['log'].trim().length;
+		//alert(lt);
+		if (lt < nl) {
+		    if (lt / nl < 0.9) {
+			$("#log_txt").html(d['log']);
+			//alert('udpate lt / nl')
+		    }
+		} else {
+		    if (nl / lt < 0.9) {
+			$("#log_txt").html(d['log']);
+			//alert('udpate nl / lt')
+		    };
+		};
+                    if (d['reload']==true){
+			location.href="/tools/{{ tool }}/{{ j.job_id }}";
+		    };
+	    }})
+    };
+
+    function fetch() {
+        $.ajax({
+            url: "/fetch/{{ j.job_id }}",
+	    data: { 
+		    fetch: $("#fetch").val(),
+		  },
+        }
+	      )
+             };
+
+  function rm(){
+        $.ajax({
+            url: "/run/clear/{{ j.job_id }}",
+	})
+    };
+
+   function demo(){
+        $.ajax({
+            url: "/demo/{{ tool }}/{{ j.job_id }}",
+	})
+    };
+
+  function go() {
+      $('#go').prop('disabled', true);
+        $.ajax({
+            url: "/run/ss/{{ j.job_id }}",
+            success: function(d) {
+                $("#log_txt").html(d['log']);
+                if (d['reload']==true){
+                    window.location.reload()
+                }
+            }
+        })
+    };
+
+</script>
+
+<h2>Get secondary structures</h2>
+
+
+<div align="right">
+  <button onclick="demo()" class="btn btn-small btn-ok">Load demo</button>
+  <button onclick="rm()" class="btn btn-small btn-ok">Remove All Files</button>
+  <button onclick="javascript:location.reload();" class="btn btn-small btn-ok">Reset</button>
+</div>
+
+<p>
+ <button onclick="fetch()" class="btn btn-small" size="height:12px">Fetch</button> files from another job <input id="fetch" type="text" class="form-control" style="font-family:Monospace;width:150px;height:13px;" name="xxx" placeholder="" value=""></a><small class="hint"> e.g., 614e0a1b</small>
+    <!--http://rna-tools.online/tools/seq/614e0a1b or-->
+</p>
+
+<label for="comment">RNA structure (in the PDB format)<span style="color:red"></br>Please, remove all spaces and non-standard characters in filenames, we're working on a fix to do it automatically for you</span></label>
+
+<form enctype='multipart/form-data' action="/upload/{{ j.job_id }}" method='POST' class="dropzone dz" id="my-dropzone" >
+  {% csrf_token %}
+  <input type="hidden" id="job_id" name="job_id" value="{{ j.job_id }}" />
+    <div class="fallback">
+      <input name="file" type="file" multiple />
+    </div>
+</form>
+
+    <div id="log_txt" class='log'>{{ log | safe }}</div>
+
+<p>
+    <button id="go" onclick="go()" class="btn btn-success">Run!</button>
+</p>
+
+<p>The raw output files for each step of the pipeline can be found  <a href="https://rna-tools.online/media/jobs/{{ j.job_id }}/">here</a> and downloaded as a ZIP file <a href="{% url 'download_project_dir' job_id=j.job_id %}">here</a>.</p>
+
+<small class="hint">
+
+  <p>
+    <h5>Documentation</h5>
+  </p>
+     <p>
+       Get sequence in dot-bracket notation for the secondary structure:
+     </p>
+<pre>21_3dRNA_1_rpr.pdb
+((((...............))))................
+21_Adamiak_1_rpr.pdb
+((((.......[[[[[[[..))))..........]]]]]]]</pre>
+
+<p>
+X.-J. Lu, H. J. Bussemaker, and W. K. Olson, “DSSR: an integrated software tool for dissecting the spatial structure of RNA.,” Nucleic Acids Research, vol. 43, no. 21, p. e142, Dec. 2015.       
+</p>
+
+    <small class="hint"></small>
+
+{% endblock %}

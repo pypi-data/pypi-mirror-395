@@ -1,0 +1,170 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<title>rna-tools.online</title>
+
+
+<style>
+ .hint {color:#808080;font-size:12px;}
+
+.dz {
+    border: dashed !important;
+    background-color: white !important;
+    border-radius: 10px !important;
+}
+
+.dz:hover {
+    background-color: aliceblue !important;
+}
+</style>
+
+<script>
+
+    var progress_interval;
+
+    $(document).ready( function(){
+        progress_interval = setInterval(checkProgress, 500);
+    });
+
+    function checkProgress() {
+        $.ajax({
+            url: "{% url 'ajax_job_status' job_id=j.job_id tool='seq' %}",
+            success: function(d) {
+		lt = $('#log_txt').html().trim().length;
+		nl = d['log'].trim().length;
+		//alert(lt);
+		if (lt < nl) {
+		    if (lt / nl < 0.98) {
+			$("#log_txt").html(d['log']);
+			//alert('udpate lt / nl')
+		    }
+		} else {
+		    if (nl / lt < 0.98) {
+			$("#log_txt").html(d['log']);
+			//alert('udpate nl / lt')
+		    };
+		};
+                    if (d['reload']==true){
+			location.href="/tools/{{ tool }}/{{ j.job_id }}";
+		    };
+	    }})
+    };
+
+    function fetch() {
+        $.ajax({
+            url: "/fetch/{{ j.job_id }}",
+	    data: { 
+		    fetch: $("#fetch").val(),
+		  },
+        }
+	      )
+             };
+
+   function demo(){
+        $.ajax({
+            url: "/demo/{{ tool }}/{{ j.job_id }}",
+	})
+    };
+
+  function rm(){
+        $.ajax({
+            url: "/run/clear/{{ j.job_id }}",
+	})
+    };
+
+  function go() {
+        $('#go').prop('disabled', true);
+        $.ajax({
+            url: "/run/clarna/{{ j.job_id }}",
+            success: function(d) {
+                $("#log_txt").html(d['log'])
+		$("#progress").hide()
+                if (d['reload']==true){
+                    window.location.reload()
+                }
+            }
+        })
+    };
+
+</script>
+
+<h2>Contacts (Interactions) classification</h2>
+
+<div align="right">
+  <button onclick="demo()" class="btn btn-small btn-ok">Load demo</button>
+  <button onclick="rm()" class="btn btn-small btn-ok">Remove All Files</button>
+  <button onclick="javascript:location.reload();" class="btn btn-small btn-ok">Reset</button>  
+</div>
+
+<p>
+ <button onclick="fetch()" class="btn btn-small" size="height:12px">Fetch</button> files from another job <input id="fetch" type="text" class="form-control" style="font-family:Monospace;width:150px;height:13px;" name="xxx" placeholder="" value=""></a><small class="hint"> e.g., 614e0a1b</small>
+    <!--http://rna-tools.online/tools/seq/614e0a1b or-->
+</p>
+
+<label for="comment">RNA structure (in the PDB format)<span style="color:red"></br>Please, remove all spaces and non-standard characters in filenames, we're working on a fix to do it automatically for you</span></label>
+
+<form enctype='multipart/form-data' action="/upload/{{ j.job_id }}" method='POST' class="dropzone dz" id="my-dropzone" >
+  {% csrf_token %}
+  <input type="hidden" id="job_id" name="job_id" value="{{ j.job_id }}" />
+    <div class="fallback">
+      <input name="file" type="file" multiple />
+    </div>
+</form>
+<pre style="background:none;border:none"><div id="log_txt" class='log'>{{ log | safe }}</div></pre>
+
+<p>
+<!--
+{%if j.get_status == 'finished' %}
+<span id="progress" class="badge badge-success">done</span>
+{% endif %}
+{%if j.get_status == 'running' %}
+<span id="progress" class="badge badge-warning">running</span>
+{% endif %}
+{%if j.get_status == 'waiting' %}
+<span id="progress" class="badge badge-info">waiting</span>
+{% endif %}
+-->
+
+</p>
+
+<p>
+  <button id="go" onclick="go()" class="btn btn-success">Run!</button>
+</p>
+
+<p>The raw output files for each step of the pipeline can be found  <a href="https://rna-tools.online/media/jobs/{{ j.job_id }}/">here</a> and downloaded as a ZIP file <a href="{% url 'download_project_dir' job_id=j.job_id %}">here</a>.</p>
+
+<hr>
+
+<small class="hint">
+Here, the first file (21_3dRNA_1_rpr.pdb) has small number of detected interactions. This is a suggestion that this structure is not folded properly.
+
+<pre style="font-size: 10px">21_3dRNA_1_rpr.pdb
+Classifier: Clarna
+chains: A 1 41
+A 1 A 24 bp C G WW_cis 0.9184
+A 2 A 23 bp C G WW_cis 0.8763
+A 3 A 22 bp G C WW_cis 0.8950
+A 4 A 21 bp G C WW_cis 0.8362
+A 39 A 40 bp C G SH_cis 0.6261
+
+21_Adamiak_1_rpr.pdb
+Classifier: Clarna
+chains: A 1 41
+A 1 A 24 bp C G WW_cis 0.8733
+A 2 A 23 bp C G WW_cis 0.8887
+A 3 A 22 bp G C WW_cis 0.8160
+A 4 A 21 bp G C WW_cis 0.7943
+A 7 A 35 bp G A WH_cis 0.7501
+A 12 A 41 bp G C WW_cis 0.8723
+A 13 A 40 bp C G WW_cis 0.8931
+A 14 A 39 bp G C WW_cis 0.8983
+A 15 A 38 bp C G WW_cis 0.8815
+A 16 A 37 bp C G WW_cis 0.8938
+A 17 A 36 bp G C WW_cis 0.9300
+A 18 A 35 bp U A WW_cis 0.8766</pre>
+<p>
+T. Waleń, G. Chojnowski, P. Gierski, and J. M. Bujnicki, “ClaRNA: a classifier of contacts in RNA 3D structures based on a comparative analysis of various classification schemes.,” Nucleic Acids Research, vol. 42, no. 19, pp. e151–e151, Oct. 2014.
+</p>
+</small>
+{% endblock %}
