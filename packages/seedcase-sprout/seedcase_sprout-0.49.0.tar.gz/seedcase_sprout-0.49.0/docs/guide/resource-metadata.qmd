@@ -1,0 +1,677 @@
+---
+title: "Resource metadata"
+order: 3
+jupyter: python3
+---
+
+## What is a data resource?
+
+In the previous sections, we have seen how to create and manage package
+metadata for our data package. In this section, we will explore how we
+can add data files and manage its metadata (e.g. documenting the type of
+data in each column). In a Data Package, data files are referred to as
+[data resources](/docs/glossary.qmd), each containing a conceptually
+distinct set of data. We refer to the metadata for a data resource as
+"resource metadata".
+
+## Creating a data resource
+
+Creating a data resource requires that your data is in the correct
+format. Usually, generated or collected data starts out in a "raw" shape
+that needs to be cleaned and organized into so called "tidy data" before
+it can become a data resource. How to tidy data will differ from dataset
+to dataset and is outside the scope of Sprout, so we will not cover the
+procedure in detail here. Ideally you would use a Python package such as
+[Polars](https://decisions.seedcase-project.org/why-polars-for-data-cleaning/).
+to tidy your data, so that you have a record of the steps taken to clean
+and transform the data. After cleaning, your data should follow the
+specification outlined in our
+[documentation](https://sprout.seedcase-project.org/docs/design/interface/inputs),
+specifically that it needs to be a Polars DataFrame.
+
+For this guide, you will use the [(fake) data on
+patients](https://raw.githubusercontent.com/seedcase-project/data/refs/heads/main/patients/patients.csv)
+that is already tidy.
+We've placed this data in a `raw/` folder in the Data Package and called
+it `patients.csv`, so that we can keep the original "raw" data separate
+from the processed data.
+
+{{< include _python-minimal-package-setup.qmd >}}
+
+```{python setup-data-package}
+#| include: false
+# This `setup-data-package` code chunk sets up the package from the packages guide and downloads some data.
+import polars as pl
+from tempfile import mkdtemp
+from urllib.request import urlretrieve
+
+package_properties = sp.example_package_properties()
+# Original `package_path` is from the include chunk above.
+sp.create_properties_script(package_path.root())
+
+sp.write_properties(
+    properties=package_properties,
+    path=package_path.properties(),
+)
+readme = sp.as_readme_text(package_properties)
+sp.write_file(readme, package_path.readme())
+
+# TODO: Maybe eventually move this over into Sprout as an example dataset, rather than via a URL.
+# Download the example data to a temporary location.
+url = "https://raw.githubusercontent.com/seedcase-project/data/refs/heads/main/patients/patients.csv"
+raw_data_path = package_path.root() / "raw" / "patients.csv"
+raw_data_path.parent.mkdir(exist_ok=True)
+urlretrieve(
+    url,
+    raw_data_path
+)
+
+raw_data_patients = pl.read_csv(raw_data_path)
+```
+
+At this point, your data package `diabetes-study` has the following
+structure:
+
+```{python}
+#| echo: false
+print(file_tree(package_path.root()))
+```
+
+And the `raw/patients.csv` file includes data about patients with
+diabetes, which look like this:
+
+```{python}
+#| echo: false
+raw_data_patients
+```
+
+## Managing resource metadata with Sprout
+
+Before you can store a data file as a resource in your data package, you
+need to describe its [metadata properties](/docs/glossary.qmd). The
+resource's metadata are what allow other people to understand what your
+data is about and to use it more easily.
+
+The resource's metadata also define what it means for data in the
+resource to be correctly entered, as all data in the resource must match
+the metadata properties. Sprout checks that the metadata properties are
+correctly filled in and that no required metadata fields are missing. It
+also checks that the data in the data resources matches the metadata
+properties, so that you can be sure that data actually contains what you
+expect it to contain. These checks can protect you from human errors
+introduced when adding new data or editing an existing data resource.
+
+### Creating a script to help manage resource metadata
+
+As you did for the package metadata, you will create a script to manage
+the resource medata. You can do this by using the
+`create_resource_properties_script()` function. This function needs the
+`resource_name` parameter to specify the name of the resource, which is
+used to identify the resource in the data package. It is a required
+property and *should not* be changed, since it's used in the file name
+of the data resource's properties script. Because a data package can
+contain multiple resources, the resource's `name` must also be unique.
+
+Building upon the `main.py` file we created in the previous section, we
+will go ahead and add the `create_resource_properties_script()` step to
+the pipeline:
+
+```{python}
+#| eval: false
+#| filename: "main.py"
+import seedcase_sprout as sp
+from scripts.package_properties import package_properties
+
+def main():
+    sp.create_properties_script()                                    # <1>
+    sp.create_resource_properties_script(resource_name="patients")   # <2>
+    ...                                                              # <3>
+if __name__ == "__main__":
+    main()
+```
+
+1.  We already had this line in our script from the previous section of
+    the guide.
+2.  This is the only new line of code. It creates the resource
+    properties script. Note that the script is only created once, it
+    will not be overwritten if it already exists.
+3.  We have removed saving the properties into `datapackage.json` by deleting `write_properties()` and the creation
+    of the README to make it easier to see what is new. You will learn
+    how to write the resource metadata and the README later in this
+    guide.
+
+Now go ahead and run the script like previously:
+
+``` {.bash filename="Terminal"}
+uv run main.py
+```
+
+Your folders and files should now look like:
+
+```{python}
+#| echo: false
+sp.create_resource_properties_script(
+    resource_name="patients",
+    path=package_path.root()
+)
+print(file_tree(package_path.root()))
+```
+
+As you can see, the filename has been suffixed with your chosen
+`resource_name`, i.e. "patients". If you view the content of
+`scripts/resource_properties_patients.py`, you will see that it looks
+similar to the package metadata script, but with different names for the
+metadata properties. Since the file content is somewhat lengthy, it's
+hidden by default on this page. You can click the banner below to
+show it.
+
+::: {.callout-tip icon="false" collapse="true"}
+## Inside the `resource/properties_patients.py` script
+
+```{python}
+#| echo: false
+#| output: asis
+#| filename: "scripts/resource_properties_patients.py"
+print(
+    '```python',
+    package_path.resource_properties_script('patients').read_text(),
+    '```',
+    sep='\n'
+)
+```
+:::
+
+As with the template for the package metadata, the comments in this file
+indicate which properties are required and which are optional. You can
+see that you would need to fill out a `title` and a `description` just
+as we did previously for the package metadata. However, you also need to
+fill out the `name` and the `type` inside `FieldProperties` (a "field"
+is the same as a "column" or "variable" in your dataset). Doing this
+manually can be tedious for datasets with many columns, so Sprout
+provides a way to extract this metadata directly from the data file.
+
+### Extracting column metadata directly from the data
+
+To ease the process of adding `fields` to your resource metadata, Sprout
+provides a function called `extract_field_properties()`, which allows
+you to extract metadata from each column in your dataset. To use this
+function, we need to read in our data as a Polars DataFrame and clean it
+until we are happy with the name and data type for each column. In the
+code chunk below, we've added all the required steps to our `main.py`
+file.
+
+```{python}
+#| filename: "main.py"
+#| eval: false
+import seedcase_sprout as sp
+from scripts.package_properties import package_properties
+import polars as pl
+
+def main():
+    sp.create_properties_script()
+
+    raw_data_patients = pl.read_csv(package_path.root() / "raw" / "patients.csv")   # <1>
+    ... # Data cleaning                                                             # <2>
+    field_properties = sp.extract_field_properties(data=raw_data_patients)          # <3>
+    sp.create_resource_properties_script(
+        resource_name="patients",
+        fields=field_properties,                                                    # <4>
+    )
+
+if __name__ == "__main__":
+    main()
+```
+
+1.  Read the original data from the `raw/` folder into a Polars
+    DataFrame.
+2.  Clean the data until you have the name and data type of each column
+    to what you want or need them to be. In our example, the raw data is
+    already cleaned and in a tidy format, but in an actual project, you
+    would likely have a separate cleaning script and call some of its
+    functions here.
+3.  Extract field properties from the cleaned data, such as the column
+    name and its data type.
+4.  Pass the extracted field properties to the function that saves the
+    properties script, so that they are included in the created file.
+
+::: callout-warning
+`extract_field_properties()` extracts the field properties from the
+Polars DataFrame's schema and maps the Polars data type to a Data
+Package [field
+type](https://datapackage.org/standard/table-schema/#field-types). The
+mapping is not perfect, so you may need to edit the extracted properties
+to ensure that they are as you want them to be.
+:::
+
+Before running the script, we need to manually delete
+`scripts/resource_properties_patients.py` since the function
+`create_resource_properties_script` will never overwrite an existing
+file (this is a precaution in case you have made manual edits to the
+file and accidentally trigger the function). Then run the `main.py` file
+in your Terminal, which will re-create the resource properties script:
+
+``` {.bash filename="Terminal"}
+uv run main.py
+```
+
+```{python}
+#| include: false
+# Run to confirm that the sample code works
+raw_data_patients = pl.read_csv(package_path.root() / "raw" / "patients.csv")
+field_properties = sp.extract_field_properties(data=raw_data_patients)
+# We need to first delete the old resource script before recreating it
+package_path.resource_properties_script('patients').unlink()
+sp.create_resource_properties_script(
+    resource_name="patients",
+    fields=field_properties,
+    path=package_path.root()
+)
+```
+
+Your folders and files should now look like:
+
+```{python}
+#| echo: false
+print(file_tree(package_path.root()))
+```
+
+If you now open `scripts/resource_properties_patients.py`, you will see
+that field properties are added for all the columns in the data. The
+fields that could be automatically extracted also have their metadata
+filled in already, in this case the `name` and `type`:
+
+::: {.callout-tip icon="false" collapse="true"}
+## Inside the `resource_properties_patients.py` script
+
+```{python}
+#| echo: false
+#| output: asis
+#| filename: "scripts/resource_properties_patients.py"
+print(
+    '```python',
+    package_path.resource_properties_script('patients').read_text(),
+    '```',
+    sep='\n'
+)
+```
+:::
+
+## Writing the resource metadata to `datapackage.json`
+
+Before writing the metadata to file, we need to make sure that all the
+required properties are filled out. In the resource properties script,
+the `name` property is already set to `patients`. However, the two other
+required properties, `title` and `description`, are empty. You will need
+to fill these in yourself in the script, like so:
+
+```{python}
+#| filename: scripts/resource_properties_patients.py
+#| eval: false
+resource_properties_patients = sp.ResourceProperties(
+    ## Required:
+    name="patients",
+    title="Patients Data",
+    description="This data resource contains data about patients in a diabetes study.",
+    ...  # Additional metadata are omitted here to save space
+)
+```
+
+```{python}
+#| echo: false
+# This is to create the `resource_properties_patients` object to use later
+# in this guide.
+resource_properties_patients = sp.ResourceProperties(
+    ## Required:
+    name="patients",
+    title="Patients Data",
+    description="This data resource contains data about patients in a diabetes study.",
+    ## Optional:
+    type="table",
+    format="parquet",
+    mediatype="application/parquet",
+    schema=sp.TableSchemaProperties(
+        ## Required
+        fields=[
+            sp.FieldProperties(
+                ## Required
+                name="id",
+                type="integer",
+            ),
+            sp.FieldProperties(
+                ## Required
+                name="age",
+                type="integer",
+            ),
+            sp.FieldProperties(
+                ## Required
+                name="sex",
+                type="string",
+            ),
+            sp.FieldProperties(
+                ## Required
+                name="height",
+                type="number",
+            ),
+            sp.FieldProperties(
+                ## Required
+                name="weight",
+                type="number",
+            ),
+            sp.FieldProperties(
+                ## Required
+                name="diabetes_type",
+                type="string",
+            ),
+        ],
+    ),
+)
+```
+
+::: callout-warning
+If the `title` and `description` properties are not filled in, you'll
+get a `CheckError` when you try to use `write_properties()` to save the
+resource's properties to the `datapackage.json` file. You will
+understand these errors more deeply after reading the next section in
+the guide; for now focus on making sure that the three required fields
+above are all filled out.
+:::
+
+Our resource properties file include the `name`, `title`, and
+`description` of that data resource together with the `name` and `type`
+of each field in the data resource. To write these resource metadata to
+`datapackage.json`, you need to include the resource properties in the
+`package_properties.py` file of your data package. You can do this by
+adding the following lines to the `properties.py` file:
+
+```{python}
+#| eval: false
+#| filename: "scripts/package_properties.py"
+# Import the resource properties object.
+from scripts.resource_properties_patients import resource_properties_patients
+
+package_properties = sp.PackageProperties(
+    # Your existing package metadata goes here...
+    resources=[
+        resource_properties_patients,
+    ],
+)
+```
+
+You can click the banner below to view the full file at this point:
+
+::: {.callout-tip icon="false" collapse="true"}
+## Inside the `package_properties.py` script
+
+```{python}
+#| filename: "scripts/package_properties.py"
+#| eval: false
+
+import seedcase_sprout as sp
+from scripts.resource_properties_patients import resource_properties_patients   # <1>
+
+package_properties = sp.PackageProperties(
+    name="diabetes-study",
+    title="A Study on Diabetes",
+    # You can write Markdown below, with the helper `sp.dedent()`.
+    description=sp.dedent("""
+        # Data from a 2021 study on diabetes prevalence
+
+        This data package contains data from a study conducted in 2021 on the
+        *prevalence* of diabetes in various populations. The data includes:
+
+        - demographic information
+        - health metrics
+        - survey responses about lifestyle
+        """),
+    contributors=[
+        sp.ContributorProperties(
+            title="Jamie Jones",
+            email="jamie_jones@example.com",
+            path="example.com/jamie_jones",
+            roles=["creator"],
+        ),
+        sp.ContributorProperties(
+            title="Zdena Ziri",
+            email="zdena_ziri@example.com",
+            path="example.com/zdena_ziri",
+            roles=["creator"],
+        )
+    ],
+    licenses=[
+        sp.LicenseProperties(
+            name="ODC-BY-1.0",
+            path="https://opendatacommons.org/licenses/by",
+            title="Open Data Commons Attribution License 1.0",
+        )
+    ],
+    resources=[                                                                 # <2>
+        resource_properties_patients,
+    ],
+    ## Autogenerated:
+    id="8f301286-2327-45bf-bbc8-09696d059499",
+    version="0.1.0",
+    created="2025-11-07T11:12:56+01:00",
+)
+```
+
+1.  Import the resource metadata from the resource properties script.
+2.  Set the `resources` parameter of the package metadata to hold
+    information about all the data resources. There would be one item in
+    the list per data resource.
+:::
+
+The next step is to write the resource properties to the
+`datapackage.json` file. Since we included the `resource_properties`
+object directly into the `PackageProperties` class in the
+`scripts/package_properties.py` file, we can add the same steps as in
+the last section of the guide to write the `datapackage.json` file and
+the `README.md` file.
+
+```{python}
+#| filename: "main.py"
+#| eval: false
+import seedcase_sprout as sp
+from scripts.package_properties import package_properties
+import polars as pl
+
+def main():
+    sp.create_properties_script()
+
+    raw_data_patients = pl.read_csv(package_path.root() / "raw" / "patients.csv")
+    field_properties = sp.extract_field_properties(data=raw_data_patients)
+    sp.create_resource_properties_script(
+        resource_name="patients",
+        fields=field_properties,
+    )
+
+    sp.write_properties(properties=package_properties)      # <1>
+    readme_text = sp.as_readme_text(package_properties)     # <2>
+    sp.write_file(readme_text, sp.PackagePath().readme())   # <3>
+
+if __name__ == "__main__":
+    main()
+```
+
+1.  Write `datapackage.json` (including both the package metadata and
+    the resource metadata).
+2.  Create the README text.
+3.  Write the README file.
+
+Now run the `main.py` file form the terminal:
+
+``` {.bash filename="Terminal"}
+uv run main.py
+```
+
+{{< include _python-package-properties.qmd >}}
+
+```{python}
+#| include: false
+# Only to check that it runs.
+properties.resources = [
+    resource_properties_patients,
+]
+sp.write_properties(
+    properties=properties,
+    path=package_path.properties(),
+)
+readme_text = sp.as_readme_text(properties)
+sp.write_file(
+    string=readme_text,
+    path=package_path.readme()
+)
+```
+
+Let's check the contents of the `datapackage.json` file to see that the
+resource properties have been added:
+
+```{python}
+#| echo: false
+#| output: asis
+#| filename: datapackage.json
+print(
+    '```json',
+    (package_path.path / 'datapackage.json').read_text(),
+    '```',
+    sep='\n'
+)
+```
+
+All the resource metadata is now also saved in this file! If you need to
+update the resource properties later on, you can simply edit the
+`scripts/resource_properties_patients.py` file and then re-run the
+`main.py` file to update the `datapackage.json` file and the `README.md`
+file.
+
+## Storing a backup of the data as a batch file
+
+<!-- TODO: I'm not sure how effective this workflow is, we'll assess as we use it -->
+
+::: callout-note
+See the [flow diagrams](/docs/design/interface/flows.qmd) for a
+simplified flow of steps involved in adding batch files. Also see the
+[design docs](/docs/design/interface/outputs.qmd) for why we include
+these batch files in the resource's folder.
+:::
+
+Each time you add new or modified data to a resource, this data is
+stored in a batch file. These batch files will be used to create the
+final data file that is actually used as the resource at the path
+`resource/<name>/data.parquet`. The first time a batch file is saved, it
+will create the folders necessary for the resource.
+
+As shown above, the data is currently loaded as a Polars DataFrame
+called `raw_data_patients`. Now, it's time to store this data in the
+resource's folder by using the `write_resource_batch()` function in the
+`main.py` file.
+
+```{python}
+#| filename: "main.py"
+#| eval: false
+# This code is shortened to only show what was changed.
+# Add this to the imports.
+from scripts.resource_properties_patients import resource_properties_patients
+
+def main():
+    # Previous code is excluded to keep it short.
+    # New code inserted at the bottom -----
+    # Save the batch data.
+    sp.write_resource_batch(
+        data=raw_data_patients,
+        resource_properties=resource_properties_patients
+    )
+```
+
+```{python}
+#| include: false
+# Only to check that it runs.
+sp.write_resource_batch(
+    data=raw_data_patients,
+    resource_properties=resource_properties_patients,
+    package_path=package_path.root()
+)
+```
+
+This function uses the properties object to determine where to store the
+data as a batch file, which is in the `batch/` folder of the resource's
+folder. If this is the first time adding a batch file, all the folders
+will be set up. So the file structure should look like this now:
+
+```{python}
+print(file_tree(package_path.root()))
+```
+
+## Building the resource data file
+
+Now that you've stored the data as a batch file, you can build the
+`resource/<name>/data.parquet` file that will be used as the data
+resource. This Parquet file is built from all the data in the `batch/`
+folder. Since there is only one batch data file stored in the resource's
+folder, only this one will be used to build the data resource's Parquet
+file. To create this main Parquet file, you need to read in all the
+batch files, join them together, and, optionally, do any additional
+processing on the data before writing it to the file. The functions to
+use are `read_resource_batches()`, `join_resource_batches()`, and
+`write_resource_data()`. Several of these functions will internally run
+checks via `check_data()`.
+
+Let's add these functions to the `main.py` file to make the
+`data.parquet` file:
+
+```{python}
+#| filename: "main.py"
+#| eval: false
+# This code is shortened to only show what was changed.
+def main():
+    # Previous code is excluded to keep it short.
+    # New code inserted at the bottom -----
+    # Read in all the batch data files for the resource as a list.
+    batch_data = sp.read_resource_batches(
+        resource_properties=resource_properties_patients
+    )
+    # Join them all together into a single Polars DataFrame.
+    joined_data = sp.join_resource_batches(
+        data_list=batch_data,
+        resource_properties=resource_properties_patients
+    )
+    sp.write_resource_data(
+        data=joined_data,
+        resource_properties=resource_properties_patients
+    )
+```
+
+```{python}
+#| include: false
+# Just to check that it runs.
+batch_data = sp.read_resource_batches(
+    resource_properties=resource_properties_patients,
+    paths=package_path.resource_batch_files("patients")
+)
+joined_data = sp.join_resource_batches(
+    data_list=batch_data,
+    resource_properties=resource_properties_patients
+)
+sp.write_resource_data(
+    data=joined_data,
+    resource_properties=resource_properties_patients,
+    package_path=package_path.root()
+)
+```
+
+::: callout-tip
+If you add more data to the resource later on as more batch files, you
+can update this main `data.parquet` file to include the updated data in
+the batch folder using this same workflow.
+:::
+
+Now the file structure should look like this:
+
+```{python}
+#| echo: false
+print(file_tree(package_path.root()))
+```
+
+```{python}
+#| include: false
+temp_path.cleanup()
+```

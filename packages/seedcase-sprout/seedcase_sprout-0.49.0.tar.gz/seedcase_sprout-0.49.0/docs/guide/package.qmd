@@ -1,0 +1,262 @@
+---
+title: "Creating a Data Package"
+order: 1
+jupyter: python3
+---
+
+## What is a Data Package?
+
+At the core of Sprout is the [Data Package](/docs/glossary.qmd), which
+is a standardized way of documenting data via structured metadata.
+Technically, a data Package is any folder that has a file called
+`datapackage.json` in it that contains metadata following the formal
+[Data Package
+specification](https://datapackage.org/standard/data-package/#introduction).
+
+The metadata in `datapackage.json` can describe both the Data Package
+(e.g. its title, creation data, and contributors) and any data included
+in the Data Package (e.g. the name, data type, and description of each
+column/variable in the data). This metadata is stored in JSON format
+with a standardized naming convention, e.g. the title of the project
+should be stored as `"title": "your project title"`.
+
+In this guide, we will refer to each piece of metadata stored in the
+JSON file as a [*metadata property*](/docs/glossary.qmd) (or just a
+*property* for short). You can view an example of a complete
+`datapackage.json` file in this [example
+repository](https://github.com/seedcase-project/example-seed-beetle/blob/main/datapackage.json).
+
+## Using Sprout to create a Data Package
+
+The Data Package standard provides a standardised structure and naming
+scheme in `datapackage.json`. This has many advantages in terms of
+reproducibility and machine-readability, but it also makes it difficult
+to manually create the `datapackage.json` file and remember all the
+names for each of the different properties. Manually editing this file
+is also ill-advised since you are more likely to accidentally make typos
+or accidentally not follow the schema provided by the specification. To
+make this process more convenient and robust, Sprout provides a way to
+create and edit the metadata in `datapackage.json` programmatically via
+Python scripts.
+
+### Creating the package properties script to manage your metadata
+
+Let's start by taking a look at what your project's file structure
+should look like after following [the installation section of this
+guide](https://sprout.seedcase-project.org/docs/guide/installation):
+
+{{< include _python-minimal-package-setup.qmd >}}
+
+```{python}
+#| echo: false
+print(file_tree(package_path.root()))
+```
+
+::: callout-important
+Sprout assumes the working directory is the root of your Python
+project---where your `.git/` folder and/or `pyproject.toml` file are
+located. If you used our Data Package
+[template](https://template-data-package.seedcase-project.org) as we
+recommend in the [installation
+guide](https://sprout.seedcase-project.org/docs/guide/installation#adding-useful-files-via-a-project-template),
+you will see additional config files to the ones listed above.
+:::
+
+Since there is no `datapackage.json` file in our root folder, we can't
+yet call it a Data Package. Before we create this file, let's take a
+look at `main.py` from where we'll create the `datapackage.json`. The
+`main.py` file is where you will write the code to create and manage
+your Data Package. You can think of it as a pipeline that takes you from
+beginning to end of creating your Data Package and that allows you to
+easily recreate it if needed. Open the `main.py` file in your Python
+project, delete the placeholder code that uv created in it, and paste
+the below code into it instead.
+
+::: callout-note
+If you copied our Data Package template, this section will already exist
+and you can simply uncomment it to get started.
+:::
+
+```{python}
+#| eval: false
+#| filename: "main.py"
+import seedcase_sprout as sp
+
+def main():
+    # Create the properties script in the default location.
+    sp.create_properties_script()
+
+if __name__ == "__main__":
+    main()
+```
+
+Then, use uv to run the script from the Terminal:
+
+``` {.bash filename="Terminal"}
+uv run main.py
+```
+
+<!-- Create the script where quarto can find it for building the docs -->
+
+```{python}
+#| include: false
+sp.create_properties_script(package_path.root())
+```
+
+This will create a `package_properties.py` file in the newly created
+`scripts/` folder of your Data Package.
+
+<!--TODO could this callout come later? -->
+
+::: callout-important
+Because of the way Python scripts and importing works, there should also
+exist an `__init__.py` file in the `scripts/` folder. If you copied our
+Data Package template, this file has already been created for you,
+otherwise you can create this file by running the following command in
+your Terminal:
+
+``` {.bash filename="Terminal"}
+touch scripts/__init__.py
+```
+
+```{python}
+#| include: false
+import subprocess
+# Touch file in scripts/ folder in the package_path
+subprocess.run(["touch", str(package_path.root() / "scripts/__init__.py")])
+```
+:::
+
+The file structure should now look like:
+
+```{python}
+#| echo: false
+# List all files in directory
+print(file_tree(package_path.root()))
+```
+
+### Managing metadata programmatically
+
+Inside the `scripts/package_properties.py` file, you will find a
+template for creating the metadata properties of your Data Package
+programmatically. We will walk through the full template in more detail
+in the [next section](/docs/guide/package-metadata.qmd) of the guide.
+Here, we will first start with a simplified `package_properties.py`
+script to more easily understand how to manage metadata via this script.
+
+Sprout uses Python classes to support creating and editing metadata. For
+example, through the `PackageProperties` class you can use tab
+completion to view the names of all existing metadata properties instead
+of trying to memorize them or looking them up in the documentation each
+time. The docstring of each class has more information on what to write
+in the metadata. This documentation is available both in your IDE and
+this website, e.g. for
+[`PackageProperties`](/docs/reference/PackageProperties.qmd).
+
+In the example below, we have filled out all the required metadata
+properties on the package level with sample values. You can go ahead and
+copy this over to your `package_properties.py` replacing any existing
+code there.
+
+```{python}
+#| filename: "scripts/package_properties.py"
+
+import seedcase_sprout as sp
+
+package_properties = sp.PackageProperties(
+    name="diabetes-study",
+    title="A Study on Diabetes",
+    description="Data from a 2021 study on diabetes prevalence",
+    licenses=[
+        sp.LicenseProperties(
+            name="ODC-BY-1.0",
+        ),
+    ],
+    ## Autogenerated:
+    id="c0f9b217-589b-4ee4-a917-3c4f21e3be8d",
+    version="0.1.0",
+    created="2025-11-05T16:16:20+01:00",
+)
+```
+
+### Creating `datapackage.json`
+
+Now that you've filled in some of the package metadata, it's time to
+create your `datapackage.json` file. Creating this file also officially
+makes this Python project a Data Package. You can use the
+`write_properties()` function for this by including it within the
+`main.py` script like we have done below:
+
+<!-- TODO: How to auto-run the code below? -->
+
+```{python}
+#| eval: false
+#| filename: "main.py"
+import seedcase_sprout as sp
+from scripts.package_properties import package_properties
+
+def main():
+    # Create the metadata properties script in default location.
+    sp.create_properties_script()
+    # Write metadata properties from properties script to `datapackage.json`.
+    sp.write_properties(properties=package_properties)
+
+if __name__ == "__main__":
+    main()
+```
+
+```{python}
+#| include: false
+# Only to check that it runs.
+sp.write_properties(
+    properties=package_properties,
+    path=package_path.properties()
+)
+```
+
+Then, use uv to run the script from the Terminal:
+
+``` {.bash filename="Terminal"}
+uv run main.py
+```
+
+::: callout-important
+The `write_properties()` function will give an error if the
+`PackageProperties` object is missing some of its required fields or if
+they are not filled in correctly. In that case, a `datapackage.json`
+file won't be created. So you will have to return to the
+`scripts/package_properties.py` file and fill in the correct properties.
+:::
+
+The `write_properties()` function created the `datapackage.json` file in
+your Data Package's `diabetes-study` folder, which contains the
+properties you added to it. Now, you will see the added
+`datapackage.json` file in your Data Package folder.
+
+```{python}
+#| echo: false
+print(file_tree(package_path.root()))
+```
+
+The content of this file should look like this:
+
+``` {.json filename="datapackage.json"}
+{
+  "name": "diabetes-study",
+  "id": "c0f9b217-589b-4ee4-a917-3c4f21e3be8d",
+  "title": "A Study on Diabetes",
+  "description": "Data from a 2021 study on diabetes prevalence",
+  "version": "0.1.0",
+  "created": "2025-11-05T16:16:20+01:00",
+  "licenses": [
+    {
+      "name": "ODC-BY-1.0"
+    }
+  ]
+}
+```
+
+Congratulations, you've created your first Data Package! Remember that
+you will never need to edit the `datapackage.json` file manually.
+Instead, you'll edit `scripts/package_properties.py` and run `main.py`
+to update `datapackage.json`.
