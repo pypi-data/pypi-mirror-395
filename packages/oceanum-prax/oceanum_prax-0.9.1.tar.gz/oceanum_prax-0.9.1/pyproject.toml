@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oceanum-prax"
+description = "Command-line utility for Oceanum.io PRAX platform"
+readme = "README.rst"
+license = { file = "LICENSE" }
+keywords = ["oceanum", "datamesh", "oceanum.io", "prax", "ci/cd"]
+authors = [
+    { name = "Oceanum Developers", email = "developers@oceanum.science" },
+]
+maintainers = [
+    { name = "Oceanum Developers", email = "developers@oceanum.science" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "click",
+  "platformdirs",
+  "pydantic[email]",
+  "python-jsonpath<2.0.0",
+  "requests",
+  "tabulate",
+  "humanize",
+  "oceanum>=1.0.11"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov", "ruff"]
+modelgen = ["datamodel-code-generator[http]"]
+
+[project.entry-points."oceanum.cli.extensions"]
+"main" = "oceanum.cli.prax.main"
+"project" = "oceanum.cli.prax.project"
+"workflows" = "oceanum.cli.prax.workflows"
+"route" = "oceanum.cli.prax.route"
+"user" = "oceanum.cli.prax.user"
+"client" = "oceanum.cli.prax.client"
+
+[project.urls]
+"Homepage" = "https://oceanum.io/"
+"Source" = "https://github.com/oceanum-io/oceanum-run-cli"
+"Documentation" = "https://oceanum-python.readthedocs.io/en/latest/"
+"Tracker" = "https://github.com/oceanum-io/oceanum-run-cli/issues"
+
+[project.entry-points."oceanum.cli"]
+"prax" = "oceanum.cli.prax.main"
+
+[project.entry-points."oceanum.cli.prax"]
+"main" = "oceanum.cli.prax.main"
+"project" = "oceanum.cli.prax.project"
+"workflows" = "oceanum.cli.prax.workflows"
+"route" = "oceanum.cli.prax.route"
+"user" = "oceanum.cli.prax.user"
+"client" = "oceanum.cli.prax.client"
+
+[tool.setuptools.dynamic]
+version = { attr = "oceanum.cli.prax.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["oceanum.cli.prax*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.distutils.bdist_wheel]
+universal = true
