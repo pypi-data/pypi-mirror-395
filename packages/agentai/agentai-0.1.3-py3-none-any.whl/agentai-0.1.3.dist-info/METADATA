@@ -1,0 +1,394 @@
+Metadata-Version: 2.4
+Name: agentai
+Version: 0.1.3
+Summary: A Python client for the Agent.ai API
+Home-page: https://github.com/OnStartups/python_sdk
+Author: Andrei Oprisan
+Author-email: andrei@agent.ai
+Project-URL: Documentation, https://github.com/OnStartups/python_sdk#readme
+Project-URL: Bug Tracker, https://github.com/OnStartups/python_sdk/issues
+Keywords: agent.ai,ai,llm,api,client,chatbot,automation
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.25.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# agent.ai Python SDK
+
+[![PyPI version](https://badge.fury.io/py/agentai.svg)](https://badge.fury.io/py/agentai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+A simple and powerful Python library for interacting with the [Agent.ai Actions API](https://agent.ai/actions).
+
+## Features
+
+- 🔑 **Easy Authentication** - Use environment variables or pass token directly
+- 🚀 **Convenience Methods** - Simple methods for common actions
+- 🛡️ **Robust Error Handling** - Clear error messages from the API
+- 📝 **Well Documented** - Comprehensive examples and docstrings
+- 🔧 **Flexible** - Use convenience methods or raw action calls
+- 🤖 **LLM-Friendly** - Includes [llm.txt](llm.txt) specification for AI assistants
+
+## Installation
+
+```bash
+pip install agentai
+```
+
+## Quick Start
+
+### 1. Get Your API Key
+
+Sign up at [Agent.ai](https://agent.ai) and get your Bearer token from [account settings](https://agent.ai/user/settings#credits).
+
+### 2. Set Up Authentication
+
+**Option A: Environment Variable (Recommended)**
+```bash
+export AGENTAI_API_KEY="your_api_key_here"
+```
+
+**Option B: Pass Token Directly**
+```python
+from agentai import AgentAiClient
+client = AgentAiClient(bearer_token="your_api_key_here")
+```
+
+### 3. Start Using the API
+
+```python
+from agentai import AgentAiClient
+
+client = AgentAiClient()  # Uses AGENTAI_API_KEY env var
+
+# Chat with an LLM
+response = client.chat("What is machine learning?")
+if response['status'] == 200:
+    print(response['results'])
+```
+
+## Usage Examples
+
+### Chat with LLMs
+
+```python
+from agentai import AgentAiClient
+
+client = AgentAiClient()
+
+# Simple chat
+response = client.chat("Explain quantum computing in simple terms")
+print(response['results'])
+
+# Specify a model
+response = client.chat(
+    prompt="Write a haiku about coding",
+    model="claude-sonnet"  # Options: gpt4o, gpt4o-mini, claude-sonnet, claude-haiku, 
+                           # gemini-pro, gemini-flash, llama-70b, llama-8b, deepseek
+)
+print(response['results'])
+```
+
+### Web Scraping
+
+```python
+# Get text from a webpage
+response = client.grab_web_text("https://example.com")
+if response['status'] == 200:
+    print(response['results'])
+
+# Take a screenshot
+response = client.grab_web_screenshot("https://example.com", full_page=True)
+if response['status'] == 200:
+    print(f"Screenshot URL: {response['results']}")
+```
+
+### YouTube
+
+```python
+# Get video transcript
+response = client.get_youtube_transcript("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+print(response['results'])
+
+# Search YouTube
+response = client.search_youtube("python tutorials", max_results=5)
+for video in response['results']:
+    print(video['title'])
+
+# Get channel info
+response = client.get_youtube_channel("https://www.youtube.com/@PythonTutorials")
+print(response['results'])
+```
+
+### Social Media
+
+```python
+# LinkedIn
+response = client.get_linkedin_profile("company/hubspot")
+print(response['results'])
+
+# Twitter/X
+response = client.get_recent_tweets("elonmusk", count=5)
+for tweet in response['results']:
+    print(tweet['text'])
+
+# Bluesky
+response = client.get_bluesky_posts("user.bsky.social", count=10)
+print(response['results'])
+
+# Instagram
+response = client.get_instagram_profile("instagram")
+print(response['results'])
+```
+
+### News & Search
+
+```python
+# Google News
+response = client.get_google_news(
+    query="artificial intelligence",
+    date_range="7d",  # Options: 1d, 7d, 30d, 1y
+    location="US"
+)
+for article in response['results'].get('organic_results', []):
+    print(f"- {article['title']}")
+
+# Web Search
+response = client.search_web("best python libraries 2024", num_results=10)
+print(response['results'])
+```
+
+### Company Intelligence
+
+```python
+# Get company info from domain
+response = client.get_company_info("hubspot.com")
+if response['status'] == 200:
+    company = response['results']
+    print(f"Name: {company.get('name')}")
+    print(f"Industry: {company.get('category', {}).get('industry')}")
+    print(f"Employees: {company.get('metrics', {}).get('employeesRange')}")
+```
+
+### Image Generation
+
+```python
+response = client.generate_image(
+    prompt="A futuristic city with flying cars",
+    model="DALL-E 3",        # or "Stable Diffusion"
+    style="digital art",
+    aspect_ratio="16:9"      # Options: 1:1, 16:9, 9:16, 4:3, 3:4
+)
+if response['status'] == 200:
+    print(f"Image URL: {response['results']['images'][0]['url']}")
+```
+
+### Text to Speech
+
+```python
+response = client.text_to_audio(
+    text="Hello, welcome to agent.ai!",
+    voice="alloy"
+)
+if response['status'] == 200:
+    print(f"Audio URL: {response['results']}")
+```
+
+### File Conversion
+
+```python
+# Check available conversion formats
+response = client.get_convert_options("pdf")
+print(f"PDF can be converted to: {response['results']}")
+
+# Convert a file
+response = client.convert_file(
+    file_url="https://example.com/document.pdf",
+    target_format="txt"
+)
+if response['status'] == 200:
+    print(f"Converted file: {response['results']}")
+```
+
+### Database Variables
+
+```python
+# Store a variable
+client.store_variable("user_preference", "dark_mode")
+
+# Retrieve a variable
+response = client.get_variable("user_preference")
+print(response['results'])
+```
+
+### REST API Calls
+
+```python
+response = client.rest_call(
+    url="https://api.example.com/data",
+    method="POST",
+    headers={"X-Custom-Header": "value"},
+    body={"key": "value"}
+)
+print(response['results'])
+```
+
+### Using Raw Actions
+
+For full flexibility, use the `action()` method directly:
+
+```python
+response = client.action(
+    action_id="getGoogleNews",
+    params={
+        "query": "AI news",
+        "date_range": "7d",
+        "location": "Boston"
+    }
+)
+print(response['results'])
+```
+
+## Available Actions
+
+| Action ID | Description | Convenience Method |
+|-----------|-------------|-------------------|
+| `grabWebText` | Get text from a webpage | `grab_web_text()` |
+| `grabWebScreenshot` | Screenshot a webpage | `grab_web_screenshot()` |
+| `getYoutubeTranscript` | Get YouTube video transcript | `get_youtube_transcript()` |
+| `getYoutubeChannel` | Get YouTube channel info | `get_youtube_channel()` |
+| `runYoutubeSearch` | Search YouTube | `search_youtube()` |
+| `getGoogleNews` | Get Google News articles | `get_google_news()` |
+| `getSearchResults` | Web search results | `search_web()` |
+| `getLinkedinProfile` | Get LinkedIn profile | `get_linkedin_profile()` |
+| `getLinkedinActivity` | Get LinkedIn posts | `get_linkedin_activity()` |
+| `getCompanyObject` | Company intelligence | `get_company_info()` |
+| `getTwitterUsers` | Twitter user info | `get_twitter_user()` |
+| `getRecentTweets` | Get recent tweets | `get_recent_tweets()` |
+| `getBlueskyPosts` | Get Bluesky posts | `get_bluesky_posts()` |
+| `searchBlueskyPosts` | Search Bluesky | `search_bluesky()` |
+| `getInstagramProfile` | Instagram profile | `get_instagram_profile()` |
+| `invokeLlm` | Chat with LLM | `chat()` |
+| `generateImage` | Generate images | `generate_image()` |
+| `outputAudio` | Text to speech | `text_to_audio()` |
+| `convertFile` | Convert files | `convert_file()` |
+| `convertFileOptions` | Get conversion options | `get_convert_options()` |
+| `storeVariableToDatabase` | Store variable | `store_variable()` |
+| `getVariableFromDatabase` | Get variable | `get_variable()` |
+| `invokeAgent` | Call another agent | `invoke_agent()` |
+| `restCall` | Make REST API call | `rest_call()` |
+
+## Error Handling
+
+All methods return a dictionary with the following structure:
+
+```python
+{
+    "status": 200,           # HTTP status code (or None for connection errors)
+    "error": None,           # Error message (or None if successful)
+    "results": {...},        # API response data (or None if error)
+    "metadata": {...}        # Additional metadata (if available)
+}
+```
+
+### Example Error Handling
+
+```python
+response = client.chat("Hello!")
+
+if response['status'] == 200:
+    print(f"Success: {response['results']}")
+elif response['status'] == 403:
+    print("Authentication failed. Check your API key.")
+elif response['status'] == 429:
+    print("Rate limited. Please wait and try again.")
+elif response['status'] is None:
+    print(f"Connection error: {response['error']}")
+else:
+    print(f"Error {response['status']}: {response['error']}")
+```
+
+## Examples
+
+See the `examples/` directory for complete, runnable examples:
+
+- **`interactive_chat.py`** - Chat with different LLM models
+- **`youtube_summary.py`** - Summarize YouTube videos
+- **`lead_enrichment.py`** - Enrich leads with company & LinkedIn data
+- **`brand_news_monitor.py`** - Monitor Google News for brand mentions
+- **`competitor_analysis.py`** - Analyze competitor websites & social presence
+- **`social_media_content.py`** - Generate social posts with images
+- **`faq_chatbot.py`** - Build a chatbot from website content
+- **`sales_email_subject.py`** - Generate email subject lines
+- **`file_conversion.py`** - Convert files between formats
+- **`website_monitor.py`** - Monitor websites for changes
+- **`web_search.py`** - Search the web and analyze results
+- **`bluesky_monitor.py`** - Monitor Bluesky posts
+
+## LLM Models
+
+Available models for the `chat()` method:
+
+| Model | Description |
+|-------|-------------|
+| `gpt4o` | OpenAI GPT-4o (default) |
+| `gpt4o-mini` | OpenAI GPT-4o Mini (faster, cheaper) |
+| `claude-sonnet` | Anthropic Claude Sonnet |
+| `claude-haiku` | Anthropic Claude Haiku (faster) |
+| `gemini-pro` | Google Gemini Pro |
+| `gemini-flash` | Google Gemini Flash (faster) |
+| `llama-70b` | Meta Llama 70B |
+| `llama-8b` | Meta Llama 8B (faster) |
+| `deepseek` | DeepSeek |
+
+## For AI Assistants (llm.txt)
+
+This package includes an [`llm.txt`](llm.txt) file - a comprehensive specification designed for LLM assistants (like ChatGPT, Claude, Copilot, etc.) to understand and use this SDK effectively.
+
+The `llm.txt` file contains:
+- Complete API reference with all methods and parameters
+- Response format documentation
+- Common use case examples (research assistant, social monitor, content generator, etc.)
+- Error handling patterns
+- Tips for optimal usage
+
+**For AI coding assistants:** Reference the `llm.txt` file when helping users write code with this SDK.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for feature requests or bug reports.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Links
+
+- [Agent.ai Website](https://agent.ai)
+- [API Documentation](https://agent.ai/actions)
+- [Get API Key](https://agent.ai/user/settings#credits)
+- [GitHub Repository](https://github.com/OnStartups/python_sdk)
+- [LLM Specification](llm.txt) - For AI assistants
