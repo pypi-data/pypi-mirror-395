@@ -1,0 +1,177 @@
+.. _whatsnew-5.0:
+
+************************
+What's New in sunpy 5.0?
+************************
+The SunPy project is pleased to announce the 5.0 release of the ``sunpy`` core package.
+
+On this page, you can read about some of the big changes in this release.
+
+.. contents::
+    :local:
+    :depth: 1
+
+``sunpy`` 5.0 also includes a large number of smaller improvements and bug fixes, which are described in the :ref:`changelog`.
+
+This release of sunpy contains 1279 commits in 182 merged pull requests closing 115 issues from 36 people, 21 of which are first-time contributors.
+
+* 1279 commits have been added since 4.1
+* 115 issues have been closed since 4.1
+* 182 pull requests have been merged since 4.1
+* 36 people have contributed since 4.1
+* 21 of which are new contributors
+
+The people who have contributed to the code for this release are:
+
+-  Akash Verma
+-  Akhoury Shauryam  *
+-  Akshit Tyagi  *
+-  Alasdair Wilson
+-  Albert Y. Shih
+-  Ansh Dixit  *
+-  Aritra Sinha  *
+-  Aryan Shukla  *
+-  Conor MacBride
+-  Daniel Garcia Briseno
+-  David Stansby
+-  Ed Behn  *
+-  Jan Gieseler
+-  Krish Agrawal
+-  Laura Hayes
+-  Lazar Zivadinovic
+-  Marius Giger  *
+-  Matt Wentzel-Long  *
+-  Nabil Freij
+-  Naveen Srinivasan  *
+-  Nick Murphy
+-  Nischal Singh  *
+-  OussCHE  *
+-  Stuart Mumford
+-  Suleiman Farah  *
+-  Syed Md Mihan Chistie  *
+-  Tan Jia Qing  *
+-  Timo Laitinen  *
+-  Will Barnes
+-  William Jamieson  *
+-  ejm4567  *
+-  pradeep  *
+-  ryuusama  *
+-  tal66  *
+
+Where a * indicates that this release contains their first contribution to sunpy.
+
+Updates to minimum dependencies
+===============================
+The minimum required versions of several core dependencies have been updated:
+
+- Python 3.9
+- astropy 5.0.1
+- numpy 1.21.0
+- parfive 2.0.0
+
+
+We are aware the change in the ``parfive`` minimum version is a release earlier than our dependency policy allows for.
+However, due to significant issues that ``parfive`` v2.0.0 solves and changes to remote servers, we have decided to increase it to improve the user experience when downloading files.
+
+The minimum required versions of these optional dependencies has also been updated:
+
+- Matplotlib 3.5.0
+- dask 2021.4.0
+- h5netcdf 0.11.0
+- pandas 1.2.0
+- scikit-image 0.18.0
+- scipy 1.7.0
+- cdflib 0.3.20
+
+New documentation structure
+===========================
+There has been a major overhaul of the documentation structure.
+The documentation is now organised into four major distinct sections:
+
+- :ref:`tutorial`, a step-by-step introduction to sunpy.
+- :ref:`sunpy-how-to-index`, a set of small self-contained guides for getting specific tasks done.
+- :ref:`sunpy-topic-guide-index`, in-depth explanations that detail how and why different parts of sunpy work.
+- :ref:`reference`, a listing of the contents of the sunpy package.
+
+OS agnostic packaging
+=====================
+A pure Python sunpy distribution is now published on PyPI with each release.
+This distribution contains all the functionality of sunpy apart from the code for reading ANA files.
+pip will default to installing the pure Python distribution instead of the source distribution on platforms other than Linux (x86-64) and macOS (x86-64 and ARM64).
+This should mean simpler and faster installs on such platforms, which include the Raspberry Pi as well as some cloud computing services.
+
+Getting pixels along a coordinate path
+======================================
+A new function, :func:`sunpy.map.pixelate_coord_path`, has been added to return all pixels that are intersected by a given coordinate path.
+This replaces the now-deprecated ``sunpy.map.extract_along_coord``.
+See the following pages for examples of how to use :func:`~sunpy.map.pixelate_coord_path`,
+
+.. minigallery:: sunpy.map.pixelate_coord_path
+
+1 minute GOES data now available
+================================
+Searching for GOES data now returns 1 minute averaged data in addition to the high-cadence data for GOES 13-17.
+As with all Fido clients, the results of a search will return all available data.
+For example, searching over a single day will provide multiple results for the different satellites available and the different resolution data.
+This can be seen in the Resolution column below.
+Here, the ``flx1s`` refers to the high-cadence 1s data and the ``avg1m`` refers to the averaged 1 minute sampling data.
+In the past, ``sunpy`` only provided a search over the high-cadence data.
+
+.. code-block:: python
+
+    >>> from sunpy.net import Fido, attrs as a
+    >>> res = Fido.search(a.Time("2022-02-15", "2022-02-15"),
+    ...                   a.Instrument("XRS"))  # doctest: +REMOTE_DATA
+    >>> res  # doctest: +REMOTE_DATA
+    <sunpy.net.fido_factory.UnifiedResponse object at ...>
+    Results from 1 Provider:
+    <BLANKLINE>
+    4 Results from the XRSClient:
+    Source: <8: https://umbra.nascom.nasa.gov/goes/fits
+    8-15: https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/
+    16-17: https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/
+    <BLANKLINE>
+           Start Time               End Time        Instrument  Physobs   Source Provider Resolution SatelliteNumber
+    ----------------------- ----------------------- ---------- ---------- ------ -------- ---------- ---------------
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      flx1s              16
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      avg1m              16
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      flx1s              17
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      avg1m              17
+    <BLANKLINE>
+    <BLANKLINE>
+
+If you want to download just the 1 minute data, you can do so by specifying the resolution in the query by passing the ``a.Resolution`` attribute.
+If you want the 1s resolution data, you would instead pass ``a.Resolution("flx1s")`` instead.
+
+.. code-block:: python
+
+    >>> res = Fido.search(a.Time("2022-02-15", "2022-02-15"),
+    ...                   a.Instrument("XRS"), a.Resolution("avg1m"))  # doctest: +REMOTE_DATA
+    >>> res  # doctest: +REMOTE_DATA
+    <sunpy.net.fido_factory.UnifiedResponse object at ...>
+    Results from 1 Provider:
+    <BLANKLINE>
+    2 Results from the XRSClient:
+    Source: <8: https://umbra.nascom.nasa.gov/goes/fits
+    8-15: https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/
+    16-17: https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/
+    <BLANKLINE>
+           Start Time               End Time        Instrument  Physobs   Source Provider Resolution SatelliteNumber
+    ----------------------- ----------------------- ---------- ---------- ------ -------- ---------- ---------------
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      avg1m              16
+    2022-02-15 00:00:00.000 2022-02-15 23:59:59.999        XRS irradiance   GOES     NOAA      avg1m              17
+    <BLANKLINE>
+    <BLANKLINE>
+
+
+``sunpy.database`` deprecation
+==============================
+The ``sunpy.database`` module is no longer actively maintained and has a number of outstanding issues.
+It has now been formally deprecated, and will be removed in sunpy 6.0.
+If you are using sunpy.database and would like to see a replacement, please join the discussion thread at https://community.openastronomy.org/t/deprecating-sunpy-database/495.
+
+Deprecation of IO readers
+=========================
+``sunpy.io.cdf``, ``sunpy.io.file_tools`` and ``sunpy.io.jp2`` sub-modules have been deprecated, and will be removed in version 5.1.
+
+These are designed for internal use only, and removing them from the public API gives the developers more flexibility to modify them without impacting users.
