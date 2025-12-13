@@ -1,0 +1,135 @@
+Metadata-Version: 2.4
+Name: lrag
+Version: 2.1.2
+Summary: Neural Retrieval-Augmented Generation for GitHub code blocks
+Author-email: ABrain One and contributors <AI@ABrain.one>
+License: MIT License
+        
+        Copyright (c) 2024- ABrain One and contributors
+        All rights reserved.
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://ABrain.one
+Project-URL: Repository, https://github.com/ABrain-One/nn-rag
+Project-URL: Bug Tracker, https://github.com/ABrain-One/nn-rag/issues
+Keywords: retrieval-augmented generation,RAG,large language model,LLM,code blocks,neural retrieval,generation pipeline,vector search,indexing,Python,faiss,block extraction,GitHub code,contextual embedding
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: nn-rag==2.1.2
+Dynamic: license-file
+
+# <img src='https://abrain.one/img/lemur-nn-icon-64x64.png' width='32px'/> LLM Retrieval Augmented Generation
+<sub><a href='https://pypi.python.org/pypi/nn-rag'><img src='https://img.shields.io/pypi/v/nn-rag.svg'/></a> <a href="https://pepy.tech/project/nn-rag"><img alt="GitHub release" src="https://static.pepy.tech/badge/nn-rag"></a><br/>
+short alias  <a href='https://pypi.python.org/pypi/lrag'>lrag</a></sub><br/><br/>
+
+<img src='https://abrain.one/img/nnrag-logo.png' width='50%'/>
+
+The original version of the NN RAG project was created by <strong>Waleed Khalid</strong> at the Computer Vision Laboratory, University of Würzburg, Germany.
+
+<h3>📖 Overview</h3>
+
+A minimal Retrieval-Augmented Generation (RAG) pipeline for code and dataset details.  
+This project aims to provide LLMs with additional context from the internet or local repos, 
+then optionally fine-tune the LLM for specific tasks.
+
+## Requirements
+
+- **Python** 3.8+ recommended  
+- **Pip** or **Conda** for installing dependencies  
+- (Optional) **GPU** with CUDA if you plan to do large-scale training
+
+### Installing Dependencies
+
+1. Create and activate a virtual environment (recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate   # Linux/Mac
+   venv\Scripts\activate      # Windows
+
+2. ### Latest Development Version
+
+Install the latest version directly from GitHub:
+
+```bash
+pip install git+https://github.com/ABrain-One/nn-rag --upgrade
+```
+
+## Usage
+
+### Command Line Interface
+
+The package provides a command-line interface for extracting neural network blocks:
+
+```bash
+# Correct way to run (recommended)
+python3 -m ab.rag --help
+
+# Extract a specific block
+python3 -m ab.rag --block ResNet
+
+# Extract multiple blocks
+python3 -m ab.rag --blocks ResNet VGG DenseNet
+
+# Extract from JSON file (default)
+python3 -m ab.rag
+
+# Note: Avoid running 'python3 -m ab.rag.extract_blocks' as it may show warnings
+```
+
+### Python API
+
+```python
+from ab.rag import BlockExtractor, BlockValidator
+
+# Initialize extractor
+extractor = BlockExtractor()
+
+# Warm up the index (clones repos and indexes if needed)
+extractor.warm_index_once()
+
+# Extract a single block
+result = extractor.extract_single_block("ResNet")
+
+# Extract multiple blocks
+results = extractor.extract_multiple_blocks(["ResNet", "VGG"])
+
+# Extract from JSON file (uses default nn_block_names.json)
+results = extractor.extract_blocks_from_file()
+
+# Extract with limit
+results = extractor.extract_blocks_from_file(limit=10)
+
+# Extract with custom JSON file
+results = extractor.extract_blocks_from_file("custom_blocks.json")
+
+# Extract with start_from parameter
+results = extractor.extract_blocks_from_file(start_from="ResNet", limit=5)
+```
+
+#### The idea and leadership of Dr. Ignatov
