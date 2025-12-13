@@ -1,0 +1,1 @@
+from .brawlerType import BrawlerType, BrawlerListType, BrawlerStatsType, AccessoryType, AccessoryListType, StarPowerType, StarPowerListType
