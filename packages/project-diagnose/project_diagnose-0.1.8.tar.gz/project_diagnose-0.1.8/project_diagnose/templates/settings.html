@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Настройки Diagnose</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .settings-card {
+            background: var(--panel-bg);
+            padding: 12px 14px;
+            border-radius: 8px;
+        }
+        .settings-card h3 {
+            margin-top: 0;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+        .item-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .item-row input {
+            flex: 1;
+        }
+        .small-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        #statusBlock {
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+
+        .file-tree {
+            background: var(--panel-bg);
+            padding: 10px 14px;
+            border-radius: 8px;
+            max-height: 45vh;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .file-item {
+            cursor: pointer;
+            padding: 2px 0;
+        }
+        .file-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+        .folder {
+            font-weight: bold;
+        }
+        .indent-1 { padding-left: 16px; }
+        .indent-2 { padding-left: 32px; }
+        .indent-3 { padding-left: 48px; }
+        .indent-4 { padding-left: 64px; }
+    </style>
+</head>
+
+<body>
+<script>
+    if (localStorage.getItem("project_diagnose_theme") === "dark") {
+        document.body.classList.add("dark");
+    }
+</script>
+
+<header>
+    <h1>Настройки Diagnose</h1>
+    <a href="/" class="button">← Назад</a>
+</header>
+
+<section class="panel">
+    <h2>Файлы проекта</h2>
+    <div id="fileTree" class="file-tree"></div>
+    <p style="font-size:12px; opacity:0.7;">
+        Двойной клик по файлу или директории добавляет путь в include_files.
+    </p>
+</section>
+
+<section class="panel">
+    <h2>Конфигурация config.diagnose</h2>
+
+    <div class="settings-grid">
+        <div class="settings-card" data-field="include_ext">
+            <h3>Расширения для включения</h3>
+            <div class="list" id="include_ext_list"></div>
+            <button class="small-btn" data-add="include_ext">+ Добавить</button>
+        </div>
+
+        <div class="settings-card" data-field="exclude_dirs">
+            <h3>Исключаемые директории</h3>
+            <div class="list" id="exclude_dirs_list"></div>
+            <button class="small-btn" data-add="exclude_dirs">+ Добавить</button>
+        </div>
+
+        <div class="settings-card" data-field="exclude_files">
+            <h3>Исключаемые файлы</h3>
+            <div class="list" id="exclude_files_list"></div>
+            <button class="small-btn" data-add="exclude_files">+ Добавить</button>
+        </div>
+
+        <div class="settings-card" data-field="include_files">
+            <h3>Принудительно включаемые файлы</h3>
+            <div class="list" id="include_files_list"></div>
+            <button class="small-btn" data-add="include_files">+ Добавить</button>
+        </div>
+
+        <div class="settings-card" data-field="special_json">
+            <h3>Особые JSON-файлы</h3>
+            <div class="list" id="special_json_list"></div>
+            <button class="small-btn" data-add="special_json">+ Добавить</button>
+        </div>
+    </div>
+
+    <button id="saveBtn" style="margin-top:15px;">💾 Сохранить настройки</button>
+    <pre id="statusBlock"></pre>
+</section>
+
+<script>
+    const FILE_TREE = {{ tree | tojson }};
+    window.CURRENT_CONFIG = {{ config | tojson }};
+</script>
+
+<script>
+function renderTree(node, level = 0, basePath = "") {
+    let html = "";
+
+    for (const key in node) {
+        if (key === "_files") {
+            node["_files"].forEach(f => {
+                const full = basePath ? `${basePath}/${f}` : f;
+                html += `<div class="file-item indent-${level}" data-path="${full}">📄 ${f}</div>`;
+            });
+            continue;
+        }
+
+        const newPath = basePath ? `${basePath}/${key}` : key;
+
+        html += `<div class="file-item folder indent-${level}" data-path="${newPath}">📁 ${key}</div>`;
+        html += renderTree(node[key], level + 1, newPath);
+    }
+
+    return html;
+}
+
+document.getElementById("fileTree").innerHTML = renderTree(FILE_TREE);
+</script>
+
+<script>
+function createRow(fieldName, value = "") {
+    const row = document.createElement("div");
+    row.className = "item-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = value;
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.textContent = "✕";
+    delBtn.className = "small-btn";
+    delBtn.onclick = () => row.remove();
+
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    return row;
+}
+
+function initList(field) {
+    const cont = document.getElementById(field + "_list");
+    cont.innerHTML = "";
+    (window.CURRENT_CONFIG[field] || []).forEach(v => cont.appendChild(createRow(field, v)));
+}
+
+["include_ext","exclude_dirs","exclude_files","include_files","special_json"].forEach(initList);
+
+document.querySelectorAll("[data-add]").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const field = btn.dataset.add;
+        document.getElementById(field + "_list").appendChild(createRow(field, ""));
+    });
+});
+
+document.getElementById("fileTree").addEventListener("dblclick", e => {
+    const item = e.target.closest(".file-item");
+    if (!item) return;
+
+    const path = item.dataset.path;
+    const list = document.getElementById("include_files_list");
+    list.appendChild(createRow("include_files", path));
+});
+
+document.getElementById("saveBtn").addEventListener("click", () => {
+    const fields = ["include_ext","exclude_dirs","exclude_files","include_files","special_json"];
+    const cfg = {};
+
+    fields.forEach(field => {
+        cfg[field] = Array.from(document.querySelectorAll(`#${field}_list input`))
+            .map(i => i.value.trim())
+            .filter(v => v);
+    });
+
+    fetch("/save_settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: cfg })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const s = document.getElementById("statusBlock");
+        s.textContent = data.status === "ok"
+            ? "✓ Настройки сохранены.\nОбновите страницу."
+            : "Ошибка:\n" + data.message;
+    });
+});
+</script>
+
+</body>
+</html>
