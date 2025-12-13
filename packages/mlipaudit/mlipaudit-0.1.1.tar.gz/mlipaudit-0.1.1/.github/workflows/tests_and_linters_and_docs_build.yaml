@@ -1,0 +1,102 @@
+name: Tests and Linters and Docs build 🧪
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  linters:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim-bullseye
+
+    steps:
+      - name: Git setup
+        run: |
+          apt-get update && apt-get install -y \
+          coreutils \
+          git
+          git config --system --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Checkout code  📦
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Lint
+        run: uv run --only-dev pre-commit run --all-files --verbose
+
+  tests:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim-bullseye
+
+    steps:
+      - name: Git setup
+        run: |
+          apt-get update && apt-get install -y \
+          coreutils \
+          git
+
+      - name: Checkout code  📦
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Add safe directory 🔒
+        run: git config --system --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Run tests 🧪
+        run: |
+          uv run pytest --verbose --cov-report xml:coverage.xml \
+                            --cov-report term-missing \
+                            --junitxml=pytest.xml \
+                            --cov=mlipaudit
+
+      - name: Pytest coverage comment 💬
+        id: coverageComment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-xml-coverage-path: ./coverage.xml
+          junitxml-path: ./pytest.xml
+
+      - name: Create the Badge 🎖️
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.BOT_ACCESS_TOKEN }}
+          gistID: e7c79b17c0a9d47bc826100ef880a16f
+          filename: pytest-coverage-comment.json
+          label: Test Coverage
+          message: ${{ steps.coverageComment.outputs.coverage }}
+          color: ${{ steps.coverageComment.outputs.color }}
+          namedLogo: python
+
+  docs-build:
+    # Only build the docs and don't deploy them
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim-bullseye
+
+    steps:
+      - name: Git setup
+        run: |
+          apt-get update && apt-get install -y \
+          coreutils \
+          git
+          git config --system --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Checkout code  📦
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build documentation
+        run: |
+          uv run sphinx-build -W -b html docs/source/ _build/
