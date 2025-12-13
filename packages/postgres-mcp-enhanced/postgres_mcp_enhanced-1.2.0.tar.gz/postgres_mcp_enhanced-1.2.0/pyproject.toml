@@ -1,0 +1,123 @@
+[project]
+name = "postgres-mcp-enhanced"
+version = "1.2.0"
+description = "Enterprise PostgreSQL MCP Server - Enhanced fork with comprehensive security, AI-native operations, and intelligent meta-awareness"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.23.0",
+    "psycopg[binary]>=3.2.6",
+    "humanize>=4.11.0",
+    "pglast==7.10",
+    "attrs>=25.3.0",
+    "psycopg-pool>=3.2.6",
+    "instructor>=1.7.9",
+    "h11>=0.16.0",
+    "setuptools>=78.1.1",
+    # Security: Force updated versions to fix CVEs (Dec 6, 2025 update)
+    "starlette>=0.49.1",  # CVE-2025-62727, CVE-2025-54121
+    "urllib3>=2.6.0",     # CVE-2025-66471, CVE-2025-66418 (FIXED: upgraded from 2.5.0)
+    "requests>=2.32.4",   # CVE-2024-47081
+    "aiohttp>=3.12.14",   # CVE-2025-53643
+]
+license = "mit"
+license-files = ["LICENSE"]
+keywords = ["mcp", "postgresql", "database", "postgres", "model-context-protocol", "pgvector", "postgis"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[[project.authors]]
+name = "Chris LeRoux"
+email = "admin@adamic.tech"
+
+[project.urls]
+Homepage = "https://github.com/neverinfamous/postgres-mcp"
+Repository = "https://github.com/neverinfamous/postgres-mcp"
+Issues = "https://github.com/neverinfamous/postgres-mcp/issues"
+Documentation = "https://github.com/neverinfamous/postgres-mcp/wiki"
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/postgres_mcp"]
+
+[project.scripts]
+postgres-mcp = "postgres_mcp:main"
+
+# [tool.pyright]
+# venvPath = "."
+# venv = ".venv"
+
+[tool.pytest.ini_options]
+pythonpath = ["./src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[dependency-groups]
+dev = [
+    "docker>=7.1.0",
+    "pyright==1.1.407",
+    "pytest-asyncio>=0.26.0",
+    "pytest>=8.3.5",
+    "ruff==0.14.8",
+]
+
+[tool.black]
+line-length = 150
+
+[tool.ruff]
+line-length = 150
+target-version = "py38"
+exclude = [".venv*"]
+
+lint.select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "W",   # pycodestyle warnings
+    # "C90", # mccabe complexity
+    "N",   # pep8-naming
+    # "D",   # pydocstyle
+    "UP",  # pyupgrade
+    "RUF"  # ruff-specific rules
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["postgres-mcp"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"  # Minimum for type checking, runtime supports 3.12-3.14, Docker uses 3.13
+reportMissingTypeStubs = false
+# reportUnknownMemberType = true
+# reportUnknownParameterType = true
+# reportUnknownVariableType = true
+# reportUnknownArgumentType = true
+reportPrivateUsage = true
+reportUntypedFunctionDecorator = true
+reportMissingTypeArgument = true
+reportInvalidTypeVarUse = true
+reportUnnecessaryCast = true
+# reportUnnecessaryComparison = true
