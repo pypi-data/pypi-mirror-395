@@ -1,0 +1,4 @@
+"""django-rewind: Rollback Django migrations even when the migration file is deleted."""
+
+__version__ = "0.1.0"
+__version_info__ = tuple(map(int, __version__.split(".")))
