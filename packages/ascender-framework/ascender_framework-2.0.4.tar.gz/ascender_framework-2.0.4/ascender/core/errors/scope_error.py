@@ -1,0 +1,2 @@
+class AscenderScopeError(Exception):
+    pass
