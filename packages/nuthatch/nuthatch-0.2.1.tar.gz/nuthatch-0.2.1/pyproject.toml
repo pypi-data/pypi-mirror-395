@@ -1,0 +1,119 @@
+[project]
+name = "nuthatch"
+dynamic = ["version"]
+description = "Cacheable big data pipelines"
+authors = [
+    { name = "Joshua Adkins", email = "josh@rhizaresearch.org" },
+    { name = "Genevieve Flaspohler", email = "geneviee@rhizaresearch.org" }
+]
+readme = "README.md"
+requires-python = ">= 3.12"
+license = {text = "MIT"}
+
+dependencies = [
+    "fsspec",
+    "sqlalchemy",
+    "pandas",
+    "dask[dataframe]",
+    "deltalake==1.1.2",
+    "dask-deltatable",
+    "xarray",
+    "pyarrow",
+    "terracotta",
+    "gitpython",
+    "psycopg2-binary",
+    "zarr",
+    "click",
+    "polars",
+    "dateparser",
+    "tomli-w"
+]
+
+# TODO: Make backend submodules so that their
+# dependencies can be installed independently
+[dependency-groups]
+dev = [
+    "pooch",
+    "google-cloud-secret-manager",
+    "gcsfs",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+nuthatch = "nuthatch.cli:main"
+
+
+[project.optional-dependencies]
+
+
+[build-system]
+requires = ["hatchling==1.26.3", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+ source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nuthatch"]
+exclude = [
+    "src/nuthatch/test_secrets.py" # Exclude a specific file
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv]
+managed = true
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s.%(msecs)03d %(levelname)s %(filename)s:%(lineno)s %(message)s"
+addopts = [
+    "--strict-markers",
+    "--cov=nuthatch",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+
+[tool.coverage.run]
+source = ["src/nuthatch"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+
+[tool.nuthatch]
+filesystem = "gs://sheerwater-datalake/caches"
+host = "postgres.sheerwater.rhizaresearch.org"
+port = 5432
+database = "postgres"
+username = "write"
+driver = "postgresql"
+raster_store = "gs://terracotta-files"
+metadata_location = "filesystem"
+dynamic_config_path = "nuthatch.test_secrets"
+
+[tool.nuthatch.filesystem_options]
+cache_timeout=0
+
+[tool.nuthatch.local]
+filesystem = "~/.cache/nuthatch"
+
+[tool.nuthatch.mirror-public]
+filesystem = "gs://sheerwater-public-datalake/caches"
+
+[tool.nuthatch.mirror-public.filesystem_options]
+cache_timeout=0
+token = 'anon'
