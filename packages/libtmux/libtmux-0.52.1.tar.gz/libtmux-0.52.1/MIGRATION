@@ -1,0 +1,388 @@
+# Migration notes
+
+Migration and deprecation notes for libtmux are here, see {ref}`changelog` as
+well.
+
+```{admonition} Welcome on board! 👋
+1. 📌 For safety, **always** pin the package
+2. 📖 Check the migration notes _(You are here)_
+3. 📣 If you feel something got deprecated and it interrupted you - past, present, or future - voice your opinion on the [tracker].
+
+   We want to make libtmux fun, reliable, and useful for users.
+
+   API changes can be painful.
+
+   If we can do something to draw the sting, we'll do it. We're taking a balanced approach. That's why these notes are here!
+
+   (Please pin the package. 🙏)
+
+   [tracker]: https://github.com/tmux-python/libtmux/discussions
+```
+
+## Complete Deprecation Reference
+
+This table provides a quick reference for all deprecated APIs. See version-specific
+sections below for detailed migration examples and code samples.
+
+### Method Renamings
+
+| Class | Deprecated | Replacement | Since | Raises |
+|-------|------------|-------------|-------|--------|
+| Server | `kill_server()` | `kill()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Session | `attach_session()` | `attach()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Session | `kill_session()` | `kill()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Window | `select_window()` | `select()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Window | `kill_window()` | `kill()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Window | `split_window()` | `split()` | 0.33.0 (2024-03-17) | 0.51.0 |
+| Window | `set_window_option()` | `set_option()` | 0.50.0 (2025-11-30) | _(warning)_ |
+| Window | `show_window_option()` | `show_option()` | 0.50.0 (2025-11-30) | _(warning)_ |
+| Window | `show_window_options()` | `show_options()` | 0.50.0 (2025-11-30) | _(warning)_ |
+| Pane | `select_pane()` | `select()` | 0.30.0 (2024-02-16) | 0.51.0 |
+| Pane | `resize_pane()` | `resize()` | 0.28.0 (2024-02-14) | 0.51.0 |
+| Pane | `split_window()` | `split()` | 0.33.0 (2024-03-17) | 0.51.0 |
+
+### Property Renamings
+
+| Class | Deprecated | Replacement | Since | Raises |
+|-------|------------|-------------|-------|--------|
+| Session | `attached_window` | `active_window` | 0.31.0 (2024-02-17) | 0.51.0 |
+| Session | `attached_pane` | `active_pane` | 0.31.0 (2024-02-17) | 0.51.0 |
+| Window | `attached_pane` | `active_pane` | 0.31.0 (2024-02-17) | 0.51.0 |
+
+### Parameter Changes
+
+| Method(s) | Deprecated | Replacement | Since | Raises |
+|-----------|------------|-------------|-------|--------|
+| Options/hooks methods | `g` | `global_` | 0.50.0 (2025-11-30) | _(warning)_ |
+| `split_window()` / `split()` | `percent` | `size` | 0.28.0 (2024-02-14) | 0.51.0 |
+| `split_window()` / `split()` | `vertical`/`horizontal` | `direction` (PaneDirection) | 0.33.0 (2024-03-17) | 0.51.0 |
+| `resize_pane()` | `-U`, `-D`, `-L`, `-R` | `adjustment_direction` | 0.28.0 (2024-02-14) | 0.51.0 |
+| `Server.get_by_id()` | `id` | `session_id` | 0.16.0 (2022-12-10) | 0.51.0 |
+| `Session.get_by_id()` | `id` | `window_id` | 0.16.0 (2022-12-10) | 0.51.0 |
+| `Window.get_by_id()` | `id` | `pane_id` | 0.16.0 (2022-12-10) | 0.51.0 |
+
+### Query/Filter API Changes
+
+| Class | Deprecated | Replacement | Since | Raises |
+|-------|------------|-------------|-------|--------|
+| Server | `list_sessions()` / `_list_sessions()` | `sessions` property | 0.17.0 (2022-12-26) | 0.51.0 |
+| Server | `where({...})` | `sessions.filter(**kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Server | `find_where({...})` | `sessions.get(default=None, **kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Server | `_list_panes()` / `_update_panes()` | `panes` property | 0.17.0 (2022-12-26) | 0.51.0 |
+| Server | `_list_windows()` / `_update_windows()` | `windows` property | 0.17.0 (2022-12-26) | 0.51.0 |
+| Server | `get_by_id(id)` | `sessions.get(session_id=..., default=None)` | 0.16.0 (2022-12-10) | 0.51.0 |
+| Session | `list_windows()` / `_list_windows()` | `windows` property | 0.17.0 (2022-12-26) | 0.51.0 |
+| Session | `where({...})` | `windows.filter(**kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Session | `find_where({...})` | `windows.get(default=None, **kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Session | `get_by_id(id)` | `windows.get(window_id=..., default=None)` | 0.16.0 (2022-12-10) | 0.51.0 |
+| Window | `list_panes()` / `_list_panes()` | `panes` property | 0.17.0 (2022-12-26) | 0.51.0 |
+| Window | `where({...})` | `panes.filter(**kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Window | `find_where({...})` | `panes.get(default=None, **kwargs)` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Window | `get_by_id(id)` | `panes.get(pane_id=..., default=None)` | 0.16.0 (2022-12-10) | 0.51.0 |
+| All | `children` property | `sessions`/`windows`/`panes` | 0.17.0 (2022-12-26) | 0.51.0 |
+
+### Attribute Access Changes
+
+| Pattern | Deprecated | Replacement | Since | Raises |
+|---------|------------|-------------|-------|--------|
+| Dict key access | `obj['key']` | `obj.key` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Dict get | `obj.get('key')` | `obj.key` | 0.17.0 (2022-12-26) | 0.51.0 |
+| Dict get w/ default | `obj.get('key', None)` | `getattr(obj, 'key', None)` | 0.17.0 (2022-12-26) | 0.51.0 |
+
+### Removed Items
+
+| Item | Removed In | Migration |
+|------|------------|-----------|
+| tmux < 3.2a support | 0.49.0 (2025-11-29) | Upgrade tmux or use libtmux 0.48.x |
+| `console_to_str()` | 0.42.0 (2025-02-02) | Use `text=True` in subprocess |
+| `str_from_console()` | 0.42.0 (2025-02-02) | Use `text=True` in subprocess |
+| `common.which()` | 0.12.0 (2022-07-13) | Use `shutil.which()` |
+
+### Default Behavior Changes
+
+| Method | Old Default | New Default | Since |
+|--------|-------------|-------------|-------|
+| `Session.new_window()` | `attach=True` | `attach=False` | 0.28.0 (2024-02-14) |
+| `Window.split_window()` | `attach=True` | `attach=False` | 0.28.0 (2024-02-14) |
+
+---
+
+## Upcoming Release
+
+_Detailed migration steps for the next version will be posted here._
+
+<!-- To the maintainers and contributors: please add migration details for the upcoming release here -->
+
+## libtmux 0.50.0: Unified Options and Hooks API (#516)
+
+### New unified options API
+
+All tmux objects (Server, Session, Window, Pane) now share a consistent options
+interface through {class}`~libtmux.options.OptionsMixin`:
+
+```python
+# Get all options
+session.show_options()
+
+# Get a single option
+session.show_option('base-index')
+
+# Set an option
+window.set_option('automatic-rename', True)
+
+# Unset an option
+window.unset_option('automatic-rename')
+```
+
+### New hooks API
+
+All tmux objects now support hook management through
+{class}`~libtmux.hooks.HooksMixin`:
+
+```python
+# Set a hook
+session.set_hook('session-renamed', 'display-message "Renamed!"')
+
+# Get hook value
+session.show_hook('session-renamed')
+
+# Get all hooks
+session.show_hooks()
+
+# Remove a hook
+session.unset_hook('session-renamed')
+```
+
+### Deprecated Window methods
+
+The following `Window` methods are deprecated and will be removed in a future
+release:
+
+| Deprecated | Replacement |
+|------------|-------------|
+| `Window.set_window_option()` | {meth}`Window.set_option() <libtmux.Window.set_option>` |
+| `Window.show_window_option()` | {meth}`Window.show_option() <libtmux.Window.show_option>` |
+| `Window.show_window_options()` | {meth}`Window.show_options() <libtmux.Window.show_options>` |
+
+**Before (deprecated):**
+
+```python
+window.set_window_option('automatic-rename', 'on')
+window.show_window_option('automatic-rename')
+window.show_window_options()
+```
+
+**After (0.50.0+):**
+
+```python
+window.set_option('automatic-rename', True)
+window.show_option('automatic-rename')
+window.show_options()
+```
+
+### Deprecated `g` parameter
+
+The `g` parameter for global options is deprecated in favor of `global_`:
+
+**Before (deprecated):**
+
+```python
+session.show_option('status', g=True)
+session.set_option('status', 'off', g=True)
+```
+
+**After (0.50.0+):**
+
+```python
+session.show_option('status', global_=True)
+session.set_option('status', 'off', global_=True)
+```
+
+Using the old `g` parameter will emit a {class}`DeprecationWarning`.
+
+## libtmux 0.46.0 (2025-02-25)
+
+### Imports removed from libtmux.test (#580)
+
+Root-level of imports from `libtmux.test` are no longer possible.
+
+```python
+# Before 0.46.0
+from libtmux.test import namer
+```
+
+```python
+# From 0.46.0 onward
+from libtmux.test.named import namer
+```
+
+Same thing with constants:
+
+```python
+# Before 0.46.0
+from libtmux.test import (
+  RETRY_INTERVAL_SECONDS,
+  RETRY_TIMEOUT_SECONDS,
+  TEST_SESSION_PREFIX
+)
+```
+
+```python
+# From 0.46.0 onward
+from libtmux.test.constants import (
+  RETRY_INTERVAL_SECONDS,
+  RETRY_TIMEOUT_SECONDS,
+  TEST_SESSION_PREFIX
+)
+```
+
+## libtmux 0.45.0 (2025-02-23)
+
+### Test helpers: Module moves
+
+Test helper functionality has been split into focused modules (#578):
+
+- `libtmux.test` module split into:
+  - `libtmux.test.constants`: Test-related constants (`TEST_SESSION_PREFIX`, etc.)
+  - `libtmux.test.environment`: Environment variable mocking
+  - `libtmux.test.random`: Random string generation utilities
+  - `libtmux.test.temporary`: Temporary session/window management
+
+**Breaking**: Import paths have changed. Update imports:
+
+```python
+# Old (0.44.x and earlier)
+from libtmux.test import (
+    TEST_SESSION_PREFIX,
+    get_test_session_name,
+    get_test_window_name,
+    namer,
+    temp_session,
+    temp_window,
+    EnvironmentVarGuard,
+)
+```
+
+```python
+# New (0.45.0+)
+from libtmux.test.constants import TEST_SESSION_PREFIX
+from libtmux.test.environment import EnvironmentVarGuard
+from libtmux.test.random import get_test_session_name, get_test_window_name, namer
+from libtmux.test.temporary import temp_session, temp_window
+```
+
+## 0.35.0: Commands require explicit targets (2024-03-17)
+
+### Commands require explicit targets (#535)
+
+- {meth}`Server.cmd()`, {meth}`Session.cmd()`, {meth}`Window.cmd()`, {meth}`Pane.cmd()` require passing `target` instead of `['-t', target]`, `['-tTargetName']`, etc. This change is to avoid issues mistakenly interpreting `-t` in other shell values as targets.
+
+  Before:
+
+  ```python
+  session.cmd('send-keys', 'echo hello', '-t', '0')
+  ```
+
+  With 0.35.0 and after:
+
+  ```python
+  session.cmd('send-keys', 'echo hello', target='0')
+  ```
+
+## 0.33.0: Deprecations for splitting (2024-03-03)
+
+### Deprecations (#532)
+
+- `Window.split_window()` to {meth}`Window.split()`
+- `Pane.split_window()` to {meth}`Pane.split()`
+
+## 0.31.0: Renaming and command cleanup (2024-02-17)
+
+### Cleanups (#527)
+
+- Commands: Param change
+
+  {meth}`Server.cmd()`, {meth}`Session.cmd()`, {meth}`Window.cmd()`, {meth}`Pane.cmd()`
+
+  - Use `cmd: str` as first positional
+  - Removed unused keyword arguments `**kwargs`
+
+### Renamings (#527)
+
+- `Session.attached_window` renamed to {meth}`Session.active_window`
+  - `Session.attached_window` deprecated
+- `Session.attached_pane` renamed to {meth}`Session.active_pane`
+  - `Session.attached_pane` deprecated
+- `Window.attached_pane` renamed to {meth}`Window.active_pane`
+  - `Window.attached_pane` deprecated
+
+## 0.28.0: Resizing and detached by default (2024-02-15)
+
+### Detach by default
+
+- {meth}`Session.new_window()` + {meth}`Window.split_window()` no longer attaches by default (#523)
+
+  - 0.28.0 and greater: Defaults to `attach=False`.
+  - 0.27.1 and below: Defaults to `attach=True`.
+
+  For the old behavior in 0.28.0 and beyond, pass `attach=True` explicitly.
+
+### Resizing panes
+
+- `Pane.resize_pane()` renamed to {meth}`Pane.resize()` (via #523)
+
+  This convention will be more consistent with {meth}`Window.resize()`.
+
+- {meth}`Pane.resize_pane()`'s params changed (#523)
+
+  - No longer accepts `-U`, `-D`, `-L`, `-R` directly, instead accepts
+    {class}`~libtmux.constants.ResizeAdjustmentDirection` (see below).
+
+    - 0.27.1 and below: `pane.resize_pane("-D", 20)`, `pane.resize_pane("-R", 20)`
+
+    - 0.28.0 and beyond:
+
+      ```python
+      from libtmux.constants import ResizeAdjustmentDirection
+      pane.resize_pane(adjustment_direction=ResizeAdjustmentDirection.Down, adjustment=25)
+      pane.resize_pane(
+        adjustment_direction=ResizeAdjustmentDirection.Right, adjustment=25
+      )
+      ```
+
+## 0.17.0: Simplified attributes (2022-12-26)
+
+### Finding objects / relations
+
+- 0.16 and below: `session._windows()`, `session.list_windows()`, etc.
+
+  0.17 and after: {attr}`session.windows <libtmux.Session.windows>`
+
+- 0.16 and below: `session.find_where({'window_name': my_window})`
+
+  0.17 and after: {meth}`session.windows.get(window_name=my_window, default=None) <libtmux.Session.windows>`
+
+  - If not found and not `default`, raises {exc}`~libtmux._internal.query_list.ObjectDoesNotExist`
+  - If multiple objects found, raises {exc}`~libtmux._internal.query_list.MultipleObjectsReturned`
+
+- 0.16 and below: `session.where({'window_name': my_window})`
+
+  0.17 and after: {meth}`session.windows.filter(window_name=my_window) <libtmux.Session.windows>`
+
+### Accessing attributes
+
+- 0.16 and below: `window['id']`
+
+  0.17 and after: `window.id`
+
+- 0.16 and below: `window.get('id')`
+
+  0.17 and after: `window.id`
+
+- 0.16 and below: `window.get('id', None)`
+
+  0.17 and after: `getattr(window, 'id', None)`
+
+<!---
+# vim: set filetype=markdown:
+-->
