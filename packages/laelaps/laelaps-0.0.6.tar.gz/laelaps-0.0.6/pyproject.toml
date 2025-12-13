@@ -1,0 +1,130 @@
+# SPDX-FileCopyrightText: 2026 Jan Maarten van Doorn <laelaps@vandoorn.cloud>
+#
+# SPDX-License-Identifier: MPL-2.0
+
+[build-system]
+requires      = ["setuptools>=80.9.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laelaps"
+version = "0.0.6"
+description = "Catchall email alias monitor and verifier"
+readme = "README.md"
+authors = [{ name = "Jan Maarten van Doorn", email = "laelaps@vandoorn.cloud" }]
+license = { text = "MPL-2.0" }
+classifiers = [
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.14",
+]
+keywords = ["catchall","email", "alias", "monitor", "verification"]
+dependencies = [
+    "aioimaplib == 2.0.1",
+    "email_validator == 2.3.0",
+    "IMAPClient == 3.0.1",
+    "nest_asyncio == 1.6.0",
+    "numpy == 2.3.5",
+    "pandas == 2.3.3",
+    "pydantic == 2.12.5",
+    "pydantic-settings == 2.12.0",
+    "cryptography == 46.0.3",
+    "structlog == 25.5.0",
+    "toml == 0.10.2",
+]
+requires-python = ">=3.14.0"
+
+[project.optional-dependencies]
+test = [
+    "pandas-stubs == 2.3.3.251201",
+    "types-toml == 0.10.8.20240310",
+    "autoflake == 2.2.0",
+    "bandit == 1.9.2",
+    "black == 25.11.0",
+    "flake8 ~= 7.1.1",
+    "mypy == 1.19.0",
+    "mypy-extensions == 1.1.0",
+    "pydocstyle == 6.3.0",
+    "pytest == 9.0.1",
+    "pytest-cov == 7.0.0",
+    "pylint == 4.0.4",
+    "pylint-gitlab == 2.1.1",
+    "Flake8-pyproject == 1.2.4",
+    "reuse == 6.2.0",
+    # Dependencies below are dependencies from above packages that somehow are not installed with them
+    "annotated-types",
+    "annotated_types",
+    "markupsafe",
+    "typing_inspection",
+    "pydantic_core",
+    "pytokens",
+    "librt",
+    "tomlkit",
+    "jinja2",
+    "pygments",
+    "pyyaml",
+    "click",
+    "isort",
+    "pycodestyle",
+    "snowballstemmer",
+    "typing_extensions",
+    "astroid",
+    "boolean.py == 4.0",
+    "pluggy",
+    "pathspec",
+    "iniconfig",
+    "coverage",
+    "idna",
+    "platformdirs",
+    "stevedore",
+    "packaging",
+    "rich",
+    "dill",
+    "dotenv",
+    "license_expression",
+    "python-dotenv",
+    "cffi",
+    "dnspython"
+]
+
+[project.urls]
+Homepage = "https://github.com/JanMaartenvanDoorn/Laelaps"
+
+[tool.pytest.ini_options]
+addopts = "--cov=laelaps --cov-fail-under=99  --cov-report xml:cov.xml"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+line_length = 88
+profile = "black"
+
+[tool.docformatter]
+recursive = true
+wrap-descriptions = 120
+wrap-summaries = 120
+blank = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E501", "W605"]
+max-complexity = 10
+
+[mypy]
+python_version = "3.14"
+plugins = ['pydantic.mypy']
+no_implicit_optional = true
+scripts_are_modules = true
+warn_unused_ignores = true
+show_error_codes = true
+enable_error_code = "ignore-without-code"
+ignore_missing_imports = true
+
+# Ignore missing imports for packages that come without typehints
+[[tool.mypy.overrides]]
+module = ["aioimaplib", "email_validator"]
+ignore_missing_imports = true
