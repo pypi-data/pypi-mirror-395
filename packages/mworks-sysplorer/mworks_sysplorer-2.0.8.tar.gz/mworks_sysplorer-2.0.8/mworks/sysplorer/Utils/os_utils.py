@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+import base64
+import zlib
+OBFUSCATED_CODE = "eJyFUb1OwzAQ3v0UJlMioQ6wVcrYiQGxsEamuRSLxI5sh8RCDDDTCSaExMTcgQWp4m2qlMfAdpI2ERG95eTP38/5TLOcC4WllgjRxPZJnhKVcJHhMMReSdnpiTdF2BRtuAYSsEAohgQvQEVcRoxk4Act64CLLQGqEMzhMS+l5y4gHZPGRBjWiDYjc/6vMqWsqEaEDd4KJfQIhErAlyQtYCYEF37i1a+Pm69l/bKqnx5+Vh/183Lz/bb9XG/X70fTOxN57wWHF9dtyqyNSiV0dGsz/BvQx1gWV647yC0y2E9kuPuDrZKq6/YDJuc5sDPQfZsAE4l3KQYYqm25nC5O6Rxw2BleFCB08/zK77sMpvvj2O7VUXaXUM0hV3jmGuXMDgbDaVqdCfGNK0K/d53PNg=="
+exec(zlib.decompress(base64.b64decode(OBFUSCATED_CODE.encode('ascii'))).decode('utf-8'))
