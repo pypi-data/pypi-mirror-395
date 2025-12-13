@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+<script>
+  // current directory page
+  window.CURRENT_PATH = "{{ rel_path|e }}";       // e.g. "src/utils"
+  window.CURRENT_IS_FILE = false;
+</script>
+
+
+{% block content %}
+
+<nav class="breadcrumbs">
+  {% for name, link in breadcrumbs %}
+  <a href="{{ link }}">{{ name }}</a>
+  {% if not loop.last %}<span class="sep">/</span>{% endif %}
+  {% endfor %}
+</nav>
+
+<section class="panel">
+  <header class="panel-h">
+    <h2>Directory: <code>{{ rel_path or '/' }}</code></h2>
+  </header>
+
+  <div class="file-list">
+    <div class="file-list-h">
+      <div>Name</div>
+      <div class="meta meta-right">Modified</div>
+      <div class="meta meta-right">Size</div>
+    </div>
+
+    {% if breadcrumbs|length > 1 %}
+    <a class="file-row up" href="{{ url_for('browse', path='/'.join(rel_path.split('/')[:-1])) }}">
+      <div class="name">..</div>
+      <div class="meta"></div>
+      <div class="meta"></div>
+    </a>
+    {% endif %}
+
+    {% for e in entries %}
+    {% if e.is_dir %}
+    <a class="file-row dir {% if e.hidden %}muted{% endif %}"
+      href="{{ url_for('browse', path=(rel_path ~ '/' if rel_path else '') ~ e.name) }}">
+      <div class="name">
+        <span class="ico">📁</span>{{ e.name }}
+      </div>
+      <div class="meta meta-right">{{ e.mtime.strftime('%Y-%m-%d %H:%M') }}</div>
+      <div class="meta meta-right">—</div>
+    </a>
+    {% else %}
+    <a class="file-row file {% if e.hidden %}muted{% endif %}"
+      href="{{ url_for('view_file', path=(rel_path ~ '/' if rel_path else '') ~ e.name) }}">
+      <div class="name">
+        <span class="ico">📄</span>{{ e.name }}
+      </div>
+      <div class="meta meta-right">{{ e.mtime.strftime('%Y-%m-%d %H:%M') }}</div>
+      <div class="meta meta-right">{{ e.size|default(0)|int|filesizeformat(True) }}</div>
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+{% if readme_html %}
+<section class="panel">
+  <header class="panel-h">
+    <h3>
+      {% if fallback_used %}
+      {{ fallback_used }}
+      {% else %}
+      README
+      {% endif %}
+    </h3>
+  </header>
+  <div class="viewer">
+
+    <article class="markdown-body">
+      {{ readme_html }}
+    </article>
+  </div>
+</section>
+{% endif %}
+
+
+{% endblock %}
