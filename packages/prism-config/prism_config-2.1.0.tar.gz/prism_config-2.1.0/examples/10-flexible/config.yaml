@@ -1,0 +1,77 @@
+# Flexible Configuration Example
+# No schema needed - works with any structure!
+
+# Standard sections work as expected
+app:
+  name: flexible-app
+  environment: development
+  custom_field: "any value works"
+
+# Completely custom sections
+my_service:
+  endpoint: https://api.example.com
+  timeout: 30
+  retry:
+    max_attempts: 3
+    backoff: exponential
+
+# Deeply nested arbitrary structures
+analytics:
+  providers:
+    google:
+      tracking_id: UA-12345678
+      enabled: true
+    mixpanel:
+      project_token: abc123
+      enabled: false
+    segment:
+      write_key: xyz789
+      integrations:
+        - amplitude
+        - intercom
+
+# Lists of complex objects
+notifications:
+  channels:
+    - type: email
+      provider: sendgrid
+      api_key: REF::ENV::SENDGRID_API_KEY
+    - type: sms
+      provider: twilio
+      account_sid: REF::ENV::TWILIO_SID
+      auth_token: REF::ENV::TWILIO_TOKEN
+    - type: push
+      provider: firebase
+      credentials_path: /run/secrets/firebase.json
+
+# Feature toggles as simple key-value
+feature_flags:
+  dark_mode: true
+  new_dashboard: false
+  beta_api: true
+  experiments:
+    checkout_v2: 0.5
+    recommendation_engine: 0.25
+
+# Any arbitrary nested data
+vendor_config:
+  stripe:
+    publishable_key: pk_test_xxx
+    secret_key: REF::ENV::STRIPE_SECRET
+    webhook_secret: REF::ENV::STRIPE_WEBHOOK
+  aws:
+    region: us-east-1
+    services:
+      s3:
+        bucket: my-app-bucket
+        prefix: uploads/
+      sqs:
+        queue_url: https://sqs.us-east-1.amazonaws.com/...
+
+# Arbitrary metadata
+metadata:
+  version: "2.0.0"
+  build_number: 1234
+  git_commit: abc123def
+  deployed_by: ci-system
+  deployment_time: "2024-01-15T10:30:00Z"

@@ -1,0 +1,141 @@
+# Microservice Configuration
+# Demonstrates prism-config for microservices with multiple backend connections
+
+app:
+  name: order-service
+  environment: development
+  version: "2.1.0"
+  instance_id: REF::ENV::INSTANCE_ID
+
+# Primary database for orders
+databases:
+  primary:
+    host: primary-db.internal
+    port: 5432
+    name: orders
+    username: order_service
+    password: REF::ENV::PRIMARY_DB_PASSWORD
+    pool_size: 10
+    max_overflow: 20
+
+  # Read replica for queries
+  replica:
+    host: replica-db.internal
+    port: 5432
+    name: orders
+    username: order_service_readonly
+    password: REF::ENV::REPLICA_DB_PASSWORD
+    pool_size: 20
+    max_overflow: 40
+
+  # Analytics database
+  analytics:
+    host: analytics-db.internal
+    port: 5432
+    name: analytics
+    username: analytics_writer
+    password: REF::ENV::ANALYTICS_DB_PASSWORD
+    pool_size: 5
+    max_overflow: 10
+
+# Multiple cache backends
+caches:
+  session:
+    backend: redis
+    host: session-cache.internal
+    port: 6379
+    db: 0
+    password: REF::ENV::SESSION_CACHE_PASSWORD
+    ttl: 3600
+
+  data:
+    backend: redis
+    host: data-cache.internal
+    port: 6379
+    db: 1
+    password: REF::ENV::DATA_CACHE_PASSWORD
+    ttl: 300
+
+  rate_limit:
+    backend: redis
+    host: ratelimit-cache.internal
+    port: 6379
+    db: 2
+    password: REF::ENV::RATELIMIT_CACHE_PASSWORD
+    ttl: 60
+
+# Message queues
+queues:
+  orders:
+    backend: rabbitmq
+    host: rabbitmq.internal
+    port: 5672
+    vhost: /orders
+    username: order_service
+    password: REF::ENV::RABBITMQ_PASSWORD
+    exchange: orders.events
+    routing_key: orders.#
+
+  notifications:
+    backend: kafka
+    brokers:
+      - kafka-1.internal:9092
+      - kafka-2.internal:9092
+      - kafka-3.internal:9092
+    topic: notifications
+    consumer_group: order-service
+
+# External service clients
+services:
+  payment:
+    base_url: https://payment-api.internal
+    api_key: REF::ENV::PAYMENT_API_KEY
+    timeout_seconds: 30
+    retry_count: 3
+    circuit_breaker:
+      threshold: 5
+      timeout: 60
+
+  inventory:
+    base_url: https://inventory-api.internal
+    api_key: REF::ENV::INVENTORY_API_KEY
+    timeout_seconds: 10
+    retry_count: 2
+    circuit_breaker:
+      threshold: 3
+      timeout: 30
+
+  shipping:
+    base_url: https://shipping-api.internal
+    api_key: REF::ENV::SHIPPING_API_KEY
+    timeout_seconds: 15
+    retry_count: 3
+    circuit_breaker:
+      threshold: 5
+      timeout: 60
+
+# Observability
+observability:
+  tracing:
+    enabled: true
+    exporter: jaeger
+    endpoint: http://jaeger.internal:14268/api/traces
+    sample_rate: 0.1
+
+  metrics:
+    enabled: true
+    exporter: prometheus
+    endpoint: /metrics
+    port: 9090
+
+  logging:
+    level: INFO
+    format: json
+    output: stdout
+
+# Feature flags
+features:
+  new_checkout_flow: true
+  async_notifications: true
+  inventory_v2: false
+  premium_shipping: true
