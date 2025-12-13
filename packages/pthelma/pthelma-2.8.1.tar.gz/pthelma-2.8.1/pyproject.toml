@@ -1,0 +1,82 @@
+[build-system]
+# numpy<2 is not just a dependency, it's a build dependency, because it's
+# needed to build some .pyx files (and the _gdal_array thing, which gdal won't
+# build if numpy is not available at build time).
+requires = ["setuptools>=61.0", "setuptools-scm>=7.1", "cython", "numpy<2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "pthelma"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.2,<3",
+    # numpy is indirectly required by pandas anyway, but we need to specify
+    # that it be <2.
+    "numpy<2",
+    "iso8601>=2.1,<3",
+    "tzdata",
+    "Click>=8.2,<9",
+    "simpletail>=1,<2",
+    "affine>=2.4,<3",
+    "django>=3.2,<6",
+    "requests>=1,<3",
+]
+optional-dependencies = { all = ["gdal>=1.10,<4"] }
+authors = [
+    {name = "Antonis Christofides", email = "antonis@antonischristofides.com"},
+]
+maintainers = [
+    {name = "Antonis Christofides", email = "antonis@antonischristofides.com"},
+]
+description = "Utilities for hydrological and meteorological time series processing"
+readme = "README.rst"
+keywords = ["time series"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.scripts]
+spatialize = "hspatial.cli:main"
+vaporize = "evaporation.cli:main"
+haggregate = "haggregate.cli:main"
+enhydris-cache = "enhydris_cache.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/openmeteo/pthelma"
+Documentation = "https://pthelma.readthedocs.io"
+Repository = "https://github.com/openmeteo/pthelma"
+Changelog = "https://github.com/openmeteo/pthelma/blob/master/CHANGELOG.rst"
+
+[tool.flake8]
+exclude = ["docs"]
+max-line-length = 88
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"*" = ["*.pyi", "py.typed"]
+
+[tool.setuptools_scm]
+write_to = "src/pthelma/_version.py"
+
+[tool.cibuildwheel]
+# We can't support Python 3.13 yet, as numpy<2 isn't supported there. While we
+# are ready to upgrade to numpy 2, GDAL<3.9 doesn't support numpy 2. We
+# need to wait until Ubuntu 26.04 is released (24.04 has GDAL 3.8).
+# For the time being we also don't support Pypy (failing Pypy builds could be
+# related to the numpy<2 problem, but I'm not certain).
+skip = "pp* cp313-*"
+
+[tool.isort]
+skip = ["_version.py"]
+extra_standard_library = ["cpython", "libc"]
+
+[tool.pyright]
+ignore = ["osgeo.*"]
