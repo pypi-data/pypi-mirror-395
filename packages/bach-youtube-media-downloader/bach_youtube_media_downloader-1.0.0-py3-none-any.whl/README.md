@@ -1,0 +1,574 @@
+# Youtube Media Downloader MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Youtube Media Downloader API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-youtube_media_downloader`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Youtube Media Downloader API。
+
+- **PyPI 包名**: `bach-youtube_media_downloader`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-youtube_media_downloader
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-youtube_media_downloader bach_youtube_media_downloader
+
+# 或指定版本
+uvx --from bach-youtube_media_downloader@latest bach_youtube_media_downloader
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-youtube_media_downloader
+
+# 运行（命令名使用下划线）
+bach_youtube_media_downloader
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-youtube_media_downloader": {
+      "command": "uvx",
+      "args": ["--from", "bach-youtube_media_downloader", "bach_youtube_media_downloader"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-youtube_media_downloader": {
+      "command": "uvx",
+      "args": ["--from", "bach-youtube_media_downloader", "bach_youtube_media_downloader"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `get_video_details_price_1_3`
+
+This endpoint fetches full details of a YouTube video, including URLs of videos, audios, thumbnails and subtitles as well as related videos and playlists.
+
+**端点**: `GET /v2/video/details`
+
+
+**参数**:
+
+- `videoId` (string) *必需*: YouTube video id. The value of v in YouTube player URL query parameters.
+
+- `urlAccess` (string): Accessibility to video/audio URLs. Defaults to normal. normal: Includes video/audio file URLs – 3 quota units blocked: Excludes video/audio file URLs – 1 quota unit
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `videos` (string): Whether to get video objects. Defaults to auto. true: Includes simplified objects. raw: Includes original format objects. false: Excludes objects. auto: If urlAccess=normal, sets videos=true. If urlAccess=blocked, sets videos=false.
+
+- `audios` (string): Whether to get audio objects. Defaults to auto. true: Includes simplified objects. raw: Includes original format objects. false: Excludes objects. auto: If urlAccess=normal, sets audios=true. If urlAccess=blocked, sets audios=false.
+
+- `subtitles` (string): Example value: 
+
+- `related` (string): Example value: 
+
+
+
+---
+
+
+### `list_playlist_videos`
+
+This endpoint lists **available** videos of a YouTube playlist (unavailable ones won't be listed by YouTube). Pagination scraping is supported. Thumbnails won't be blurred by age safety.
+
+**端点**: `GET /v2/playlist/videos`
+
+
+**参数**:
+
+- `playlistId` (string): Example value: PLeCdlPO-XhWFzEVynMsmosfdRsIZXhZi0
+
+- `lang` (string): Language code (IETF language tag) for localized results. Default to be en-US. Unsupported code will fallback to en-US.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, playlistId will be ignored.
+
+
+
+---
+
+
+### `get_playlist_details`
+
+This endpoint fetches details of a YouTube playlist (user created playlist, album or radio playlist).
+
+**端点**: `GET /v2/playlist/details`
+
+
+**参数**:
+
+- `playlistId` (string) *必需*: Example value: PLeCdlPO-XhWFzEVynMsmosfdRsIZXhZi0
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `videos` (string): Example value: 
+
+
+
+---
+
+
+### `list_items_with_next_token`
+
+An endpoint to list items with any type of `nextToken`. This allows longer `nextToken` (\u003e4KB) by putting it in the request body instead of the URL/header, bypassing the usual size limit of the URL/header.
+
+**端点**: `POST /v2/misc/list-items`
+
+
+**参数**:
+
+- `nextToken` (string) *必需*: A string for getting the next page of data. You can only get this string from the response of listing endpoints in this API, like Video > List Video Comments, Search > Search for Channels, and Misc > List Items with Next Token.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+
+
+---
+
+
+### `list_hashtag_videos`
+
+This endpoint lists YouTube videos related to the hashtag. Pagination scraping is supported.
+
+**端点**: `GET /v2/hashtag/videos`
+
+
+**参数**:
+
+- `tag` (string): A hashtag without #. Try lowercase (e.g., howtocook, not HowToCook) if no results.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `type` (string): Video type. Defaults to all.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, tag and type will be ignored.
+
+
+
+---
+
+
+### `list_channel_playlistsreleasespodcasts`
+
+This endpoint lists playlists, releases or podcasts of a YouTube channel. Pagination scraping is supported.
+
+**端点**: `GET /v2/channel/playlists`
+
+
+**参数**:
+
+- `channelId` (string): Channel ID, custom URL name or handle. @ is required as a prefix for a channel handle.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `type` (string): playlists - Playlists (default value) releases - Releases (sortBy will be omitted) podcasts - Podcasts (sortBy will be omitted)
+
+- `sortBy` (string): Sorting metrics. Defaults to dateAdded.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, channelId, type and sortBy will be ignored.
+
+
+
+---
+
+
+### `list_channel_videosshortslive`
+
+This endpoint lists videos, shorts or live streams of a YouTube channel. Pagination scraping is supported.
+
+**端点**: `GET /v2/channel/videos`
+
+
+**参数**:
+
+- `channelId` (string): Channel ID, custom URL name or handle. @ is required as a prefix for a channel handle.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `type` (string): Video type. Defaults to videos.
+
+- `sortBy` (string): Sorting metrics. Defaults to newest.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, channelId, type and sortBy will be ignored.
+
+
+
+---
+
+
+### `search_for_channels`
+
+This endpoint searches for YouTube channels. Pagination scraping is supported.
+
+**端点**: `GET /v2/search/channels`
+
+
+**参数**:
+
+- `keyword` (string): Search term.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `sortBy` (string): Sorting metrics. Defaults to relevance.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, keyword and sortBy will be ignored.
+
+
+
+---
+
+
+### `search_for_videos_movies`
+
+This endpoint searches for YouTube videos (movies) with optional filters. Pagination scraping is supported. Thumbnails will not be blurred by age safety.
+
+**端点**: `GET /v2/search/videos`
+
+
+**参数**:
+
+- `keyword` (string): Search term.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `movie` (string): Example value: 
+
+- `uploadDate` (string): Upload date. Defaults to all.
+
+- `duration` (string): all - No duration limit (default value) short - Under 4 minutes medium - 4 - 20 minutes long - Over 20 minutes
+
+- `sortBy` (string): Sorting metrics. Defaults to relevance.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, keyword, movie, uploadDate, duration and sortBy will be ignored.
+
+
+
+---
+
+
+### `list_video_comments`
+
+This endpoint lists comments of a YouTube video. Pagination scraping is supported.
+
+**端点**: `GET /v2/video/comments`
+
+
+**参数**:
+
+- `videoId` (string): YouTube video id. The value of v in YouTube player URL query parameters.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `sortBy` (string): Sorting metrics. Defaults to top.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, videoId and sortBy will be ignored.
+
+
+
+---
+
+
+### `list_related_videos_and_playlists`
+
+This endpoint lists related videos and playlists of a YouTube video. Pagination scraping is supported. It's recommended to get the first page by calling `Video \u003e Get Video Details`, and then get subsequent pages here.
+
+**端点**: `GET /v2/video/related`
+
+
+**参数**:
+
+- `videoId` (string): YouTube video id. The value of v in YouTube player URL query parameters.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, videoId will be ignored.
+
+
+
+---
+
+
+### `search_for_playlists`
+
+This endpoint searches for YouTube playlists. Pagination scraping is supported. Thumbnails will not be blurred by age safety.
+
+**端点**: `GET /v2/search/playlists`
+
+
+**参数**:
+
+- `keyword` (string): Search term.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `sortBy` (string): Sorting metrics. Defaults to relevance.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, keyword and sortBy will be ignored.
+
+
+
+---
+
+
+### `list_autocomplete_suggestions`
+
+This endpoint lists autocomplete predictions depending on the keyword.
+
+**端点**: `GET /v2/search/suggestions`
+
+
+**参数**:
+
+- `keyword` (string) *必需*: Search term.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US.
+
+- `region` (string): Region code (ISO 3166 alpha-2) for localized results. Defaults to US.
+
+
+
+---
+
+
+### `list_post_comments`
+
+This endpoint lists comments of a YouTube community post. Pagination scraping is supported.
+
+**端点**: `GET /v2/post/comments`
+
+
+**参数**:
+
+- `postId` (string): Example value: Ugkx-rW0UIVSt9Aw-ux-w16DlRW-wwKwfwnp
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `sortBy` (string): Sorting metrics. Defaults to top.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, postId and sortBy will be ignored.
+
+
+
+---
+
+
+### `get_post_details`
+
+This endpoint fetches details of a YouTube community post.
+
+**端点**: `GET /v2/post/details`
+
+
+**参数**:
+
+- `postId` (string) *必需*: Example value: Ugkx-rW0UIVSt9Aw-ux-w16DlRW-wwKwfwnp
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+
+
+---
+
+
+### `search_for_channel_videos_and_playlists`
+
+This endpoint searches for videos and playlists in a YouTube Channel. Pagination scraping is supported.
+
+**端点**: `GET /v2/channel/search`
+
+
+**参数**:
+
+- `channelId` (string): Channel ID, custom URL name or handle. @ is required as a prefix for a channel handle.
+
+- `keyword` (string): Search term.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, channelId and keyword will be ignored.
+
+
+
+---
+
+
+### `list_channel_posts_pollvideoimage`
+
+This endpoint lists poll, video, or image posts of a YouTube channel. Pagination scraping is supported.
+
+**端点**: `GET /v2/channel/posts`
+
+
+**参数**:
+
+- `channelId` (string): Channel ID, custom URL name or handle. @ is required as a prefix for a channel handle.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+- `nextToken` (string): A string for getting the next page of data. If not specified, the first page of data will be returned. If specified, channelId will be ignored.
+
+
+
+---
+
+
+### `get_channel_details`
+
+This endpoint fetches details of a YouTube channel.
+
+**端点**: `GET /v2/channel/details`
+
+
+**参数**:
+
+- `channelId` (string) *必需*: Channel ID, custom URL name or handle. @ is required as a prefix for a channel handle.
+
+- `lang` (string): Language code (IETF language tag) for localized results. Defaults to en-US. Unsupported code will fallback to en-US.
+
+
+
+---
+
+
+### `translate_convert_download_subtitle`
+
+This endpoint lets you translate, convert and download a subtitle of a YouTube video. Before doing this, please call endpoint `Video \u003e Get Video Details` to obtain subtitle URLs.
+
+**端点**: `GET /v2/video/subtitles`
+
+
+**参数**:
+
+- `subtitleUrl` (string) *必需*: Subtitle URL of a YouTube video. To get this, please call Video > Get Video Details first.
+
+- `format` (string): Subtitle format. Defaults to srt.
+
+- `fixOverlap` (string): Example value: 
+
+- `targetLang` (string): Target language (IETF language tag) into which the subtitle will be translated. Leave blank to preserve the original language. Unsupported code will fallback to the original language.
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
