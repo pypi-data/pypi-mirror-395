@@ -1,0 +1,1 @@
+$ "equation from another file" $
