@@ -1,0 +1,159 @@
+// Copyright 2024 Remy Blank <remy@c-space.org>
+// SPDX-License-Identifier: MIT
+
+import {dataUrl, elmt, on, qs, sameOrigin, text} from './core.js';
+import {Executor, UserError} from './exec.js';
+
+let promiser;
+
+class Database {
+    static async config() {
+        return (await promiser('config-get', {})).result;
+    }
+
+    static async open(filename) {
+        let {dbId} = await promiser('open', {filename});
+        return new Database(dbId);
+    }
+
+    constructor(dbId) {
+        this.dbId = dbId;
+    }
+
+    async close() {
+        if (this.dbId) {
+            await promiser('close', {dbId: this.dbId, unlink: true});
+            delete this.dbId;
+        }
+    }
+
+    async exec(sql, on_result) {
+        if (!sql) sql = ' ';  // Avoid exception on empty statements
+        await promiser('exec', {dbId: this.dbId, sql, callback: on_result});
+    }
+}
+
+class SqlExecutor extends Executor {
+    static runner = 'sql';
+    static highlight = 'sql';
+
+    static async init(envs) {
+        if (envs.length === 0) return;
+
+        // Web worker URLs must be satisfy the same-origin policy. If the worker
+        // module is in a different origin, we start the worker on a data: URL
+        // that imports the worker module.
+        const url = import.meta.resolve(`\
+${tdoc.versions.sqlite}\
+/sqlite-wasm/jswasm/sqlite3-worker1-bundler-friendly.mjs`);
+        const worker = sameOrigin(url) ? undefined
+                       : new Worker(dataUrl('application/javascript',
+                                            `import(${JSON.stringify(url)});`),
+                                    {type: 'module'});
+
+        const {default: sqlite3_init} = await import(`\
+${tdoc.versions.sqlite}/sqlite-wasm/jswasm/sqlite3-worker1-promiser.mjs`);
+        promiser = await sqlite3_init({
+            worker,
+            // debug: console.debug,
+        });
+        const config = await Database.config();
+        console.info(`[t-doc] SQLite ${config.version.libVersion}`);
+    }
+
+    addControls(controls) {
+        if (this.when === 'click' || (this.editable && this.when !== 'never')) {
+            this.runCtrl = controls.appendChild(this.runControl());
+            this.runCtrl.disabled = true;
+        }
+        super.addControls(controls);
+    }
+
+    onReady() {
+        if (this.runCtrl) this.runCtrl.disabled = false;
+    }
+
+    preRun(run_id) {
+        if (this.runCtrl) this.runCtrl.disabled = true;
+    }
+
+    postRun(run_id) {
+        if (this.runCtrl) this.runCtrl.disabled = false;
+    }
+
+    async run(run_id) {
+        let db;
+        try {
+            this.replaceOutputs();
+            db = await Database.open(`file:db-${run_id}?vfs=memdb`);
+            let output, tbody;
+            for (const {code} of this.codeBlocks()) {
+                await db.exec(code, res => {
+                    if (res.columnNames.length === 0) return;
+                    if (!output) {
+                        output = this.outputTable(res.columnNames);
+                        tbody = qs(output, 'tbody');
+                        this.appendOutputs(output);
+                    }
+                    if (res.row) {
+                        tbody.appendChild(this.resultRow(res.row));
+                    } else {
+                        if (tbody.children.length === 0) {
+                            tbody.appendChild(
+                                this.noResultsRow(res.columnNames));
+                        }
+                        output = undefined;
+                        tbody = undefined;
+                    }
+                });
+            }
+        } catch (e) {
+            if (e.dbId !== db.dbId) throw e;
+            throw new UserError(
+                /^(SQLITE_[A-Z0-9_]+: sqlite3 result code \d+: )?(.*)$/
+                    .exec(e.result.message)[2]);
+        } finally {
+            if (db) await db.close();
+        }
+    }
+
+    async stop(run_id) {}
+
+    outputTable(columns) {
+        const output = elmt`\
+<div class="tdoc-exec-output"><div class="pst-scrollable-table-container">\
+<table class="table"><thead><tr></tr></thead><tbody></tbody></table>\
+</div></div>`;
+        const container = qs(output, '.pst-scrollable-table-container');
+        this.setOutputStyle(container);
+        const tr = qs(output, 'tr');
+        for (const col of columns) {
+            tr.appendChild(elmt`<th class="text-center">${col}</th>`);
+        }
+        if (this.runCtrl) {
+            on(container.appendChild(elmt`\
+<button class="fa-xmark tdoc-remove" title="Remove"></button>`))
+                .click(() => { output.remove(); });
+        }
+        return output;
+    }
+
+    resultRow(row) {
+        const tr = elmt`<tr></tr>`;
+        for (const val of row) {
+            tr.appendChild(elmt`<td class="text-center"></td>`)
+                .appendChild(val === null ? elmt`<code>NULL</code>`
+                                          : text(val));
+        }
+        return tr;
+    }
+
+    noResultsRow(columns) {
+        return elmt`\
+<tr class="tdoc-no-results">\
+<td colspan="${columns.length}">No results</td>\
+</tr>`;
+    }
+}
+
+Executor.apply(SqlExecutor);  // Background
