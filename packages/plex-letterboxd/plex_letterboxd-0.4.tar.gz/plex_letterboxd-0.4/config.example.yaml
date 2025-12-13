@@ -1,0 +1,46 @@
+# Plex to Letterboxd Export Configuration
+
+# Plex Configuration - Choose ONE method:
+
+# Method 1: Direct Plex configuration (alternative to kometa)
+# https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+plex:
+  url: http://localhost:32400
+  token: YOUR_PLEX_TOKEN_HERE
+  timeout: 60
+
+# Method 2: Kometa users who already have a Plex token stored
+# kometa:
+#  config_path: ~/.config/kometa/config.yml  # Path to your kometa config file
+# Override Plex URL (optional - only if different from kometa config)
+# plex:
+#   url: http://your-plex-server:32400
+
+export:
+  output: null        # Optional: specify custom filename, defaults to plex-watched-{user}-{date}.csv
+  after: null         # YYYY-MM-DD, null for all history
+  before: null        # YYYY-MM-DD, optional upper bound
+  user: null          # Plex username, or null for all users
+  library: Movies
+  dir: data           # Directory to store exports (default: CWD/data)
+  file_pattern: plex-watched-{user}-{timestamp}.csv  # {user}, {timestamp} = YYYY-MM-DD-HH-MM
+  timestamp_format: datetime  # datetime (YYYY-MM-DD-HH-MM) or date (YYYY-MM-DD)
+
+# Letterboxd CSV format requirements:
+# - UTF-8 encoding
+# - Up to 1,900 films per file (Letterboxd's limit)
+# - Supports: tmdbID, Title, Year, Directors, WatchedDate, Rating, Tags, Rewatch
+csv:
+  rating: false           # export Plex ratings
+  max_rows: 1900
+  # Tag configuration
+  genres: false           # export Plex genres as tags
+  tags: null              # tag all exports ("plex", "imported", ..)
+  # Rewatch handling
+  rewatch: all            # false/null (no rewatches), first, last, all
+  mark_rewatch: true      # mark rewatches by date watched
+
+# Checkpointing (idempotent runs)
+checkpoint:
+  use_csv: true           # Infer next --after date from latest CSV in export.dir
+  path: .last-run.json    # Only used if use_csv: false
