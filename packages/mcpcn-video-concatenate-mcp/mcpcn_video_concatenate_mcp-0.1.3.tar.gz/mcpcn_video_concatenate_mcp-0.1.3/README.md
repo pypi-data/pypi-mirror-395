@@ -1,0 +1,79 @@
+# Video Concatenate MCP
+
+MCP 服务器，用于拼接多个视频文件，支持 30+ 种转场效果。
+
+## 功能特性
+
+- 支持多个视频文件拼接
+- 自动标准化视频分辨率和帧率
+- 支持 30+ 种转场效果（两个视频之间）
+- 音频自动交叉淡入淡出
+
+## 安装
+
+```bash
+uvx video-concatenate-mcp
+```
+
+或通过 pip 安装：
+
+```bash
+pip install video-concatenate-mcp
+```
+
+## 依赖
+
+- Python >=3.12
+- FFmpeg（需要系统安装）
+
+## 可用工具
+
+### 1. `concatenate_videos`
+
+拼接视频序列，可选转场效果。
+
+**参数：**
+- `video_paths`: 输入视频路径列表（至少 1 个）
+- `output_video_path`: 输出视频文件路径
+- `transition_effect`: 转场效果（可选）
+- `transition_duration`: 转场时长（秒，使用转场时必填）
+
+**示例：**
+
+```python
+# 简单拼接
+concatenate_videos(
+    ["/path/video1.mp4", "/path/video2.mp4"],
+    "/path/output.mp4"
+)
+
+# 带转场效果
+concatenate_videos(
+    ["/path/video1.mp4", "/path/video2.mp4"],
+    "/path/output.mp4",
+    transition_effect="dissolve",
+    transition_duration=1.0
+)
+```
+
+### 2. `list_transition_effects`
+
+列出所有支持的转场效果。
+
+## 支持的转场效果
+
+| 类别 | 效果 |
+|------|------|
+| 淡入淡出 | dissolve, fade, fadeblack, fadewhite, fadegrays |
+| 擦除 | wipeleft, wiperight, wipeup, wipedown |
+| 滑动 | slideleft, slideright, slideup, slidedown |
+| 平滑 | smoothleft, smoothright, smoothup, smoothdown |
+| 圆形 | circlecrop, circleopen, circleclose |
+| 矩形 | rectcrop, vertopen, vertclose, horzopen, horzclose |
+| 对角线 | diagtl, diagtr, diagbl, diagbr |
+| 切片 | hlslice, hrslice, vuslice, vdslice |
+| 其他 | distance, pixelize, radial, hblur |
+
+## 许可证
+
+MIT License
