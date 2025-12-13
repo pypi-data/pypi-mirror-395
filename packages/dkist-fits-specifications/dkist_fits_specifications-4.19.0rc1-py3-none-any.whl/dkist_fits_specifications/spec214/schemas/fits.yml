@@ -1,0 +1,149 @@
+spec214:
+  section_122: fits
+  copy: true
+  required: true
+  units: null
+  expand: false
+  title: FITS
+  summary: Keys mandated or described by the FITS 4.0 standard.
+---
+SIMPLE:
+  description: "Mandatory FITS keyword when in the primary HDU."
+  required: false
+  fitsreference: "4.4.1.1: Primary header"
+BITPIX:
+  description: "Mandatory keyword describing the number of bits per pixel in the data. Permitted values are: 8, 16, 32, 64, -32, -64"
+  fitsreference: "4.4.1.1: Primary header"
+  copy: "schema"
+NAXIS:
+  description: "Mandatory keyword. Value depends on keyword position in file, i.e. whether the keyword is located in the primary HDU, or an extension HDU. Generally, the value field shall contain a non-negative integer no greater than 999 representing the number of axes in the associated data array. A value of zero signifies that no data follow the header in the HDU."
+  fitsreference: "4.4.1.1: Primary header"
+  type: int
+  copy: false  # We don't copy this because it's always 3 in 122
+NAXIS<n>:
+  description: "The value field of this indexed keyword shall contain a non-negative integer representing the number of elements along axis n of a data array. A value of zero for any of the NAXISn keywords signifies that no data follow the header in the HDU (however, the random groups structure has NAXIS1 = 0, but will have data following the header if the other NAXISn keywords are non-zero). If NAXIS is equal to 0, there shall not be any NAXISn keywords."
+  fitsreference: "4.4.1.1: Primary header"
+  units: pix
+  copy: "schema"
+  expand: true
+BUNIT:
+  description: "The physical unit of the data values after application of BZERO and BSCALE (physical_value in BUNIT = BZERO + BSCALE × array_value.)"
+  fitsreference: "4.4.2.5: Keywords that describe arrays"
+  copy: "schema"
+BTYPE:
+  description: "Description of what the data array represents."
+  copy: false
+  type: str
+  required: false
+BZERO:
+  description: "This keyword represents the physical value corresponding to an array value
+                of zero. The default value for this keyword is 0.0. This keyword, along with
+                BSCALE, is used to linearly scale the array pixel values to transform them into
+                the phyical values that they represent.
+                physical_value = BZERO + BSCALE x array_value"
+  copy: false
+  type: float
+  required: false
+BSCALE:
+  description: "This keyword represents the coefficient of the linear term in the scaling equation,
+                the ratio of physical value to array value at zero offset. The default value for this
+                keyword is 1.0. This keyword, along with BZERO, is used to linearly scale the array
+                pixel values to transform them into the phyical values that they represent."
+  copy: false
+  type: float
+  required: false
+DATE:
+  description: "UTC Date/Time of HDU creation, in the form:
+                YYYY-MM-DDThh:mm:ss[.sss…]"
+  fitsreference: "4.4.2.1: General descriptive keywords"
+  copy: "schema"
+DATE-BEG:
+  description: "Start date and time of light exposure for the frame."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+  rename: 'DATE-OBS'
+DATE-END:
+  description: "End date and time of light exposure for the frame."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+  type: str
+  format: isot
+  copy: false
+TELAPSE:
+  copy: false
+  description: "TELAPSE = DATE-END - DATE-BEG. Not always equal to the exposure time as multiple exposures could be combined."
+  type: float
+  units: s
+DATE-AVG:
+  description: "Date/Time of the midpoint of the frame. (DATE-END - DATE_BEG) / 2"
+  fitsreference: "4.4.2.2: Keywords describing observations"
+  copy: false
+  type: str
+  format: isot
+TIMESYS:
+  description: "Time scale of the time related keywords."
+  copy: false
+  type: str
+  required: false
+  values:
+    - 'UTC'
+ORIGIN:
+  description: "The organization or institution responsible for creating the FITS file."
+  fitsreference: "4.4.2.1: General descriptive keywords"
+TELESCOP:
+  description: "The telescope used to acquire the data associated with the header."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+OBSRVTRY:
+  rename: 'OBSERVAT'
+  description: "A character string identifying the physical entity, located in a defined location, which provides the resources necessary for the installation of an instrument. "
+  fitsreference: "4.4.2.2: Keywords describing observations"
+NETWORK:
+  description: "Organizational entity of a series of instruments with similar characteristics or goals that operates in some coordinated manner or produces data with some common purpose."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+INSTRUME:
+  description: "The instrument used to acquire the data associated with the header."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+OBJECT:
+  description: "The value field shall contain a character string giving a name for the observed object.
+                Applicable standard values are TBD."
+  fitsreference: "4.4.2.2: Keywords describing observations"
+HISTORY:
+  description: "The value contains information on how these headers have been updated or changed over time."
+  required: false
+CHECKSUM:
+  description: "Checksum computed over the HDU, as per Appendix J in 'Definition of the Flexible Image Transport System (FITS)' (12/1/2017)"
+  fitsreference: "4.4.2.7: Data integrity keywords"
+  required: false
+DATASUM:
+  description: "Checksum computed over the data part of the FITS file, as per Appendix J in 'Definition of the Flexible Image Transport System (FITS)' (12/1/2017)"
+  fitsreference: "4.4.2.7: Data integrity keywords"
+  required: false
+EXTEND:
+  description: "If the FITS file may contain extensions, a card image with
+                the keyword EXTEND and the value field containing the logical value T
+                must appear in the  primary header immediately after the last NAXISn
+                card image, or, if NAXIS=0, the NAXIS card image."
+  required: false
+  fitsreference: "5.4.1.2: Conforming Extensions"
+PCOUNT:
+  description: "This keyword contains an integer that is used to define the data structure.
+                In IMAGE and TABLE extensions this keyword must have the value 0; in BINTABLE
+                extensions it is used to specify the number of bytes that follow the main data
+                table in the supplemental data area called the heap. This keyword is also used
+                in the random-groups structure to specify the number of parameters preceding
+                each array in a group."
+  required: false
+  fitsreference: "4.4.1.2: Conforming extensions"
+GCOUNT:
+  description: "This keyword contains an integer that is used to define the data structure.
+                This keyword must have the value 1 in the IMAGE, TABLE, and BINTABLE standard
+                extensions. This keyword is also used in the random-groups structure to specify
+                the number of random groups present."
+  required: false
+  fitsreference: "4.4.1.2: Conforming extensions"
+XTENSION:
+  description: "This keyword contains a string giving the name of the extension type."
+  required: false
+  fitsreference: "4.4.1.2: Conforming extensions"
+END:
+  description: "This keyword has no associated value. Bytes 9 through 80 shall be filled with ASCII spaces (decimal 32 or hexadecimal 20)."
+  required: false
+  fitsreference: "4.4.1.1: Primary header"
