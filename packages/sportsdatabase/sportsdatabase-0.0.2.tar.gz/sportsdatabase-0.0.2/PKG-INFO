@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: sportsdatabase
+Version: 0.0.2
+Summary: Official Python SDK for SportsDatabase.io
+Author: SportsDatabase.io
+License-Expression: MIT
+Requires-Python: >=3.9
+Requires-Dist: httpx>=0.24.0
+Provides-Extra: dev
+Requires-Dist: mypy; extra == 'dev'
+Requires-Dist: pytest; extra == 'dev'
+Requires-Dist: pytest-asyncio; extra == 'dev'
+Requires-Dist: ruff; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# SportsDatabase Python SDK
+
+Official Python client for SportsDatabase.io. Mirrors the TypeScript SDK design with typed endpoints for leagues, teams, events, schedules, and scores.
+
+## Installation
+
+```bash
+pip install sportsdatabase
+```
+
+## Quick Start
+
+```python
+from sportsdatabase import SportsDatabaseClient
+
+client = SportsDatabaseClient(
+    api_key="YOUR_API_KEY",
+    base_url="https://api.sportsdatabase.io/v1"
+)
+
+games = client.events.get_by_date(sport="soccer", date="2025-05-01")
+for event in games["data"]:
+    print(event["homeTeamId"], "vs", event["awayTeamId"])
+```
+
+## Structure
+
+```
+python-sdk/
+├── sportsdatabase/
+│   ├── client.py
+│   ├── config.py
+│   ├── errors.py
+│   ├── http.py
+│   ├── endpoints/
+│   │   ├── events.py
+│   │   ├── leagues.py
+│   │   ├── teams.py
+│   │   ├── schedules.py
+│   │   └── scores.py
+│   ├── types.py
+│   └── errors.py
+├── examples/
+│   ├── get_today_events.py
+│   └── smoke_test.py
+└── pyproject.toml
+```
+
+## Endpoints
+
+| Endpoint            | Methods                            |
+|---------------------|------------------------------------|
+| `client.leagues`    | `list`, `get_by_id`                |
+| `client.teams`      | `list`, `get_by_id`                |
+| `client.events`     | `list`, `get_by_id`, `get_by_date` |
+| `client.schedules`  | `team_next`, `team_previous`, `league_season` |
+| `client.scores`     | `get_by_event`                     |
+
+All responses include `data` and `meta` with rate-limit headers. Error types mirror the TS SDK (`ApiError`, `RateLimitError`, `NetworkError`).
+
+## Development
+
+```bash
+pip install -e .[dev]
+hatch run lint
+hatch run typecheck
+hatch run test
+```
+
+Refer to `../docs/release-checklist.md` for the full publish flow (build wheels via `python -m build`, upload with Twine).
