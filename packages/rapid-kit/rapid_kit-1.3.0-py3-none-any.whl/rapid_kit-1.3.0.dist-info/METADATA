@@ -1,0 +1,435 @@
+Metadata-Version: 2.4
+Name: rapid_kit
+Version: 1.3.0
+Summary: Real-time Audio-visual Platform for IoT Devices
+Author-email: "TANGE.AI" <fengjun.dev@gmail.com>
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# RAPID Kit
+
+Real-time Audio-visual Platform for IoT Devices.
+> 为物联网视觉设备提供一个高效的跨平台音视频解决方案。
+
+Go to [TIVS](https://tange-ai.feishu.cn/wiki/Wb7nwi3eQiRhnYkce5hc8AAEnwA) for more details.
+
+# Player metrics JSON 字段说明文档
+
+本文档描述播放器统一指标接口返回的 JSON 结构，Python 层通过 `MediaPlayer.get_metrics_json`）对外提供。
+
+## 示例 JSON
+
+```json
+{
+  "runtime": {
+    "current_frame_buffer_kb": 1518,
+    "current_muxer_queue_size": 0,
+    "current_packet_audio_duration_ms": 680,
+    "current_packet_audio_size": 17,
+    "current_packet_video_duration_ms": 720,
+    "current_packet_video_size": 18,
+    "current_render_queue_audio_size": 4,
+    "current_render_queue_video_size": 2,
+    "current_video_latency_ms": 800,
+    "current_water_mark_ms": 400,
+    "spec_audio_interval_ms": 40,
+    "spec_video_interval_ms": 40,
+    "window_audio_callback_fps": 24,
+    "window_audio_fps": 24,
+    "window_audio_jank_count": 0,
+    "window_video_fps": 24,
+    "window_video_jank_count": 0
+  },
+  "startup": {
+    "completed_at": 1764925665981,
+    "device_id": "693VQ4VNHC6N",
+    "stages": [
+      {
+        "duration": 0,
+        "name": "prepare"
+      },
+      {
+        "duration": 14134,
+        "name": "p2p_establish"
+      },
+      {
+        "duration": 387,
+        "name": "auth"
+      },
+      {
+        "duration": 85,
+        "name": "video_first_packet"
+      },
+      {
+        "duration": 2,
+        "name": "render"
+      }
+    ],
+    "start_at": 1764925651373,
+    "total_duration": 14608
+  },
+  "stream": {
+    "spec_audio_codec": "G711A",
+    "spec_video_codec": "H264",
+    "spec_video_height": 540,
+    "spec_video_width": 960,
+    "window_audio_bitrate_kbps": 63,
+    "window_video_bitrate_kbps": 343
+  },
+  "stutter": {
+    "session_count": 0,
+    "session_density": 0.0,
+    "session_duration_ms": 0,
+    "session_peak_end_ts": 0,
+    "session_peak_ms": 0,
+    "session_peak_start_ts": 0,
+    "session_ratio": 0.0,
+    "session_total_ms": 0,
+    "window_density": 0.0,
+    "window_peak_ms": 0,
+    "window_ratio": 0.0
+  }
+}
+```
+
+## 顶层结构
+
+- `runtime`：当前播放过程相关的即时指标，主要描述当前统计周期内的帧率、缓冲延迟、队列长度等。
+- `startup`：首帧出图性能指标，描述从开始连接到首帧渲染完成这段链路的分阶段耗时。
+- `stream`：当前流的编码规格和码率信息，包括视频分辨率、编解码格式和最近窗口内的实际码率。
+- `stutter`：卡顿相关指标，分为整个会话维度的统计信息和最近时间窗口内的卡顿情况。
+
+以下说明中：
+- “会话”指一次 `RapidMediaPlayer` 从开始到停止的完整播放周期；
+- “窗口”指针对一段时间范围做聚合统计的指标抽象，不同字段使用的统计周期或内部时间窗口可能不同（例如 `stutter` 中的 `window_*` 基于 30 秒窗口，而 `playback` 和 `stream_info` 中的 `window_*` 多基于 `_media_stats` 的调度周期）。
+
+## runtime 字段说明
+
+### `window_video_fps`
+- 类型：`int`
+- 含义：统计周期内的视频帧渲染帧率，单位为 fps。
+- 来源：在 `_media_stats` 中根据该周期内成功渲染的视频帧数量和周期时长计算。
+- 典型用法：评估当前画面流畅度，例如是否维持在 25 / 30 fps 附近。
+
+### `window_audio_fps`
+- 类型：`int`
+- 含义：统计周期内的音频帧播放帧率，单位为 fps。
+- 来源：在 `_media_stats` 中根据该周期内渲染的音频帧数量和周期时长计算。
+- 典型用法：判断音频输出是否连续、是否存在丢帧。
+
+### `window_audio_callback_fps`
+- 类型：`int`
+- 含义：统计周期内音频回调被调用的频率，单位为 fps。
+- 来源：`StreamRender::audio_callback_count()`，在 `_media_stats` 中换算为 fps。
+- 典型用法：诊断音频输出回调是否被正常驱动，区分“无数据”与“回调未触发”问题。
+
+### `window_video_jank_count`
+- 类型：`int`
+- 含义：统计周期内视频渲染侧观测到的卡顿次数。
+- 来源：`StreamRender::video_jank_count()`，在 `_media_stats` 中读取。
+- 典型用法：评估短时间内视频卡顿是否集中爆发，用于监控体验抖动。
+
+### `window_audio_jank_count`
+- 类型：`int`
+- 含义：统计周期内音频输出的卡顿次数。
+- 来源：`StreamRender::audio_jank_count()`，在 `_media_stats` 中读取。
+- 典型用法：判断是否存在音频断续、破音等现象。
+
+### `current_video_latency_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：当前视频端到端播放延迟的估算值，近似等于“渲染队列中视频帧时长 + 包队列中视频数据时长”。
+- 来源：`render_queue_video_duration + packet_video_duration`，在 `_media_stats` 中计算。
+- 典型用法：衡量当前视频画面相对数据采集时间的延时，对实时性敏感场景（如对讲、追踪）非常关键。
+
+### `current_water_mark_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：当前包队列维护的缓冲水位阈值（ms），通常为已配置的 water mark 值，未配置时可能为 0。
+- 来源：`PacketQueue::current_water_mark()`。
+- 典型用法：结合 `current_video_latency_ms` 判断当前缓冲目标以及是否接近水位阈值。
+
+### `current_packet_video_duration_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：包队列中当前累积的视频数据时长（尚未送入解码），估算值。
+- 来源：`PacketQueue::video_duration()`。
+- 典型用法：判断前端拉流是否跟得上解码与渲染速度，排查“队列堆积导致延迟拉长”的问题。
+
+### `current_packet_audio_duration_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：包队列中当前累积的音频数据时长。
+- 来源：`PacketQueue::audio_duration()`。
+- 典型用法：判断音频数据是否出现长时间堆积或短缺。
+
+### `current_packet_video_size`
+- 类型：`int64`
+- 含义：包队列中当前待处理的视频包数量。
+- 来源：`PacketQueue::video_queue_size()`。
+- 典型用法：与 `current_packet_video_duration_ms` 联合使用，分析包粒度与缓冲深度。
+
+### `current_packet_audio_size`
+- 类型：`int64`
+- 含义：包队列中当前待处理的音频包数量。
+- 来源：`PacketQueue::audio_queue_size()`。
+
+### `current_render_queue_video_size`
+- 类型：`int64`
+- 含义：渲染队列中待显示的视频帧数量。
+- 来源：`StreamRender::media_queue()->video_queue_size()`，在 `_media_stats` 中计算。
+- 典型用法：判断解码输出是否跟得上显示，过大可能导致画面延迟，过小则可能出现饥饿或掉帧。
+
+### `current_render_queue_audio_size`
+- 类型：`int64`
+- 含义：渲染队列中待播放的音频帧数量。
+- 来源：`StreamRender::media_queue()->audio_queue_size()`。
+
+### `current_muxer_queue_size`
+- 类型：`int64`
+- 含义：录制复用队列中当前等待写盘的数据帧数量。
+- 来源：`StreamRender::muxer_queue_size()`。
+- 典型用法：诊断录像时磁盘写入是否成为瓶颈，过大可能意味着磁盘 IO 不足。
+
+### `current_frame_buffer_kb`
+- 类型：`int64`
+- 单位：KB。
+- 含义：当前视频帧缓冲所占用的内存估算值。
+- 来源：`per_video_frame_buffer_size * render_queue_video_size / 1024`。
+- 典型用法：监控视频帧缓存带来的内存占用，评估在多路播放或高分辨率场景下的内存压力。
+
+### `spec_video_interval_ms`
+- 类型：`int`
+- 单位：毫秒。
+- 含义：从码流层面推算出的“期望视频帧间隔”，通常等于一帧持续时间，例如 40 ms（约 25 fps）、33 ms（约 30 fps）。
+- 来源：`PacketQueue::video_interval()`，负值会被截断为 0。
+- 典型用法：从流规格角度判断当前流的目标帧率，与 `window_video_fps` 对比可以看出实际输出是否达标。
+
+### `spec_audio_interval_ms`
+- 类型：`int`
+- 单位：毫秒。
+- 含义：码流层面推算出的音频帧间隔。
+- 来源：`PacketQueue::audio_interval()`，负值会被截断为 0。
+- 典型用法：用于分析音频采样率与帧长配置是否正常。
+
+## stream 字段说明
+
+### `spec_video_codec`
+- 类型：`string`
+- 含义：当前视频流的编码格式名称，例如 `H264`、`H265`、`MJPEG` 等。
+- 来源：`StreamCodec::video_codec_name()`，基于 `RAPID_Core_CodecID_ToName` 映射自 `codec_id`。
+
+### `spec_audio_codec`
+- 类型：`string`
+- 含义：当前音频流的编码格式名称，例如 `G711A`。
+- 来源：`StreamCodec::audio_codec_name()`。
+
+### `spec_video_width`
+- 类型：`int`
+- 单位：像素。
+- 含义：当前视频流输出的水平分辨率。
+- 来源：`StreamRender::pixel_width()`。
+
+### `spec_video_height`
+- 类型：`int`
+- 单位：像素。
+- 含义：当前视频流输出的垂直分辨率。
+- 来源：`StreamRender::pixel_height()`。
+
+### `window_video_bitrate_kbps`
+- 类型：`int`
+- 单位：kbps。
+- 含义：最近一个统计窗口内观测到的视频实际码率。
+- 来源：以窗口内收到的视频字节数 `_window_received_video_packet_data_size` 为基础，在 `_media_stats` 中按窗口时长计算：`(bytes * 8) / elapsed_ms`。
+- 典型用法：评估编码器实际输出是否符合预期码率配置，判断网络带宽是否满足视频需求。
+
+### `window_audio_bitrate_kbps`
+- 类型：`int`
+- 单位：kbps。
+- 含义：最近一个统计窗口内观测到的音频实际码率。
+- 来源：同上，对应音频字节统计。
+- 典型用法：判断音频是否稳定（例如是否因编码降级而突然下降）。
+
+## stutter 字段说明
+
+`stutter` 区域由 `StutterDetector` 聚合生成，用来描述整个会话以及最近窗口内的卡顿行为。
+
+### `session_duration_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：当前会话已持续的总时长，即从会话开始到当前的时间差。
+
+### `session_total_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：整个会话期间累计的“卡顿超出时长”总和。
+- 说明：每次帧间隔超过动态基线 `baseline * kK` 的部分会被计入此值。
+
+### `session_count`
+- 类型：`int64`
+- 含义：整个会话中发生的卡顿事件次数。
+- 说明：每次检测到一次超过阈值的间隔记为一个事件。
+
+### `session_peak_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：会话历史中单次卡顿事件的最大时长（超出基线的部分）。
+
+### `session_peak_start_ts`
+- 类型：`int64`
+- 单位：毫秒（自 Unix 纪元起的时间戳）。
+- 含义：会话历史中最长卡顿事件的开始时间戳。
+
+### `session_peak_end_ts`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：会话历史中最长卡顿事件的结束时间戳。
+
+### `session_ratio`
+- 类型：`double`
+- 含义：整个会话中卡顿时间占会话总时长的比例，取值范围通常在 `0.0`–`1.0` 之间。
+- 计算：`session_total_ms / session_duration_ms`。
+- 典型用法：作为整体卡顿占比的汇总指标，用于长期体验评估。
+
+### `session_density`
+- 类型：`double`
+- 单位：次/分钟。
+- 含义：整个会话中卡顿事件的平均密度，即每分钟发生的卡顿次数。
+- 计算：`session_count` 除以会话时长对应的分钟数。
+
+### `window_ratio`
+- 类型：`double`
+- 含义：最近窗口（当前实现为 30 秒）内卡顿时间占该窗口总时长的比例。
+- 计算：`sum_overlap_ms / kSnapshotIntervalMs`，其中 `kSnapshotIntervalMs = 30000`。
+- 典型用法：反映短时间内的卡顿严重程度，对实时监控敏感。
+
+### `window_density`
+- 类型：`double`
+- 单位：次/分钟。
+- 含义：最近窗口内卡顿事件的密度，换算到每分钟发生的次数。
+- 计算：`count_window / kWindowMinutes`，其中 `kWindowMinutes = kSnapshotIntervalMs / 60000.0 = 0.5`。
+
+### `window_peak_ms`
+- 类型：`int64`
+- 单位：毫秒。
+- 含义：最近窗口内单次卡顿事件的最大持续时长。
+
+> 说明：`session_ratio`、`session_density`、`window_ratio`、`window_density` 等比率类字段在 JSON 中会被保留两位小数输出，便于日志和可视化展示。
+
+---
+
+本 JSON 字段设计的目标是：
+- `runtime` 提供“当前一小段时间内”的播放健康度与缓冲状态；
+- `stream` 提供“当前流规格与实际码率”的快照；
+- `stutter` 提供“整个会话”和“最近窗口”两个尺度下的卡顿画像。
+
+上层应用可以根据自身需求选择：
+- 使用原始 JSON 做统一日志上报；
+- 或将关键字段抽取出来做可视化和告警（例如卡顿占比、实时 fps、比特率与分辨率变化趋势等）。
+
+## startup 字段说明
+
+本节描述播放器统一指标 JSON 中顶层 `startup` 对象的结构，以及各字段含义和单位。该块数据由底层统计模块根据连接相关事件时间戳计算得出，用于描述一次设备连接从发起到首帧渲染完成过程中各阶段的耗时拆解。
+
+## 示例 JSON
+
+```json
+{
+  "device_id": "693VQ4VNHC6N",
+  "start_at": 1764917800000,
+  "completed_at": 1764917803250,
+  "total_duration": 3250,
+  "stages": [
+    { "name": "prepare", "duration": 520 },
+    { "name": "p2p_establish", "duration": 480 },
+    { "name": "auth", "duration": 350 },
+    { "name": "video_first_packet", "duration": 900 },
+    { "name": "render", "duration": 1000 }
+  ]
+}
+```
+
+> 说明：上述数值仅为示例，用于展示结构与字段含义。真实值由运行时事件时间戳计算得出。
+
+## 顶层结构
+
+- `device_id`：设备 ID，字符串，与连接过程中使用的设备标识一致。
+- `start_at`：连接开始时间戳（毫秒），对应 `Events::DEVICE_CONNECT_START` 的时间。
+- `completed_at`：首帧渲染完成时间戳（毫秒），对应 `Events::VIDEO_FIRST_FRAME_RENDERED` 的时间。
+- `total_duration`：从 `start_at` 到 `completed_at` 的总耗时，单位毫秒。
+- `stages`：分阶段耗时列表，按连接流程拆解多个阶段，每个元素为一个阶段对象。
+
+## stages 元素结构
+
+每个 `stages` 元素的格式为：
+
+```json
+{
+  "name": "stage_name",
+  "duration": 1234
+}
+```
+
+- `name`：阶段名称，字符串；当前实现中可能的值包括：
+  - `"prepare"`：准备阶段
+  - `"p2p_establish"`：P2P 建链阶段
+  - `"auth"`：设备鉴权阶段
+  - `"video_first_packet"`：首个视频数据包到达阶段
+  - `"render"`：首帧渲染阶段
+- `duration`：该阶段耗时，单位为毫秒。
+
+### 各阶段含义与计算方式
+
+以下描述基于 `runtime/core/src/rapid/core/stats/impl.cc` 中的实现和事件时间戳差值计算：
+
+#### `prepare`
+- 含义：从开始连接设备到准备好连接令牌的耗时。
+- 计算：`CONNECT_TOKEN_READY - DEVICE_CONNECT_START`。
+- 典型用法：评估云端鉴权 / token 获取 / 前期准备的延迟。
+
+#### `p2p_establish`
+- 含义：从准备好令牌到 P2P 通道建立完成的耗时。
+- 计算：`DEVICE_CONNECT_OPEN_P2P_END - CONNECT_TOKEN_READY`。
+- 典型用法：评估 P2P 打洞 / 通道建立阶段的网络耗时。
+
+#### `auth`
+- 含义：从 P2P 建链完成到设备鉴权结果返回的耗时。
+- 计算：`DEVICE_AUTH_RESULT - DEVICE_CONNECT_OPEN_P2P_END`。
+- 典型用法：分析设备侧鉴权逻辑与后端业务确认的延迟。
+
+#### `video_first_packet`
+- 含义：从鉴权结果返回到收到首个视频数据包的耗时。
+- 计算：`VIDEO_FIRST_FRAME_RECEIVED - DEVICE_AUTH_RESULT`。
+- 典型用法：评估设备编码启动 / 首帧推流路径上的延迟，包括设备采集缓冲与编码准备时间。
+
+#### `render`
+- 含义：从收到首个视频数据包到首帧真正渲染出来的耗时。
+- 计算：`VIDEO_FIRST_FRAME_RENDERED - VIDEO_FIRST_FRAME_RECEIVED`（其中 `completed_at` 即 `VIDEO_FIRST_FRAME_RENDERED`）。
+- 典型用法：分析解码初始化、渲染管线及 UI 层渲染过程的时间开销。
+
+## 总体说明
+
+`startup` 区块聚焦“首帧出图性能”：
+
+- 横向：通过 `stages` 中的分阶段耗时拆解完整链路（连接准备 → P2P 建链 → 鉴权 → 首包 → 渲染）。
+- 纵向：通过 `start_at` / `completed_at` 与 `total_duration`，给出这一整段过程的整体耗时画像。
+
+上层应用可以将 `startup` 与其它块结合使用：
+
+- `startup` 侧重“从点击播放到首帧出图”的首屏体验；
+- `runtime` / `stream` / `stutter` 侧重“播放过程中”的持续体验、流规格与卡顿情况。
+
+
+
