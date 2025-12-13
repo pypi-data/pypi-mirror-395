@@ -1,0 +1,92 @@
+# BotoEase
+
+BotoEase is a smart file storage handler for Python that simplifies switching between **Local Storage** and **AWS S3**. It provides a unified API for uploading, deleting, and generating URLs for files, making your code cleaner and more flexible.
+
+## Installation
+
+You can install `botoease` using pip:
+
+```bash
+pip install botoease
+```
+
+*(Note: If you are installing from source, navigate to the project root and run `pip install .`)*
+
+## Usage
+
+First, import the `Storage` class from `botoease`.
+
+```python
+from botoease import Storage
+```
+
+### 1. Initialize Storage
+
+#### Option A: Local Storage (Default)
+Files will be stored in a local folder (default is `uploads`).
+
+```python
+# Initialize local storage
+storage = Storage(backend="local", folder="my_uploads")
+```
+
+#### Option B: AWS S3 Storage
+Files will be uploaded to an S3 bucket. You need to provide your AWS credentials.
+
+```python
+# Initialize S3 storage
+storage = Storage(
+    backend="s3",
+    bucket="my-bucket-name",
+    region="us-east-1",
+    access_key="YOUR_ACCESS_KEY",
+    secret_key="YOUR_SECRET_KEY"
+)
+```
+
+### 2. Available Functions
+
+#### `upload(filepath, filename=None)`
+Uploads a file to the configured storage backend.
+
+- **filepath**: Path to the file you want to upload.
+- **filename** (optional): The name to save the file as. If not provided, the original filename is used.
+
+**Returns**: A dictionary containing storage info, filename, and path/URL.
+
+```python
+result = storage.upload("path/to/image.png")
+print(result)
+# Output (Local): {'storage': 'local', 'path': 'uploads/image.png', 'filename': 'image.png'}
+# Output (S3): {'storage': 's3', 'bucket': '...', 'filename': 'image.png', 'url': '...'}
+```
+
+#### `delete(filename)`
+Deletes a file from the storage.
+
+- **filename**: The name of the file to delete.
+
+**Returns**: `True` if successful, otherwise raises an exception.
+
+```python
+storage.delete("image.png")
+```
+
+#### `generate_url(filename, expires=3600)`
+Generates a URL to access the file.
+
+- **filename**: The name of the file.
+- **expires** (optional): Expiration time in seconds (for S3 presigned URLs). Default is 3600 seconds (1 hour).
+
+**Returns**: A string containing the URL (or absolute path for local storage).
+
+```python
+url = storage.generate_url("image.png")
+print(url)
+```
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+[MIT](LICENSE)
