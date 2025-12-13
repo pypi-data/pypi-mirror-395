@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: doc2mark
+Version: 0.4.2
+Summary: Unified document processing with AI-powered OCR
+Home-page: https://github.com/luisleo526/doc2mark
+Author: HaoLiangWen
+Author-email: doc2mark Team <luisleo52655@gmail.com>
+Maintainer-email: doc2mark Team <luisleo52655@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/luisleo526/doc2mark
+Project-URL: Documentation, https://doc2mark.readthedocs.io
+Project-URL: Repository, https://github.com/luisleo526/doc2mark
+Project-URL: Issues, https://github.com/luisleo526/doc2mark/issues
+Project-URL: Changelog, https://github.com/luisleo526/doc2mark/blob/main/CHANGELOG.md
+Keywords: document-processing,ocr,pdf,docx,xlsx,pptx,ai,gpt-4,openai,langchain,document-extraction,text-extraction
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Text Processing
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pymupdf>=1.23.0
+Requires-Dist: python-docx>=0.8.11
+Requires-Dist: openpyxl>=3.0.10
+Requires-Dist: python-pptx>=0.6.21
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: lxml>=4.9.0
+Requires-Dist: markdown>=3.4.0
+Requires-Dist: chardet>=5.0.0
+Requires-Dist: Pillow>=9.0.0
+Requires-Dist: pandas>=1.3.0
+Provides-Extra: ocr
+Requires-Dist: openai>=1.0.0; extra == "ocr"
+Requires-Dist: langchain>=0.1.0; extra == "ocr"
+Requires-Dist: langchain-openai>=0.0.2; extra == "ocr"
+Requires-Dist: pytesseract>=0.3.10; extra == "ocr"
+Provides-Extra: mime
+Requires-Dist: python-magic>=0.4.27; extra == "mime"
+Requires-Dist: python-magic-bin>=0.4.14; sys_platform == "win32" and extra == "mime"
+Provides-Extra: all
+Requires-Dist: doc2mark[mime,ocr]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: pytest-xdist>=3.0.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0.0; extra == "dev"
+Requires-Dist: twine>=4.0.0; extra == "dev"
+Requires-Dist: build>=0.10.0; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx>=6.0.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.3.0; extra == "docs"
+Requires-Dist: sphinx-autodoc-typehints>=1.23.0; extra == "docs"
+Requires-Dist: myst-parser>=2.0.0; extra == "docs"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# doc2mark
+
+[![PyPI version](https://img.shields.io/pypi/v/doc2mark.svg)](https://pypi.org/project/doc2mark/)
+[![Python](https://img.shields.io/pypi/pyversions/doc2mark.svg)](https://pypi.org/project/doc2mark/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Turn any document into clean Markdown – in one line.
+
+## Why doc2mark?
+
+- Converts PDFs, DOCX/XLSX/PPTX, images, HTML, CSV/JSON, and more
+- AI OCR for scans and screenshots (OpenAI)
+- Preserves complex tables (merged cells, headers) and basic layout
+- One simple API + CLI for single files or whole folders
+
+## Install
+
+```bash
+pip install doc2mark[all]
+```
+
+## Try it in 30 seconds
+
+```python
+from doc2mark import UnifiedDocumentLoader
+
+loader = UnifiedDocumentLoader(ocr_provider='openai')  # or None
+result = loader.load('sample_documents/sample_pdf.pdf', extract_images=True, ocr_images=True)
+print(result.content)
+```
+
+CLI:
+
+```bash
+# single file → stdout
+doc2mark sample_documents/sample_document.docx
+
+# directory → save files (recursively)
+doc2mark sample_documents -o output -r
+
+# enable OCR with OpenAI
+export OPENAI_API_KEY=sk-...        # Windows: set OPENAI_API_KEY=...
+doc2mark sample_documents/sample_pdf.pdf --ocr openai --ocr-images
+```
+
+## Supported formats
+
+- PDF • DOCX • XLSX • PPTX • Images (PNG/JPG/WEBP) • TXT/CSV/TSV/JSON/JSONL • HTML/XML/MD
+- Legacy Office (DOC/XLS/PPT/RTF/PPS) via LibreOffice (optional)
+
+## Common recipes
+
+```python
+from doc2mark import UnifiedDocumentLoader
+
+loader = UnifiedDocumentLoader(ocr_provider='openai')
+
+# 1) Single file → Markdown string
+print(loader.load('document.pdf').content)
+
+# 2) Image with OCR
+print(loader.load('screenshot.png', extract_images=True, ocr_images=True).content)
+
+# 3) Batch a folder and save outputs
+loader.batch_process(
+    input_dir='documents/',
+    output_dir='converted/',
+    extract_images=True,
+    ocr_images=True,
+    show_progress=True,
+    save_files=True
+)
+```
+
+## OpenAI OCR (optional)
+
+```bash
+export OPENAI_API_KEY=your_key   # Windows: set OPENAI_API_KEY=your_key
+```
+
+```python
+loader = UnifiedDocumentLoader(ocr_provider='openai')
+# Need a cheaper model? Use model='gpt-4o-mini'
+```
+
+Use OpenAI‑compatible endpoints (self‑hosted/offline VLM):
+
+```python
+# Example: point to an OpenAI‑compatible server (must support vision)
+loader = UnifiedDocumentLoader(
+    ocr_provider='openai',
+    base_url='http://localhost:11434/v1',  # your OpenAI‑compatible endpoint
+    api_key='your-key-or-any-string',      # some servers require a token
+    model='gpt-4o-mini'
+)
+```
+
+## Tips
+
+- Use `extract_images=True, ocr_images=True` to convert images to text
+- `batch_process(..., save_files=True)` writes `.md` (and `.json` when requested)
+- Sample files live in `sample_documents/` — perfect for a quick test
+
+## License
+
+MIT — see `LICENSE`.
