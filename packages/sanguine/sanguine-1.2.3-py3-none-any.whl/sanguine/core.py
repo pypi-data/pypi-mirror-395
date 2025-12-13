@@ -1,0 +1,371 @@
+import difflib
+import os
+import subprocess
+import sys
+from functools import reduce
+from typing import Optional
+
+import pathspec
+from colorama import Fore, Style
+from tqdm import tqdm
+
+import sanguine.constants as c
+import sanguine.git as git
+import sanguine.meta as meta
+from sanguine.db import db
+from sanguine.db.fts import (
+    CodeEntity,
+    fts_add_symbol,
+    fts_remove_repo,
+    fts_remove_symbol,
+    id_to_type,
+    type_to_id,
+)
+from sanguine.db.hnsw import (
+    find_apt_hnsw_index,
+    hnsw_add_symbol,
+    hnsw_remove_repo,
+    hnsw_remove_symbol,
+    hnsw_search,
+    make_hnsw_index,
+)
+from sanguine.db.hnsw import indices as hnsw_indices
+from sanguine.parser import extract_symbols
+from sanguine.state import get_staleness, update_staleness
+from sanguine.utils import ext_to_lang, is_repo, normalize_path
+
+# ------------------------ indexing ------------------------
+
+
+def index_diff(file_diff: dict[str, tuple[str, Optional[str]]], dir: str):
+    dir = normalize_path(dir)
+    hnsw_index = find_apt_hnsw_index(dir)
+    hnsw_index = hnsw_index or make_hnsw_index(dir)
+
+    for file, (added_lines, removed_lines) in tqdm(
+        file_diff.items(),
+        total=len(file_diff),
+        ncols=80,
+        bar_format=f"{Fore.GREEN}[{meta.name}] |{{bar}}|{Style.RESET_ALL}",
+    ):
+        ext = os.path.splitext(file)[1]
+        if ext not in ext_to_lang:
+            continue
+
+        file_path = normalize_path(file)
+        lang = ext_to_lang[ext]
+
+        added_symbols = extract_symbols(added_lines, lang)
+        removed_symbols = {c.FLD_FUNCTIONS: [], c.FLD_CLASSES: []}
+        if removed_lines:
+            removed_symbols = extract_symbols(removed_lines, lang)
+
+        with db.atomic():
+            for entity_type, field_name in [
+                (c.ENTITY_FUNCTION, c.FLD_FUNCTIONS),
+                (c.ENTITY_CLASS, c.FLD_CLASSES),
+            ]:
+                for symbol_name in added_symbols[field_name]:
+                    o = fts_add_symbol(
+                        path=file_path,
+                        type=type_to_id[entity_type],
+                        name=symbol_name,
+                    )
+                    hnsw_add_symbol([symbol_name], [o.id], hnsw_index)
+
+                for symbol_name in removed_symbols[field_name]:
+                    ids = fts_remove_symbol(
+                        file_path, type_to_id[entity_type], symbol_name
+                    )
+                    for id in ids:
+                        hnsw_remove_symbol(id)
+    print()
+
+
+def process_commit(commit_id: Optional[str] = None):
+    if not is_repo():
+        print(
+            f"{Fore.RED}Error: not a git repository.{Style.RESET_ALL}",
+            file=sys.stderr,
+        )
+        return
+
+    try:
+        commit = commit_id or git.last_commit()
+        file_to_diff = git.commit_diff(commit)
+        index_diff(file_to_diff, os.getcwd())
+    except subprocess.CalledProcessError:
+        print(
+            f"{Fore.RED}Invalid commit ID{Style.RESET_ALL}",
+            file=sys.stderr,
+        )
+
+
+def index_file(file: str):
+    if not os.path.isfile(file):
+        print(
+            f"{Fore.RED}{file} is not a file{Style.RESET_ALL}",
+            file=sys.stderr,
+        )
+        return
+    with open(file, encoding="utf-8") as f:
+        index_diff({file: (f.read(), "")}, os.path.dirname(file))
+
+
+def index_all_files():
+    cwd = os.getcwd()
+    ignore_file = os.path.join(cwd, ".gitignore")
+    patterns = []
+    if os.path.exists(ignore_file):
+        with open(ignore_file, "r") as f:
+            patterns = f.read().splitlines()
+
+    spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+    file_diff = {}
+
+    for dirpath, dirnames, filenames in os.walk(cwd):
+        if ".git" in dirnames:
+            dirnames.remove(".git")
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+
+        for name in filenames:
+            if name.startswith("."):
+                continue
+
+            filepath = os.path.relpath(os.path.join(dirpath, name), cwd)
+            if spec.match_file(filepath):
+                continue
+
+            try:
+                with open(filepath) as f:
+                    file_diff[filepath] = (f.read(), "")
+            except (UnicodeDecodeError, PermissionError):
+                continue
+
+    if not file_diff:
+        print(f"{Fore.YELLOW}No indexable files found.{Style.RESET_ALL}")
+        return
+
+    index_diff(file_diff, cwd)
+
+
+# ------------------------ search ------------------------
+
+
+def search(
+    query: str,
+    k: int,
+    path: Optional[str] = None,
+    type: Optional[str] = None,
+    show_score: bool = True,
+):
+    conditions = [CodeEntity.name.contains(query)]
+    if path is not None:
+        path = normalize_path(path)
+        conditions.append(CodeEntity.file.startswith(path))
+    if type is not None:
+        type = type_to_id[type]
+        conditions.append(CodeEntity.type == type)
+
+    conditions = reduce(lambda x, y: x & y, conditions)
+    fts_objects = CodeEntity.select().where(conditions)
+    fts_id_to_obj = {o.id: o for o in fts_objects}
+
+    if path is None:
+        # search all indices
+        searchable_indices = hnsw_indices
+    else:
+        searchable_indices = {}
+        apt_index = find_apt_hnsw_index(path)
+        if apt_index is not None:
+            searchable_indices = {path: apt_index}
+
+    total_hnsw_records, stale_hnsw_records = 0, 0
+    sim_ids, sim_scores = [], []
+
+    for _, index in searchable_indices.items():
+        _sim_ids, _sim_scores = hnsw_search(query, index, k=k)
+        sim_ids.extend(_sim_ids), sim_scores.extend(_sim_scores)
+        scored_ids = sorted(
+            zip(sim_ids, sim_scores), key=lambda x: x[1], reverse=True
+        )[:k]
+        sim_ids, sim_scores = [list(x) for x in zip(*scored_ids)]
+
+    total_hnsw_records += len(sim_ids)
+    id_score_map = dict(zip(sim_ids, sim_scores))
+    # non-existent IDs don't appear in 'id_obj_map', not even as None
+    hnsw_id_obj_map = {
+        o.id: o for o in CodeEntity.select().where(CodeEntity.id.in_(sim_ids))
+    }
+    stale_hnsw_records += len(sim_ids) - len(hnsw_id_obj_map)
+
+    # NOTE: why this? stale entries from the hnsw index are removed,
+    # might need to get new records from the index to make 'k' records
+    if len(hnsw_id_obj_map) < k / 2:
+        for _, index in searchable_indices.items():
+            more_ids, more_scores = hnsw_search(query, index, k * 2)
+            sim_ids.extend(more_ids), sim_scores.extend(more_scores)
+            scored_ids = sorted(
+                zip(sim_ids, sim_scores), key=lambda x: x[1], reverse=True
+            )[:k]
+            sim_ids, sim_scores = [list(x) for x in zip(*scored_ids)]
+            _id_obj_map = {
+                o.id: o
+                for o in CodeEntity.select().where(CodeEntity.id.in_(more_ids))
+            }
+
+            for new_sim_id, score in zip(more_ids, more_scores):
+                if new_sim_id in sim_ids:
+                    continue
+                sim_ids.append(new_sim_id)
+                total_hnsw_records += 1
+                if new_sim_id not in _id_obj_map:
+                    stale_hnsw_records += 1
+                    continue
+                id_score_map[new_sim_id] = score
+                hnsw_id_obj_map[new_sim_id] = _id_obj_map[new_sim_id]
+
+    if total_hnsw_records > 0:
+        update_staleness(total_hnsw_records, stale_hnsw_records)
+
+    staleness = get_staleness()
+    if staleness > 0.5:
+        print(
+            f"{Fore.YELLOW}HNSW needs index refreshing, >50% entries are stale. Bordering uselessness.{Style.RESET_ALL}"
+        )
+    elif staleness > 0.3:
+        print(
+            f"{Fore.YELLOW}HNSW needs rindex efreshing, >30% entries are stale.{Style.RESET_ALL}"
+        )
+    if staleness > 0.3:
+        print(f'run "{meta.name} refresh" to refresh\n')
+
+    all_ids = list(sim_ids) + [
+        o.id for o in fts_objects if o.id not in sim_ids
+    ]
+    results = []
+    for oid in all_ids:
+        obj = hnsw_id_obj_map.get(oid) or fts_id_to_obj.get(oid)
+        if obj is None or (type is not None and obj.type != type):
+            continue
+        sim_score = id_score_map.get(oid, 0)
+        text_score = difflib.SequenceMatcher(
+            None, query.lower(), obj.name.lower()
+        ).ratio()
+        final_score = sim_score + text_score
+        results.append((obj, final_score))
+
+    results.sort(key=lambda x: x[1], reverse=True)
+    results = results[:k]
+
+    if not results:
+        print("No matches found.")
+        return
+
+    last_file = None
+    for obj, score in results:
+        if obj.file != last_file:
+            filename = f"{Fore.CYAN}{obj.file}{Style.RESET_ALL}"
+            if last_file is not None:
+                filename = "\n" + filename
+            print(filename)
+
+        color = (
+            Fore.GREEN
+            if id_to_type[obj.type] == c.ENTITY_FUNCTION
+            else Fore.BLUE
+        )
+        line = f"  {color}↳ {obj.name}{Style.RESET_ALL}"
+        if show_score:
+            line += f" ({score:.2f})"
+        print(line)
+        last_file = obj.file
+
+    print()
+
+
+# ------------------------ delete ------------------------
+
+
+def delete(
+    name: Optional[str] = None,
+    path: Optional[str] = None,
+    type: Optional[str] = None,
+    confirmed: bool = False,
+):
+    if path:
+        path = normalize_path(path)
+    if path and path not in hnsw_indices:
+        print(f"No indexed repository found for {path}.")
+        return
+
+    if path and not (type or name):
+        confirmed = input(
+            f'do you want to remove all entities from "{path}"? (yes/no): '
+        ).strip().lower() in {"yes", "y"}
+        if not confirmed:
+            return
+        fts_remove_repo(path)
+        hnsw_remove_repo(path)
+        print("Deleted.")
+        return
+
+    conditions = []
+    if path:
+        conditions.append(CodeEntity.file.startswith(path))
+    if name:
+        conditions.append(CodeEntity.name.startswith(name))
+    if type:
+        conditions.append(CodeEntity.type == type_to_id[type])
+
+    if not conditions:
+        print(
+            f"{Fore.YELLOW}No criteria provided for deletion.{Style.RESET_ALL}"
+        )
+        return
+
+    query = CodeEntity.select().where(reduce(lambda x, y: x & y, conditions))
+    total_no = query.count()
+
+    if total_no == 0:
+        print("No matching entities found for deletion.")
+        return
+
+    while not confirmed:
+        print(
+            f"{Fore.YELLOW}Warning: {total_no} entities match the criteria!{Style.RESET_ALL}"
+        )
+        choice = (
+            input(
+                "Type 'yes' to delete, 'list' to preview entities, anything else to cancel: "
+            )
+            .strip()
+            .lower()
+        )
+
+        if choice in {"yes", "y"}:
+            confirmed = True
+
+        elif choice == "list":
+            print(
+                f"{Fore.CYAN}Listing all matching entities:{Style.RESET_ALL}"
+            )
+            for obj in query:
+                color = (
+                    Fore.GREEN
+                    if id_to_type[obj.type] == c.ENTITY_FUNCTION
+                    else Fore.BLUE
+                )
+                print(f"{color}↳ {obj.name}{Style.RESET_ALL} in {obj.file}")
+            print()
+
+        else:
+            print("\nDeletion cancelled.")
+            return
+
+    with db.atomic():
+        for obj in query:
+            deleted_ids = fts_remove_symbol(obj.file, obj.type, obj.name)
+            for _id in deleted_ids:
+                hnsw_remove_symbol(_id)
+    print(f"{Fore.GREEN}{total_no} entities deleted.{Style.RESET_ALL}")
