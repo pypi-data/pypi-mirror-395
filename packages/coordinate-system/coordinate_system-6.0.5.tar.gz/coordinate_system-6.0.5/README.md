@@ -1,0 +1,202 @@
+# Coordinate System Library
+
+**High-performance 3D coordinate system and differential geometry library for Python**
+
+[![PyPI version](https://badge.fury.io/py/coordinate-system.svg)](https://pypi.org/project/coordinate-system/)
+[![Python](https://img.shields.io/pypi/pyversions/coordinate-system.svg)](https://pypi.org/project/coordinate-system/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**Author:** PanGuoJun
+**Version:** 6.0.4
+**License:** MIT
+
+---
+
+## What's New in v6.0.4 (2025-12-08)
+
+- **File Restructure**: `frames.py` → `spectral_geometry.py`, removed redundant `fourier_spectral.py`
+- **Unified Documentation**: Complete "Complex Frame Field Algebra" theory document
+- **Gaussian Curvature**: Unified to intrinsic gradient / Lie bracket method
+
+---
+
+## Module Structure
+
+```
+coordinate_system/
+├── coordinate_system.pyd/.so   # C++ core (vec3, quat, coord3)
+├── spectral_geometry.py        # FourierFrame [GL(1,C)], spectral analysis
+├── u3_frame.py                 # U3Frame [U(3)], gauge field theory
+├── differential_geometry.py    # Surface curvature calculation
+├── visualization.py            # 3D visualization
+└── curve_interpolation.py      # C2-continuous interpolation
+```
+
+## Group Correspondence
+
+| Class | Group | DOF | Use Case |
+|-------|-------|-----|----------|
+| `coord3` | Sim(3) = R³ ⋊ (SO(3) × R⁺) | 10 | 3D coordinate transform |
+| `FourierFrame` | GL(1,C) = U(1) × R⁺ | 2 | Spectral geometry, heat kernel |
+| `U3Frame` | U(3) = SU(3) × U(1) | 9 | Gauge field theory |
+
+---
+
+## Installation
+
+```bash
+pip install coordinate-system
+```
+
+---
+
+## Quick Start
+
+### Basic Coordinate System
+
+```python
+from coordinate_system import vec3, quat, coord3
+
+# Vector operations
+v1 = vec3(1, 2, 3)
+v2 = vec3(4, 5, 6)
+dot = v1.dot(v2)
+cross = v1.cross(v2)
+
+# Quaternion rotation
+q = quat(1.5708, vec3(0, 0, 1))  # 90° around Z
+rotated = q * v1
+
+# Coordinate transform
+frame = coord3.from_angle(1.57, vec3(0, 0, 1))
+world_pos = v1 * frame    # Local -> World
+local_pos = world_pos / frame  # World -> Local
+```
+
+### Differential Geometry
+
+```python
+from coordinate_system import Sphere, compute_gaussian_curvature
+
+sphere = Sphere(radius=1.0)
+K = compute_gaussian_curvature(sphere, u=0.5, v=0.5)  # K = 1.0
+```
+
+**Gaussian Curvature via Lie Bracket:**
+$$K = -\frac{\langle [G_u, G_v] e_v, e_u \rangle}{\sqrt{\det(g)}}$$
+
+### Spectral Geometry (FourierFrame)
+
+```python
+from coordinate_system import (
+    FourierFrame, IntrinsicGradient, BerryPhase, ChernNumber, HeatKernel
+)
+
+# Create frame field
+frame_field = [[FourierFrame(q_factor=1.0 + 0.1j*(i+j))
+                for j in range(16)] for i in range(16)]
+
+# Intrinsic gradient: G_μ = d/dx^μ log Q
+grad_op = IntrinsicGradient(frame_field)
+
+# Berry phase: γ = ∮ G_μ dx^μ
+berry = BerryPhase(grad_op)
+path = [(4, 4), (4, 12), (12, 12), (12, 4), (4, 4)]
+gamma = berry.compute_along_path(path, closed=True)
+
+# Heat kernel trace
+heat = HeatKernel(frame_field)
+trace = heat.trace(t=0.1)
+```
+
+### Gauge Field Theory (U3Frame)
+
+```python
+from coordinate_system import U3Frame, GaugeConnection, FieldStrength
+import numpy as np
+
+# Create U(3) frame
+frame = U3Frame()
+
+# Symmetry decomposition: U(3) = SU(3) × U(1)
+su3_comp, u1_phase = frame.to_su3_u1()
+
+# Gauge transforms
+frame_u1 = frame.gauge_transform_u1(np.pi/4)
+frame_su3 = frame.gauge_transform_su3(np.random.randn(8) * 0.1)
+
+# Gauge connection and field strength
+conn_x = GaugeConnection(su3_component=np.random.randn(8) * 0.1)
+conn_y = GaugeConnection(su3_component=np.random.randn(8) * 0.1)
+F_xy = conn_x.field_strength(conn_y)
+
+# Yang-Mills action
+S_YM = F_xy.yang_mills_action()
+```
+
+---
+
+## Key Formulas
+
+| Concept | Formula | Code |
+|---------|---------|------|
+| Intrinsic Gradient | $G_\mu = \frac{d}{dx^\mu} \log C(x)$ | `IntrinsicGradient` |
+| Curvature Tensor | $R_{\mu\nu} = [G_\mu, G_\nu]$ | `CurvatureFromFrame` |
+| Gaussian Curvature | $K = -\langle [G_u, G_v] e_v, e_u \rangle / \sqrt{\det g}$ | `compute_gaussian_curvature` |
+| Berry Phase | $\gamma = \oint G_\mu dx^\mu$ | `BerryPhase` |
+| Chern Number | $c_1 = \frac{1}{2\pi} \iint R_{\mu\nu} dS$ | `ChernNumber` |
+| Heat Kernel | $\text{Tr}(e^{t\Delta}) \sim (4\pi t)^{-d/2} \sum_k a_k t^k$ | `HeatKernel` |
+| Yang-Mills Action | $S = -\frac{1}{4g^2} \text{Tr}(F_{\mu\nu} F^{\mu\nu})$ | `FieldStrength.yang_mills_action()` |
+
+---
+
+## FourierFrame vs U3Frame
+
+| Property | FourierFrame | U3Frame |
+|----------|--------------|---------|
+| **Group** | GL(1,C) = C× | U(3) |
+| **DOF** | 2 (phase + magnitude) | 9 (unitary matrix) |
+| **Use Case** | Spectral analysis, heat kernel | Gauge field theory |
+| **Fourier Transform** | `fourier_transform(θ)` | `gauge_transform_u1(θ)` |
+| **Conformal Transform** | `conformal_transform(λ)` | Not supported |
+| **SU(3) Transform** | Not supported | `gauge_transform_su3(...)` |
+
+---
+
+## Performance
+
+| Operation | Ops/second |
+|-----------|-----------|
+| Vector addition | 5,200,000 |
+| Quaternion rotation | 1,800,000 |
+| Gaussian curvature | 85,000 |
+| Spectral transform (GPU) | 12,000 |
+
+---
+
+## Changelog
+
+### v6.0.4 (2025-12-08)
+- `frames.py` → `spectral_geometry.py`
+- Removed `fourier_spectral.py`
+- Unified theory documentation
+
+### v6.0.3 (2025-12-04)
+- U3Frame: U(3) unitary frame
+- GaugeConnection, FieldStrength
+
+### v6.0.1 (2025-12-04)
+- FourierFrame spectral geometry
+- Berry phase, Chern number, heat kernel
+
+---
+
+## License
+
+MIT License - Copyright (c) 2024-2025 PanGuoJun
+
+## Links
+
+- **PyPI**: https://pypi.org/project/coordinate-system/
+- **GitHub**: https://github.com/panguojun/Coordinate-System
+- **Email**: 18858146@qq.com
