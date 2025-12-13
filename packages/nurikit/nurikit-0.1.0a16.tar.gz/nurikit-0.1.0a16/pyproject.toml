@@ -1,0 +1,128 @@
+#
+# Project NuriKit - Copyright 2023 SNU Compbio Lab.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+[build-system]
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "nurikit"
+version = "0.1.0a16"
+description = "*The* fundamental software platform for chem- and bio-informatics"
+readme = "README.md"
+requires-python = ">=3.7"
+license = { file = "LICENSE" }
+authors = [{ name = "Nuri Jung", email = "jnooree@snu.ac.kr" }]
+maintainers = [{ name = "Nuri Jung", email = "jnooree@snu.ac.kr" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+]
+dependencies = ["numpy"]
+
+[project.urls]
+Documentation = "https://nurikit.readthedocs.io/"
+Repository = "https://github.com/seoklab/nurikit.git"
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-xdist", "scipy"]
+docs = [
+    "sphinx<8.2",
+    "sphinxcontrib-bibtex",
+    "sphinx-rtd-theme",
+    "urllib3<2.0",
+    "setuptools",           # required for pkg_resources
+]
+coverage = ["gcovr"]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+ninja.make-fallback = false
+
+cmake.version = ">=3.14"
+cmake.build-type = "Release"
+
+sdist.include = ["/pyproject.toml", "*.pyi"]
+sdist.exclude = [
+    "/bench",
+    "/docs",
+    "/fuzz",
+    "/scripts",
+    "/pyproject.toml.in",
+    "cmake-variants.json",
+    "gcovr.cfg",
+    ".*",
+]
+wheel.packages = ["python/src/nuri"]
+wheel.exclude = ["*.h", "*.cpp", "*.in"]
+wheel.install-dir = "nuri"
+install.strip = true
+
+[tool.scikit-build.cmake.define]
+BUILD_TESTING = "OFF"
+NURI_BUILD_LIB = "ON"
+NURI_BUILD_PYTHON = "ON"
+NURI_ENABLE_SANITIZERS = "OFF"
+NURI_TEST_COVERAGE = "OFF"
+NURI_BUILD_DOCS = "OFF"
+NURI_BUILD_PYTHON_DOCS = "OFF"
+NURI_REF = "v0.1.0a16"
+NURI_OPTIMIZATION_LEVEL = "O3"
+NURI_ENABLE_IPO = "ON"
+
+[[tool.scikit-build.overrides]]
+if.from-sdist = false
+if.scikit-build-version = ">=0.11.0"
+
+build.requires = ["pybind11-stubgen", "numpy"]
+cmake.define = { NURI_BUILD_PYTHON_STUBS = "ON" }
+
+[tool.cibuildwheel]
+build = ["cp*-manylinux_x86_64", "cp*-macosx_x86_64", "cp*-macosx_arm64"]
+enable = ["cpython-freethreading"]
+build-verbosity = 1
+
+test-extras = ["test", "docs"]
+test-command = [
+    "pytest -v -s {project}/python/test",
+    """
+cmake -S {project} -B . \
+    -DSKBUILD=ON \
+    -DBUILD_TESTING=OFF \
+    -DNURI_BUILD_LIB=OFF \
+    -DNURI_BUILD_PYTHON=OFF \
+    -DNURI_BUILD_PYTHON_DOCTEST=ON""",
+    "cmake --build . --target NuriPythonDoctest -j",
+]
+
+[tool.cibuildwheel.config-settings]
+"build.verbose" = "true"
+
+[tool.cibuildwheel.linux]
+environment-pass = ["SKBUILD_CMAKE_ARGS", "CMAKE_PREFIX_PATH"]
+before-all = ["ln -sfT /host/home/linuxbrew /home/linuxbrew"]
+
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.15"
+
+[tool.pytest.ini_options]
+testpaths = ["python/test"]
