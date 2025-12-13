@@ -1,0 +1,100 @@
+[tool.poetry]
+name        = "cubexpress"
+version     = "0.1.16"
+description = "Efficient processing of cubic Earth-observation (EO) data."
+authors     = [
+  "Julio Contreras <contrerasnetk@gmail.com>",
+]
+
+repository   = "https://github.com/andesdatacube/cubexpress"
+documentation = "https://andesdatacube.github.io/cubexpress"
+readme       = "README.md"
+keywords     = ["earth-engine", "sentinel-2", "geospatial", "eo", "cube"]
+classifiers  = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: GIS",
+]
+packages = [{ include = "cubexpress" }]
+
+[tool.poetry.dependencies]
+python            = ">=3.9"
+numpy             = ">=2.0.2"
+pandas            = ">=2.2.2"
+utm               = ">=0.7.0"
+pygeohash         = ">=1.2.0"       
+rasterio          = ">=1.3.9"      
+earthengine-api   = ">=1.5.12"    
+pyarrow           = ">=14.0.0"      
+pyproj            = ">=3.6.0"
+pydantic          = ">=2.11.4"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest      = "^7.2.0"
+pytest-cov  = "^4.0.0"
+deptry      = "^0.16.2"
+mypy        = "^1.5.1"
+pre-commit  = "^3.4.0"
+tox         = "^4.11.1"
+black       = "^24.2.0"   # NEW – referenced by tool.black
+isort       = "^5.13.0"   # NEW – referenced by tool.isort
+ruff        = "^0.3.4"    # match your config file
+
+[tool.poetry.group.docs.dependencies]
+mkdocs          = "^1.4.2"
+mkdocs-material = "^9.2.7"
+mkdocstrings    = { extras = ["python"], version = "^0.26.1" }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ─────────────────────────────────── tooling configs (unchanged) ────────────
+[tool.mypy]
+files                  = ["cubexpress"]
+disallow_untyped_defs  = true
+disallow_any_unimported = true
+no_implicit_optional   = true
+check_untyped_defs     = true
+warn_return_any        = true
+warn_unused_ignores    = true
+show_error_codes       = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.isort]
+profile      = "black"
+line_length  = 120
+
+[tool.black]
+line-length     = 120
+target-version  = ["py39"]
+
+[tool.ruff]
+target-version = "py39"
+line-length    = 120
+fix            = true
+select         = [
+  "YTT", "S", "B", "A", "C4", "T10", "SIM",
+  "I", "C90", "E", "W", "F", "PGH", "UP", "RUF", "TRY",
+]
+ignore         = ["E501", "E731"]
+
+[tool.ruff.format]
+preview = true
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.coverage.run]
+branch = true
+source = ["cubexpress"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]
