@@ -1,0 +1,92 @@
+[build-system]
+requires = ["poetry-core >=2, <3"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "nitrokey"
+version = "0.4.2"
+description = "Nitrokey Python SDK"
+authors = [
+    { name = "Nitrokey", email = "pypi@nitrokey.com" },
+]
+license = "Apache-2.0 or MIT"
+readme = "README.md"
+packages = [
+    { include = "nitrokey", from = "src" },
+]
+requires-python = ">=3.10, <4"
+dynamic = ["classifiers"]
+
+dependencies = [
+    "cryptography >=41",
+    "fido2 >=1.1.2, <3",
+    "requests >=2.16, <3",
+    "semver >=3, <4",
+    "tlv8 >=0.10, <0.11",
+
+    # lpc55
+    "crcmod >=1.7, <2",
+    "hidapi >=0.14, <0.15",
+
+    # nrf52
+    "protobuf >=5.26, <7",
+    "pyserial >=3.5, <4",
+]
+
+[project.urls]
+repository = "https://github.com/Nitrokey/nitrokey-sdk-py"
+
+[tool.poetry]
+classifiers = [
+    "Intended Audience :: Developers",
+]
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.3"
+fake-winreg = "^1.6"
+flake8 = "^7.1"
+isort = "^5.13.2"
+mypy = "^1.4"
+rstcheck = { version = "^6", extras = ["sphinx"] }
+sphinx = "^7"
+types-protobuf = ">=5.26, <7"
+types-requests = "^2.16"
+typing-extensions = "^4.1"
+
+[tool.uv]
+dev-dependencies = [
+    # These dependencies are required for running the type checks.
+    "fake-winreg >=1.6, <2",
+    "mypy >=1.4, <2",
+    "types-protobuf >=5.26, <7",
+    "types-requests >=2.16, <3",
+
+    # These additional lower bounds are required for --resolution lowest.
+    # As these are transitive dependencies, we don’t include them in our dependency list.
+    "cffi >=1.14.1",
+    "typing-extensions >=4.1",
+    "urllib3 >= 2",
+
+    # fake-winreg does not work with wrapt v2 so we need to add an additional upper bound
+    "wrapt <2",
+]
+
+[tool.black]
+target-version = ["py310"]
+
+[tool.isort]
+py_version = "310"
+profile = "black"
+
+[tool.mypy]
+mypy_path = "stubs"
+show_error_codes = true
+python_version = "3.10"
+strict = true
+
+[tool.rstcheck]
+ignore_directives = ["autoclass", "autofunction", "automodule"]
+ignore_substitutions = ["nitrokey_sdk_version"]
