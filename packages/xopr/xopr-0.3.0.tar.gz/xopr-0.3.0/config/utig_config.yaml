@@ -1,0 +1,51 @@
+# XOPR STAC Catalog Configuration - UTIG
+# ========================================
+# Configuration for building STAC catalogs from UTIG (University of Texas Institute for Geophysics) radar data
+
+version: "1.0.0"
+
+# Data source configuration
+data:
+  root: "/kucresis/scratch/dataproducts/public/data/rds" # Update with actual UTIG data path
+  provider: "utig"  # Data provider identifier for opr:provider metadata
+  primary_product: "CSARP_standard"
+  extra_products:
+    - "CSARP_layer"
+    - "CSARP_qlook"
+
+  # Campaign filtering (optional)
+  campaigns:
+    include:
+      # Example UTIG campaigns (typically BaslerMKB aircraft):
+      - "2018_Antarctica_BaslerJKB"
+      - "2022_Antarctica_BaslerMKB"
+      - "2023_Antarctica_BaslerMKB"
+    exclude: []
+  campaign_filter: ""  # Regex pattern to match campaign names (empty = no filter)
+
+# Output configuration
+output:
+  path: "./catalog_v3"
+  catalog_id: "OPR"
+  catalog_description: "Open Polar Radar UTIG airborne data"
+  license: "CC-1.0"
+
+# Processing configuration
+processing:
+  n_workers: 4  # Number of parallel workers for processing
+  memory_limit: "8GB"  # Memory limit per worker
+  max_items: null  # Maximum items to process (null for unlimited)
+
+# Asset configuration
+assets:
+  base_url: "https://data.cresis.ku.edu/data/rds/"  # Update with actual UTIG data URL
+
+# Logging configuration
+logging:
+  verbose: true
+  level: "INFO"
+
+# Geometry simplification configuration
+geometry:
+  simplify: true
+  tolerance: 100.0  # Tolerance in meters for geometry simplification

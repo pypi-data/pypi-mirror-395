@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xopr"
+dynamic = ["version"]
+description = "Access Open Polar Radar data in the Python data ecosystem"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "xarray>=2024.10.0",
+    "h5netcdf",
+    "requests",
+    "matplotlib",
+    "aiohttp",
+    "geoviews",
+    "shapely",
+    "geopandas",
+    "h5py>=3.9",
+    "fsspec",
+    "dask[distributed]",
+    "rustac>=0.6.0",
+    "antimeridian>=0.4.3",
+    "hdf5storage",
+    "duckdb>=1.0.0",
+    "haversine>=2.8.0",
+    "pyarrow",
+    "platformdirs",
+]
+
+[project.optional-dependencies]
+stac = [
+    "pystac",
+    "stac_asset",
+    "stac-geoparquet",
+    "stac-fastapi-geoparquet[serve]",
+    "omegaconf",
+    "pyarrow",
+]
+docs = [
+    "mystmd",
+    "dask[distributed]",
+    "coiled>=1.117.0",
+    "ipykernel",
+    "jupyter",
+    "jupyterlab",
+    "hvplot",
+    "jupyter_bokeh",
+    "rioxarray",
+    "verde",
+    "pdoc>=14.0.0",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "flake8",
+    "stac-validator",
+    "xopr[stac]"
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/xopr/_version.py"
+
+[tool.pytest.ini_options]
+addopts = "--cov=xopr --cov-report=xml --cov-report=term"
