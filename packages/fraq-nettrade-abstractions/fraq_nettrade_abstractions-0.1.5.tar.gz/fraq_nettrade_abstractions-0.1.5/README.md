@@ -1,0 +1,162 @@
+﻿# FraQ NetTrade Python Abstractions
+
+SDK for developing trading strategies in Python for the FraQ NetTrade platform.
+
+## Installation
+
+```bash
+pip install fraq-nettrade-abstractions
+```
+
+## Quick Start
+
+```python
+from fraq_nettrade_abstractions import Strategy
+
+class MyStrategy(Strategy):
+    def on_start(self, context):
+        """Initialize your strategy"""
+        self.sma_fast = context['indicators'].sma(period=10)
+        self.sma_slow = context['indicators'].sma(period=20)
+    
+    def on_bar(self, symbol, index):
+        """Trading logic - called on each bar"""
+        if self.sma_fast[index] > self.sma_slow[index]:
+            return {'action': 'buy', 'volume': 1.0}
+        elif self.sma_fast[index] < self.sma_slow[index]:
+            return {'action': 'sell', 'volume': 1.0}
+        return None
+```
+
+## Backtesting Your Strategy
+
+1. Put the full path of the strategy in a FraQ backtest json configuration file
+4. Run backtest using 'fraq backtest <your file>.
+
+## Debugging (local only)
+
+```python
+from fraq_nettrade_abstractions import Strategy, enable_debugger
+
+class MyStrategy(Strategy):
+    def on_start(self, context):
+        debug = context["debug"]
+
+        if debug:
+            print("🔴 ATTACH DEBUGGER NOW")
+            enable_debugger()
+
+        # Your strategy code with breakpoints
+```
+
+**Debug workflow:**
+
+1. Start backtest normally
+2. Wait until message "ATTACH.." appears in the console window
+3. Set breakpoints in your strategy
+4. Attach VS Code to port 5678
+
+here a template for VS Code launch.json
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to FraQ",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "127.0.0.1",
+                "port": 5678
+            },
+            "justMyCode": false,
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "${workspaceFolder}"
+                }
+            ]
+        }
+    ]
+}
+```
+
+## API Reference
+
+### Strategy Class
+
+Base class for all trading strategies.
+
+**Methods to implement:**
+
+- `on_start(context)` - Called once when backtest starts
+- `on_bar(symbol, index)` - Called on each bar (required)
+- `on_tick(symbol)` - Called on each tick (optional)
+- `on_stop()` - Called when backtest ends (optional)
+
+### Context Dictionary
+
+Passed to `on_start()`:
+
+```python
+{
+    'account': {
+        'balance': float,
+        'equity': float,
+        'margin_used': float,
+        'margin_available': float
+    },
+    'symbols': [
+        {
+            'name': str,
+            'bid': float,
+            'ask': float,
+        }
+    ],
+    'indicators': IndicatorFactory
+    'debug': bool
+}
+```
+
+### Symbol Object
+
+Passed to `on_bar()` and `on_tick()`:
+
+```python
+{
+    'name': 'EURUSD',
+    'bid': 1.0850,
+    'ask': 1.0852,
+    'spread': 0.0002,
+    'close': 1.0851,
+    'bars': [
+        {
+            'open': 1.0840,
+            'high': 1.0855,
+            'low': 1.0835,
+            'close': 1.0850,
+            'volume': 1000.0,
+            'time': '2024-01-01T00:00:00'
+        }
+    ]
+}
+```
+
+### Trade Signals
+
+Return from `on_bar()` or `on_tick()`:
+
+```python
+# Buy signal
+{'action': 'buy', 'volume': 1.0}
+
+# Sell signal
+{'action': 'sell', 'volume': 1.0}
+
+# Close all positions
+{'action': 'close', 'volume': 0}
+
+# No action
+None
+```
