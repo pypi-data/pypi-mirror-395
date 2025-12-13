@@ -1,0 +1,77 @@
+Metadata-Version: 2.4
+Name: EDX
+Version: 0.0.17
+Summary: EDX MADES SOAP API implementation in python
+Home-page: https://github.com/Haigutus/EDX
+Author: Kristjan Vilgo
+Author-email: kristjan.vilgo@gmail.com
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Requires-Dist: zeep
+Requires-Dist: urllib3
+Requires-Dist: lxml
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+# EDX
+Python implementation of EDX SOAP MADES API (ENTSO-E Data Exchange Software - https://www.entsoe.eu/data/edx/) 
+
+# Installation
+
+    pip install EDX
+
+or
+
+    pip install --user EDX
+
+or 
+
+    python -m pip install --user EDX
+
+
+# Usage
+
+### Initialise
+    import EDX
+
+    service = EDX.Client("https://edx.elering.sise")
+*create_client is depricated*
+
+### Send message
+    with open("message.xml", "rb") as loaded_file:
+        message_ID = service.send_message("10V000000000011Q", "RIMD", loaded_file.read())
+
+### Check message status
+    status = service.check_message_status(message_ID)
+
+### Retrieve message
+    message = service.receive_message()
+    
+### Confirm retrieval of message
+    service.confirm_received_message(message.receivedMessage.messageID)
+    
+### Save message on drive
+*in case of Excel use .xlsx and in case of PDF use .pdf and etc*
+
+    with open("report.xml", 'wb') as report_file:
+        report_file.write(message.receivedMessage.content)
+        
+### Save message as file like object in memory
+
+    file_like_object = io.BytesIO(message.receivedMessage.content)
+
+    
+    
