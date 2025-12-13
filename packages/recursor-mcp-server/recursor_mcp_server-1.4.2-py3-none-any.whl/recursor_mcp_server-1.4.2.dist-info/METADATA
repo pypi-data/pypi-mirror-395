@@ -1,0 +1,281 @@
+Metadata-Version: 2.4
+Name: recursor-mcp-server
+Version: 1.4.2
+Summary: Recursor MCP (Model Context Protocol) Server - Connect AI assistants (Claude Desktop, Cursor) to your Recursor project's memory
+Project-URL: Homepage, https://recursor.dev
+Project-URL: Documentation, https://docs.recursor.dev/mcp
+Project-URL: Repository, https://github.com/recursor/middleware
+Project-URL: Issues, https://github.com/recursor/middleware/issues
+Author-email: Recursor <team@recursor.dev>
+Maintainer-email: Recursor <team@recursor.dev>
+License: MIT License
+License-File: LICENSE
+Keywords: ai,ai-assistant,claude,context,cursor,llm,mcp,memory,model-context-protocol,recursor
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.9
+Requires-Dist: aiohttp>=3.9.0
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: mcp>=0.1.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: sqlalchemy>=2.0.0
+Provides-Extra: http
+Requires-Dist: fastapi>=0.100.0; extra == 'http'
+Requires-Dist: uvicorn>=0.23.0; extra == 'http'
+Requires-Dist: websockets<13,>=12.0; extra == 'http'
+Provides-Extra: test
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'test'
+Requires-Dist: pytest>=7.4.0; extra == 'test'
+Description-Content-Type: text/markdown
+
+# Recursor MCP Server
+
+[![PyPI - Version](https://img.shields.io/pypi/v/recursor-mcp-server)](https://pypi.org/project/recursor-mcp-server/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/recursor-mcp-server)](https://pypi.org/project/recursor-mcp-server/)
+[![License](https://img.shields.io/pypi/l/recursor-mcp-server)](https://github.com/recursor-dev/recursor-middleware/blob/main/mcp-server/LICENSE)
+
+Connect your AI coding assistant (Claude Desktop, Cursor, etc.) to your Recursor project's memory and learnings.
+
+## What is This?
+
+The Recursor MCP (Model Context Protocol) server allows AI assistants to:
+
+- **Search your memory**: Query past corrections and coding patterns
+- **Learn from you**: Save new corrections when you fix the AI's output
+- **Access project context**: Pull information specific to your project
+
+## Installation
+
+```bash
+pip install recursor-mcp-server
+```
+
+Or from Test PyPI:
+
+```bash
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ recursor-mcp-server
+```
+
+## Quick Start
+
+### 1. Get Your Configuration
+
+1. Log into your [Recursor Dashboard](https://recursor.ai/dashboard)
+2. Select your project
+3. Find the "MCP Server Configuration" section
+4. Click "Copy Config"
+
+### 2. Configure Your AI Tool
+
+#### Claude Desktop
+
+1. Open your config file:
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+2. Paste the configuration from your dashboard
+
+3. Restart Claude Desktop
+
+#### Cursor
+
+1. Open Settings (Cmd/Ctrl + ,)
+2. Search for "MCP"
+3. Add the configuration to your MCP servers list
+4. Restart Cursor
+
+### 3. Set Environment Variables
+
+```bash
+export RECURSOR_API_KEY="your-api-key"
+export RECURSOR_API_URL="https://api.recursor.dev/api/v1"
+```
+
+### 4. Run the Server
+
+**Stdio Mode (for Claude Desktop/Cursor):**
+```bash
+recursor-mcp
+```
+
+Or:
+```bash
+python -m recursor_mcp_server
+```
+
+**HTTP Bridge Mode (for Docker, n8n, etc.):**
+```bash
+recursor-mcp --http
+```
+
+Or:
+```bash
+MCP_MODE=http python -m recursor_mcp_server
+```
+
+## Available Tools (40+)
+
+Once connected, your AI assistant has access to all Recursor features:
+
+### Corrections
+- `search_memory(query, limit=5)` - Search for corrections and patterns
+- `add_correction(original_code, fixed_code, explanation)` - Record a correction
+- `list_corrections(page, page_size)` - List corrections with pagination
+- `get_correction_stats()` - Get correction statistics
+- `get_correction(correction_id)` - Get specific correction
+
+### Code Intelligence
+- `detect_intent(user_request, current_file)` - Detect user intent
+- `correct_code(code, language)` - Get AI-suggested code corrections
+- `get_coding_patterns()` - Get learned coding patterns
+- `get_analytics(user_id, period)` - Get analytics dashboard
+- `get_time_saved(user_id, period)` - Get time saved metrics
+- `get_quality_metrics(user_id, period)` - Get quality metrics
+- `get_trust_score(user_id, model_name)` - Get trust score
+
+### Projects
+- `create_project(name, organization_id, description)` - Create a project
+- `list_projects(organization_id)` - List projects
+- `get_project(project_id)` - Get project details
+- `update_project(project_id, name, description)` - Update project
+- `delete_project(project_id)` - Delete project
+- `get_mcp_config(project_id)` - Get MCP configuration
+- `get_mcp_stats(project_id)` - Get MCP statistics
+
+### Organizations
+- `create_organization(name, description)` - Create organization
+- `list_organizations()` - List organizations
+- `get_organization(org_id)` - Get organization details
+- `update_organization(org_id, name, description)` - Update organization
+
+### Authentication
+- `register(email, password, username, full_name)` - Register new user
+- `login(email, password)` - Login and get access token
+- `get_profile()` - Get user profile
+- `update_profile(full_name, username)` - Update profile
+- `change_password(current_password, new_password)` - Change password
+
+### Memory
+- `query_rotatable_memory(domain, pattern_type, limit)` - Query learned patterns
+- `get_memory_stats()` - Get memory statistics
+- `get_conversation_summaries(limit)` - Get conversation summaries
+- `get_architectural_changes(limit)` - Get architectural changes
+- `record_pattern_usage(pattern_id, successful)` - Record pattern usage
+
+### Billing
+- `get_usage()` - Get current usage statistics
+- `get_usage_history(days)` - Get usage history
+- `list_billing_plans()` - List billing plans
+- `get_subscription()` - Get subscription information
+
+### Notifications
+- `list_notifications()` - List notifications
+- `mark_notification_read(notification_id)` - Mark notification as read
+
+### Settings
+- `get_settings()` - Get user settings
+- `get_guidelines()` - Get coding guidelines
+
+### Activity
+- `list_activity_logs(page, page_size)` - List activity logs
+
+### Gateway
+- `gateway_chat(messages, provider, model)` - LLM gateway chat with automatic corrections
+
+### Safety
+- `check_safety(code_snippet)` - Validate code safety
+
+**Examples:**
+
+```
+You: "Search my memory for authentication patterns"
+AI: *Calls search_memory("authentication")*
+AI: "Based on your past corrections, you prefer JWT with httpOnly cookies..."
+
+You: "Actually, use TypeScript interfaces, not types"
+AI: *Calls add_correction("type User = {...}", "interface User {...}", "User prefers interfaces")*
+AI: "Got it! I'll use interfaces from now on."
+
+You: "What's my current usage?"
+AI: *Calls get_usage()*
+AI: "You've used 1,234 API calls this month (62% of limit)..."
+```
+
+## HTTP Bridge API
+
+When running in HTTP mode, the server exposes REST endpoints:
+
+- `GET /` - Health check
+- `POST /search` - Search corrections
+- `POST /corrections` - Add correction
+
+See [HTTP Bridge Documentation](https://docs.recursor.dev/mcp/http-bridge) for details.
+
+## Configuration
+
+Environment variables:
+
+- `RECURSOR_API_KEY` (required) - Your Recursor API key
+- `RECURSOR_API_URL` (optional) - API endpoint (default: `https://recursor.dev/v1`)
+- `RECURSOR_PROJECT_ID` (optional) - Project ID for analytics
+- `MCP_MODE` (optional) - `http` for HTTP bridge, or omit for stdio
+- `MCP_HTTP_PORT` (optional) - HTTP bridge port (default: `8001`)
+- `MCP_HTTP_HOST` (optional) - HTTP bridge host (default: `0.0.0.0`)
+- `CORS_ORIGINS` (optional) - Comma-separated list of allowed CORS origins
+
+## Troubleshooting
+
+### "Module not found" errors
+
+Make sure you installed the package:
+
+```bash
+pip install recursor-mcp-server
+```
+
+### "Cannot connect to API" errors
+
+- Verify your `RECURSOR_API_KEY` is set correctly
+- Check that `RECURSOR_API_URL` points to the correct endpoint
+- Ensure you have internet connectivity
+
+### "Tools not appearing" in AI assistant
+
+- Restart your AI tool (Claude Desktop/Cursor) after adding the config
+- Check the AI tool's logs for MCP errors
+- Verify the MCP server is running: `recursor-mcp`
+
+## Development
+
+```bash
+# Clone repository
+git clone https://github.com/recursor-dev/recursor-middleware.git
+cd recursor-middleware/mcp-server
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+pytest
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: https://docs.recursor.dev/mcp
+- **Dashboard**: https://recursor.ai/dashboard
+- **Issues**: https://github.com/recursor-dev/recursor-middleware/issues
+
