@@ -1,0 +1,2 @@
+class QtfException(Exception):
+    pass
