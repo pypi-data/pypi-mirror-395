@@ -1,0 +1,45 @@
+name: 'setup py-shiny'
+description: 'Action that installs python, installs py-shiny dependencies, and installs py-shiny'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: "3.14"
+runs:
+  using: "composite"
+  steps:
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Upgrade `pip`
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install `uv`
+        shell: bash
+        run: |
+          pip install uv
+
+      # https://github.com/astral-sh/uv/blob/main/docs/guides/integration/github.md#using-uv-pip
+      - name: Allow uv to use the system Python by default
+        shell: bash
+        run: |
+          echo "UV_SYSTEM_PYTHON=1" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          make ci-install-deps
+
+      - name: Install
+        shell: bash
+        run: |
+          make ci-install-wheel
+
+      - name: Pip list
+        shell: bash
+        run: |
+          uv pip list
