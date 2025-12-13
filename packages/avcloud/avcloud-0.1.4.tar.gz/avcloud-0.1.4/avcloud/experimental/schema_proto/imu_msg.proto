@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+import "geometry_msg.proto";
+
+message ImuData {
+  Quaternion orientation = 1;
+  Vector3 angular_velocity = 2;     // rad/s {x,y,z}
+  Vector3 linear_acceleration = 3;  // m/s^2 {x,y,z}
+}
+
+message Imu {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string scene_id = 6;
+  string run_id = 7; // grouping key for runs
+  ImuData imu = 8;
+}

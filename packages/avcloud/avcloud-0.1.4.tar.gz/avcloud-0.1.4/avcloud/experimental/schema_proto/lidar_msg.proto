@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+import "calibration_msg.proto";
+
+message LidarData {
+  bytes front = 1; // pcd binary
+}
+
+message Lidar {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string sensor_frame_id = 6; // join key forlabels
+  string scene_id = 7;
+  string run_id = 8; // grouping key for runs
+  LidarData lidar = 9;
+  LidarCalibration calibration = 10;
+}
+
+// Accumulated laser map snapshots
+message LaserMap {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  string scene_id = 5;
+  string run_id = 6; // grouping key for runs
+  bytes points = 7;           // serialized point cloud bytes
+  int64 point_count = 8;
+  bool is_accumulated = 9;    // whether accumulated map
+}

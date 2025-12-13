@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum VehicleMovementStatus {
+  MOVEMENT_UNKNOWN = 0;
+  STATIONARY = 1;
+  FORWARDS = 2;
+  BACKWARDS = 3;
+}
+
+message VehicleStateData {
+  // Basic controls
+  string gear = 1;              // gear position (PARK, REVERSE, NEUTRAL, DRIVE, etc.)
+  string gear_status = 2;       // gear signal status
+  float brake = 3;              // 0-1 (brake pedal position)
+  double accelerator = 4;       // 0-1 (accelerator pedal position)
+  string accelerator_qualifier = 5;  // accelerator position qualifier
+  string turn_signal = 6;       // turn signal status
+
+  // Speed and motion
+  double speed = 7;             // m/s (vehicle speed)
+  string speed_status = 8;      // speed signal status
+  VehicleMovementStatus movement_status = 9;  // vehicle movement direction
+
+  // Steering
+  double steering_angle = 10;   // degrees (steering wheel angle)
+  string steering_angle_status = 11;   // steering angle signal status
+  string steering_angle_validity = 12; // steering angle validity
+}
+
+message VehicleState {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string scene_id = 6;
+  string run_id = 7; // grouping key for runs
+  VehicleStateData vehicle_state = 8;
+}

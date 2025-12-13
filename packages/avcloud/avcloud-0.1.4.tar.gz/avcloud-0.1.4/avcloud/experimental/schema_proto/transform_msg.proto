@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "geometry_msg.proto";
+import "google/protobuf/timestamp.proto";
+
+// Frame transforms; static and dynamic
+message Transform {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;           // dataset pre-aligned frame tag, NOT the TF parent
+  string device_type = 3;
+  string hashed_device_id = 4;
+  string scene_id = 5;
+  string run_id = 6; // grouping key for runs
+  string parent_frame_id = 7;  // TF parent frame (equivalent to ROS header.frame_id)
+  string child_frame_id = 8;   // TF child frame
+  Pose3D transform = 9;        // transform from parent_frame_id -> child_frame_id
+  bool is_static = 10;        // true for tf_static rows
+}
