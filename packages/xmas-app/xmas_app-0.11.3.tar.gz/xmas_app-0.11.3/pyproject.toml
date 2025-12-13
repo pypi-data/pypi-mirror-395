@@ -1,0 +1,84 @@
+[project]
+name = "xmas-app"
+version = "0.11.3"
+description = "The XLeitstelle model-driven application schema app."
+authors = [{ name = "Tobias Kraft", email = "tobias.kraft@gv.hamburg.de" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pydantic :: 2",
+    "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+readme = "README.md"
+license = "EUPL-1.2-or-later"
+license-files = ["LICENSE"]
+dependencies = [
+    "pydantic-settings>=2.0,<3.0",
+    "pydantic-extra-types[semver]",
+    "xplan-tools>=1.10.3",
+    "nicegui>=2.20,<3.0",
+    # "uvicorn[standard]>=0.29,<0.31"
+    # "pygeoapi @ git+https://github.com/geopython/pygeoapi.git",
+    # if git source is required, git must be installed in OSGeo4W Shell for the complete plugin installation
+]
+requires-python = ">=3.11,<3.14"
+
+[project.urls]
+Homepage = "https://gitlab.opencode.de/xleitstelle/xmas-app"
+Issues = "https://gitlab.opencode.de/xleitstelle/xmas-app/-/issues"
+
+[project.scripts]
+xmas-app = "xmas_app.main:run_server"
+
+[tool.pixi.pypi-dependencies]
+xmas-app = { path = ".", editable = true }
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "win-64"]
+
+[tool.pixi.environments]
+default = { features = ["dev"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+build = { features = ["build"], solve-group = "default" }
+prod = { features = [], solve-group = "default" }
+
+[tool.pixi.dependencies]
+gdal = ">=3.9.1,<4"
+libgdal-core = ">=3.9.1,<4"
+
+[tool.pixi.target.win-64.dependencies]
+python = { version = "3.11.*", build = "*_cpython*" }
+openssl = "3.3.*"
+
+[tool.pixi.tasks.release]
+args = [
+    { "arg" = "version", "default" = "minor" }
+]
+cmd = """
+pixi workspace version {{version}}
+&& git pull
+&& pixi lock
+&& git add pyproject.toml pixi.lock
+&& git commit -S -m "bump to $(pixi workspace version get)"
+&& git tag -s $(pixi workspace version get) -m "v$(pixi workspace version get)"
+&& git push
+&& git push --tags
+&& pixi workspace version get
+"""
+
+[dependency-groups]
+dev = ["pre-commit>=4", "ruff>=0.8"]
+build = ["poetry>=2.0.0"]
+
+[tool.ruff.lint]
+ignore = ["E402"]
+extend-select = ["I", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

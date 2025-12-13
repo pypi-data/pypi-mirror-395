@@ -1,0 +1,113 @@
+# XMAS-App
+
+[![pipeline status](https://gitlab.opencode.de/xleitstelle/xmas-app/badges/main/pipeline.svg)](https://gitlab.opencode.de/xleitstelle/xmas-app/-/commits/main)
+[![Latest Release](https://gitlab.opencode.de/xleitstelle/xmas-app/-/badges/release.svg)](https://gitlab.opencode.de/xleitstelle/xmas-app/-/releases)
+
+The **X**Leistelle **m**odel-driven **a**pplication **s**chema app is a Python web application to edit and create data according to geo-spatial standards of the [XLeistelle](https://xleitstelle.de), e.g. XPlanung, XTrasse. It is based on [NiceGUI](https://nicegui.io/) for a graphical user interface
+and [XPlan-Tools](https://gitlab.opencode.de/xleitstelle/xplanung/xplan-tools) for the data model and respective functionality.
+
+While it could be advanced to a standalone application, its current focus is [integration in QGIS](https://gitlab.opencode.de/xleitstelle/xmas-plugin) to provide attribute forms etc.
+
+## Features
+
+* Render attribute forms for features.
+* Create and edit features in combination with the corresponding QGIS Plugin.
+* Import GML documents into a database.
+* Export GML, JSON-FG or GPKG files from a databse.
+* Delete plans from a database.
+* Display and edit relations of plan objects in a tree view.
+
+## Installation
+
+### Container Image
+Container images are available in the [registry](https://gitlab.opencode.de/xleitstelle/xmas-app/container_registry). See [here](#standalone-mode) for configuration.
+
+### Python >= v3.11
+
+[GDAL](https://gdal.org) and its Python bindings are required, so you need to make sure the GDAL system library and Python package versions match.
+QGIS installations come with GDAL and a Python environment that can readily be used to install the app.
+
+Install with `pip`, e.g. via OSGeo4W Shell:
+```shell
+pip install xmas-app
+```
+
+### Pixi
+This project uses [Pixi](https://pixi.sh) for package management. To install this repo with a self-contained environment, run
+
+```shell
+git clone https://gitlab.opencode.de/xleitstelle/xmas-app.git
+cd xmas-app
+pixi install
+```
+
+## Running
+
+### Preconditions
+A Postgres DB with PostGIS extension and adequate permissions for the used role. If no database schema was previously created with `xplan-tools`, it will be generated on initialization.
+
+For convenience, you can run
+
+```shell
+docker compose -f compose.yaml up -d
+```
+
+This will spin up a readily usable XMAS-App container with a PostGIS backend.
+
+
+### Modes
+
+#### QGIS Plugin mode
+If XPlan-GUI was installed in the QGIS Python environment, it can be started from the plugin panel. Configuration parameters are handled by the plugin.
+
+#### Standalone mode
+Starting in standalone mode requires some configuration parameters which have to be provided as an `.env` file or via environment variables.
+The database connection parameters can be either user name, password etc. or a service definition.
+
+| Variable  | Description  | Required  | Example   |   |
+|---|---|---|-----------|---|
+| PGDATABASE  | name of the database  | (x)  | coretable |
+| PGHOST  | host of the database  | (x)  | localhost |
+| PGPORT  |  port of the database | (x) | 55432     |
+| PGUSER  |  user of the database | (x) | foo       |
+| PGPASSWORD  |  password of the database user |  (x) | bar       |
+| PGSERVICE  | the databas service to use | (x) | coretable |
+| APP_PORT | the port on which the app should run | x | 1337      |
+| APPSCHEMA | the default appschema | x | xplan     |
+| APPSCHEMA_VERSION | the default appschema's version | x | 6.0       |
+
+First activate the pixi shell
+
+```shell
+pixi shell
+```
+
+then run
+
+```shell
+xmas-app
+```
+
+### Optional: batch import test data to the database using xplan-tools
+
+Test data can be downloaded from https://gitlab.opencode.de/xleitstelle/xplanung/testdaten, e.g. a ZIP archive with [BP_Plans in v 6.0](https://gitlab.opencode.de/xleitstelle/xplanung/testdaten/-/archive/main/testdaten-main.zip?path=valide/6_0/bp).
+
+To import all .gml files at once, extract the archive and use:
+
+(on Linux/Mac/Wsl Bash):
+```bash
+for f in <pfad>/bp/*.gml; do
+  xplan-tools convert "$f" postgresql://postgres:postgres@localhost:55432/postgres
+done
+```
+
+(on Windows:):
+```cmd
+for %f in (*.gml) do xplan-tools convert "%f" postgresql://postgres:postgres@127.0.0.1:55432/postgres
+```
+
+## License
+
+The code in this repository is licensed under the [EUPL-1.2-or-later](https://joinup.ec.europa.eu/collection/eupl)
+
+&copy; [XLeitstelle](https://xleitstelle.de), 2025
