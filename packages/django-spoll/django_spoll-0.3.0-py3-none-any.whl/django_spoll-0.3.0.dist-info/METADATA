@@ -1,0 +1,190 @@
+Metadata-Version: 2.4
+Name: django-spoll
+Version: 0.3.0
+Summary: A Django app to conduct web-based soccer polls.
+Author-email: Omar Abraham <oym7@msn.com>
+License-Expression: BSD-3-Clause
+Project-URL: Homepage, http://127.0.0.1:8000/soccerpoll/
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 6.0
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Requires-Python: >=3.14.1
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: django>=6.0
+Dynamic: license-file
+
+============
+django-spoll
+============
+
+The **django-spoll** is a Django package created to conduct web-based soccer polls. For each question, visitors can choose between a fixed number of answers, to vote for questions in 3 different categories (until now):
+
+**Note:** The app within this pkg could be extended by adding categories (Django models) like Tournament, Referee, Ball, Stadium, Fan, Goal, Play, etc.
+
+* **Player**
+* **Team**
+* **Coach**
+
+Detailed documentation is within "docs" directory of this GitLab repository. For example, you can find SQLite DB E-R UML diagram developed with Google's SaaS tool, draw.io (redirects to https://app.diagrams.net/):
+
+..  figure:: /docs/diagrams/sqlite/spoll-sqlite-E-R-diagram.png
+    :alt: some img
+
+    Current SQLite 3 E-R diagram
+
+Quick start
+-----------
+
+This section describes how to integrate pkg into an existent Django project.
+
+1. Add "django_spoll" pkg module to your INSTALLED_APPS setting like this::
+
+    INSTALLED_APPS = [
+        ...,
+        'django_spoll.apps.SoccerpollConfig',
+    ]
+
+2. Include the polls URLconf in your project urls.py like this::
+
+    path("soccerpoll/", include("django_spoll.urls")),
+
+3. Run ``python3 manage.py migrate`` to create the models.
+
+4. Start the dev server ``python3 manage.py runserver 0.0.0.0:8000`` & visit the admin console (**http://127.0.0.1:8000/admin**) to create your soccer poll.
+
+5. Visit the ``/soccerpoll/`` URL to participate in the poll.
+
+Packaging Details
+-----------------
+
+The following steps were done to create & build this Python pkg & embedded module:
+
+1. Create a pkg folder (separated with hyphens if more than one word) to add all pkg needed content::
+
+    mkdir django-spoll
+
+2. Import folder of previously developed app, i.e. soccerpoll, into this Python pkg project (add hyphens if more than one word)::
+
+    cd ~/workspaces/python/django_spoll/ | cd "C:\\..\\workspaces\\python\\django_spoll"
+    mv soccerpoll/ ../pkgs/django_spoll | move soccerpoll ..\pkgs\django_spoll
+    cd ../pkgs/django_spoll | cd ..\pkgs\django_spoll
+    mv soccerpoll django_spoll | move soccerpoll django_spoll
+
+3. Edit **apps.py** file to validate / rename **name** & **label** variables with your preferred text editor, be aware to separate words with hyphens in **name** variable (refers to pkg module name) & use a simple name in **label** variable, which is used to give a short name for the Django app:
+
+..  figure:: /docs/imgs/python/apps-file-name-&-label-config.png
+    :alt: some img
+
+    name & label vars config. - ./django_spoll/apps.py
+
+4. Create docs folder to store any documentation needed, i.e. SQLite DB E-R diagram::
+
+    mkdir docs
+
+5. Add LICENSE file & add the desired License content with you preferred text editor::
+
+    touch LICENSE | edit LICENSE
+
+6. Add MANIFEST.in file & add the following content via CLI::
+
+    touch MANIFEST.in | edit MANIFEST.in
+    echo "recursive-include django_spoll/static *" > MANIFEST.in
+    echo "recursive-include django_spoll/templates *" >> MANIFEST.in
+
+7. Add pyproject.toml & add the following content with your preferred text editor (be sure to adapt it to use only the needed modules, dependencies, libraries & classifiers with the right versions)::
+
+    touch pyproject.toml | edit pyproject.toml
+
+Content::
+
+    [build-system]
+    requires = ["setuptools>=80.9.0"]
+    build-backend = "setuptools.build_meta"
+
+    [project]
+    name = "django-spoll"
+    version = "0.3.0"
+    dependencies = [
+        "django>=6",
+    ]
+    description = "A Django app to conduct web-based soccer polls."
+    readme = "README.rst"
+    license = "BSD-3-Clause"
+    requires-python = ">= 3.14.1"
+    authors = [
+        {name = "Omar Abraham", email = "oym7@msn.com"},
+    ]
+    classifiers = [
+        "Environment :: Web Environment",
+        "Framework :: Django",
+        "Framework :: Django :: 6.0",
+        "Intended Audience :: Developers",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Topic :: Internet :: WWW/HTTP",
+        "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    ]
+
+    [project.urls]
+    Homepage = "http://127.0.0.1/soccerpoll/"
+
+8. Add the README.rst file that you are just reading & add the needed content or adapt it to your business needs::
+
+    touch README.rst | edit README.rst
+
+Once everything was correctly added / configured, let's build the package by executing the following commands::
+
+    python3 -m pip install virtualenv
+    source .venv/bin/activate
+    python3 -m pip install setuptools
+    python3 -m pip install build | python -m pip install build
+    python3 -m pip freeze > requirements.txt | python -m pip freeze > requirements.txt
+    more requirements.txt
+    python3 -m build | python -m build
+    ll | dir
+
+When executing the build cmd, you should see something similar to the following output:
+
+**Note:** Be aware that the build is executed in the background in an isolated environment (venv + pip).
+
+..  figure:: /docs/imgs/python/py-pkg-build.png
+    :alt: some image
+
+    Python 3 - Pkg build sample output
+
+Notice the 2 files created during the build process, the ***.tar.gz** & ***.whl** files. That's it, the Python pkg is ready to be imported by any other Django project.
+
+Python pkg publishing
+---------------------
+
+Under construction ...
+
+Django 6 Project Reference
+--------------------------
+
+The Django 6 project used to build this Python 3 pkg could be found in the following GitLab repository:
+
+* **https://gitlab.com/pythones2/django-spoll.git**
+
+**Master Author:** CSE. Omar Abraham - mailto:oym7@msn.com?Subject=Python3%20+%20Django%205%20Soccerpoll%20app%20setup%20+%20Tests%20+%20Deployment%20+%20Python%20Packaging%20-%20Doubt
+
