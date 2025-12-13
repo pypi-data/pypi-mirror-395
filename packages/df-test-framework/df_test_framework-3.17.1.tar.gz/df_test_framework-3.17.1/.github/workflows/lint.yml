@@ -1,0 +1,56 @@
+name: 代码质量检查
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖
+      run: |
+        uv sync
+
+    - name: Ruff代码检查
+      run: |
+        echo "::group::Ruff Linting"
+        uv run ruff check src/ --output-format=github
+        echo "::endgroup::"
+
+    - name: Ruff格式检查
+      run: |
+        echo "::group::Ruff Format Check"
+        uv run ruff format src/ --check
+        echo "::endgroup::"
+
+    - name: MyPy类型检查
+      run: |
+        echo "::group::MyPy Type Checking"
+        uv run mypy src/df_test_framework --ignore-missing-imports --no-strict-optional
+        echo "::endgroup::"
+      continue-on-error: true  # 类型检查暂时允许失败
+
+    - name: 检查结果总结
+      if: always()
+      run: |
+        echo "## 代码质量检查完成 ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Ruff Linting" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Ruff Format Check" >> $GITHUB_STEP_SUMMARY
+        echo "- ⚠️  MyPy Type Checking (允许失败)" >> $GITHUB_STEP_SUMMARY

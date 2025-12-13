@@ -1,0 +1,205 @@
+name: 发布
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 触发条件: 推送版本标签 (如 v2.0.0)
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      version:
+        description: '发布版本号 (如 2.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # 允许创建 Release 和上传资源
+
+jobs:
+  test:
+    name: 发布前测试
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖
+      run: |
+        uv sync
+
+    - name: 代码质量检查
+      run: |
+        uv run ruff check src/
+        uv run ruff format src/ --check
+
+    - name: CLI功能测试
+      run: |
+        uv run df-test --help
+        uv run df-test init test-release-project --type api
+        test -f test-release-project/pyproject.toml
+        test -d test-release-project/src
+
+  build:
+    name: 构建分发包
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装构建工具
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: 构建分发包
+      run: |
+        python -m build
+
+    - name: 检查分发包
+      run: |
+        twine check dist/*
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+        retention-days: 7
+
+    - name: 构建总结
+      run: |
+        echo "## 构建完成 ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**构建产物**:" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        ls -lh dist/
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+  publish-pypi:
+    name: 发布到PyPI
+    runs-on: ubuntu-latest
+    needs: build
+    environment: release  # 使用GitHub环境保护规则
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: 下载构建产物
+      uses: actions/download-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+    - name: 发布到PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        skip-existing: true
+
+    - name: 发布总结
+      run: |
+        echo "## 🎉 发布到PyPI成功！" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "版本: \`${GITHUB_REF#refs/tags/}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**安装命令**:" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "pip install df-test-framework" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+  create-release:
+    name: 创建GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史用于生成changelog
+
+    - name: 下载构建产物
+      uses: actions/download-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+    - name: 生成变更日志
+      id: changelog
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+        # 提取CHANGELOG.md中的当前版本内容（如果存在）
+        if [ -f CHANGELOG.md ]; then
+          # 提取## [VERSION]到下一个## [之间的内容
+          CHANGES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$ d' | tail -n +2)
+          if [ -n "$CHANGES" ]; then
+            echo "$CHANGES" > release_notes.md
+          else
+            echo "查看完整变更日志: [CHANGELOG.md](CHANGELOG.md)" > release_notes.md
+          fi
+        else
+          echo "查看完整变更历史: [Commits](https://github.com/${{ github.repository }}/commits/v${VERSION})" > release_notes.md
+        fi
+
+    - name: 创建GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: v${{ steps.changelog.outputs.version }}
+        body_path: release_notes.md
+        files: |
+          dist/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+
+    - name: Release总结
+      run: |
+        echo "## 🎉 GitHub Release创建成功！" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**版本**: v${{ steps.changelog.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**查看**: [Release页面](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.changelog.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: 发布通知
+    runs-on: ubuntu-latest
+    needs: [publish-pypi, create-release]
+    if: always()
+
+    steps:
+    - name: 发送钉钉通知
+      if: env.DINGTALK_WEBHOOK != ''
+      env:
+        DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        STATUS="✅ 成功"
+        if [ "${{ needs.publish-pypi.result }}" != "success" ] || [ "${{ needs.create-release.result }}" != "success" ]; then
+          STATUS="❌ 失败"
+        fi
+
+        curl -X POST "$DINGTALK_WEBHOOK" \
+          -H 'Content-Type: application/json' \
+          -d "{
+            \"msgtype\": \"markdown\",
+            \"markdown\": {
+              \"title\": \"DF Test Framework 发布通知\",
+              \"text\": \"## DF Test Framework 发布通知\\n\\n**版本**: v${VERSION}\\n\\n**状态**: ${STATUS}\\n\\n**安装**: \\\`pip install df-test-framework\\\`\\n\\n**查看**: [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})\"
+            }
+          }"

@@ -1,0 +1,108 @@
+# Pre-commit hooks 配置
+# 安装: pre-commit install
+# 手动运行: pre-commit run --all-files
+# 更新 hooks: pre-commit autoupdate
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # ===========================================
+  # 通用检查
+  # ===========================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # 文件格式
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: \.(bat|cmd)$
+
+      # 语法检查
+      - id: check-yaml
+        args: [--unsafe]  # 允许自定义 YAML 标签
+      - id: check-toml
+      - id: check-json
+        exclude: ^\.vscode/
+
+      # 安全检查
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+      # Python 特定
+      - id: check-ast
+      - id: debug-statements
+      - id: check-docstring-first
+
+  # ===========================================
+  # Python 代码质量 - Ruff
+  # ===========================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      # Formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # ===========================================
+  # 类型检查 - MyPy (可选，较慢)
+  # ===========================================
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.9.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies:
+  #         - pydantic>=2.0.0
+  #         - types-PyYAML
+  #       args: [--ignore-missing-imports]
+  #       exclude: ^(tests/|docs/)
+
+  # ===========================================
+  # 提交信息规范
+  # ===========================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.24.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # ===========================================
+  # 安全扫描
+  # ===========================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml, -r, src/]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^tests/
+
+  # ===========================================
+  # Markdown 检查
+  # ===========================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: [--fix, --disable, MD013, MD033, MD041, --]
+        # MD013: 行长度限制 (中文文档常超)
+        # MD033: 允许内联 HTML
+        # MD041: 首行不必须是标题
+
+# CI 环境配置
+ci:
+  autofix_commit_msg: "style: auto-fix by pre-commit hooks"
+  autofix_prs: true
+  autoupdate_commit_msg: "chore: update pre-commit hooks"
+  autoupdate_schedule: monthly
+  skip: [markdownlint]  # CI 中跳过需要 Node.js 的 hook

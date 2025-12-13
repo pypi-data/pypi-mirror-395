@@ -1,0 +1,85 @@
+# 定时测试工作流
+# 每天凌晨2点运行完整的回归测试
+
+name: 定时测试
+
+on:
+  schedule:
+    # 每天凌晨2点（UTC时间18:00，即北京时间2:00）
+    - cron: '0 18 * * *'
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  regression-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖（使用 pyproject.toml）
+      run: |
+        uv sync
+
+    - name: 运行完整回归测试
+      env:
+        HTTP_BASE_URL: ${{ secrets.HTTP_BASE_URL }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        uv run pytest tests/ \
+          --verbose \
+          --html=reports/report.html \
+          --self-contained-html \
+          --alluredir=reports/allure-results \
+          -m "not skip_scheduled"
+
+    - name: 生成Allure报告
+      if: always()
+      uses: simple-elf/allure-report-action@v1.7
+      with:
+        allure_results: reports/allure-results
+
+    - name: 上传测试报告
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scheduled-test-report-${{ github.run_number }}
+        path: reports/
+        retention-days: 90
+
+    - name: 发送失败通知到钉钉
+      if: failure()
+      run: |
+        curl -X POST '${{ secrets.DINGTALK_WEBHOOK }}' \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "msgtype": "markdown",
+            "markdown": {
+              "title": "定时测试失败",
+              "text": "### 定时测试失败 ❌\n\n**项目**: ${{ github.repository }}\n\n**分支**: ${{ github.ref }}\n\n**运行号**: ${{ github.run_number }}\n\n**查看详情**: [点击查看](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            }
+          }'
+
+    - name: 发送成功通知到钉钉
+      if: success()
+      run: |
+        curl -X POST '${{ secrets.DINGTALK_WEBHOOK }}' \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "msgtype": "markdown",
+            "markdown": {
+              "title": "定时测试成功",
+              "text": "### 定时测试成功 ✅\n\n**项目**: ${{ github.repository }}\n\n**分支**: ${{ github.ref }}\n\n**运行号**: ${{ github.run_number }}"
+            }
+          }'

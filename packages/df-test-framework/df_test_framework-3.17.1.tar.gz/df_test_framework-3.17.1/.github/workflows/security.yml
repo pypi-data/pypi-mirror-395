@@ -1,0 +1,230 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop, feature/**]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # 每周日 UTC 00:00 运行（北京时间周日早上8点）
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  dependency-check:
+    name: 依赖漏洞扫描
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安装扫描工具
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit pip-audit
+
+      - name: 安装项目依赖
+        run: |
+          pip install -e .
+          # 如果有 requirements.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Safety - 依赖漏洞扫描
+        id: safety
+        continue-on-error: true
+        run: |
+          echo "## Safety 依赖漏洞扫描" >> $GITHUB_STEP_SUMMARY
+          safety check --json --output safety-report.json || true
+          safety check --output safety-report.txt || true
+
+          # 输出到 GitHub Summary
+          if [ -f safety-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat safety-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Bandit - 代码安全审计
+        id: bandit
+        continue-on-error: true
+        run: |
+          echo "## Bandit 代码安全审计" >> $GITHUB_STEP_SUMMARY
+          bandit -r src/ -f json -o bandit-report.json || true
+          bandit -r src/ -f txt -o bandit-report.txt || true
+
+          # 输出到 GitHub Summary
+          if [ -f bandit-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -n 50 bandit-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: pip-audit - 额外依赖检查
+        id: pip-audit
+        continue-on-error: true
+        run: |
+          echo "## pip-audit 依赖检查" >> $GITHUB_STEP_SUMMARY
+          pip-audit --format json --output pip-audit-report.json || true
+          pip-audit --format markdown --output pip-audit-report.md || true
+
+          # 输出到 GitHub Summary
+          if [ -f pip-audit-report.md ]; then
+            cat pip-audit-report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 上传扫描报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ github.run_number }}
+          path: |
+            safety-report.json
+            safety-report.txt
+            bandit-report.json
+            bandit-report.txt
+            pip-audit-report.json
+            pip-audit-report.md
+          retention-days: 30
+
+      - name: 检查高危漏洞
+        id: check-critical
+        run: |
+          CRITICAL_FOUND=0
+
+          # 检查 Safety 报告
+          if [ -f safety-report.json ]; then
+            VULNERABILITIES=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+            if [ "$VULNERABILITIES" -gt 0 ]; then
+              echo "⚠️ Safety 发现 $VULNERABILITIES 个依赖漏洞"
+              CRITICAL_FOUND=1
+            fi
+          fi
+
+          # 检查 Bandit 报告（严重性：HIGH）
+          if [ -f bandit-report.json ]; then
+            HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json 2>/dev/null || echo "0")
+            if [ "$HIGH_ISSUES" -gt 0 ]; then
+              echo "⚠️ Bandit 发现 $HIGH_ISSUES 个高危代码问题"
+              CRITICAL_FOUND=1
+            fi
+          fi
+
+          # 检查 pip-audit 报告
+          if [ -f pip-audit-report.json ]; then
+            PIP_VULNERABILITIES=$(jq '.dependencies | length' pip-audit-report.json 2>/dev/null || echo "0")
+            if [ "$PIP_VULNERABILITIES" -gt 0 ]; then
+              echo "⚠️ pip-audit 发现 $PIP_VULNERABILITIES 个依赖漏洞"
+              CRITICAL_FOUND=1
+            fi
+          fi
+
+          # 根据配置决定是否失败
+          # 默认只警告，不阻止合并（可根据需要调整）
+          if [ "$CRITICAL_FOUND" -eq 1 ]; then
+            echo "::warning::发现安全漏洞，请查看报告并及时修复"
+            # 如需严格模式，取消下面的注释
+            # exit 1
+          else
+            echo "✅ 未发现严重安全漏洞"
+          fi
+
+      - name: 生成安全徽章数据
+        if: always()
+        run: |
+          # 为 README 生成徽章数据
+          VULN_COUNT=0
+          if [ -f safety-report.json ]; then
+            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+          fi
+
+          if [ "$VULN_COUNT" -eq 0 ]; then
+            BADGE_COLOR="brightgreen"
+            BADGE_MESSAGE="no vulnerabilities"
+          else
+            BADGE_COLOR="red"
+            BADGE_MESSAGE="$VULN_COUNT vulnerabilities"
+          fi
+
+          echo "BADGE_COLOR=$BADGE_COLOR" >> $GITHUB_ENV
+          echo "BADGE_MESSAGE=$BADGE_MESSAGE" >> $GITHUB_ENV
+
+  code-quality:
+    name: 代码质量检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安装代码质量工具
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: Ruff - 代码风格检查
+        continue-on-error: true
+        run: |
+          echo "## Ruff 代码风格检查" >> $GITHUB_STEP_SUMMARY
+          ruff check src/ --output-format=github || true
+          ruff check src/ --output-format=text >> ruff-report.txt || true
+
+          if [ -f ruff-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -n 50 ruff-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: MyPy - 类型检查
+        continue-on-error: true
+        run: |
+          echo "## MyPy 类型检查" >> $GITHUB_STEP_SUMMARY
+          mypy src/ --no-error-summary > mypy-report.txt || true
+
+          if [ -f mypy-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -n 50 mypy-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 上传质量报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-reports-${{ github.run_number }}
+          path: |
+            ruff-report.txt
+            mypy-report.txt
+          retention-days: 30
+
+  secret-scan:
+    name: 密钥泄露扫描
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，检查所有提交
+
+      - name: TruffleHog - 密钥扫描
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+      - name: Gitleaks - 备用密钥扫描
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

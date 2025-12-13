@@ -1,0 +1,143 @@
+name: 定时检查
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 每天凌晨2点（UTC 18:00）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  health-check:
+    name: 健康检查
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖
+      run: |
+        uv sync
+
+    - name: 代码质量检查
+      run: |
+        echo "::group::Ruff Linting"
+        uv run ruff check src/
+        echo "::endgroup::"
+
+        echo "::group::Ruff Format"
+        uv run ruff format src/ --check
+        echo "::endgroup::"
+
+    - name: CLI命令健康检查
+      run: |
+        echo "::group::CLI Help"
+        uv run df-test --help
+        echo "::endgroup::"
+
+        echo "::group::Init命令"
+        # CI环境自动检测：框架会使用本地路径依赖（CI=true）
+        uv run df-test init health-check-api --type api
+        test -f health-check-api/pytest.ini || exit 1
+        echo "::endgroup::"
+
+        echo "::group::验证依赖配置"
+        # 验证生成的项目使用了本地路径依赖
+        grep 'df-test-framework @ file://..' health-check-api/pyproject.toml || exit 1
+        echo "✅ 已正确使用本地路径依赖"
+        echo "::endgroup::"
+
+        echo "::group::Gen命令"
+        cd health-check-api
+        uv run df-test gen test health_check
+        test -f tests/api/test_health_check.py || exit 1
+        echo "::endgroup::"
+
+    - name: 检查文档链接
+      run: |
+        echo "::group::检查文档文件"
+        test -f README.md
+        test -f CHANGELOG.md
+        test -f docs/README.md
+        echo "::endgroup::"
+
+    - name: 检查示例代码
+      run: |
+        echo "::group::检查示例目录"
+        test -d examples/
+        find examples/ -name "*.py" -type f | head -5
+        echo "::endgroup::"
+
+    - name: 健康检查总结
+      if: always()
+      run: |
+        echo "## 🏥 每日健康检查" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**日期**: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 检查项" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 代码质量（Ruff）" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ CLI工具可用性" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 项目初始化功能" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 代码生成功能" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 文档完整性" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 示例代码存在性" >> $GITHUB_STEP_SUMMARY
+
+  dependency-check:
+    name: 依赖安全检查
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装pip-audit
+      run: |
+        pip install pip-audit
+
+    - name: 检查依赖安全漏洞
+      run: |
+        pip install -e .
+        pip-audit --desc
+      continue-on-error: true  # 允许有漏洞，但会记录
+
+    - name: 依赖检查总结
+      if: always()
+      run: |
+        echo "## 🔒 依赖安全检查" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "已扫描所有依赖包的已知安全漏洞" >> $GITHUB_STEP_SUMMARY
+
+  notify-failure:
+    name: 失败通知
+    runs-on: ubuntu-latest
+    needs: [health-check, dependency-check]
+    if: failure() && github.event_name == 'schedule'
+
+    steps:
+    - name: 发送钉钉通知
+      if: env.DINGTALK_WEBHOOK != ''
+      env:
+        DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+      run: |
+        curl -X POST "$DINGTALK_WEBHOOK" \
+          -H 'Content-Type: application/json' \
+          -d "{
+            \"msgtype\": \"markdown\",
+            \"markdown\": {
+              \"title\": \"⚠️ DF Test Framework 定时检查失败\",
+              \"text\": \"## ⚠️ 定时健康检查失败\\n\\n**时间**: $(date +'%Y-%m-%d %H:%M:%S')\\n\\n**查看**: [GitHub Actions](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\\n\\n请及时处理！\"
+            }
+          }"

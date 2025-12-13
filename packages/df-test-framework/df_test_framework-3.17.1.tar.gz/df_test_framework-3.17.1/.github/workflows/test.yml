@@ -1,0 +1,157 @@
+name: 测试
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.12', '3.13']
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖（使用 uv sync）
+      run: |
+        # 安装核心依赖 + dev 依赖 + 可观测性依赖（用于测试）
+        uv sync --extra observability --extra storage
+
+    - name: 验证CLI工具安装
+      run: |
+        echo "::group::CLI工具验证"
+        uv run df-test --help
+        echo "::endgroup::"
+
+    - name: 测试CLI init命令
+      run: |
+        echo "::group::测试 df-test init"
+        uv run df-test init test-project-temp --type api
+        ls -la test-project-temp/ || dir test-project-temp
+        rm -rf test-project-temp || rmdir /s /q test-project-temp
+        echo "::endgroup::"
+      shell: bash
+
+    - name: 测试CLI gen命令
+      run: |
+        echo "::group::测试 df-test gen"
+        mkdir -p temp-gen-test
+        cd temp-gen-test
+        uv run df-test gen test user_login --output-dir .
+        ls -la test_user_login.py || dir test_user_login.py
+        cd ..
+        rm -rf temp-gen-test || rmdir /s /q temp-gen-test
+        echo "::endgroup::"
+      shell: bash
+
+    - name: 运行单元测试
+      if: hashFiles('tests/**/*.py') != ''
+      run: |
+        echo "::group::运行测试"
+        uv run pytest tests/ --verbose --tb=short --ignore=tests/test_messengers/
+        echo "::endgroup::"
+
+    - name: 测试结果总结
+      if: always()
+      run: |
+        echo "## 测试完成 ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**环境**: ${{ matrix.os }} - Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ CLI工具安装验证" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ df-test init 命令测试" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ df-test gen 命令测试" >> $GITHUB_STEP_SUMMARY
+
+  cli-integration-test:
+    name: CLI集成测试
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖
+      run: |
+        # 安装核心依赖 + dev 依赖 + 可观测性依赖（用于测试）
+        uv sync --extra observability --extra storage
+
+    - name: 测试完整项目初始化（API）
+      run: |
+        uv run df-test init api-test-project --type api
+        test -f api-test-project/pyproject.toml
+        test -f api-test-project/.env.example
+        test -d api-test-project/tests
+        test -d api-test-project/src
+
+    - name: 测试完整项目初始化（UI）
+      run: |
+        uv run df-test init ui-test-project --type ui
+        test -f ui-test-project/pyproject.toml
+        test -f ui-test-project/.env.example
+        test -d ui-test-project/tests
+        test -d ui-test-project/src
+
+    - name: 测试完整项目初始化（Full + CI/CD）
+      run: |
+        uv run df-test init full-test-project --type full --ci github-actions
+        test -f full-test-project/.github/workflows/test.yml
+        test -f full-test-project/pyproject.toml
+        test -d full-test-project/tests
+        test -d full-test-project/src
+
+    - name: 测试代码生成工具（使用框架根目录）
+      run: |
+        # 使用框架根目录的环境运行代码生成
+        mkdir -p temp-codegen-test/tests/api
+
+        # 使用绝对路径指定输出目录
+        uv run df-test gen test order_create --output-dir "$PWD/temp-codegen-test/tests/api" || true
+
+        # 验证文件已生成
+        if [ ! -f temp-codegen-test/tests/api/test_order_create.py ]; then
+          echo "❌ 测试文件生成失败"
+          echo "检查文件系统:"
+          ls -la temp-codegen-test/tests/api/ || echo "目录不存在"
+          exit 1
+        fi
+
+        echo "✅ 测试文件生成成功: temp-codegen-test/tests/api/test_order_create.py"
+        rm -rf temp-codegen-test
+
+    - name: 集成测试总结
+      if: always()
+      run: |
+        echo "## CLI集成测试完成 ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "测试覆盖:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ API项目初始化" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ UI项目初始化" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Full项目初始化 + CI/CD" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ 代码生成工具（test/builder/repo/api）" >> $GITHUB_STEP_SUMMARY
