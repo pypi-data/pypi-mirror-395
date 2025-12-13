@@ -1,0 +1,61 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        ports:
+          - 6432:5432
+        env:
+          POSTGRES_USER: krylosov-aa
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd="pg_isready -U krylosov-aa -d test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Sync dependencies (prod + dev)
+        run: uv sync --all-extras --dev
+
+      - name: Prepare database schema via SQL
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+
+          PGPASSWORD=test psql \
+            -h 127.0.0.1 \
+            -p 6432 \
+            -U krylosov-aa \
+            -d test \
+            -c "
+            CREATE TABLE IF NOT EXISTS example (
+              id   uuid default gen_random_uuid() not null,
+              text text
+            );
+            "
+
+      - name: Run tests
+        run: uv run pytest --cov context_async_sqlalchemy tests examples/fastapi_example/tests examples/starlette_example/tests examples/fastapi_with_pure_asgi_example/tests --cov-report=term-missing

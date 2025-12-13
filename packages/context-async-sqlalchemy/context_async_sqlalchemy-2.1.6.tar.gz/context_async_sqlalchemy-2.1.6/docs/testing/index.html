@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Testing - context-async-sqlalchemy</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Testing";
+        var mkdocs_page_input_path = "testing.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+    <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> context-async-sqlalchemy
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">context-async-sqlalchemy</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../problem">The Problem It Solves</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started">Getting Started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../examples">Usage Examples</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api">API Reference</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../concurrent_queries">Concurrent SQL Queries</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../master_replica">Master/Replica or several databases at the same time</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Testing</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#create-session-with-autorollback">Create session with autorollback</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#override-context">Override context</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../how_middleware_works">How middleware works</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">context-async-sqlalchemy</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Testing</li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="testing">Testing</h1>
+<p>When testing with a real database, one important problem needs to be
+solved - ensuring data isolation between tests.</p>
+<p>There are basically two approaches:</p>
+<ol>
+<li>Separate sessions</li>
+</ol>
+<p>The test has its own session that it uses to prepare data and verify
+results after execution.
+The application also has its own session.
+Data isolation is achieved by clearing all tables at the end of each test
+(and once before running all tests).</p>
+<ol>
+<li>Shared session and transaction
+The test and the application share the same session and transaction.
+Data isolation is achieved by rolling back the transaction at
+the end of the test.</li>
+</ol>
+<p>Personally, I prefer the first option, because it is a more "honest" way
+to test the application.
+We can verify how it handles sessions and transactions on its own.
+It’s also convenient to inspect the database state when a test is paused.</p>
+<p>Sometimes, there are complex session management scenarios (for example,
+concurrent query execution) where other types of testing are either
+impossible or very difficult.</p>
+<p>The main disadvantage of this approach is the slower execution speed.
+Since we clear all tables after each test, this process takes additional time.</p>
+<p>This is where the second approach comes in - its main advantage is speed,
+as rolling back a transaction is very fast.</p>
+<p>In my projects, I use both approaches at the same time:</p>
+<ul>
+<li>For most tests with simple or common logic, I use a shared transaction
+for the test and the application</li>
+<li>For more complex cases, or ones that cannot be tested this way,
+I use separate transactions.</li>
+</ul>
+<p>This combination allows for both good performance and convenient testing.</p>
+<p>The library provides several utilities that can be used in tests - for
+example, in fixtures.
+They help create tests that share a common transaction between the test
+and the application, so data isolation between tests is achieved through
+fast transaction rollback.</p>
+<p>You can see these capabilities in the examples:</p>
+<p><a href="https://github.com/krylosov-aa/context-async-sqlalchemy/blob/main/examples/fastapi_example/tests/transactional">Here are tests with a common transaction between the
+application and the tests.</a></p>
+<p><a href="https://github.com/krylosov-aa/context-async-sqlalchemy/blob/main/examples/fastapi_example/tests/non_transactional">And here's an example with different transactions.</a></p>
+<h2 id="create-session-with-autorollback">Create session with autorollback</h2>
+<p><code>rollback_session</code> creates a session that always rolls back automatically.</p>
+<pre><code class="language-python">from context_async_sqlalchemy.test_utils import rollback_session
+
+@pytest_asyncio.fixture
+async def db_session_test() -&gt; AsyncGenerator[AsyncSession, None]:
+    &quot;&quot;&quot;The session that is used inside the test&quot;&quot;&quot;
+    async with rollback_session(connection) as session:
+        yield session
+</code></pre>
+<h2 id="override-context">Override context</h2>
+<ul>
+<li><code>set_test_context</code> creates a new context</li>
+<li><code>put_savepoint_session_in_ctx</code> puts into context a session that uses the
+same connection as <code>db_session_test</code>,  but if you commit in this session,
+then the transaction will not be committed, but save point will be released</li>
+</ul>
+<pre><code class="language-python">from context_async_sqlalchemy.test_utils import (
+    put_savepoint_session_in_ctx,
+    set_test_context,
+)
+
+@pytest_asyncio.fixture(autouse=True)
+async def db_session_override(
+    db_session_test: AsyncSession,
+) -&gt; AsyncGenerator[None, None]:
+    &quot;&quot;&quot;
+    The key thing about these tests is that we override the context in advance.
+    The middleware has a special check that won't initialize the context
+        if it already exists.
+    &quot;&quot;&quot;
+    async with set_test_context():
+        async with put_savepoint_session_in_ctx(connection, db_session_test):
+            yield
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../master_replica" class="btn btn-neutral float-left" title="Master/Replica or several databases at the same time"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../how_middleware_works" class="btn btn-neutral float-right" title="How middleware works">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/krylosov-aa/context-async-sqlalchemy" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../master_replica" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../how_middleware_works" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
