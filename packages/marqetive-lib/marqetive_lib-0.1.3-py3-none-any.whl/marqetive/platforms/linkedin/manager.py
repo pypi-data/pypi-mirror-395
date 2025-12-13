@@ -1,0 +1,119 @@
+"""LinkedIn post manager for handling post operations."""
+
+import logging
+from typing import Any
+
+from marqetive.core.base_manager import BasePostManager
+from marqetive.platforms.linkedin.client import LinkedInClient
+from marqetive.platforms.linkedin.factory import LinkedInAccountFactory
+from marqetive.platforms.models import AuthCredentials, Post, PostCreateRequest
+
+logger = logging.getLogger(__name__)
+
+
+class LinkedInPostManager(BasePostManager):
+    """Manager for LinkedIn post operations.
+
+    Coordinates post creation, media uploads, and progress tracking for LinkedIn.
+
+    Example:
+        >>> manager = LinkedInPostManager()
+        >>> credentials = AuthCredentials(
+        ...     platform="linkedin",
+        ...     access_token="token",
+        ...     refresh_token="refresh"
+        ... )
+        >>> request = PostCreateRequest(content="Hello LinkedIn!")
+        >>> post = await manager.execute_post(credentials, request)
+        >>> print(f"Post URN: {post.post_id}")
+    """
+
+    def __init__(
+        self,
+        account_factory: LinkedInAccountFactory | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+    ) -> None:
+        """Initialize LinkedIn post manager.
+
+        Args:
+            account_factory: LinkedIn account factory (creates default if None).
+            client_id: LinkedIn OAuth client ID (for default factory).
+            client_secret: LinkedIn OAuth client secret (for default factory).
+        """
+        if account_factory is None:
+            account_factory = LinkedInAccountFactory(
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+
+        super().__init__(account_factory=account_factory)
+
+    @property
+    def platform_name(self) -> str:
+        """Get platform name."""
+        return "linkedin"
+
+    async def _execute_post_impl(
+        self,
+        client: Any,
+        request: PostCreateRequest,
+        credentials: AuthCredentials,  # noqa: ARG002
+    ) -> Post:
+        """Execute LinkedIn post creation.
+
+        Args:
+            client: LinkedInClient instance.
+            request: Post creation request.
+            credentials: LinkedIn credentials.
+
+        Returns:
+            Created Post object.
+        """
+        if not isinstance(client, LinkedInClient):
+            raise TypeError(f"Expected LinkedInClient, got {type(client)}")
+
+        # Handle media uploads with progress tracking
+        media_ids: list[str] = []
+        if request.media_urls:
+            self._progress_tracker.emit_start(
+                "upload_media",
+                total=len(request.media_urls),
+                message=f"Uploading {len(request.media_urls)} media files...",
+            )
+
+            for idx, media_url in enumerate(request.media_urls):
+                if self.is_cancelled():
+                    raise InterruptedError("Post creation was cancelled")
+
+                self._progress_tracker.emit_progress(
+                    "upload_media",
+                    progress=idx,
+                    total=len(request.media_urls),
+                    message=f"Uploading media {idx + 1}/{len(request.media_urls)}...",
+                )
+
+                media_attachment = await client.upload_media(
+                    media_url=media_url,
+                    media_type="image",  # Default to image
+                    alt_text=None,
+                )
+                media_ids.append(media_attachment.media_id)
+
+            self._progress_tracker.emit_complete(
+                "upload_media",
+                message="All media uploaded successfully",
+            )
+
+        # Create post with progress tracking
+        self._progress_tracker.emit_progress(
+            "execute_post",
+            progress=50,
+            total=100,
+            message="Creating LinkedIn post...",
+        )
+
+        # Use the client to create the post
+        post = await client.create_post(request)
+
+        return post
