@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: rs-mrt-dau-utilities
+Version: 0.2.1
+Summary: Add your description here
+Author: Didier Chagniot
+Author-email: Didier Chagniot <didier.chagniot@rohde-schwarz.com>
+License-Expression: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: altair>=5.5.0
+Requires-Dist: fast-json-normalize>=0.0.9
+Requires-Dist: polars==1.35.2
+Requires-Python: >=3.11
+Description-Content-Type: text/x-rst
+
+=====================
+ rs-mrt-dau-utilities
+=====================
+
+.. image:: https://img.shields.io/pypi/v/rs-mrt-dau-utilities.svg
+   :target: https://pypi.org/project/RsInstrument/
+
+.. image:: https://readthedocs.org/projects/sphinx/badge/?version=master
+   :target: https://rs-mrt-dau-utilities.readthedocs.io/
+
+.. image:: https://img.shields.io/pypi/l/rs-mrt-dau-utilities.svg
+   :target: https://pypi.python.org/pypi/rs-mrt-dau-utilities/
+
+.. image:: https://img.shields.io/pypi/pyversions/pybadges.svg
+   :target: https://img.shields.io/pypi/pyversions/pybadges.svg
+
+.. image:: https://img.shields.io/pypi/dm/rs-mrt-dau-utilities.svg
+   :target: https://pypi.python.org/pypi/rs-mrt-dau-utilities/
+
+rs-mrt-dau-utilities package provides two convenient modules for Rohde & Schwarz Data Application Unit (DAU):
+- `ip-analysis` module for creating Polars dataframes from the SCPI results.
+- `delay` module for creating Polars dataframes from the centralservice.log file.
+
+Ip analysis code:
+
+.. code-block:: python
+
+   from RsInstrument import *
+   import rs_mrt_dau_utilities.ip_analysis as ipana
+
+   cmx = RsInstrument('TCPIP::10.102.20.55::hislip0')
+   iden = cmx.query("*IDN?")
+   print(iden)
+   ip_analysis_res=cmx.query('FETCh:DATA:MEASurement:IPANalysis:RESult?')
+   parsed_sequences = ipana.ipanalysis_parse_scpi_result(ip_analysis_res)
+
+   list_of_dfs = ipana.ipanalysis_init_dataframes()
+
+   for sequence in parsed_sequences:
+      for message in sequence['json_messages']:
+            ipana.ipanalysis_update_dataframes(list_of_dfs, message)
+
+   print(list_of_dfs)
+
+Check out the full documentation on `ReadTheDocs <https://rs-mrt-dau-utilities.readthedocs.io/>`_.
+
+Our public `Rohde&Schwarz Github repository <https://github.com/Rohde-Schwarz/Examples/tree/main/Misc/Python/rs-mrt-dau-utilities>`_ hosts many examples using this library.
+If you're looking for examples with specific instruments, check out the ones for
+`Oscilloscopes <https://github.com/Rohde-Schwarz/Examples/tree/main/Oscilloscopes/Python/RsInstrument>`_,
+`Powersensors <https://github.com/Rohde-Schwarz/Examples/tree/main/Powersensors/Python/RsInstrument>`_,
+`Powersupplies <https://github.com/Rohde-Schwarz/Examples/tree/main/Powersupplies/Python/RsInstrument>`_,
+`Spectrum Analyzers <https://github.com/Rohde-Schwarz/Examples/tree/main/SpectrumAnalyzers/Python/RsInstrument>`_,
+`Vector Network Analyzers <https://github.com/Rohde-Schwarz/Examples/tree/main/VectorNetworkAnalyzers/Python/RsInstrument>`_.
+
+
+Version history:
+----------------
+
+    Version 0.2.0 (14.11.2025)
+        - initial release.
