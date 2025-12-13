@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gsc-api-handler"
+dynamic = ["version"]
+description = "Fetches data from Google Search Console and stores it into SQLite"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "oksidans", email = "zmiroljub.zivkovic@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "google-api-python-client >=2.100.0",
+  "python-dateutil >=2.8.2",
+  "google-auth >=2.27.0",
+  "google-auth-httplib2 >=0.1.0",
+  "google-auth-oauthlib >=1.0.0",
+  "python-decouple >=3.8",
+  "requests >=2.18.0",
+  "oauthlib >=3.0.0",
+]
+
+[project.urls]
+Documentation = "https://github.com/oksidans/gsc-api-handler#readme"
+Issues = "https://github.com/oksidans/gsc-api-handler/issues"
+Source = "https://github.com/oksidans/gsc-api-handler"
+
+[tool.hatch.version]
+path = "src/gsc_api_handler/__about__.py"
+
+# --- Added section for build configuration ---
+[tool.hatch.build]
+exclude = [
+    "*.db",                 # Exclude all SQLite database files
+    "*.sqlite",             # Explicitly exclude .sqlite files
+    "*.pickle",             # Exclude all pickle files (like token.pickle)
+    "gsc_credentials/",     # Exclude the entire credentials folder
+    "*.log",                # Exclude log files
+    "dist/",                # Exclude previous build artifacts
+    "__pycache__/",         # Standard Python cache directories
+    "*.pyc",                # Compiled Python files
+    ".pytest_cache/",       # pytest cache
+    ".venv/",               # Virtual environment folder
+    "tests/",               # Test directory (if not part of package)
+    ".mypy_cache/",         # MyPy cache
+    ".git/",                # Git repository data
+    "*.json",               # General JSON exclusion (use with caution, but good for client_secret.json if it's outside src/)
+]
+# -------------------------------------------
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/gsc_api_handler tests}"
+
+[tool.coverage.run]
+source_pkgs = ["gsc_api_handler", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/gsc_api_handler/__about__.py",
+]
+
+[tool.coverage.paths]
+gsc_api_handler = ["src/gsc_api_handler", "*/gsc-api-handler/src/gsc_api_handler"]
+tests = ["tests", "*/gsc-api-handler/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
