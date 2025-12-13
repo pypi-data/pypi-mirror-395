@@ -1,0 +1,295 @@
+Metadata-Version: 2.4
+Name: ose-cloud
+Version: 1.0.0
+Summary: Official Python SDK for OSE Cloud Platform
+Home-page: https://github.com/ose-cloud/sdk-python
+Author: OSE Cloud
+Author-email: support@ose.cloud
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.28.0
+Requires-Dist: typing-extensions>=4.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: mypy>=0.990; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# OSE Cloud Python SDK
+
+Official Python SDK for [OSE Cloud](https://ose.sh) - A powerful cloud platform for AI-powered development, sandboxes, and deployments.
+
+## Installation
+
+```bash
+pip install ose-cloud
+```
+
+## Quick Start
+
+```python
+from ose import OSE
+
+# Initialize the client
+client = OSE(api_key="your_api_key_here")
+
+# Create a sandbox
+sandbox = client.sandboxes.create(
+    name="my-sandbox",
+    template="python"
+)
+
+# Execute commands
+result = sandbox.commands.run("python --version")
+print(result.stdout)
+
+# Work with files
+sandbox.files.write("hello.py", "print('Hello, OSE Cloud!')")
+content = sandbox.files.read("hello.py")
+
+# Deploy an application
+deployment = client.deployments.create(
+    name="my-app",
+    sandbox_id=sandbox.id,
+    port=3000
+)
+
+print(f"Deployed at: {deployment.url}")
+```
+
+## Features
+
+- **Sandboxes**: Create and manage isolated development environments
+- **Deployments**: Deploy applications to production
+- **File Management**: Read, write, and search files in sandboxes
+- **Command Execution**: Run commands in sandbox environments
+- **Usage Tracking**: Monitor your API usage and analytics
+- **Chat API**: Interact with AI chat sessions
+
+## Documentation
+
+### Sandboxes
+
+```python
+# Create a sandbox
+sandbox = client.sandboxes.create(
+    name="my-project",
+    template="node",
+    envs={"NODE_ENV": "development"}
+)
+
+# List all sandboxes
+sandboxes = client.sandboxes.list(status="active")
+
+# Connect to existing sandbox
+sandbox = client.sandboxes.connect("sandbox-id")
+
+# Get sandbox info
+info = sandbox.get_info()
+
+# Delete sandbox
+sandbox.delete()
+```
+
+### File Operations
+
+```python
+# Write a file
+sandbox.files.write("index.js", "console.log('Hello World')")
+
+# Write multiple files at once
+sandbox.files.write_multiple([
+    {"path": "package.json", "content": "{}"},
+    {"path": "index.js", "content": "console.log('test')"}
+])
+
+# Read a file
+content = sandbox.files.read("index.js")
+
+# List files
+files = sandbox.files.list("/")
+
+# Search with glob
+results = sandbox.files.glob("**/*.js")
+
+# Search with grep
+results = sandbox.files.grep(
+    pattern="console",
+    file_pattern="*.js",
+    case_sensitive=False
+)
+
+# Delete a file
+sandbox.files.delete("index.js")
+```
+
+### Command Execution
+
+```python
+# Run a command
+result = sandbox.commands.run(
+    command="npm install",
+    workdir="/workspace",
+    envs={"NODE_ENV": "production"}
+)
+
+print(f"Exit code: {result.exit_code}")
+print(f"Output: {result.stdout}")
+print(f"Errors: {result.stderr}")
+```
+
+### Deployments
+
+```python
+# Create a deployment
+deployment = client.deployments.create(
+    name="my-app",
+    sandbox_id="sandbox-id",
+    port=3000,
+    build_command="npm run build",
+    start_command="npm start",
+    environment_variables={"API_KEY": "secret"}
+)
+
+# List deployments
+deployments = client.deployments.list()
+
+# Connect to existing deployment
+deployment = client.deployments.connect("deployment-id")
+
+# Get deployment info
+info = deployment.get_info()
+
+# View logs
+logs = deployment.logs.get(lines=100)
+
+# Restart deployment
+deployment.restart()
+
+# Stop deployment
+deployment.stop()
+
+# Delete deployment
+deployment.delete()
+```
+
+### Usage & Analytics
+
+```python
+# Get usage statistics
+usage = client.usage.get(range="7d")  # "7d", "30d", or "all"
+
+# Get analytics
+analytics = client.usage.get_analytics(range="30d")
+
+# List API keys
+keys = client.usage.keys()
+```
+
+### Chat API
+
+```python
+# Create a chat
+chat = client.chats.create(
+    title="My Chat Session",
+    visibility="private"
+)
+
+# Send a message
+response = chat.send("Hello, how can I deploy a Next.js app?")
+
+# Get chat messages
+messages = chat.messages()
+
+# List all chats
+chats = client.chats.list()
+
+# Connect to existing chat
+chat = client.chats.connect("chat-id")
+
+# Delete chat
+chat.delete()
+```
+
+## Error Handling
+
+```python
+from ose import OSE, OSEError, APIError, AuthenticationError, NotFoundError
+
+try:
+    client = OSE(api_key="your_api_key")
+    sandbox = client.sandboxes.create(name="test")
+except AuthenticationError as e:
+    print("Invalid API key")
+except NotFoundError as e:
+    print("Resource not found")
+except APIError as e:
+    print(f"API error: {e.status_code} - {e.message}")
+except OSEError as e:
+    print(f"SDK error: {e}")
+```
+
+## Configuration
+
+```python
+# Custom base URL and timeout
+client = OSE(
+    api_key="your_api_key",
+    base_url="https://api.ose.cloud/v1",
+    timeout=120  # seconds
+)
+```
+
+## Requirements
+
+- Python >= 3.8
+- requests >= 2.28.0
+
+## Development
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format code
+black .
+
+# Type checking
+mypy ose
+```
+
+## Links
+
+- [Website](https://ose.sh)
+- [Documentation](https://ose.sh/docs)
+- [GitHub](https://github.com/ose-cloud/sdk-python)
+- [PyPI](https://pypi.org/project/ose-cloud/)
+
+## Support
+
+- Email: support@ose.cloud
+- GitHub Issues: https://github.com/ose-cloud/sdk-python/issues
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
