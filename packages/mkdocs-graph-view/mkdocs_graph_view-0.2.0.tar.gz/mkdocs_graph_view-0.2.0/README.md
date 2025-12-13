@@ -1,0 +1,179 @@
+# MkDocs Graph View
+
+A MkDocs plugin that creates interactive graph visualizations of page connections, inspired by [Quartz](https://github.com/jackyzha0/quartz). Visualize your documentation structure with beautiful, interactive network graphs powered by D3.js.
+
+## Features
+
+- 🎯 **Mini Graph View**: Shows connected pages in the sidebar (or bottom on mobile)
+- 🌐 **Full Graph View**: Expandable overlay showing the entire documentation graph
+- 🎨 **Material Theme Integration**: Seamlessly integrates with Material for MkDocs
+- 📱 **Responsive Design**: Automatically adapts to mobile and desktop layouts
+- ⚙️ **Highly Configurable**: Customize physics simulation, visual appearance, and interactions
+- 🏷️ **Tag Support**: Display tags as separate nodes in the graph (like Quartz)
+- 🌓 **Dark Mode**: Full support for light and dark themes
+- ⚡ **Performance**: Efficient BFS-based filtering for large documentation sites
+
+## Installation
+
+Install the plugin using pip:
+
+```bash
+pip install mkdocs-graph-view
+```
+
+## Quick Start
+
+Add the plugin to your `mkdocs.yml`:
+
+```yaml
+plugins:
+  - search
+  - graph-view
+```
+
+That's it! The plugin will automatically:
+- Create a mini graph in the sidebar showing connected pages
+- Add an expand button to view the full graph
+- Highlight the current page in the graph
+
+## Configuration
+
+### Basic Configuration
+
+```yaml
+plugins:
+  - graph-view:
+      enabled: true
+      local_graph_depth: 1  # Show connections up to 1 level deep
+```
+
+### Advanced Configuration
+
+```yaml
+plugins:
+  - graph-view:
+      enabled: true
+
+      # Graph depth
+      local_graph_depth: 2              # Show 2 levels of connections in sidebar
+
+      # Global graph
+      global_graph: true                # Enable full-screen graph overlay
+
+      # Physics simulation
+      repel_force: 1.0                  # Node repulsion (higher = more spread)
+      center_force: 0.2                 # Pull to center (lower = less centering)
+      link_distance: 50                 # Distance between connected nodes
+
+      # Visual settings
+      scale: 1.1                        # Overall scale
+      font_size: 10                     # Label font size
+      show_tags: false                  # Show tags as separate nodes
+
+      # Interaction
+      enable_drag: true                 # Allow dragging nodes
+      enable_zoom: true                 # Allow zoom and pan
+      focus_on_hover: true              # Highlight connections on hover
+```
+
+## Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable/disable the plugin |
+| `local_graph_depth` | int | `1` | Number of connection levels to show in mini graph |
+| `global_graph` | bool | `true` | Enable full-screen graph view |
+| `repel_force` | float | `1.0` | Node repulsion strength (0.5-2.0 recommended) |
+| `center_force` | float | `0.2` | Centering force strength (0.1-0.5 recommended) |
+| `link_distance` | int | `50` | Pixel distance between connected nodes |
+| `scale` | float | `1.1` | Overall graph scale |
+| `font_size` | int | `10` | Font size for node labels |
+| `show_tags` | bool | `false` | Display tags as separate nodes in graph view |
+| `enable_drag` | bool | `true` | Allow dragging nodes |
+| `enable_zoom` | bool | `true` | Allow zooming and panning |
+| `focus_on_hover` | bool | `true` | Highlight connections on hover |
+
+## Usage Examples
+
+### For Small Documentation Sites (< 50 pages)
+
+```yaml
+plugins:
+  - graph-view:
+      local_graph_depth: 3              # Can afford deeper depth
+      repel_force: 0.5
+      link_distance: 30
+      focus_on_hover: true
+```
+
+### For Large Documentation Sites (> 100 pages)
+
+```yaml
+plugins:
+  - graph-view:
+      local_graph_depth: 1              # Keep it fast
+      repel_force: 0.8                  # More spread
+      center_force: 0.2
+      link_distance: 50
+      font_size: 8                      # Smaller labels
+      focus_on_hover: false             # Disable for performance
+```
+
+### For Knowledge Base with Tags
+
+```yaml
+plugins:
+  - tags                                # Enable tags plugin first
+  - graph-view:
+      local_graph_depth: 2
+      show_tags: true                   # Show tags as separate nodes
+      font_size: 11                     # Larger for readability
+      focus_on_hover: true
+```
+
+### Mobile-Optimized
+
+```yaml
+plugins:
+  - graph-view:
+      local_graph_depth: 1
+      enable_drag: true                 # Touch drag works well
+      enable_zoom: true                 # Pinch zoom
+      font_size: 12                     # Larger for mobile
+      focus_on_hover: false             # Better for touch
+```
+
+## How It Works
+
+The plugin:
+
+1. **Extracts Links**: Scans all pages and extracts internal links
+2. **Builds Graph Data**: Creates a network graph of page connections
+3. **Filters by Depth**: Uses BFS (Breadth-First Search) to find pages within configured depth
+4. **Renders with D3.js**: Creates interactive visualizations using force-directed layout
+5. **Adapts to Layout**: Automatically positions graph in sidebar or content area based on viewport
+
+## Requirements
+
+- Python 3.8+
+- MkDocs 1.4.0+
+- Works best with Material for MkDocs theme (but compatible with others)
+
+## License
+
+GNU GPLv3 License - see LICENSE file for details
+
+## Credits
+
+Inspired by [Quartz](https://github.com/jackyzha0/quartz) graph view feature.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+If you encounter any issues or have questions:
+- [Report a bug](https://github.com/sawyerrensel/mkdocs-graph-view/issues)
+- [Request a feature](https://github.com/sawyerrensel/mkdocs-graph-view/issues)
+- [View documentation](https://sawyerrensel.github.io/mkdocs-graph-view/)
