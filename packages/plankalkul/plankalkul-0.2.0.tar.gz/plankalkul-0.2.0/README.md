@@ -1,0 +1,224 @@
+# Plankalkul Interpreter
+
+[![PyPI](https://img.shields.io/pypi/v/plankalkul)](https://pypi.org/project/plankalkul/)
+[![Language](https://img.shields.io/badge/Language-Python%203.8+-blue)](https://python.org)
+[![Historical](https://img.shields.io/badge/Historical-1945-gold)](https://en.wikipedia.org/wiki/Plankalk%C3%BCl)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+**The first high-level programming language, running again.**
+
+Plankalkul ("Plan Calculus") was designed by Konrad Zuse between 1942-1945. Building on the pioneering work of **Rojas et al. (FU Berlin, 2000)** who created the first implementation, this package provides an accessible Python interface.
+
+## Installation
+
+```bash
+pip install plankalkul
+```
+
+## Quick Start
+
+```python
+from plankalkul import run
+
+# Calculate factorial
+result = run('''
+    P1 factorial (V0[:8.0]) => R0[:8.0]
+        1 => R0[:8.0]
+        1 => Z0[:8.0]
+        W [ Z0[:8.0] * R0[:8.0] => R0[:8.0]
+            Z0[:8.0] + 1 => Z0[:8.0] ] (Z0[:8.0] <= V0[:8.0])
+    END
+''', 5)
+
+print(result['R0'])  # 120
+```
+
+Or run from command line:
+
+```bash
+plankalkul  # Runs demo programs
+```
+
+## Why This Matters
+
+| Feature | Plankalkul (1945) | First "Modern" Language |
+|---------|-------------------|------------------------|
+| Data structures | Yes | C (1972): 27 years later |
+| User-defined types | Yes | C (1972): 27 years later |
+| Assertions | Yes | Eiffel (1986): 41 years later |
+| Structured control | Yes | ALGOL (1960): 15 years later |
+
+The first language had features that took decades to "reinvent".
+
+## Language Syntax
+
+### Program Structure
+
+```
+P<number> <name> (<parameters>) => <returns>
+    <statements>
+END
+```
+
+### Variables
+
+| Prefix | Meaning |
+|--------|---------|
+| `V0`, `V1`... | Input parameters |
+| `Z0`, `Z1`... | Local/intermediate variables |
+| `R0`, `R1`... | Return values |
+
+### Type Annotations
+
+```
+[:8.0]      ; 8-bit integer
+[:1.0]      ; 1-bit (boolean)
+[:16.0]     ; 16-bit integer
+[:n×m.0]    ; n×m array
+```
+
+### Operations
+
+| Operation | Symbol | ASCII Alternative |
+|-----------|--------|-------------------|
+| Assignment | `→` | `=>` |
+| Multiply | `×` | `*` |
+| Divide | `:` | `/` |
+| Not equal | `≠` | `!=` |
+| Less/equal | `≤` | `<=` |
+| Greater/equal | `≥` | `>=` |
+| Logical AND | `∧` | `&` |
+| Logical OR | `∨` | `\|` |
+| Logical NOT | `¬` | `!` |
+
+### Control Flow
+
+**Conditional:**
+```
+(condition) => statement
+```
+
+**While loop:**
+```
+W [ statements ] (condition)
+```
+
+**Counted loop (W1):**
+```
+W1 (count) => counter_var { statements }
+```
+
+The W1 loop iterates from 0 to count-1, storing the current iteration in counter_var.
+This syntax was reconstructed from academic implementations based on Zuse's manuscripts.
+
+## Example Programs
+
+### Maximum of Two Numbers (Zuse's Original)
+
+```
+P1 max (V0[:8.0], V1[:8.0]) => R0[:8.0]
+    V0[:8.0] => R0[:8.0]
+    (R0[:8.0] < V1[:8.0]) => V1[:8.0] => R0[:8.0]
+END
+```
+
+### Factorial
+
+```
+P2 factorial (V0[:8.0]) => R0[:8.0]
+    1 => R0[:8.0]
+    1 => Z0[:8.0]
+    W [ Z0[:8.0] * R0[:8.0] => R0[:8.0]
+        Z0[:8.0] + 1 => Z0[:8.0] ] (Z0[:8.0] <= V0[:8.0])
+END
+```
+
+### Sum of 1 to N
+
+```
+P3 sum (V0[:8.0]) => R0[:8.0]
+    0 => R0[:8.0]
+    1 => Z0[:8.0]
+    W [ R0[:8.0] + Z0[:8.0] => R0[:8.0]
+        Z0[:8.0] + 1 => Z0[:8.0] ] (Z0[:8.0] <= V0[:8.0])
+END
+```
+
+### Factorial using W1 (Advanced Syntax)
+
+```
+P Factorial(V0[:8.0]) => R0[:8.0]
+    1 => R0[:8.0]
+    W1 (V0[:8.0]) => Z0[:8.0] {
+        R0[:8.0] * (Z0[:8.0] + 1) => R0[:8.0]
+    }
+END
+```
+
+This advanced syntax comes from the Hovestar implementation, reconstructed from Zuse's manuscripts.
+
+## Historical Context
+
+### Timeline
+
+| Year | Event |
+|------|-------|
+| 1936 | Zuse builds Z1 (mechanical computer) |
+| 1941 | Z3 completed (first programmable computer) |
+| 1942-45 | Plankalkül designed |
+| 1943 | Z3 destroyed in Allied bombing |
+| 1945 | WWII ends, Zuse flees with Z4 |
+| 1948 | Zuse writes manuscript "Der Plankalkül" |
+| 1972 | Plankalkül published |
+| 2000 | First implementation (FU Berlin) |
+| 2025 | This implementation (The Ian Index) |
+
+### Why It Was Forgotten
+
+1. **War**: Designed during WWII, destroyed in bombing
+2. **Language barrier**: Written in German
+3. **Isolation**: Zuse didn't know about Turing or von Neumann
+4. **Politics**: Work in Nazi Germany carried stigma
+5. **Commercial failure**: No resources to implement
+
+### What Zuse Got Right
+
+Plankalkul had features that took decades to "reinvent":
+
+- **Data structures** (like C structs): reinvented 27 years later
+- **User-defined types**: reinvented 27 years later  
+- **Assertions**: reinvented 41 years later
+- **Strong typing**: reinvented 25 years later
+- **Structured control flow**: reinvented 15 years later
+
+## Technical Details
+
+### Architecture
+
+```
+Source Code → Lexer → Tokens → Parser → AST → Interpreter → Result
+```
+
+### Implementation
+
+- **Lexer**: Handles both Unicode (→, ×, ≤) and ASCII (=>, *, <=) notation
+- **Parser**: Recursive descent parser
+- **Interpreter**: Tree-walking interpreter with variable scoping
+- **Type System**: Basic type checking (integers, booleans, arrays)
+
+## License
+
+MIT License — completing Zuse's public domain vision.
+
+## References
+
+1. Zuse, K. (1948). "Der Plankalkül"
+2. Rojas, R. et al. (2000). "Plankalkül: The First High-Level Programming Language and its Implementation"
+3. Bauer, F.L. & Wössner, H. (1972). "The 'Plankalkül' of Konrad Zuse: A Forerunner of Today's Programming Languages"
+
+---
+
+*"The significance of Plankalkül lies not in what it became, but in what it could have been."*
+
+**Konrad Zuse deserves to be remembered.**
+
